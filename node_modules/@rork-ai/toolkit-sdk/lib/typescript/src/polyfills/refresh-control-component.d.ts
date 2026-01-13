@@ -1,0 +1,9 @@
+import React from "react";
+import { type RefreshControlProps, type StyleProp, type ViewStyle } from "react-native-web";
+interface WebRefreshControlProps extends Omit<RefreshControlProps, "style"> {
+    children?: React.ReactNode;
+    style?: StyleProp<ViewStyle>;
+}
+export default function WebRefreshControl({ refreshing, tintColor, colors, style, progressViewOffset, children, onRefresh, enabled, }: WebRefreshControlProps): import("react/jsx-runtime").JSX.Element;
+export {};
+//# sourceMappingURL=refresh-control-component.d.ts.map

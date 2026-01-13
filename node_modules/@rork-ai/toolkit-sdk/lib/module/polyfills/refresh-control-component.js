@@ -1,0 +1,155 @@
+"use strict";
+
+// @ts-nocheck
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
+// Import from react-native-web directly to avoid infinite loop
+// (metro redirects "react-native" to our polyfill on web)
+import { ActivityIndicator, Animated, PanResponder, View } from "react-native-web";
+import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+export default function WebRefreshControl({
+  refreshing,
+  tintColor,
+  colors,
+  style,
+  progressViewOffset,
+  children,
+  onRefresh,
+  enabled
+}) {
+  const onRefreshRef = useRef(onRefresh);
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
+  const enabledRef = useRef(enabled);
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const containerRef = useRef(null);
+  const pullPosReachedState = useRef(0);
+  const pullDownSwipeMargin = useRef(new Animated.Value(0));
+  useEffect(() => {
+    Animated.timing(pullDownSwipeMargin.current, {
+      toValue: refreshing ? 50 : 0,
+      duration: 350,
+      useNativeDriver: false
+    }).start();
+    if (refreshing) {
+      pullPosReachedState.current = 0;
+    }
+  }, [refreshing]);
+  const onPanResponderFinish = useCallback(() => {
+    if (pullPosReachedState.current && onRefreshRef.current) {
+      onRefreshRef.current();
+    }
+    if (!pullPosReachedState.current) {
+      Animated.timing(pullDownSwipeMargin.current, {
+        toValue: 0,
+        duration: 350,
+        useNativeDriver: false
+      }).start();
+    }
+  }, []);
+  const panResponder = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onStartShouldSetPanResponderCapture: () => false,
+    onMoveShouldSetPanResponder: (_, gestureState) => {
+      if (!containerRef.current) return false;
+      // React 19 fix: use direct DOM traversal instead of findNodeHandle
+      const scrollContainer = containerRef.current?.firstChild;
+      if (!scrollContainer) return false;
+      return scrollContainer.scrollTop === 0 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx) * 2 && Math.abs(gestureState.vy) > Math.abs(gestureState.vx) * 2.5;
+    },
+    onMoveShouldSetPanResponderCapture: () => false,
+    onPanResponderMove: (_, gestureState) => {
+      if (enabledRef.current !== undefined && !enabledRef.current) return;
+      const adjustedDy = gestureState.dy <= 0 ? 0 : gestureState.dy * 150 / (gestureState.dy + 120); // Diminishing returns function
+      pullDownSwipeMargin.current.setValue(adjustedDy);
+      const newValue = adjustedDy > 45 ? 1 : 0;
+      if (newValue !== pullPosReachedState.current) {
+        pullPosReachedState.current = newValue;
+      }
+    },
+    onPanResponderTerminationRequest: () => true,
+    onPanResponderRelease: onPanResponderFinish,
+    onPanResponderTerminate: onPanResponderFinish
+  }));
+  const refreshIndicatorColor = useMemo(() => tintColor ? tintColor : colors && colors.length ? colors[0] : null, [colors, tintColor]);
+  const containerStyle = useMemo(() => [style,
+  // @ts-ignore - overflowY is valid on web
+  {
+    overflowY: "hidden",
+    overflow: "hidden",
+    paddingTop: progressViewOffset
+  }], [progressViewOffset, style]);
+  const indicatorTransformStyle = useMemo(() => ({
+    alignSelf: "center",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: -40,
+    height: 40,
+    transform: [{
+      translateY: pullDownSwipeMargin.current
+    }]
+  }), []);
+
+  // This is messing with react-native-web's internal implementation
+  // Will probably break if anything changes on their end
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const AnimatedContentContainer = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const childElement = children;
+    if (!childElement?.props?.children?.type) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return withAnimated(childProps => /*#__PURE__*/React.createElement(childElement.props.children.type, childProps));
+  }, [children]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const childElement = children;
+  const newContentContainerStyle = useMemo(() => [childElement?.props?.children?.props?.style, {
+    transform: [{
+      translateY: pullDownSwipeMargin.current
+    }]
+  }], [childElement?.props?.children?.props?.style]);
+  if (!childElement || !AnimatedContentContainer) {
+    return /*#__PURE__*/_jsx(_Fragment, {
+      children: children
+    });
+  }
+  const newChildren = /*#__PURE__*/React.cloneElement(childElement, {}, /*#__PURE__*/_jsxs(_Fragment, {
+    children: [/*#__PURE__*/_jsx(Animated.View, {
+      style: indicatorTransformStyle,
+      children: /*#__PURE__*/_jsx(ActivityIndicator, {
+        color: refreshIndicatorColor || "#999999",
+        size: "small"
+      })
+    }), /*#__PURE__*/_jsx(AnimatedContentContainer, {
+      ...childElement.props.children.props,
+      style: newContentContainerStyle
+    })]
+  }));
+  return /*#__PURE__*/_jsx(View, {
+    ref: containerRef,
+    style: containerStyle,
+    ...panResponder.current.panHandlers,
+    children: newChildren
+  });
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function withAnimated(WrappedComponent) {
+  const displayName = WrappedComponent.displayName || WrappedComponent.name || "Component";
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  class WithAnimated extends React.Component {
+    static displayName = `WithAnimated(${displayName})`;
+    render() {
+      return /*#__PURE__*/_jsx(WrappedComponent, {
+        ...this.props
+      });
+    }
+  }
+  return Animated.createAnimatedComponent(WithAnimated);
+}
+//# sourceMappingURL=refresh-control-component.js.map

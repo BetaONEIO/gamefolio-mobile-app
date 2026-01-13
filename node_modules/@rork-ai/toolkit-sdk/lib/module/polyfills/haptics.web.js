@@ -1,0 +1,54 @@
+"use strict";
+
+/**
+ * Web polyfill for expo-haptics using the Vibration API
+ * This provides haptic-like feedback on web browsers that support vibration
+ */
+
+export let NotificationFeedbackType = /*#__PURE__*/function (NotificationFeedbackType) {
+  NotificationFeedbackType["Success"] = "success";
+  NotificationFeedbackType["Warning"] = "warning";
+  NotificationFeedbackType["Error"] = "error";
+  return NotificationFeedbackType;
+}({});
+export let ImpactFeedbackStyle = /*#__PURE__*/function (ImpactFeedbackStyle) {
+  ImpactFeedbackStyle["Light"] = "light";
+  ImpactFeedbackStyle["Medium"] = "medium";
+  ImpactFeedbackStyle["Heavy"] = "heavy";
+  ImpactFeedbackStyle["Soft"] = "soft";
+  ImpactFeedbackStyle["Rigid"] = "rigid";
+  return ImpactFeedbackStyle;
+}({});
+const vibrationPatterns = {
+  [NotificationFeedbackType.Success]: [40, 100, 40],
+  [NotificationFeedbackType.Warning]: [50, 100, 50],
+  [NotificationFeedbackType.Error]: [60, 100, 60, 100, 60],
+  [ImpactFeedbackStyle.Light]: [40],
+  [ImpactFeedbackStyle.Medium]: [50],
+  [ImpactFeedbackStyle.Heavy]: [60],
+  [ImpactFeedbackStyle.Soft]: [35],
+  [ImpactFeedbackStyle.Rigid]: [45],
+  selection: [50]
+};
+function isVibrationAvailable() {
+  return typeof window !== "undefined" && "navigator" in window && "vibrate" in navigator;
+}
+export async function selectionAsync() {
+  if (!isVibrationAvailable()) {
+    return;
+  }
+  navigator.vibrate(vibrationPatterns.selection);
+}
+export async function notificationAsync(type = NotificationFeedbackType.Success) {
+  if (!isVibrationAvailable()) {
+    return;
+  }
+  navigator.vibrate(vibrationPatterns[type]);
+}
+export async function impactAsync(style = ImpactFeedbackStyle.Medium) {
+  if (!isVibrationAvailable()) {
+    return;
+  }
+  navigator.vibrate(vibrationPatterns[style]);
+}
+//# sourceMappingURL=haptics.web.js.map

@@ -1,0 +1,37 @@
+"use strict";
+
+// @ts-nocheck
+import WebMapView, * as WebMaps from "@teovilla/react-native-web-maps";
+import React from "react";
+import { jsx as _jsx } from "react/jsx-runtime";
+export const PROVIDER_GOOGLE = "google";
+export const PROVIDER_DEFAULT = undefined;
+const GOOGLE_MAPS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+const MapView = /*#__PURE__*/React.forwardRef((props, ref) => {
+  return /*#__PURE__*/_jsx(WebMapView, {
+    ref: ref,
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    ...props,
+    provider: PROVIDER_GOOGLE
+  });
+});
+MapView.displayName = "MapView";
+Object.assign(MapView, {
+  ...WebMaps,
+  PROVIDER_GOOGLE,
+  PROVIDER_DEFAULT
+});
+export const {
+  Marker,
+  Callout,
+  Polyline,
+  Polygon,
+  Circle,
+  Overlay,
+  Heatmap,
+  UrlTile,
+  WMSTile,
+  LocalTile
+} = WebMaps;
+export default MapView;
+//# sourceMappingURL=maps.web.js.map

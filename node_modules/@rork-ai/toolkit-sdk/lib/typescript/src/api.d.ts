@@ -1,0 +1,3 @@
+export declare const BASE_URL: any;
+export declare function withBaseUrl(path: string): string;
+//# sourceMappingURL=api.d.ts.map

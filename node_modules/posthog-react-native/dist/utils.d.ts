@@ -1,0 +1,20 @@
+type ReactNativeGlobal = {
+    HermesInternal?: {
+        enablePromiseRejectionTracker?: (args: {
+            allRejections: boolean;
+            onUnhandled?: (id: string, error: any) => void;
+            onHandled?: (id: string, error: any) => void;
+        }) => void;
+        hasPromise?: () => boolean;
+    };
+    ErrorUtils?: {
+        getGlobalHandler?: () => (error: Error, isFatal: boolean) => void;
+        setGlobalHandler?: (handler: (error: Error, isFatal: boolean) => void) => void;
+    };
+    onunhandledrejection?: (event: unknown) => void;
+};
+export declare const GLOBAL_OBJ: ReactNativeGlobal;
+/** Checks if the current platform is web */
+export declare function isWeb(): boolean;
+export declare const isHermes: () => boolean;
+export {};

@@ -1,0 +1,6 @@
+"use strict";
+
+export function isExpoGo() {
+  return !!globalThis.expo?.modules?.ExpoGo;
+}
+//# sourceMappingURL=utils.js.map

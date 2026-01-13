@@ -1,0 +1,4 @@
+export declare function BundleInspector({ children }: {
+    children: React.ReactNode;
+}): import("react/jsx-runtime").JSX.Element;
+//# sourceMappingURL=inspector.web.d.ts.map

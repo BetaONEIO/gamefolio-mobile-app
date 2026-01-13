@@ -1,0 +1,5 @@
+"use strict";
+
+import AlertNew from "@blazejkustra/react-native-alert";
+export default AlertNew;
+//# sourceMappingURL=alert.web.js.map

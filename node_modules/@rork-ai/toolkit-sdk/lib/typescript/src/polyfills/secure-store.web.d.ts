@@ -1,0 +1,16 @@
+export type KeychainAccessibilityConstant = number;
+export declare const AFTER_FIRST_UNLOCK: number, AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY: number, ALWAYS: number, WHEN_PASSCODE_SET_THIS_DEVICE_ONLY: number, ALWAYS_THIS_DEVICE_ONLY: number, WHEN_UNLOCKED: number, WHEN_UNLOCKED_THIS_DEVICE_ONLY: number;
+export type SecureStoreOptions = {
+    keychainService?: string;
+    requireAuthentication?: boolean;
+    authenticationPrompt?: string;
+    keychainAccessible?: KeychainAccessibilityConstant;
+};
+export declare function isAvailableAsync(): Promise<boolean>;
+export declare function deleteItemAsync(key: string, _options?: SecureStoreOptions): Promise<void>;
+export declare function getItemAsync(key: string, _options?: SecureStoreOptions): Promise<string | null>;
+export declare function setItemAsync(key: string, value: string, _options?: SecureStoreOptions): Promise<void>;
+export declare function setItem(key: string, value: string, _options?: SecureStoreOptions): void;
+export declare function getItem(key: string, _options?: SecureStoreOptions): string | null;
+export declare function canUseBiometricAuthentication(): boolean;
+//# sourceMappingURL=secure-store.web.d.ts.map

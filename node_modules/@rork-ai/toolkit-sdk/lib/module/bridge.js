@@ -1,0 +1,38 @@
+"use strict";
+
+import { requireOptionalNativeModule } from "expo-modules-core";
+import { useEffect, useRef } from "react";
+const BridgeModule = requireOptionalNativeModule("Bridge");
+export function sendBridgeMessage(type, data) {
+  if (data) {
+    return BridgeModule?.sendMessage({
+      type,
+      data: JSON.stringify(data)
+    });
+  }
+  return BridgeModule?.sendMessage({
+    type
+  });
+}
+export function addBridgeListener(listener) {
+  return BridgeModule?.addListener("onMessage", data => {
+    if (typeof data !== "object") return;
+    if (data.data) {
+      listener({
+        ...data,
+        data: JSON.parse(data.data)
+      });
+    } else {
+      listener(data);
+    }
+  });
+}
+export function useBridgeListener(listener) {
+  const listenerRef = useRef(listener);
+  listenerRef.current = listener;
+  useEffect(() => {
+    const subscription = addBridgeListener(listenerRef.current);
+    return () => subscription.remove();
+  }, [listenerRef.current]);
+}
+//# sourceMappingURL=bridge.js.map

@@ -1,0 +1,7 @@
+import React from "react";
+export declare const PROVIDER_GOOGLE = "google";
+export declare const PROVIDER_DEFAULT: undefined;
+declare const MapView: React.ForwardRefExoticComponent<React.RefAttributes<unknown>>;
+export declare const Marker: any, Callout: any, Polyline: any, Polygon: any, Circle: any, Overlay: any, Heatmap: any, UrlTile: any, WMSTile: any, LocalTile: any;
+export default MapView;
+//# sourceMappingURL=maps.web.d.ts.map

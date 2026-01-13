@@ -1,0 +1,14 @@
+"use strict";
+
+import { TextDecoderStream, TextEncoderStream } from "@stardazed/streams-text-encoding";
+import structuredClone from "@ungap/structured-clone";
+// @ts-ignore
+import { polyfillGlobal } from "react-native/Libraries/Utilities/PolyfillFunctions";
+if (!("structuredClone" in globalThis)) {
+  console.log("polyfilling structuredClone");
+  polyfillGlobal("structuredClone", () => structuredClone);
+}
+polyfillGlobal("TextEncoderStream", () => TextEncoderStream);
+polyfillGlobal("TextDecoderStream", () => TextDecoderStream);
+export {};
+//# sourceMappingURL=fetch.js.map

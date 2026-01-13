@@ -1,0 +1,18 @@
+import * as WebBrowser from "expo-web-browser";
+type Connection = {
+    id: string;
+    status: "INITIALIZING" | "INITIATED" | "ACTIVE" | "FAILED" | "EXPIRED" | "INACTIVE";
+    toolkit: string;
+};
+export declare function useConnections(): {
+    currentConnections: Connection[];
+    refetchConnections: (options?: import("@tanstack/react-query").RefetchOptions) => Promise<import("@tanstack/react-query").QueryObserverResult<{
+        connections: Connection[];
+    }, Error>>;
+    initiate: import("@tanstack/react-query").UseMutationResult<WebBrowser.WebBrowserAuthSessionResult, Error, string, unknown>;
+    disconnect: import("@tanstack/react-query").UseMutationResult<{
+        status: string;
+    }, Error, string, unknown>;
+};
+export {};
+//# sourceMappingURL=integrations.d.ts.map

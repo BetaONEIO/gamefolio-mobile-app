@@ -1,0 +1,2 @@
+export declare function isExpoGo(): boolean;
+//# sourceMappingURL=utils.d.ts.map

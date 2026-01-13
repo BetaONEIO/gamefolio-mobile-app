@@ -1,0 +1,5 @@
+import { type EventSubscription } from "expo-modules-core";
+export declare function sendBridgeMessage(type: "inspector-element" | "merge-inspector-state" | "runtime-ready" | "runtime-error", data?: Record<string, any>): any;
+export declare function addBridgeListener(listener: (data: Record<string, any>) => void): EventSubscription;
+export declare function useBridgeListener(listener: (data: Record<string, any>) => void): void;
+//# sourceMappingURL=bridge.d.ts.map

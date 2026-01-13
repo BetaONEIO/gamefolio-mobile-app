@@ -1,0 +1,2 @@
+export {};
+//# sourceMappingURL=fetch.web.d.ts.map

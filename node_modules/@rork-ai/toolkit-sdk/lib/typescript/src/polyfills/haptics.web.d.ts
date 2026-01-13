@@ -1,0 +1,20 @@
+/**
+ * Web polyfill for expo-haptics using the Vibration API
+ * This provides haptic-like feedback on web browsers that support vibration
+ */
+export declare enum NotificationFeedbackType {
+    Success = "success",
+    Warning = "warning",
+    Error = "error"
+}
+export declare enum ImpactFeedbackStyle {
+    Light = "light",
+    Medium = "medium",
+    Heavy = "heavy",
+    Soft = "soft",
+    Rigid = "rigid"
+}
+export declare function selectionAsync(): Promise<void>;
+export declare function notificationAsync(type?: NotificationFeedbackType): Promise<void>;
+export declare function impactAsync(style?: ImpactFeedbackStyle): Promise<void>;
+//# sourceMappingURL=haptics.web.d.ts.map
