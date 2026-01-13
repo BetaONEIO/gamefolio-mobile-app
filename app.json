@@ -37,10 +37,11 @@
       },
       "package": "app.rork.gamefolio_alpha_clone_test",
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "android.permission.VIBRATE"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
       ],
       "manifest": {
         "android:supportsPictureInPicture": true
@@ -87,6 +88,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://rork.com/"
+      },
+      "eas": {
+        "projectId": "603a757e-7cdc-4b88-b5be-fc1577e46425"
+      }
     }
   }
 }
