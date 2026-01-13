@@ -1,0 +1,1148 @@
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TextInput, 
+  TouchableOpacity, 
+  Image, 
+  ActivityIndicator,
+  Keyboard,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  Modal,
+  Dimensions,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Search, X, Play, Filter } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { api, TwitchGame } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import AppHeader from '@/components/AppHeader';
+import LevelDetailsModal from '@/components/LevelDetailsModal';
+
+interface Game {
+  id: string;
+  name: string;
+  boxArt: string;
+}
+
+const { width } = Dimensions.get('window');
+const HORIZONTAL_PADDING = 16;
+
+interface GameFilterModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onSelectGame: (game: TwitchGame | null) => void;
+  selectedGame: TwitchGame | null;
+}
+
+function GameFilterModal({ visible, onClose, onSelectGame, selectedGame }: GameFilterModalProps) {
+  const [search, setSearch] = useState('');
+  const [games, setGames] = useState<TwitchGame[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
+  const { getAccessToken } = useAuth();
+
+  useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        const accessToken = await getAccessToken();
+        if (accessToken) {
+          setToken(accessToken);
+        }
+      } catch (error) {
+        console.error('Error getting access token:', error);
+      }
+    };
+    if (visible) {
+      fetchToken();
+    }
+  }, [visible, getAccessToken]);
+
+  const fetchGames = useCallback(async (query: string) => {
+    if (!token) return;
+    
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery || trimmedQuery.length === 0) {
+      setGames([]);
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const result = await api.games.searchGames(trimmedQuery, 30, token);
+      console.log('[GameFilterModal] Fetched games:', result.games?.length);
+      setGames(result.games || []);
+    } catch (error) {
+      console.error('[GameFilterModal] Error fetching games:', error);
+      setGames([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (!token || !visible) return;
+    
+    if (!search.trim()) {
+      setGames([]);
+      setLoading(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      fetchGames(search);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [search, token, visible, fetchGames]);
+
+  useEffect(() => {
+    if (visible && token) {
+      setGames([]);
+    }
+  }, [visible, token]);
+
+  const getImageUrl = (url: string) => {
+    if (!url) return '';
+    return url.replace('{width}', '300').replace('{height}', '400');
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={modalStyles.modalContainer}>
+        <View style={modalStyles.content}>
+          <View style={modalStyles.header}>
+            <View style={modalStyles.headerTitleRow}>
+              <View style={modalStyles.iconContainer}>
+                <Filter size={24} color="#4ADE80" />
+              </View>
+              <Text style={modalStyles.headerTitle}>Filter Games by Game</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={modalStyles.closeButton}>
+              <X size={24} color="#94A3B8" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={modalStyles.searchContainer}>
+            <Search size={20} color="#94A3B8" />
+            <TextInput
+              style={modalStyles.searchInput}
+              placeholder="Search for games..."
+              placeholderTextColor="#64748B"
+              value={search}
+              onChangeText={setSearch}
+            />
+          </View>
+
+          <View style={modalStyles.sectionHeader}>
+            <Text style={modalStyles.sectionTitle}>
+              {search.length > 0 ? 'Search Results' : 'All Games'}
+            </Text>
+            {selectedGame && (
+              <TouchableOpacity 
+                style={modalStyles.clearAllButton}
+                onPress={() => {
+                  onSelectGame(null);
+                  onClose();
+                }}
+              >
+                <Text style={modalStyles.clearAllText}>Clear Filter</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <ScrollView 
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={modalStyles.gamesGrid}
+          >
+            {loading && games.length === 0 ? (
+               <View style={modalStyles.loadingContainer}>
+                 <ActivityIndicator size="large" color="#4ADE80" />
+               </View>
+            ) : (
+              games.map((game) => {
+                const isSelected = selectedGame?.id === game.id;
+                return (
+                  <TouchableOpacity
+                    key={game.id}
+                    style={[
+                      modalStyles.gameCard,
+                      isSelected && modalStyles.gameCardSelected
+                    ]}
+                    onPress={() => {
+                      onSelectGame(isSelected ? null : game);
+                      onClose();
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Image
+                      source={{ uri: getImageUrl(game.boxArt) }}
+                      style={modalStyles.gameImage}
+                    />
+                    
+                    {isSelected && (
+                       <View style={modalStyles.selectedOverlay}>
+                          <View style={modalStyles.checkmark} />
+                       </View>
+                    )}
+
+                    <View style={modalStyles.gameInfo}>
+                      <Text style={modalStyles.gameName} numberOfLines={2}>
+                        {game.name}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+            <View style={{ height: 40 }} />
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const FALLBACK_GAMES: TwitchGame[] = [
+  { id: '21779', name: 'League of Legends', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/21779-{width}x{height}.jpg' },
+  { id: '32982', name: 'Grand Theft Auto V', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32982_IGDB-{width}x{height}.jpg' },
+  { id: '32399', name: 'Counter-Strike 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32399_IGDB-{width}x{height}.jpg' },
+  { id: '509658', name: 'Just Chatting', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/509658-{width}x{height}.jpg' },
+  { id: '33214', name: 'Fortnite', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/33214-{width}x{height}.jpg' },
+  { id: '516575', name: 'VALORANT', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/516575-{width}x{height}.jpg' },
+  { id: '27471', name: 'Minecraft', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/27471_IGDB-{width}x{height}.jpg' },
+  { id: '512710', name: 'Call of Duty: Warzone', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512710-{width}x{height}.jpg' },
+  { id: '29595', name: 'Dota 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/29595-{width}x{height}.jpg' },
+  { id: '263490', name: 'Rust', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/263490_IGDB-{width}x{height}.jpg' },
+  { id: '511224', name: 'Apex Legends', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/511224-{width}x{height}.jpg' },
+  { id: '460630', name: 'Tom Clancy\'s Rainbow Six Siege', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/460630_IGDB-{width}x{height}.jpg' },
+  { id: '518203', name: 'Sports', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/518203-{width}x{height}.jpg' },
+  { id: '493057', name: "PUBG: BATTLEGROUNDS", boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/493057-{width}x{height}.jpg' },
+  { id: '30921', name: 'Rocket League', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/30921-{width}x{height}.jpg' },
+  { id: '512953', name: 'Elden Ring', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512953_IGDB-{width}x{height}.jpg' },
+  { id: '490100', name: 'Lost Ark', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490100-{width}x{height}.jpg' },
+  { id: '386821', name: 'Black Desert Online', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/386821_IGDB-{width}x{height}.jpg' },
+  { id: '65632', name: 'DayZ', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/65632-{width}x{height}.jpg' },
+  { id: '489171', name: 'Dead by Daylight', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/489171-{width}x{height}.jpg' },
+  { id: '19618', name: 'Old School RuneScape', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/19618-{width}x{height}.jpg' },
+  { id: '458562', name: 'RuneScape', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/458562-{width}x{height}.jpg' },
+  { id: '18122', name: 'World of Warcraft', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/18122-{width}x{height}.jpg' },
+  { id: '488552', name: 'Overwatch 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/488552-{width}x{height}.jpg' },
+  { id: '24241', name: 'Final Fantasy XIV Online', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/24241_IGDB-{width}x{height}.jpg' },
+  { id: '515025', name: 'Diablo IV', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/515025-{width}x{height}.jpg' },
+  { id: '29307', name: 'Path of Exile', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/29307-{width}x{height}.jpg' },
+  { id: '138585', name: 'Hearthstone', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/138585-{width}x{height}.jpg' },
+  { id: '490422', name: 'Teamfight Tactics', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490422-{width}x{height}.jpg' },
+  { id: '511312', name: 'Escape From Tarkov', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/511312-{width}x{height}.jpg' },
+  { id: '491168', name: 'Among Us', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/491168-{width}x{height}.jpg' },
+  { id: '491931', name: 'Fall Guys', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/491931-{width}x{height}.jpg' },
+  { id: '27284', name: 'Terraria', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/27284-{width}x{height}.jpg' },
+  { id: '491115', name: 'Genshin Impact', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/491115-{width}x{height}.jpg' },
+  { id: '21548', name: 'StarCraft II', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/21548-{width}x{height}.jpg' },
+  { id: '32507', name: 'The Witcher 3: Wild Hunt', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32507_IGDB-{width}x{height}.jpg' },
+  { id: '491487', name: 'Phasmophobia', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/491487-{width}x{height}.jpg' },
+  { id: '2748', name: 'Magic: The Gathering', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/2748-{width}x{height}.jpg' },
+  { id: '513143', name: 'Baldur\'s Gate 3', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/513143-{width}x{height}.jpg' },
+  { id: '494552', name: 'Valheim', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/494552-{width}x{height}.jpg' },
+  { id: '32959', name: 'The Elder Scrolls V: Skyrim', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32959_IGDB-{width}x{height}.jpg' },
+  { id: '490744', name: 'Stardew Valley', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490744-{width}x{height}.jpg' },
+  { id: '488190', name: 'Pokémon Sword/Shield', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/488190-{width}x{height}.jpg' },
+  { id: '461067', name: 'Legends of Runeterra', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/461067-{width}x{height}.jpg' },
+  { id: '518014', name: 'Resident Evil Village', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/518014-{width}x{height}.jpg' },
+  { id: '493959', name: 'Red Dead Redemption 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/493959-{width}x{height}.jpg' },
+  { id: '417752', name: 'Talk Shows & Podcasts', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/417752-{width}x{height}.jpg' },
+  { id: '506461', name: 'World of Tanks', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/506461-{width}x{height}.jpg' },
+  { id: '506416', name: 'World of Warships', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/506416-{width}x{height}.jpg' },
+  { id: '491118', name: 'Destiny 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/497057-{width}x{height}.jpg' },
+  { id: '505884', name: 'Dark Souls III', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490292-{width}x{height}.jpg' },
+  { id: '29433', name: 'Dark Souls', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/29433-{width}x{height}.jpg' },
+  { id: '490377', name: 'Sea of Thieves', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490377-{width}x{height}.jpg' },
+  { id: '512804', name: 'Hogwarts Legacy', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512804-{width}x{height}.jpg' },
+  { id: '517924', name: 'Honkai: Star Rail', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/517924-{width}x{height}.jpg' },
+  { id: '519508', name: 'Palworld', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/519508-{width}x{height}.jpg' },
+  { id: '491931', name: 'Hades', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/510592-{width}x{height}.jpg' },
+  { id: '32383', name: 'The Binding of Isaac: Rebirth', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32383-{width}x{height}.jpg' },
+  { id: '10535', name: 'Hollow Knight', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490846-{width}x{height}.jpg' },
+  { id: '491459', name: 'Celeste', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/491459-{width}x{height}.jpg' },
+  { id: '313398', name: 'Splatoon 3', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512648-{width}x{height}.jpg' },
+  { id: '497057', name: 'Call of Duty: Modern Warfare III', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/1678052513-{width}x{height}.jpg' },
+  { id: '6013', name: 'Call of Duty: Black Ops III', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/489401-{width}x{height}.jpg' },
+  { id: '26936', name: 'Battlefield 1', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/488980-{width}x{height}.jpg' },
+  { id: '512093', name: 'Battlefield 2042', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512093-{width}x{height}.jpg' },
+  { id: '33214', name: 'The Sims 4', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/369252-{width}x{height}.jpg' },
+  { id: '7251', name: 'Cities: Skylines', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/369252-{width}x{height}.jpg' },
+  { id: '12924', name: 'Age of Empires II', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/13389-{width}x{height}.jpg' },
+  { id: '512636', name: 'Age of Empires IV', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512636-{width}x{height}.jpg' },
+  { id: '21353', name: 'Civilization VI', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/492552-{width}x{height}.jpg' },
+  { id: '27053', name: 'Crusader Kings III', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512236-{width}x{height}.jpg' },
+  { id: '491115', name: 'Total War: Warhammer III', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512673-{width}x{height}.jpg' },
+  { id: '6564', name: 'XCOM 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490154-{width}x{height}.jpg' },
+  { id: '20714', name: 'Warframe', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/66170-{width}x{height}.jpg' },
+  { id: '29452', name: 'Virtual Casino', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/29452-{width}x{height}.jpg' },
+  { id: '509659', name: 'Slots', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/509659-{width}x{height}.jpg' },
+  { id: '509660', name: 'Poker', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/509660-{width}x{height}.jpg' },
+  { id: '743', name: 'Chess', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/743-{width}x{height}.jpg' },
+  { id: '23936', name: 'Don\'t Starve Together', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/287260-{width}x{height}.jpg' },
+  { id: '32507', name: 'Satisfactory', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/508455-{width}x{height}.jpg' },
+  { id: '488635', name: 'Factorio', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/488635-{width}x{height}.jpg' },
+  { id: '491000', name: 'Roblox', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/23020-{width}x{height}.jpg' },
+  { id: '11450', name: 'VRChat', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/499003-{width}x{height}.jpg' },
+  { id: '32982', name: 'Disney Dreamlight Valley', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/1612756642-{width}x{height}.jpg' },
+  { id: '7563', name: 'Slime Rancher', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/488621-{width}x{height}.jpg' },
+  { id: '512980', name: 'MultiVersus', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512980-{width}x{height}.jpg' },
+  { id: '16282', name: 'Super Smash Bros. Ultimate', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/504461-{width}x{height}.jpg' },
+  { id: '20447', name: 'Super Smash Bros. Melee', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/16282-{width}x{height}.jpg' },
+  { id: '1229', name: 'Super Mario 64', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/1229-{width}x{height}.jpg' },
+  { id: '2692', name: 'The Legend of Zelda: Ocarina of Time', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/11557-{width}x{height}.jpg' },
+  { id: '493597', name: 'The Legend of Zelda: Tears of the Kingdom', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/493597-{width}x{height}.jpg' },
+  { id: '493597', name: 'The Legend of Zelda: Breath of the Wild', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/493597-{width}x{height}.jpg' },
+  { id: '8933', name: 'Animal Crossing: New Horizons', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/509538-{width}x{height}.jpg' },
+  { id: '6369', name: 'Mario Kart 8', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/313558-{width}x{height}.jpg' },
+  { id: '374245', name: 'Mario Party Superstars', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512700-{width}x{height}.jpg' },
+  { id: '16466', name: 'Spider-Man', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/497480-{width}x{height}.jpg' },
+  { id: '15866', name: 'Uncharted 4: A Thief\'s End', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/461457-{width}x{height}.jpg' },
+  { id: '29552', name: 'God of War', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/6369-{width}x{height}.jpg' },
+  { id: '514974', name: 'God of War Ragnarök', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/514974-{width}x{height}.jpg' },
+  { id: '22566', name: 'Bloodborne', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/460636-{width}x{height}.jpg' },
+  { id: '459064', name: 'Sekiro: Shadows Die Twice', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/506415-{width}x{height}.jpg' },
+  { id: '6556', name: 'Monster Hunter: World', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/497467-{width}x{height}.jpg' },
+  { id: '9431', name: 'Monster Hunter Rise', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/511352-{width}x{height}.jpg' },
+  { id: '497480', name: 'Dragon Ball FighterZ', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/497480-{width}x{height}.jpg' },
+  { id: '488615', name: 'Street Fighter 6', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/9431-{width}x{height}.jpg' },
+  { id: '8365', name: 'Tekken 8', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/515481-{width}x{height}.jpg' },
+  { id: '19619', name: 'Mortal Kombat 1', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/518284-{width}x{height}.jpg' },
+  { id: '26566', name: 'NBA 2K24', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/518012-{width}x{height}.jpg' },
+  { id: '12924', name: 'FIFA 23', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/1869092879-{width}x{height}.jpg' },
+  { id: '512938', name: 'EA Sports FC 24', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/1181770504-{width}x{height}.jpg' },
+  { id: '30921', name: 'Fall Guys', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512980-{width}x{height}.jpg' },
+];
+
+const formatTwitchBoxArt = (url: string | undefined, width: number = 285, height: number = 380): string | undefined => {
+  if (!url) return undefined;
+  return url.replace('{width}', String(width)).replace('{height}', String(height));
+};
+
+export default function ExploreScreen() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLevelModalVisible, setIsLevelModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isGameFilterModalVisible, setIsGameFilterModalVisible] = useState(false);
+  const [selectedGame, setSelectedGame] = useState<TwitchGame | null>(null);
+
+  const searchInputRef = useRef<TextInput>(null);
+  const { getAccessToken, user } = useAuth();
+  const router = useRouter();
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+  
+
+  const topGamesQuery = useInfiniteQuery({
+    queryKey: ['games', 'top'],
+    queryFn: async ({ pageParam }) => {
+      try {
+        const token = await getAccessToken();
+        console.log('[Explore] Fetching top games, cursor:', pageParam);
+        const result = await api.games.getTopGames(20, token || undefined, pageParam);
+        console.log('[Explore] Received top games:', result.games?.length, 'nextCursor:', result.nextCursor);
+        if (result.games && result.games.length > 0) {
+          return result;
+        }
+        console.log('[Explore] No games from API, using fallback games');
+        return { games: FALLBACK_GAMES, nextCursor: undefined };
+      } catch (error) {
+        console.log('[Explore] API error, using fallback games:', error);
+        return { games: FALLBACK_GAMES, nextCursor: undefined };
+      }
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    staleTime: 5 * 60 * 1000,
+  });
+  const { refetch: refetchTopGames, fetchNextPage, hasNextPage, isFetchingNextPage } = topGamesQuery;
+
+  const allGames = React.useMemo(() => 
+    topGamesQuery.data?.pages.flatMap(page => page.games) || []
+  , [topGamesQuery.data?.pages]);
+
+  const searchQuery_api = useQuery({
+    queryKey: ['games', 'search', debouncedSearch],
+    queryFn: async () => {
+      const trimmedSearch = debouncedSearch?.trim() || '';
+      if (!trimmedSearch || trimmedSearch.length === 0) {
+        console.log('[Explore] Skipping API search - empty query');
+        return { games: [] as TwitchGame[] };
+      }
+      try {
+        const token = await getAccessToken();
+        console.log('[Explore] Searching games via API:', trimmedSearch);
+        const result = await api.games.searchGames(trimmedSearch, 50, token || undefined);
+        console.log('[Explore] API search returned:', result.games?.length, 'games');
+        return result;
+      } catch (error) {
+        console.error('[Explore] Search API error:', error);
+        return { games: [] as TwitchGame[] };
+      }
+    },
+    enabled: !!debouncedSearch && debouncedSearch.trim().length > 0,
+    staleTime: 30 * 1000,
+  });
+
+  const apiSearchResults = React.useMemo(() => 
+    searchQuery_api.data?.games || []
+  , [searchQuery_api.data?.games]);
+
+  useEffect(() => {
+    console.log('[Explore] Query States:', {
+      topGames: { loading: topGamesQuery.isLoading, error: !!topGamesQuery.error, data: allGames.length },
+    });
+
+    if (topGamesQuery.error) {
+      console.error('[Explore] Top games error:', topGamesQuery.error);
+    }
+  }, [
+    topGamesQuery.isLoading, topGamesQuery.error, allGames.length,
+  ]);
+
+  const handleScroll = useCallback((event: any) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const isCloseToBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 300;
+    
+    if (isCloseToBottom && hasNextPage && !isFetchingNextPage && !searchQuery.trim()) {
+      console.log('[Explore] Loading more games...');
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, searchQuery]);
+
+  
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetchTopGames();
+    setRefreshing(false);
+  }, [refetchTopGames]);
+  
+  const handleGamePress = useCallback((game: Game | TwitchGame) => {
+    console.log('[Explore] Selected game:', game.name);
+    Keyboard.dismiss();
+    const imageUrl = formatTwitchBoxArt(game.boxArt, 285, 380) || formatTwitchBoxArt((game as any).icon, 285, 380) || game.boxArt || (game as any).icon;
+    router.push({ 
+      pathname: '/game/[id]', 
+      params: { 
+        id: game.id,
+        name: game.name,
+        boxArt: imageUrl || '',
+      } 
+    });
+  }, [router]);
+
+  const clearSearch = useCallback(() => {
+    setSearchQuery('');
+  }, []);
+
+
+
+  const displayedGames = React.useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) {
+      return allGames;
+    }
+    
+    // Filter local games that match the search
+    const localFiltered = allGames.filter(game => 
+      game.name.toLowerCase().includes(query)
+    );
+    
+    // Always prioritize API results when available, then add unique local matches
+    if (apiSearchResults.length > 0) {
+      const apiIds = new Set(apiSearchResults.map(g => g.id));
+      const localOnly = localFiltered.filter(g => !apiIds.has(g.id));
+      // Put API results first (they're more relevant), then local matches
+      const combined = [...apiSearchResults, ...localOnly];
+      console.log('[Explore] Combined results:', combined.length, '(api:', apiSearchResults.length, ', local unique:', localOnly.length, ')');
+      return combined;
+    }
+    
+    // If API search is still loading, show local filtered as preview
+    // Once API returns, it will update automatically
+    if (searchQuery_api.isLoading) {
+      console.log('[Explore] API loading, showing local filtered:', localFiltered.length);
+      return localFiltered;
+    }
+    
+    // API finished but no results - just show local filtered
+    console.log('[Explore] Local filtered games:', localFiltered.length, 'for query:', query);
+    return localFiltered;
+  }, [searchQuery, allGames, apiSearchResults, searchQuery_api.isLoading]);
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#0F1520', '#020617']}
+        style={StyleSheet.absoluteFill}
+      />
+      
+      <AppHeader onOpenLevelTracker={() => setIsLevelModalVisible(true)} />
+
+      <View style={styles.contentHeader}>
+        <View style={styles.titleRow}>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>Explore Games</Text>
+            <Text style={styles.subtitle}>Browse games and discover amazing content from the community</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.filterButton}
+            onPress={() => setIsGameFilterModalVisible(true)}
+            activeOpacity={0.7}
+          >
+            <Filter size={20} color="#4ADE80" />
+          </TouchableOpacity>
+        </View>
+        
+        {selectedGame && (
+          <View style={styles.selectedGameContainer}>
+            <Text style={styles.selectedGameLabel}>Filtered by:</Text>
+            <View style={styles.selectedGameTag}>
+              <Text style={styles.selectedGameText}>{selectedGame.name}</Text>
+              <TouchableOpacity 
+                onPress={() => setSelectedGame(null)}
+                style={styles.clearFilterButton}
+              >
+                <X size={14} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+        
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputWrapper}>
+            <Search color="#64748B" size={18} style={styles.searchIcon} />
+            <TextInput
+              ref={searchInputRef}
+              style={styles.searchInput}
+              placeholder="Search games..."
+              placeholderTextColor="#64748B"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                <X color="#64748B" size={16} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {topGamesQuery.isLoading && !searchQuery.trim() ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator color="#4ADE80" size="large" />
+          <Text style={styles.loadingText}>Loading games...</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          onScroll={handleScroll}
+          scrollEventThrottle={400}
+          onScrollBeginDrag={() => {
+            Keyboard.dismiss();
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#4ADE80"
+              colors={['#4ADE80']}
+            />
+          }
+        >
+          {searchQuery_api.isLoading && searchQuery.trim().length > 0 ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="#4ADE80" size="large" />
+              <Text style={styles.loadingText}>Searching games...</Text>
+            </View>
+          ) : displayedGames.length === 0 && searchQuery.trim().length > 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIcon}>
+                <Search size={40} color="#4ADE80" />
+              </View>
+              <Text style={styles.emptyTitle}>No games found</Text>
+              <Text style={styles.emptyMessage}>Try searching with a different keyword</Text>
+            </View>
+          ) : (
+            <View style={styles.gamesGrid}>
+              {displayedGames.map((game, index) => {
+              const imageUrl = formatTwitchBoxArt(game.boxArt, 285, 380) || formatTwitchBoxArt(game.icon, 285, 380);
+              return (
+                <TouchableOpacity 
+                  key={`${game.id}-${index}`}
+                  style={styles.gameCard} 
+                  onPress={() => handleGamePress(game)}
+                  activeOpacity={0.7}
+                >
+                  {imageUrl ? (
+                    <Image 
+                      source={{ uri: imageUrl }} 
+                      style={styles.gameImage}
+                      resizeMode="cover"
+                      onError={(e) => {
+                        console.log('[Explore] Image load error for', game.name, ':', e.nativeEvent.error);
+                      }}
+                      onLoad={() => {
+                        console.log('[Explore] Image loaded successfully:', game.name);
+                      }}
+                    />
+                  ) : (
+                    <View style={styles.gameImagePlaceholder}>
+                      <Play color="#4ADE80" size={24} />
+                    </View>
+                  )}
+                  <View style={styles.gameInfo}>
+                    <Text style={styles.gameName} numberOfLines={2}>{game.name}</Text>
+                    <Text style={styles.gameSubtext}>Tap to explore</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+              })}
+            </View>
+          )}
+          {isFetchingNextPage && !searchQuery.trim() && (
+            <View style={styles.loadMoreContainer}>
+              <ActivityIndicator color="#4ADE80" size="small" />
+              <Text style={styles.loadMoreText}>Loading more games...</Text>
+            </View>
+          )}
+        </ScrollView>
+      )}
+
+      <LevelDetailsModal
+        visible={isLevelModalVisible}
+        onClose={() => setIsLevelModalVisible(false)}
+        level={user?.level || 1}
+        currentXP={user?.totalXP || 0}
+        userId={user?.id?.toString()}
+      />
+
+      <GameFilterModal
+        visible={isGameFilterModalVisible}
+        onClose={() => setIsGameFilterModalVisible(false)}
+        onSelectGame={(game) => {
+          setSelectedGame(game);
+          setIsGameFilterModalVisible(false);
+        }}
+        selectedGame={selectedGame}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0F1520',
+  },
+  contentHeader: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingBottom: 16,
+    zIndex: 10,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '800' as const,
+    color: '#FFFFFF',
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 100,
+  },
+  searchContainer: {
+    position: 'relative',
+    zIndex: 20,
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#2D3748',
+  },
+  searchIcon: {
+    marginRight: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: '#FFFFFF',
+    height: '100%',
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none',
+      },
+    }),
+  },
+  clearButton: {
+    padding: 6,
+    marginLeft: 4,
+  },
+  searchDropdown: {
+    position: 'absolute',
+    top: 56,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1A2332',
+    borderRadius: 12,
+    maxHeight: 400,
+    borderWidth: 1,
+    borderColor: '#2D3748',
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+      },
+      android: {
+        elevation: 12,
+      },
+      web: {
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      },
+    }),
+  },
+  searchResultsList: {
+    maxHeight: 350,
+  },
+  searchSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  searchResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D3748',
+  },
+  searchResultIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#2D3748',
+  },
+  searchResultIconRound: {
+    borderRadius: 22,
+  },
+  searchResultIconHash: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchResultInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  searchResultName: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  searchResultCategory: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  searchLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 10,
+  },
+  searchLoadingText: {
+    color: '#94A3B8',
+    fontSize: 14,
+  },
+  noResults: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    color: '#64748B',
+    fontSize: 14,
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    zIndex: 5,
+    top: 240,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+    paddingBottom: 100,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#94A3B8',
+    fontWeight: '500' as const,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingBottom: 100,
+  },
+  errorIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    color: '#FFF',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#4ADE80',
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#0F1520',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingBottom: 100,
+  },
+  emptyIcon: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#1E293B',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: '700' as const,
+    color: '#FFF',
+    marginBottom: 8,
+  },
+  emptyMessage: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  gamesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 8,
+    paddingBottom: 20,
+  },
+  loadMoreContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingBottom: 100,
+    gap: 10,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500' as const,
+  },
+  gameCard: {
+    width: '47%',
+    backgroundColor: '#1A2332',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 16,
+    marginHorizontal: '1.5%',
+  },
+  gameImage: {
+    width: '100%',
+    aspectRatio: 0.75,
+    backgroundColor: '#2D3748',
+  },
+  gameImagePlaceholder: {
+    width: '100%',
+    aspectRatio: 0.75,
+    backgroundColor: '#2D3748',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  gameInfo: {
+    padding: 12,
+  },
+  gameName: {
+    fontSize: 15,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  gameSubtext: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    color: '#64748B',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  titleContainer: {
+    flex: 1,
+  },
+  filterButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#4ADE80',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 12,
+  },
+  selectedGameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  selectedGameLabel: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontWeight: '600' as const,
+  },
+  selectedGameTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#4ADE80',
+    paddingVertical: 6,
+    paddingLeft: 12,
+    paddingRight: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  selectedGameText: {
+    fontSize: 13,
+    color: '#0F1520',
+    fontWeight: '700' as const,
+  },
+  clearFilterButton: {
+    padding: 2,
+  },
+});
+
+const modalStyles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'flex-end',
+  },
+  content: {
+    height: '90%',
+    backgroundColor: '#0F1520',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  iconContainer: {},
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold' as const,
+    color: '#FFF',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  searchContainer: {
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    height: 50,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#4ADE80',
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 12,
+    color: '#FFFFFF',
+    fontSize: 16,
+    ...Platform.select({
+      web: {
+        outlineStyle: 'none' as const,
+      },
+    }),
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#FFF',
+  },
+  clearAllButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  clearAllText: {
+    color: '#EF4444',
+    fontWeight: '600' as const,
+    fontSize: 13,
+  },
+  gamesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingBottom: 40,
+  },
+  loadingContainer: {
+    width: '100%',
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gameCard: {
+    width: (width - 40 - 24) / 3,
+    aspectRatio: 0.75,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#1E293B',
+    position: 'relative',
+    marginBottom: 8,
+  },
+  gameCardSelected: {
+    borderWidth: 2,
+    borderColor: '#4ADE80',
+  },
+  gameImage: {
+    width: '100%',
+    height: '100%',
+  },
+  selectedOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 10,
+    backgroundColor: '#4ADE80',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkmark: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#0F1520',
+  },
+  gameInfo: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 8,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+  },
+  gameName: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '600' as const,
+    textAlign: 'center',
+  },
+});
