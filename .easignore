@@ -1,0 +1,25 @@
+# dependencies
+node_modules
+
+# Expo / Metro caches
+.expo
+.metro
+**/.expo
+**/.metro
+
+# build outputs
+dist
+build
+web-build
+android
+ios
+
+# test / tooling outputs
+coverage
+playwright-report
+test-results
+reports
+*.log
+
+# misc
+.DS_Store
