@@ -9,8 +9,8 @@ import {
   Share as RNShare,
   ScrollView
 } from 'react-native';
-import { X as XIcon, Copy, Check, Heart, Flame, Zap, Gamepad2, Monitor } from 'lucide-react-native';
-import { FontAwesome5, FontAwesome6 } from '@expo/vector-icons';
+import { X as XIcon, Copy, Check, Heart, Flame, Zap, Gamepad2, Monitor, QrCode } from 'lucide-react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as Clipboard from 'expo-clipboard';
@@ -62,8 +62,10 @@ interface ShareProfileModalProps {
 
 export default function ShareProfileModal({ visible, onClose, profile }: ShareProfileModalProps) {
   const [copied, setCopied] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
   
   const profileUrl = `https://app.gamefolio.com/@${profile.username}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(profileUrl)}&bgcolor=0F1520&color=FFFFFF`;
 
   const copyToClipboard = async () => {
     await Clipboard.setStringAsync(profileUrl);
@@ -233,6 +235,17 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
             </View>
 
             <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Share Profile</Text>
+              <TouchableOpacity 
+                style={styles.shareInAppButton}
+                onPress={shareNative}
+              >
+                <FontAwesome5 name="share" size={16} color="#FFF" />
+                <Text style={styles.shareInAppText}>Share Gamefolio Link</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.section}>
               <Text style={styles.sectionTitle}>Profile Link</Text>
               <View style={styles.linkContainer}>
                 <View style={styles.linkInput}>
@@ -255,41 +268,34 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Share on Social Media</Text>
-              <View style={styles.socialGrid}>
-                <TouchableOpacity style={styles.socialButton} onPress={shareNative}>
-                  <FontAwesome6 name="x-twitter" size={20} color="#FFF" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.socialButton} onPress={shareNative}>
-                  <FontAwesome5 name="facebook-f" size={20} color="#1877F2" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.socialButton} onPress={shareNative}>
-                  <FontAwesome5 name="linkedin-in" size={20} color="#0A66C2" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.socialButton} onPress={shareNative}>
-                  <FontAwesome5 name="whatsapp" size={20} color="#25D366" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.socialButton} onPress={shareNative}>
-                  <FontAwesome5 name="telegram-plane" size={20} color="#0088CC" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.socialButton} onPress={shareNative}>
-                  <FontAwesome5 name="reddit-alien" size={20} color="#FF4500" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.socialButton} onPress={shareNative}>
-                  <FontAwesome5 name="discord" size={20} color="#5865F2" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity style={styles.socialButton} onPress={shareNative}>
-                  <FontAwesome5 name="envelope" size={20} color="#94A3B8" />
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.sectionTitle}>QR Code</Text>
+              <TouchableOpacity 
+                style={styles.qrCodeToggle}
+                onPress={() => setShowQRCode(!showQRCode)}
+              >
+                <View style={styles.qrCodeToggleContent}>
+                  <QrCode size={20} color="#4ADE80" />
+                  <Text style={styles.qrCodeToggleText}>
+                    {showQRCode ? 'Hide QR Code' : 'Show QR Code'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              
+              {showQRCode && (
+                <View style={styles.qrCodeContainer}>
+                  <View style={styles.qrCodeWrapper}>
+                    <Image 
+                      source={{ uri: qrCodeUrl }} 
+                      style={styles.qrCodeImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  <Text style={styles.qrCodeHint}>Scan to view profile</Text>
+                </View>
+              )}
             </View>
+
+
           </ScrollView>
         </View>
       </View>
@@ -555,19 +561,57 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
-  socialGrid: {
+  shareInAppButton: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  socialButton: {
-    width: 48,
-    height: 48,
-    backgroundColor: '#1E293B',
-    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#4ADE80',
+    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  shareInAppText: {
+    color: '#0F1520',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  qrCodeToggle: {
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#334155',
+  },
+  qrCodeToggleContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  qrCodeToggleText: {
+    color: '#4ADE80',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  qrCodeContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  qrCodeWrapper: {
+    backgroundColor: '#0F1520',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  qrCodeImage: {
+    width: 200,
+    height: 200,
+  },
+  qrCodeHint: {
+    color: '#64748B',
+    fontSize: 12,
+    marginTop: 12,
   },
 });

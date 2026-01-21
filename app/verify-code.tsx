@@ -8,30 +8,72 @@ import {
   KeyboardAvoidingView, 
   Platform, 
   ScrollView,
-  Pressable
+  Pressable,
+  ActivityIndicator
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowRight, ChevronLeft } from 'lucide-react-native';
+import { ArrowRight, ChevronLeft, Mail } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '@/context/AuthContext';
+import { api, APIError } from '@/lib/api';
+import CustomAlert from '@/components/CustomAlert';
 
 export default function VerifyCodeScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const { user, updateUser } = useAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(20);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [cooldownTime, setCooldownTime] = useState(60);
+  const [canResend, setCanResend] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const CODE_LENGTH = 6;
+  
+  const [alertConfig, setAlertConfig] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: 'error' | 'success';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    type: 'error',
+  });
 
-  // Timer logic
+  const userEmail = (params.email as string) || user?.email || '';
+
   useEffect(() => {
-    if (timeLeft === 0) return;
+    if (user?.emailVerified) {
+      const needsOnboarding = !user?.userType || !user?.ageRange;
+      if (needsOnboarding) {
+        console.log('[Verify] User already verified, redirecting to onboarding...');
+        router.replace('/onboarding');
+      } else {
+        console.log('[Verify] User already verified and onboarded, redirecting to home...');
+        router.replace('/(drawer)/(tabs)/home');
+      }
+    }
+  }, [user?.emailVerified, user?.userType, user?.ageRange, router]);
+
+  useEffect(() => {
+    if (cooldownTime === 0) {
+      setCanResend(true);
+      return;
+    }
+    
+    setCanResend(false);
     const intervalId = setInterval(() => {
-      setTimeLeft(t => t - 1);
+      setCooldownTime(t => t - 1);
     }, 1000);
+    
     return () => clearInterval(intervalId);
-  }, [timeLeft]);
+  }, [cooldownTime]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -39,9 +81,96 @@ export default function VerifyCodeScreen() {
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const handleResend = () => {
-    setTimeLeft(20);
-    // Logic to resend code would go here
+  const showAlert = (title: string, message: string, type: 'error' | 'success' = 'error') => {
+    setAlertConfig({ visible: true, title, message, type });
+  };
+
+  const hideAlert = () => {
+    setAlertConfig(prev => ({ ...prev, visible: false }));
+  };
+
+  const handleResend = async () => {
+    if (!canResend || isResending) return;
+    
+    setIsResending(true);
+    setError(false);
+    setErrorMessage('');
+    
+    try {
+      const result = await api.auth.resendVerification(userEmail);
+      console.log('[Verify] Resend result:', result);
+      
+      if (result.success) {
+        showAlert('Code Sent', result.message || 'A new verification code has been sent to your email.', 'success');
+        setCooldownTime(60);
+      } else if (result.retryAfterSeconds) {
+        setCooldownTime(result.retryAfterSeconds);
+        showAlert('Please Wait', result.message || `Please wait ${result.retryAfterSeconds} seconds before requesting a new code.`);
+      }
+    } catch (err) {
+      console.error('[Verify] Resend error:', err);
+      if (err instanceof APIError) {
+        if (err.status === 401) {
+          showAlert('Session Expired', 'Your session has expired. Please log in again.');
+          router.replace('/');
+          return;
+        }
+        showAlert('Error', err.message);
+      } else {
+        showAlert('Error', 'Failed to resend verification code. Please try again.');
+      }
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const handleVerify = async () => {
+    if (code.length !== CODE_LENGTH || isVerifying) return;
+    
+    setIsVerifying(true);
+    setError(false);
+    setErrorMessage('');
+    
+    try {
+      const result = await api.auth.verifyCode(userEmail, code);
+      console.log('[Verify] Verification result:', result);
+      
+      if (result.success) {
+        console.log('[Verify] ✅ Verification successful, updating user...');
+        if (updateUser) {
+          await updateUser({ emailVerified: true });
+        }
+        
+        // Determine navigation destination
+        const needsOnboarding = !user?.userType || !user?.ageRange;
+        const destination = needsOnboarding ? '/onboarding' : '/(drawer)/(tabs)/home';
+        console.log('[Verify] 🚀 Navigating to:', destination);
+        
+        // Navigate immediately - don't wait for alert
+        setIsVerifying(false);
+        router.replace(destination);
+        return;
+      }
+    } catch (err) {
+      console.error('[Verify] Error:', err);
+      setError(true);
+      
+      if (err instanceof APIError) {
+        if (err.status === 401) {
+          setErrorMessage('Session expired. Please log in again.');
+          showAlert('Session Expired', 'Your session has expired. Please log in again.');
+          setTimeout(() => {
+            router.replace('/');
+          }, 2000);
+          return;
+        }
+        setErrorMessage(err.message || 'Invalid or expired verification code');
+      } else {
+        setErrorMessage('Invalid or expired verification code');
+      }
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const colors = {
@@ -67,7 +196,6 @@ export default function VerifyCodeScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <StatusBar style="light" />
       
-      {/* Header with Back Button */}
       <View style={styles.header}>
         <TouchableOpacity 
           onPress={() => router.back()} 
@@ -86,7 +214,6 @@ export default function VerifyCodeScreen() {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* Logo Section */}
           <View style={styles.logoContainer}>
             <Image 
               source={{ uri: "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/bpo9i1ux8et2igcgnomrk" }}
@@ -95,22 +222,29 @@ export default function VerifyCodeScreen() {
             />
           </View>
 
-          {/* Text Content */}
           <View style={styles.textContainer}>
-            <Text style={styles.title}>Enter the code</Text>
+            <Text style={styles.title}>Verify your email</Text>
             <Text style={styles.subtitle}>
-              Make sure to check your spam if you couldn&apos;t find it
+              We&apos;ve sent a 6-digit verification code to
+            </Text>
+            {userEmail && (
+              <View style={styles.emailContainer}>
+                <Mail size={16} color={colors.primary} />
+                <Text style={styles.emailText}>{userEmail}</Text>
+              </View>
+            )}
+            <Text style={[styles.subtitle, { marginTop: 8 }]}>
+              Check your spam folder if you can&apos;t find it
             </Text>
           </View>
 
-          {/* Code Input Section */}
           <View style={styles.inputSection}>
             <TextInput
               ref={inputRef}
               value={code}
               onChangeText={(text) => {
                 setError(false);
-                // Only allow numbers and limit length
+                setErrorMessage('');
                 const cleaned = text.replace(/[^0-9]/g, '');
                 if (cleaned.length <= CODE_LENGTH) {
                   setCode(cleaned);
@@ -121,6 +255,7 @@ export default function VerifyCodeScreen() {
               returnKeyType="done"
               textContentType="oneTimeCode"
               maxLength={CODE_LENGTH}
+              autoFocus
             />
 
             <Pressable style={styles.codeContainer} onPress={handleOnPress}>
@@ -151,43 +286,62 @@ export default function VerifyCodeScreen() {
               })}
             </Pressable>
 
-            {error && (
+            {error && errorMessage && (
               <Text style={[styles.errorText, { color: colors.errorText }]}>
-                Wrong Code. Try Again!
+                {errorMessage}
               </Text>
             )}
 
-            {/* Timer and Resend */}
             <View style={styles.timerContainer}>
-              <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
-              <TouchableOpacity onPress={handleResend} disabled={timeLeft > 0}>
-                <Text style={[styles.resendText, { opacity: timeLeft > 0 ? 0.5 : 1 }]}>
-                  Resend Code
+              {!canResend && (
+                <Text style={styles.timerText}>
+                  Resend available in {formatTime(cooldownTime)}
                 </Text>
+              )}
+              <TouchableOpacity 
+                onPress={handleResend} 
+                disabled={!canResend || isResending}
+                style={[styles.resendButton, (!canResend || isResending) && styles.resendButtonDisabled]}
+              >
+                {isResending ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Text style={[styles.resendText, { color: canResend ? colors.primary : colors.textDim }]}>
+                    Resend Code
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
 
-            {/* Reset Password Button */}
             <TouchableOpacity 
-              style={styles.mainButton}
+              style={[
+                styles.mainButton,
+                (code.length !== CODE_LENGTH || isVerifying) && styles.mainButtonDisabled
+              ]}
               activeOpacity={0.8}
-              onPress={() => {
-                // Handle verification logic
-                console.log('Verify code:', code);
-                if (code !== '123456') {
-                  setError(true);
-                } else {
-                  router.push('/reset-password');
-                }
-              }}
+              onPress={handleVerify}
+              disabled={code.length !== CODE_LENGTH || isVerifying}
             >
-              <Text style={styles.mainButtonText}>Reset Password</Text>
-              <ArrowRight size={24} color="#002E15" strokeWidth={2.5} />
+              {isVerifying ? (
+                <ActivityIndicator size="small" color={colors.buttonText} />
+              ) : (
+                <>
+                  <Text style={styles.mainButtonText}>Verify Email</Text>
+                  <ArrowRight size={24} color={colors.buttonText} strokeWidth={2.5} />
+                </>
+              )}
             </TouchableOpacity>
-
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <CustomAlert
+        visible={alertConfig.visible}
+        title={alertConfig.title}
+        message={alertConfig.message}
+        type={alertConfig.type}
+        onClose={hideAlert}
+      />
     </SafeAreaView>
   );
 }
@@ -225,7 +379,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: 12,
     textAlign: 'center',
   },
   subtitle: {
@@ -233,7 +387,22 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     textAlign: 'center',
     lineHeight: 20,
-    maxWidth: '80%',
+    maxWidth: '90%',
+  },
+  emailContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 8,
+  },
+  emailText: {
+    fontSize: 15,
+    color: '#4ADE80',
+    fontWeight: '600',
   },
   inputSection: {
     width: '100%',
@@ -249,35 +418,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 32,
+    marginBottom: 24,
     width: '100%',
   },
   codeBox: {
-    width: 45,
-    height: 56,
+    width: 48,
+    height: 58,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   codeText: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '600',
     color: '#FFFFFF',
   },
   timerContainer: {
     alignItems: 'center',
     marginBottom: 32,
-    gap: 8,
+    gap: 12,
   },
   timerText: {
     fontSize: 14,
     color: '#94A3B8',
     fontVariant: ['tabular-nums'],
   },
+  resendButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  resendButtonDisabled: {
+    opacity: 0.6,
+  },
   resendText: {
-    fontSize: 14,
-    color: '#94A3B8',
+    fontSize: 15,
+    fontWeight: '600',
     textDecorationLine: 'underline',
   },
   mainButton: {
@@ -294,6 +470,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     gap: 8,
+  },
+  mainButtonDisabled: {
+    opacity: 0.5,
   },
   mainButtonText: {
     fontSize: 16,

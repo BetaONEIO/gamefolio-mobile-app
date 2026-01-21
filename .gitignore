@@ -41,3 +41,14 @@ app-example
 # generated native folders
 /ios
 /android
+node_modules/
+
+.expo/
+.expo-shared/
+dist/
+build/
+.DS_Store
+
+.DS_Store
+
+node_modules/

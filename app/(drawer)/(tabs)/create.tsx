@@ -9,9 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
-  Modal,
-  ActivityIndicator,
-  Alert
+  ActivityIndicator
 } from 'react-native';
 import { 
   Video as VideoIcon, 
@@ -20,7 +18,8 @@ import {
   Upload, 
   ChevronDown,
   Check,
-  X
+  X,
+  UserPlus
 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,11 +30,17 @@ import { Image } from 'expo-image';
 
 import VideoCropper from '@/components/VideoCropper';
 import VideoTrimmer from '@/components/VideoTrimmer';
+import UploadSuccessModal from '@/components/UploadSuccessModal';
+import UploadErrorModal from '@/components/UploadErrorModal';
+import XPGainedModal from '@/components/XPGainedModal';
+import ShareClipModal from '@/components/ShareClipModal';
+import * as VideoThumbnails from 'expo-video-thumbnails';
 
 import { TwitchGame } from '@/context/UserContext';
 import GameSelectorModal from '@/components/GameSelectorModal';
 import { trpc } from '@/lib/trpc';
 import { useDebounce } from '@/hooks/useDebounce';
+
 import { gamefolioUpload, UploadLimitError, getGamefolioToken } from '@/lib/gamefolio-api';
 import { useAuth } from '@/context/AuthContext';
 
@@ -46,6 +51,21 @@ export default function CreateScreen() {
   const { isAuthenticated } = useAuth();
   
   const [isUploading, setIsUploading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showXPModal, setShowXPModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [uploadedContent, setUploadedContent] = useState<{
+    id: string;
+    title: string;
+    gameName: string;
+    thumbnail?: string;
+    contentType: 'clip' | 'reel' | 'screenshot';
+  } | null>(null);
+  const [xpGained, setXpGained] = useState(5);
+  const [currentLevel, setCurrentLevel] = useState(1);
+  
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorContent, setErrorContent] = useState({ title: '', message: '' });
   
   const [activeTab, setActiveTab] = useState<'clips' | 'reels' | 'screenshots'>('clips');
   const [selectedFile, setSelectedFile] = useState<ImagePicker.ImagePickerAsset | null>(null);
@@ -62,6 +82,7 @@ export default function CreateScreen() {
   const [trimRange, setTrimRange] = useState({ start: 0, end: 0 });
   const [isTrimming, setIsTrimming] = useState(false);
   const prevTrimRange = useRef({ start: 0, end: 0 });
+  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
 
   const player = useVideoPlayer(selectedFile?.uri ?? '', player => {
     player.loop = true;
@@ -154,7 +175,31 @@ export default function CreateScreen() {
     setTempVideo(null);
     setVideoDuration(0);
     setTrimRange({ start: 0, end: 0 });
+    setVideoThumbnail(null);
   }, [activeTab]);
+
+  // Generate thumbnail when video is selected
+  useEffect(() => {
+    const generateThumbnail = async () => {
+      if (selectedFile?.uri && activeTab !== 'screenshots') {
+        try {
+          console.log('[Thumbnail] Generating thumbnail for video:', selectedFile.uri);
+          const { uri } = await VideoThumbnails.getThumbnailAsync(selectedFile.uri, {
+            time: 1000,
+            quality: 0.7,
+          });
+          console.log('[Thumbnail] Generated thumbnail:', uri);
+          setVideoThumbnail(uri);
+        } catch (error) {
+          console.error('[Thumbnail] Error generating thumbnail:', error);
+          setVideoThumbnail(null);
+        }
+      } else {
+        setVideoThumbnail(null);
+      }
+    };
+    generateThumbnail();
+  }, [selectedFile?.uri, activeTab]);
 
   React.useEffect(() => {
     if (type && ['clips', 'reels', 'screenshots'].includes(type as string)) {
@@ -175,28 +220,51 @@ export default function CreateScreen() {
   const [mentionStartIndex, setMentionStartIndex] = useState(-1);
   const descriptionInputRef = useRef<TextInput>(null);
   
+  // Tagged users state
+  const [taggedUsers, setTaggedUsers] = useState<{ id: number; username: string; displayName: string; avatarUrl: string | null }[]>([]);
+  const [tagUserQuery, setTagUserQuery] = useState('');
+  const [showTagUserDropdown, setShowTagUserDropdown] = useState(false);
+  
   const debouncedMentionQuery = useDebounce(mentionQuery, 300);
+  const debouncedTagUserQuery = useDebounce(tagUserQuery, 300);
   
   const { data: mentionSuggestions } = trpc.users.search.useQuery(
     { query: debouncedMentionQuery },
     { enabled: showMentionDropdown && debouncedMentionQuery.length > 0 }
   );
   
+  const { data: tagUserSuggestions } = trpc.users.search.useQuery(
+    { query: debouncedTagUserQuery },
+    { enabled: showTagUserDropdown && debouncedTagUserQuery.length > 0 }
+  );
+  
   const { data: trendingTags } = trpc.tags.getTrending.useQuery();
 
   const handleUpload = async () => {
     if (!selectedFile) {
-      Alert.alert('Error', `Please select a ${activeTab === 'screenshots' ? 'screenshot' : 'video'} to upload`);
+      setErrorContent({
+        title: 'Missing File',
+        message: `Please select a ${activeTab === 'screenshots' ? 'screenshot' : 'video'} to upload.`
+      });
+      setShowErrorModal(true);
       return;
     }
     
     if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a title');
+      setErrorContent({
+        title: 'Missing Title',
+        message: 'Please enter a title for your upload.'
+      });
+      setShowErrorModal(true);
       return;
     }
     
     if (!selectedGame) {
-      Alert.alert('Error', 'Please select a game');
+      setErrorContent({
+        title: 'Missing Game',
+        message: 'Please select a game for your upload.'
+      });
+      setShowErrorModal(true);
       return;
     }
     
@@ -218,10 +286,11 @@ export default function CreateScreen() {
       
       if (!isAuthenticated) {
         console.error('[Upload] User is not authenticated');
-        Alert.alert(
-          'Authentication Required', 
-          'You must be logged in to upload content. Please log in and try again.'
-        );
+        setErrorContent({
+          title: 'Authentication Required',
+          message: 'You must be logged in to upload content. Please log in and try again.'
+        });
+        setShowErrorModal(true);
         setIsUploading(false);
         return;
       }
@@ -230,10 +299,11 @@ export default function CreateScreen() {
       
       if (!accessToken) {
         console.error('[Upload] No Gamefolio access token available');
-        Alert.alert(
-          'Session Expired', 
-          'Your session has expired. Please log out and log back in to upload content.'
-        );
+        setErrorContent({
+          title: 'Session Expired',
+          message: 'Your session has expired. Please log out and log back in to upload content.'
+        });
+        setShowErrorModal(true);
         setIsUploading(false);
         return;
       }
@@ -250,22 +320,30 @@ export default function CreateScreen() {
         ageRestricted: boolean;
         trimStart?: number;
         trimEnd?: number;
+        taggedUsers?: number[];
       } = {
         title: title.trim(),
         description: description.trim(),
         gameId: selectedGame.id,
         tags: tags,
         ageRestricted: isAgeRestricted,
+        taggedUsers: taggedUsers.map(u => u.id),
       };
       
       // Add trim parameters for video uploads
-      if (activeTab !== 'screenshots' && trimRange.start > 0) {
+      // Always send trim parameters if the video has been trimmed from default (0 to full duration)
+      const hasTrimmedStart = trimRange.start > 0.1; // Allow small tolerance
+      const hasTrimmedEnd = trimRange.end > 0 && videoDuration > 0 && (videoDuration - trimRange.end) > 0.1;
+      
+      if (activeTab !== 'screenshots' && (hasTrimmedStart || hasTrimmedEnd)) {
+        // Always send both start and end when trimming is applied
         uploadData.trimStart = trimRange.start;
-        console.log('[Upload] Adding trim start:', trimRange.start);
-      }
-      if (activeTab !== 'screenshots' && trimRange.end > 0 && trimRange.end < videoDuration) {
         uploadData.trimEnd = trimRange.end;
-        console.log('[Upload] Adding trim end:', trimRange.end);
+        console.log('[Upload] Video has been trimmed');
+        console.log('[Upload] Trim start:', trimRange.start);
+        console.log('[Upload] Trim end:', trimRange.end);
+        console.log('[Upload] Original duration:', videoDuration);
+        console.log('[Upload] Trimmed duration:', trimRange.end - trimRange.start);
       }
 
       let result;
@@ -290,44 +368,42 @@ export default function CreateScreen() {
       
       console.log('[Upload] Upload successful!', result);
       
-      Alert.alert(
-        'Upload Successful!',
-        `Your ${activeTab === 'clips' ? 'clip' : activeTab === 'reels' ? 'reel' : 'screenshot'} has been uploaded successfully!\n\nTitle: ${title}\nGame: ${selectedGame.name}`,
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setTitle('');
-              setDescription('');
-              setTags([]);
-              setSelectedFile(null);
-              setSelectedGame(null);
-              setIsAgeRestricted(false);
-              setCropData(null);
-              setVideoDuration(0);
-              setTrimRange({ start: 0, end: 0 });
-            }
-          }
-        ]
-      );
+      const uploadResult = result as { id?: string; data?: { id?: string }; xpGained?: number; level?: number } | undefined;
+      
+      setUploadedContent({
+        id: uploadResult?.id || uploadResult?.data?.id || String(Date.now()),
+        title: title,
+        gameName: selectedGame.name,
+        thumbnail: activeTab === 'screenshots' ? selectedFile.uri : (videoThumbnail || selectedFile.uri),
+        contentType: activeTab === 'clips' ? 'clip' : activeTab === 'reels' ? 'reel' : 'screenshot',
+      });
+      
+      setXpGained(uploadResult?.xpGained || 5);
+      setCurrentLevel(uploadResult?.level || 1);
+      
+      setShowSuccessModal(true);
       
     } catch (error: any) {
       console.error('[Upload] Upload error:', error);
       console.error('[Upload] Error details:', JSON.stringify(error, null, 2));
       
       if (error instanceof UploadLimitError) {
-        Alert.alert(
-          'Upload Limit Reached',
-          error.limits?.message || error.message || 'You have reached your upload limit. Please try again later.'
-        );
+        setErrorContent({
+          title: 'Upload Limit Reached',
+          message: error.limits?.message || error.message || 'You have reached your upload limit. Please try again later.'
+        });
       } else if (error.message?.includes('401')) {
-        Alert.alert(
-          'Authentication Error',
-          'Your session may have expired. Please try logging out and back in.'
-        );
+        setErrorContent({
+          title: 'Authentication Error',
+          message: 'Your session may have expired. Please try logging out and back in.'
+        });
       } else {
-        Alert.alert('Upload Failed', error.message || 'Failed to upload. Please try again.');
+        setErrorContent({
+          title: 'Upload Failed',
+          message: error.message || 'Failed to upload. Please try again.'
+        });
       }
+      setShowErrorModal(true);
     } finally {
       setIsUploading(false);
     }
@@ -363,8 +439,33 @@ export default function CreateScreen() {
     }
   };
 
+  const handleTagUserSelect = (user: { id: number; username: string; displayName: string; avatarUrl: string | null }) => {
+    if (!taggedUsers.find(u => u.id === user.id)) {
+      setTaggedUsers([...taggedUsers, user]);
+    }
+    setTagUserQuery('');
+    setShowTagUserDropdown(false);
+  };
+
+  const removeTaggedUser = (userId: number) => {
+    setTaggedUsers(taggedUsers.filter(u => u.id !== userId));
+  };
+
   const handleDescriptionChange = (text: string) => {
     setDescription(text);
+    
+    if (showMentionDropdown && mentionStartIndex >= 0) {
+      const textAfterMention = text.substring(mentionStartIndex + 1);
+      const spaceIndex = textAfterMention.indexOf(' ');
+      const newlineIndex = textAfterMention.indexOf('\n');
+      
+      if (spaceIndex !== -1 || newlineIndex !== -1) {
+        setShowMentionDropdown(false);
+        setMentionQuery('');
+        setMentionStartIndex(-1);
+        return;
+      }
+    }
     
     const lastAtIndex = text.lastIndexOf('@', cursorPosition);
     const textBeforeCursor = text.substring(0, cursorPosition);
@@ -404,31 +505,6 @@ export default function CreateScreen() {
     setShowMentionDropdown(false);
     setMentionQuery('');
     setMentionStartIndex(-1);
-  };
-
-  const renderDescriptionWithMentions = () => {
-    const parts: { text: string; isMention: boolean }[] = [];
-    const mentionRegex = /@(\w+)/g;
-    let lastIndex = 0;
-    let match;
-    
-    while ((match = mentionRegex.exec(description)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push({ text: description.substring(lastIndex, match.index), isMention: false });
-      }
-      parts.push({ text: match[0], isMention: true });
-      lastIndex = match.index + match[0].length;
-    }
-    
-    if (lastIndex < description.length) {
-      parts.push({ text: description.substring(lastIndex), isMention: false });
-    }
-    
-    return parts.map((part, index) => (
-      <Text key={index} style={part.isMention ? styles.mentionText : styles.normalText}>
-        {part.text}
-      </Text>
-    ));
   };
 
   const pickMedia = async () => {
@@ -492,6 +568,7 @@ export default function CreateScreen() {
     setTrimRange({ start: 0, end: 0 });
     setIsTrimming(false);
     prevTrimRange.current = { start: 0, end: 0 };
+    setVideoThumbnail(null);
   };
 
   return (
@@ -598,7 +675,7 @@ export default function CreateScreen() {
                                 <VideoView 
                                     player={player} 
                                     style={{ width: '100%', height: '100%' }} 
-                                    contentFit={cropData ? "contain" : "contain"} // If cropped, we are handling fit manually via transform
+                                    contentFit={cropData ? "contain" : "cover"}
                                     nativeControls={false}
                                 />
                              </View>
@@ -677,7 +754,7 @@ export default function CreateScreen() {
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>Description (use @username to mention users)</Text>
-          <View>
+          <View style={{ position: 'relative', zIndex: 100 }}>
             <TextInput 
               ref={descriptionInputRef}
               style={[styles.input, styles.textArea]}
@@ -692,15 +769,49 @@ export default function CreateScreen() {
               value={description}
               onChangeText={handleDescriptionChange}
               onSelectionChange={(event) => setCursorPosition(event.nativeEvent.selection.start)}
+              onSubmitEditing={() => {
+                setShowMentionDropdown(false);
+                setMentionQuery('');
+                setMentionStartIndex(-1);
+              }}
             />
-            {description.length > 0 && (
-              <View style={styles.descriptionPreview}>
-                <Text style={styles.descriptionPreviewLabel}>Preview:</Text>
-                <View style={styles.descriptionPreviewText}>
-                  {renderDescriptionWithMentions()}
-                </View>
+            {showMentionDropdown && (
+              <View style={styles.inlineMentionDropdown}>
+                {mentionSuggestions && mentionSuggestions.length > 0 ? (
+                  <FlatList
+                    data={mentionSuggestions}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.mentionItem}
+                        onPress={() => handleMentionSelect(item.username)}
+                      >
+                        <Image 
+                          source={{ uri: item.avatarUrl }} 
+                          style={styles.mentionAvatar}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.mentionUsername}>@{item.username}</Text>
+                          {item.displayName !== item.username && (
+                            <Text style={styles.mentionDisplayName}>{item.displayName}</Text>
+                          )}
+                        </View>
+                        {item.isOnline && <View style={styles.onlineIndicator} />}
+                      </TouchableOpacity>
+                    )}
+                    keyboardShouldPersistTaps="handled"
+                    style={{ maxHeight: 200 }}
+                  />
+                ) : (
+                  <View style={styles.mentionEmpty}>
+                    <Text style={styles.mentionEmptyText}>
+                      {mentionQuery.length === 0 ? 'Type to search users...' : 'No users found'}
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
+
           </View>
         </View>
 
@@ -770,6 +881,94 @@ export default function CreateScreen() {
           )}
         </View>
 
+        {/* Tag Users Section */}
+        <View style={styles.formGroup}>
+          <View style={styles.tagUsersHeader}>
+            <UserPlus size={18} color="#4ADE80" />
+            <Text style={styles.label}>Tag Users</Text>
+          </View>
+          <Text style={styles.tagUsersSubtext}>Tag collaborators or friends featured in this content</Text>
+          
+          {taggedUsers.length > 0 && (
+            <View style={styles.taggedUsersContainer}>
+              {taggedUsers.map((user) => (
+                <View key={user.id} style={styles.taggedUserPill}>
+                  <Image 
+                    source={{ uri: user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100' }} 
+                    style={styles.taggedUserAvatar}
+                  />
+                  <Text style={styles.taggedUserText}>@{user.username}</Text>
+                  <TouchableOpacity 
+                    onPress={() => removeTaggedUser(user.id)} 
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <X size={14} color="#94A3B8" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+          
+          <View style={{ position: 'relative', zIndex: 50 }}>
+            <TextInput
+              style={styles.input}
+              placeholder="Search users to tag..."
+              placeholderTextColor="#64748B"
+              value={tagUserQuery}
+              onChangeText={(text) => {
+                setTagUserQuery(text);
+                setShowTagUserDropdown(text.length > 0);
+              }}
+              onFocus={() => tagUserQuery.length > 0 && setShowTagUserDropdown(true)}
+              onSubmitEditing={() => setShowTagUserDropdown(false)}
+            />
+            {showTagUserDropdown && (
+              <View style={styles.tagUserDropdown}>
+                {tagUserSuggestions && tagUserSuggestions.length > 0 ? (
+                  <FlatList
+                    data={tagUserSuggestions.filter(u => !taggedUsers.find(tu => tu.id === u.id))}
+                    keyExtractor={(item) => item.id.toString()}
+                    renderItem={({ item }) => (
+                      <TouchableOpacity
+                        style={styles.tagUserItem}
+                        onPress={() => handleTagUserSelect(item)}
+                      >
+                        <Image 
+                          source={{ uri: item.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100' }} 
+                          style={styles.tagUserAvatar}
+                        />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.tagUserUsername}>@{item.username}</Text>
+                          {item.displayName !== item.username && (
+                            <Text style={styles.tagUserDisplayName}>{item.displayName}</Text>
+                          )}
+                        </View>
+                        {item.isOnline && <View style={styles.tagUserOnlineIndicator} />}
+                      </TouchableOpacity>
+                    )}
+                    keyboardShouldPersistTaps="handled"
+                    style={{ maxHeight: 200 }}
+                  />
+                ) : (
+                  <View style={styles.tagUserEmpty}>
+                    <Text style={styles.tagUserEmptyText}>
+                      {tagUserQuery.length === 0 ? 'Type to search users...' : 'No users found'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+          
+          {taggedUsers.length > 0 && (
+            <View style={styles.taggedUsersPreview}>
+              <Text style={styles.taggedUsersPreviewText}>
+                This will show as: <Text style={styles.taggedUsersPreviewHighlight}>with {taggedUsers.map(u => `@${u.username}`).join(', ')}</Text>
+              </Text>
+            </View>
+          )}
+        </View>
+
         <TouchableOpacity 
           style={styles.checkboxContainer}
           onPress={() => setIsAgeRestricted(!isAgeRestricted)}
@@ -830,52 +1029,66 @@ export default function CreateScreen() {
         onSelect={setSelectedGame}
       />
       
-      <Modal
-        visible={showMentionDropdown}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowMentionDropdown(false)}
-      >
-        <TouchableOpacity 
-          style={styles.mentionOverlay}
-          activeOpacity={1}
-          onPress={() => setShowMentionDropdown(false)}
-        >
-          <View style={styles.mentionDropdown}>
-            {mentionSuggestions && mentionSuggestions.length > 0 ? (
-              <FlatList
-                data={mentionSuggestions}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.mentionItem}
-                    onPress={() => handleMentionSelect(item.username)}
-                  >
-                    <Image 
-                      source={{ uri: item.avatarUrl }} 
-                      style={styles.mentionAvatar}
-                    />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.mentionUsername}>@{item.username}</Text>
-                      {item.displayName !== item.username && (
-                        <Text style={styles.mentionDisplayName}>{item.displayName}</Text>
-                      )}
-                    </View>
-                    {item.isOnline && <View style={styles.onlineIndicator} />}
-                  </TouchableOpacity>
-                )}
-                keyboardShouldPersistTaps="handled"
-              />
-            ) : (
-              <View style={styles.mentionEmpty}>
-                <Text style={styles.mentionEmptyText}>
-                  {mentionQuery.length === 0 ? 'Type to search users...' : 'No users found'}
-                </Text>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
+
+
+      <UploadSuccessModal
+        visible={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          setShowXPModal(true);
+        }}
+        contentType={uploadedContent?.contentType || 'clip'}
+        title={uploadedContent?.title || ''}
+        gameName={uploadedContent?.gameName || ''}
+      />
+
+      <XPGainedModal
+        visible={showXPModal}
+        onClose={() => {
+          setShowXPModal(false);
+          setTitle('');
+          setDescription('');
+          setTags([]);
+          setSelectedFile(null);
+          setSelectedGame(null);
+          setIsAgeRestricted(false);
+          setCropData(null);
+          setVideoDuration(0);
+          setTrimRange({ start: 0, end: 0 });
+          setTaggedUsers([]);
+          router.push('/(drawer)/(tabs)/profile');
+          setTimeout(() => {
+            setShowShareModal(true);
+          }, 500);
+        }}
+        xpGained={xpGained}
+        currentLevel={currentLevel}
+        progress={0.75}
+      />
+
+      {uploadedContent && (
+        <ShareClipModal
+          visible={showShareModal}
+          onClose={() => {
+            setShowShareModal(false);
+            setUploadedContent(null);
+          }}
+          isOwnClip={true}
+          contentType={uploadedContent.contentType}
+          clip={{
+            id: uploadedContent.id,
+            title: uploadedContent.title,
+            thumbnail: uploadedContent.thumbnail,
+          }}
+        />
+      )}
+
+      <UploadErrorModal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title={errorContent.title}
+        message={errorContent.message}
+      />
     </View>
   );
 }
@@ -1218,30 +1431,30 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontWeight: '600',
   },
-  mentionOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  mentionDropdown: {
-    width: '100%',
-    maxWidth: 400,
-    maxHeight: 300,
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
+  inlineMentionDropdown: {
+    position: 'absolute',
+    top: 105,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(30, 41, 59, 0.95)',
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4ADE80',
+    borderColor: '#334155',
     overflow: 'hidden',
+    zIndex: 1000,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   mentionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#334155',
-    gap: 12,
+    gap: 10,
   },
   mentionAvatar: {
     width: 40,
@@ -1250,7 +1463,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#334155',
   },
   mentionUsername: {
-    color: '#4ADE80',
+    color: '#FFF',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1272,5 +1485,116 @@ const styles = StyleSheet.create({
   mentionEmptyText: {
     color: '#64748B',
     fontSize: 14,
+  },
+  tagUsersHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    marginBottom: 0,
+  },
+  tagUsersSubtext: {
+    color: '#94A3B8',
+    fontSize: 12,
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  taggedUsersContainer: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: 8,
+    marginBottom: 12,
+  },
+  taggedUserPill: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    backgroundColor: 'rgba(74, 222, 128, 0.15)',
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#4ADE80',
+  },
+  taggedUserAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#334155',
+  },
+  taggedUserText: {
+    color: '#4ADE80',
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  tagUserDropdown: {
+    position: 'absolute' as const,
+    top: 50,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(30, 41, 59, 0.98)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    overflow: 'hidden' as const,
+    zIndex: 1000,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  tagUserItem: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+    gap: 10,
+  },
+  tagUserAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#334155',
+  },
+  tagUserUsername: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '600' as const,
+  },
+  tagUserDisplayName: {
+    color: '#94A3B8',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  tagUserOnlineIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#4ADE80',
+  },
+  tagUserEmpty: {
+    padding: 20,
+    alignItems: 'center' as const,
+  },
+  tagUserEmptyText: {
+    color: '#64748B',
+    fontSize: 14,
+  },
+  taggedUsersPreview: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.3)',
+  },
+  taggedUsersPreviewText: {
+    color: '#94A3B8',
+    fontSize: 13,
+  },
+  taggedUsersPreviewHighlight: {
+    color: '#4ADE80',
+    fontWeight: '600' as const,
   },
 });

@@ -30,14 +30,18 @@ export const shortenGameName = (gameName: string): string => {
   return shortened;
 };
 
-export const formatNumber = (num: number): string => {
+export const formatNumber = (num: number | null | undefined): string => {
+  // Handle null, undefined, NaN, or non-numeric values
+  if (num === null || num === undefined || typeof num !== 'number' || isNaN(num)) {
+    return '0';
+  }
   if (num >= 1000000) {
     return (num / 1000000).toFixed(1) + 'M';
   }
   if (num >= 1000) {
     return (num / 1000).toFixed(1) + 'K';
   }
-  return num.toString();
+  return Math.floor(num).toString();
 };
 
 export const formatDuration = (seconds: number): string => {

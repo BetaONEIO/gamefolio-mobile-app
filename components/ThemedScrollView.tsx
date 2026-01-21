@@ -34,7 +34,7 @@ export default function ThemedScrollView({ style, contentContainerStyle, childre
     });
   }, [scrollIndicator, visibleScrollBarHeight, completeScrollBarHeight, difference]);
 
-  const showScrollbar = completeScrollBarHeight > visibleScrollBarHeight;
+  const showScrollbar = props.showsVerticalScrollIndicator === true && completeScrollBarHeight > visibleScrollBarHeight;
 
   if (props.horizontal) {
     return (
@@ -102,20 +102,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollBarTrack: {
-    width: 6,
+    width: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     position: 'absolute',
-    right: 2,
-    top: 2,
-    bottom: 2,
-    borderRadius: 3,
+    right: 4,
+    top: 8,
+    bottom: 8,
+    borderRadius: 2,
     zIndex: 10,
     justifyContent: 'flex-start',
   },
   scrollBarThumb: {
-    width: 6,
+    width: 4,
     backgroundColor: Colors.scrollbar,
-    borderRadius: 3,
+    borderRadius: 2,
   },
 });
 
@@ -151,7 +151,7 @@ export function ThemedFlatList<T>(props: FlatListProps<T>) {
     });
   }, [scrollIndicator, visibleScrollBarHeight, completeScrollBarHeight, difference]);
 
-  const showScrollbar = completeScrollBarHeight > visibleScrollBarHeight;
+  const showScrollbar = props.showsVerticalScrollIndicator === true && completeScrollBarHeight > visibleScrollBarHeight;
 
   if (props.horizontal) {
      return <FlatList {...props} showsHorizontalScrollIndicator={false} />;

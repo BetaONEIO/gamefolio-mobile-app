@@ -70,6 +70,42 @@ export function setGamefolioTokens(accessToken: string, refreshToken?: string, e
   }
 }
 
+// Force refresh Gamefolio token (used after 401 errors)
+export async function forceRefreshGamefolioToken(): Promise<string | null> {
+  console.log('[Gamefolio Auth] Force refreshing token...');
+  
+  if (!gamefolioRefreshToken) {
+    console.log('[Gamefolio Auth] No refresh token available');
+    return null;
+  }
+  
+  try {
+    const response = await fetch(`${GAMEFOLIO_REST_API}/auth/token/refresh`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ refreshToken: gamefolioRefreshToken }),
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      gamefolioAccessToken = data.accessToken;
+      if (data.refreshToken) gamefolioRefreshToken = data.refreshToken;
+      gamefolioTokenExpiry = Date.now() + (data.expiresIn * 1000);
+      console.log('[Gamefolio Auth] Token force refreshed successfully');
+      return gamefolioAccessToken;
+    } else {
+      console.log('[Gamefolio Auth] Force refresh failed with status:', response.status);
+      return null;
+    }
+  } catch (error) {
+    console.error('[Gamefolio Auth] Force refresh failed:', error);
+    return null;
+  }
+}
+
 // Get valid Gamefolio token, refreshing if needed
 export async function getGamefolioToken(): Promise<string | null> {
   if (!gamefolioAccessToken) {
@@ -80,27 +116,9 @@ export async function getGamefolioToken(): Promise<string | null> {
   // Check if token needs refresh (within 5 minutes of expiry)
   if (gamefolioTokenExpiry > 0 && Date.now() > gamefolioTokenExpiry - 300000) {
     console.log('[Gamefolio Auth] Token expiring soon, attempting refresh...');
-    if (gamefolioRefreshToken) {
-      try {
-        const response = await fetch(`${GAMEFOLIO_REST_API}/auth/token/refresh`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({ refreshToken: gamefolioRefreshToken }),
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          gamefolioAccessToken = data.accessToken;
-          if (data.refreshToken) gamefolioRefreshToken = data.refreshToken;
-          gamefolioTokenExpiry = Date.now() + (data.expiresIn * 1000);
-          console.log('[Gamefolio Auth] Token refreshed successfully');
-        }
-      } catch (error) {
-        console.error('[Gamefolio Auth] Token refresh failed:', error);
-      }
+    const refreshedToken = await forceRefreshGamefolioToken();
+    if (refreshedToken) {
+      return refreshedToken;
     }
   }
   
@@ -348,6 +366,51 @@ async function handleUploadError(response: Response, context: string): Promise<n
   throw new Error(`${context} failed: ${response.status} - ${errorMessage}`);
 }
 
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  retries: number = 2,
+  timeout: number = 60000
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      console.log(`[Gamefolio Upload] Fetch attempt ${attempt + 1}/${retries + 1} to ${url}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error: any) {
+      lastError = error;
+      console.error(`[Gamefolio Upload] Fetch attempt ${attempt + 1} failed:`, error.message);
+      
+      if (error.name === 'AbortError') {
+        lastError = new Error('Upload timed out. The file may be too large or your connection is slow. Please try again.');
+      }
+      
+      if (attempt < retries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
+        console.log(`[Gamefolio Upload] Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+  }
+  
+  if (lastError?.message === 'Failed to fetch' || lastError?.message?.includes('Network request failed')) {
+    throw new Error('Unable to connect to the server. Please check your internet connection and try again.');
+  }
+  
+  throw lastError || new Error('Upload failed after multiple attempts');
+}
+
 async function createFileEntry(
   fileUri: string,
   filename: string,
@@ -441,14 +504,29 @@ export const gamefolioUpload = {
       formData.append('uploadType', uploadType);
       formData.append('filename', filename);
       formData.append('filetype', filetype);
+      
+      // Include trim parameters in Step 1 as well for backends that process during upload
+      if (data.trimStart !== undefined) {
+        formData.append('trimStart', String(data.trimStart));
+        console.log('[Gamefolio Upload] Step 1 trimStart:', data.trimStart);
+      }
+      if (data.trimEnd !== undefined) {
+        formData.append('trimEnd', String(data.trimEnd));
+        console.log('[Gamefolio Upload] Step 1 trimEnd:', data.trimEnd);
+      }
 
-      const uploadResponse = await fetch(`${GAMEFOLIO_REST_API}/upload/video-direct`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
+      const uploadResponse = await fetchWithRetry(
+        `${GAMEFOLIO_REST_API}/upload/video-direct`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: formData,
         },
-        body: formData,
-      });
+        2,
+        120000 // 2 minute timeout for video uploads
+      );
 
       if (!uploadResponse.ok) {
         await handleUploadError(uploadResponse, 'Video upload');
@@ -478,24 +556,31 @@ export const gamefolioUpload = {
         ageRestricted: data.ageRestricted || false,
       };
       
-      // Add trim parameters if provided
-      if (data.trimStart !== undefined && data.trimStart > 0) {
+      // Add trim parameters if provided - always include both when trimming
+      if (data.trimStart !== undefined) {
         processBody.trimStart = data.trimStart;
+        console.log('[Gamefolio Upload] Step 2 trimStart:', data.trimStart);
       }
-      if (data.trimEnd !== undefined && data.trimEnd > 0) {
+      if (data.trimEnd !== undefined) {
         processBody.trimEnd = data.trimEnd;
+        console.log('[Gamefolio Upload] Step 2 trimEnd:', data.trimEnd);
       }
       
       console.log('[Gamefolio Upload] Process body:', JSON.stringify(processBody, null, 2));
 
-      const processResponse = await fetch(`${GAMEFOLIO_REST_API}/upload/process-video`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
+      const processResponse = await fetchWithRetry(
+        `${GAMEFOLIO_REST_API}/upload/process-video`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify(processBody),
         },
-        body: JSON.stringify(processBody),
-      });
+        2,
+        60000 // 1 minute timeout for processing
+      );
 
       if (!processResponse.ok) {
         await handleUploadError(processResponse, 'Video processing');
@@ -560,13 +645,18 @@ export const gamefolioUpload = {
 
       console.log('[Gamefolio Upload] Sending screenshot upload request...');
 
-      const response = await fetch(`${GAMEFOLIO_REST_API}/upload/screenshot`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
+      const response = await fetchWithRetry(
+        `${GAMEFOLIO_REST_API}/upload/screenshot`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+          body: formData,
         },
-        body: formData,
-      });
+        2,
+        60000 // 1 minute timeout for screenshots
+      );
 
       if (!response.ok) {
         await handleUploadError(response, 'Screenshot upload');
@@ -587,6 +677,198 @@ export const gamefolioUpload = {
       throw error;
     }
   },
+};
+
+// Onboarding API functions - for syncing with Replit web app
+export const gamefolioOnboarding = {
+  /**
+   * Update user profile (REQUIRED for onboarding)
+   * PATCH /api/users/{userId}
+   */
+  updateProfile: async (
+    userId: number,
+    data: {
+      username: string;
+      displayName: string;
+      bio?: string;
+      userType: string;
+      ageRange: string;
+    },
+    accessToken: string
+  ): Promise<{ success: boolean; user?: any }> => {
+    console.log('[Gamefolio Onboarding] Updating profile for user:', userId);
+    console.log('[Gamefolio Onboarding] Data:', data);
+    
+    const response = await fetch(`${GAMEFOLIO_REST_API}/users/${userId}`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Gamefolio Onboarding] Profile update failed:', response.status, errorText);
+      throw new Error(`Failed to update profile: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('[Gamefolio Onboarding] Profile updated successfully');
+    return { success: true, user: result };
+  },
+
+  /**
+   * Upload avatar (Optional)
+   * POST /api/upload/avatar
+   */
+  uploadAvatar: async (
+    avatarUri: string,
+    userId: number,
+    accessToken: string
+  ): Promise<{ success: boolean; avatarUrl?: string }> => {
+    console.log('[Gamefolio Onboarding] Uploading avatar for user:', userId);
+    
+    const formData = new FormData();
+    
+    if (Platform.OS === 'web') {
+      const response = await fetch(avatarUri);
+      const blob = await response.blob();
+      const file = new File([blob], `avatar_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      formData.append('avatar', file);
+    } else {
+      const filename = avatarUri.split('/').pop() || `avatar_${Date.now()}.jpg`;
+      const fileEntry = {
+        uri: Platform.OS === 'ios' && !avatarUri.startsWith('file://') ? `file://${avatarUri}` : avatarUri,
+        type: 'image/jpeg',
+        name: filename,
+      };
+      formData.append('avatar', fileEntry as any);
+    }
+    
+    formData.append('userId', String(userId));
+
+    const response = await fetch(`${GAMEFOLIO_REST_API}/upload/avatar`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Gamefolio Onboarding] Avatar upload failed:', response.status, errorText);
+      throw new Error(`Failed to upload avatar: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('[Gamefolio Onboarding] Avatar uploaded:', result.avatarUrl);
+    return { success: true, avatarUrl: result.avatarUrl };
+  },
+
+  /**
+   * Add game to database
+   * POST /api/twitch/games/add
+   */
+  addGameToDatabase: async (
+    gameId: string,
+    accessToken: string
+  ): Promise<{ id: number; name: string; imageUrl: string; twitchId: string }> => {
+    console.log('[Gamefolio Onboarding] Adding game to database:', gameId);
+    
+    const response = await fetch(`${GAMEFOLIO_REST_API}/twitch/games/add`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ gameId }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Gamefolio Onboarding] Add game failed:', response.status, errorText);
+      throw new Error(`Failed to add game: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('[Gamefolio Onboarding] Game added:', result.name);
+    return result;
+  },
+
+  /**
+   * Add game to user's favorites
+   * POST /api/users/{userId}/favorites
+   */
+  addGameToFavorites: async (
+    userId: number,
+    gameId: number,
+    accessToken: string
+  ): Promise<{ success: boolean }> => {
+    console.log('[Gamefolio Onboarding] Adding game to favorites:', gameId);
+    
+    const response = await fetch(`${GAMEFOLIO_REST_API}/users/${userId}/favorites`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ gameId }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Gamefolio Onboarding] Add favorite failed:', response.status, errorText);
+      throw new Error(`Failed to add favorite: ${response.status}`);
+    }
+
+    console.log('[Gamefolio Onboarding] Game added to favorites');
+    return { success: true };
+  },
+
+  /**
+   * Create wallet (Optional)
+   * POST /api/wallet/create
+   */
+  createWallet: async (
+    accessToken: string
+  ): Promise<{ address: string; isExisting: boolean }> => {
+    console.log('[Gamefolio Onboarding] Creating wallet');
+    
+    const response = await fetch(`${GAMEFOLIO_REST_API}/wallet/create`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Gamefolio Onboarding] Wallet creation failed:', response.status, errorText);
+      throw new Error(`Failed to create wallet: ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log('[Gamefolio Onboarding] Wallet created:', result.address);
+    return result;
+  },
+};
+
+// Map app userType values to backend-compatible values
+export const mapUserTypeToBackend = (appUserType: string): string => {
+  const mapping: Record<string, string> = {
+    'streamer': 'streamer',
+    'gamer': 'casual_gamer',
+    'professional_gamer': 'pro_player',
+    'content_creator': 'content_creator',
+    'indie_developer': 'content_creator',
+    'viewer': 'viewer',
+    'filthy_casual': 'casual_gamer',
+    'doom_scroller': 'viewer',
+  };
+  return mapping[appUserType] || 'viewer';
 };
 
 export type { GamefolioConversation, GamefolioMessage };

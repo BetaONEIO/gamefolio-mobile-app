@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Pressable, Platform } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Pressable } from 'react-native';
 import ScrollView from '@/components/ThemedScrollView';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Trash2, Upload } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
@@ -17,9 +17,11 @@ import LevelDetailsModal from '@/components/LevelDetailsModal';
 import DailyLootboxModal from '@/components/DailyLootboxModal';
 import UserTypeBadge from '@/components/UserTypeBadge';
 import StyledUsername from '@/components/StyledUsername';
+import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { api, Clip, Screenshot, Game } from '@/lib/api';
+
 
 const { width } = Dimensions.get('window');
 
@@ -32,33 +34,16 @@ const formatDuration = (seconds: number) => {
 };
 
 const ClipItem = ({ clip, onPress, onDelete }: { clip: any, onPress: () => void, onDelete: () => void }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const showDelete = Platform.OS !== 'web' || isHovered;
-
   return (
     <Pressable
       style={styles.clipItem}
       onPress={onPress}
-      onHoverIn={() => setIsHovered(true)}
-      onHoverOut={() => setIsHovered(false)}
     >
       <Image source={{ uri: clip.thumbnailUrl }} style={styles.clipImage} />
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.8)']}
         style={styles.clipGradient}
       />
-      
-      {showDelete && (
-        <TouchableOpacity 
-          style={styles.deleteButton} 
-          onPress={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-        >
-          <Trash2 size={14} color="#FFF" />
-        </TouchableOpacity>
-      )}
 
       <View style={styles.clipTopRight}>
         <View style={styles.clipBadge}>
@@ -82,33 +67,16 @@ const ClipItem = ({ clip, onPress, onDelete }: { clip: any, onPress: () => void,
 };
 
 const ReelItem = ({ reel, onPress, onDelete }: { reel: any, onPress: () => void, onDelete: () => void }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const showDelete = Platform.OS !== 'web' || isHovered;
-
   return (
     <Pressable 
       style={styles.reelItem}
       onPress={onPress}
-      onHoverIn={() => setIsHovered(true)}
-      onHoverOut={() => setIsHovered(false)}
     >
       <Image source={{ uri: reel.thumbnailUrl }} style={styles.reelImage} />
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.8)']}
         style={styles.reelGradient}
       />
-      
-      {showDelete && (
-        <TouchableOpacity 
-          style={styles.deleteButton} 
-          onPress={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-        >
-          <Trash2 size={14} color="#FFF" />
-        </TouchableOpacity>
-      )}
 
       <View style={styles.reelTopRight}>
         <View style={styles.reelBadge}>
@@ -132,29 +100,13 @@ const ReelItem = ({ reel, onPress, onDelete }: { reel: any, onPress: () => void,
 };
 
 const ScreenshotItem = ({ screenshot, onPress, onDelete, handle }: { screenshot: any, onPress: () => void, onDelete: () => void, handle: string }) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const showDelete = Platform.OS !== 'web' || isHovered;
-
   return (
     <Pressable 
       style={styles.screenshotCard}
       onPress={onPress}
-      onHoverIn={() => setIsHovered(true)}
-      onHoverOut={() => setIsHovered(false)}
     >
       <View style={styles.screenshotImageContainer}>
         <Image source={{ uri: screenshot.thumbnailUrl }} style={styles.screenshotImage} />
-        {showDelete && (
-          <TouchableOpacity 
-            style={styles.screenshotDeleteButton} 
-            onPress={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-          >
-            <Trash2 size={14} color="#FFF" />
-          </TouchableOpacity>
-        )}
       </View>
       <View style={styles.screenshotContent}>
         <Text style={styles.screenshotTitle}>{screenshot.title}</Text>
@@ -189,6 +141,20 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, getAccessToken } = useAuth();
   
+  // Fetch profile stats (clips count, followers, following) using REST API
+  const { data: profileStats } = useQuery({
+    queryKey: ['profileStats', user?.username],
+    queryFn: async () => {
+      if (!user?.username) return null;
+      const token = await getAccessToken();
+      console.log('[Profile] Fetching profile stats for:', user.username);
+      const result = await api.users.getProfile(user.username, token || undefined);
+      console.log('[Profile] Profile stats:', result.user._count);
+      return result.user;
+    },
+    enabled: !!user?.username,
+  });
+
   // Fetch user clips (and reels) using REST API - uses username
   const { data: allClips = [], isLoading: clipsLoading, error: clipsError } = useQuery<Clip[]>({
     queryKey: ['userClips', user?.username],
@@ -274,9 +240,9 @@ export default function ProfileScreen() {
     totalXP: user?.totalXP || 0,
     verified: user?.emailVerified || false,
     stats: {
-      clips: user?._count?.clips || 0,
-      followers: user?._count?.followers || 0,
-      following: user?._count?.following || 0
+      clips: profileStats?._count?.clips ?? user?._count?.clips ?? 0,
+      followers: profileStats?._count?.followers ?? user?._count?.followers ?? 0,
+      following: profileStats?._count?.following ?? user?._count?.following ?? 0
     },
     engagement: {
       likes: 0, // Not in User object, maybe separate API
@@ -301,7 +267,9 @@ export default function ProfileScreen() {
   const deleteClipMutation = useMutation({
     mutationFn: async (clipId: number) => {
       const token = await getAccessToken();
-      if (!token) throw new Error('Not authenticated');
+      if (!token) throw new Error('Not authenticated. Please log out and log back in.');
+      console.log('[Profile] Deleting clip/reel:', clipId);
+      console.log('[Profile] Using auth token, length:', token.length);
       return api.clips.delete(String(clipId), token);
     },
     onSuccess: () => {
@@ -320,7 +288,12 @@ export default function ProfileScreen() {
   const deleteScreenshotMutation = useMutation({
     mutationFn: async (screenshotId: number) => {
       const token = await getAccessToken();
-      if (!token) throw new Error('Not authenticated');
+      console.log('[Profile] Screenshot delete - Using auth token:', !!token);
+      console.log('[Profile] Screenshot delete - Token length:', token?.length || 0);
+      console.log('[Profile] Screenshot delete - Screenshot ID:', screenshotId);
+      console.log('[Profile] Screenshot delete - User ID:', user?.id);
+      if (!token) throw new Error('Not authenticated. Please log out and log back in.');
+      console.log('[Profile] Deleting screenshot with auth token');
       return api.screenshots.delete(String(screenshotId), token);
     },
     onSuccess: () => {
@@ -330,8 +303,12 @@ export default function ProfileScreen() {
       setItemToDelete(null);
       setIsDeleting(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('[Profile] Error deleting screenshot:', error);
+      console.error('[Profile] Error name:', error?.name);
+      console.error('[Profile] Error message:', error?.message);
+      console.error('[Profile] Error status:', error?.status);
+      console.error('[Profile] Error data:', JSON.stringify(error?.data, null, 2));
       setIsDeleting(false);
     },
   });
@@ -340,6 +317,9 @@ export default function ProfileScreen() {
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const [isLevelModalVisible, setIsLevelModalVisible] = useState(false);
   const [isLootboxModalVisible, setIsLootboxModalVisible] = useState(false);
+  const [selectedScreenshot, setSelectedScreenshot] = useState<Screenshot | null>(null);
+  const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
+  const [isScreenshotModalVisible, setIsScreenshotModalVisible] = useState(false);
 
 
   
@@ -397,28 +377,15 @@ export default function ProfileScreen() {
               colors={['transparent', `${user?.backgroundColor || '#0F1520'}99`, `${user?.backgroundColor || '#0F1520'}DD`, user?.backgroundColor || '#0F1520']}
               style={styles.bannerGradient}
               locations={[0, 0.4, 0.7, 1]}
+              pointerEvents="none"
             />
-            {/* Left edge gradient */}
-            <LinearGradient
-              colors={[user?.backgroundColor || '#0F1520', `${user?.backgroundColor || '#0F1520'}80`, 'transparent']}
-              style={styles.bannerGradientLeft}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              locations={[0, 0.3, 1]}
-            />
-            {/* Right edge gradient */}
-            <LinearGradient
-              colors={['transparent', `${user?.backgroundColor || '#0F1520'}80`, user?.backgroundColor || '#0F1520']}
-              style={styles.bannerGradientRight}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              locations={[0, 0.7, 1]}
-            />
+
             {/* Top edge gradient */}
             <LinearGradient
               colors={[`${user?.backgroundColor || '#0F1520'}60`, 'transparent']}
               style={styles.bannerGradientTop}
               locations={[0, 1]}
+              pointerEvents="none"
             />
           </>
         ) : (
@@ -428,25 +395,14 @@ export default function ProfileScreen() {
               colors={['transparent', `${user?.backgroundColor || '#0F1520'}99`, `${user?.backgroundColor || '#0F1520'}DD`, user?.backgroundColor || '#0F1520']}
               style={styles.bannerGradient}
               locations={[0, 0.4, 0.7, 1]}
+              pointerEvents="none"
             />
-            <LinearGradient
-              colors={[user?.backgroundColor || '#0F1520', `${user?.backgroundColor || '#0F1520'}80`, 'transparent']}
-              style={styles.bannerGradientLeft}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              locations={[0, 0.3, 1]}
-            />
-            <LinearGradient
-              colors={['transparent', `${user?.backgroundColor || '#0F1520'}80`, user?.backgroundColor || '#0F1520']}
-              style={styles.bannerGradientRight}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              locations={[0, 0.7, 1]}
-            />
+
             <LinearGradient
               colors={[`${user?.backgroundColor || '#0F1520'}60`, 'transparent']}
               style={styles.bannerGradientTop}
               locations={[0, 1]}
+              pointerEvents="none"
             />
           </>
         )}
@@ -507,10 +463,6 @@ export default function ProfileScreen() {
                     <Check size={10} color="#FFF" strokeWidth={4} />
                   </View>
                 )}
-                <UserTypeBadge 
-                  userType={user?.userType} 
-                  showUserType={user?.showUserType !== false} 
-                />
               </View>
               <View style={styles.nametagContainer}>
                 <Image 
@@ -521,6 +473,10 @@ export default function ProfileScreen() {
               </View>
             </View>
             <Text style={styles.handle}>{profileData.handle}</Text>
+            <UserTypeBadge 
+              userType={user?.userType} 
+              showUserType={user?.showUserType !== false} 
+            />
           </View>
         </View>
 
@@ -606,7 +562,7 @@ export default function ProfileScreen() {
         )}
 
         {activeTab === 'Reels' && (
-          <View style={styles.grid}>
+          <View style={styles.reelsGrid}>
             {clipsLoading ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>Loading reels...</Text>
@@ -663,12 +619,16 @@ export default function ProfileScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              screenshots.map((item) => (
+              screenshots.map((item, index) => (
                 <ScreenshotItem
                   key={item.id}
                   screenshot={item}
                   handle={profileData.handle}
-                  onPress={() => {}}
+                  onPress={() => {
+                    setSelectedScreenshot(item);
+                    setSelectedScreenshotIndex(index);
+                    setIsScreenshotModalVisible(true);
+                  }}
                   onDelete={() => handleDeleteScreenshot(item.id)}
                 />
               ))
@@ -678,7 +638,7 @@ export default function ProfileScreen() {
 
         {activeTab === 'Favorites' && (
           <View>
-            <View style={styles.grid}>
+            <View style={styles.favoritesGrid}>
               {favoriteGames.length === 0 ? (
                   <View style={styles.emptyState}>
                       <Text style={styles.emptyStateText}>No favorite games yet.</Text>
@@ -789,6 +749,26 @@ export default function ProfileScreen() {
         }}
       />
 
+      <ScreenshotViewerModal
+        visible={isScreenshotModalVisible}
+        onClose={() => {
+          setIsScreenshotModalVisible(false);
+          setSelectedScreenshot(null);
+        }}
+        screenshot={selectedScreenshot}
+        screenshots={screenshots}
+        initialIndex={selectedScreenshotIndex}
+        handle={profileData.handle}
+        isOwner={true}
+        onDelete={() => {
+          if (selectedScreenshot) {
+            setIsScreenshotModalVisible(false);
+            handleDeleteScreenshot(selectedScreenshot.id);
+            setSelectedScreenshot(null);
+          }
+        }}
+      />
+
 
 
 
@@ -821,20 +801,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: '100%',
   },
-  bannerGradientLeft: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 60,
-  },
-  bannerGradientRight: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 60,
-  },
+
   bannerGradientTop: {
     position: 'absolute',
     left: 0,
@@ -864,6 +831,7 @@ const styles = StyleSheet.create({
 
   userInfoSection: {
     alignItems: 'flex-start',
+    width: '100%',
   },
   avatarWrapper: {
     position: 'relative',
@@ -931,12 +899,14 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     marginTop: 8,
+    alignItems: 'flex-start',
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
+    width: '100%',
   },
   nameRowLeft: {
     flexDirection: 'row',
@@ -955,6 +925,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#94A3B8',
     marginBottom: 8,
+    textAlign: 'left',
   },
   verifiedBadge: {
     backgroundColor: '#3B82F6',
@@ -1066,11 +1037,13 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 12,
     marginBottom: 8,
+    textAlign: 'left',
   },
   bio: {
     color: '#E2E8F0',
     fontSize: 14,
     marginBottom: 16,
+    textAlign: 'left',
   },
   platformsRow: {
     flexDirection: 'row',
@@ -1118,14 +1091,25 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   grid: {
+    flexDirection: 'column',
+    gap: 12,
+    paddingBottom: 40,
+  },
+  reelsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingBottom: 40,
+  },
+  favoritesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
     paddingBottom: 40,
   },
   clipItem: {
-    width: (width - 32 - 12) / 2, // 2 columns: screen width - padding - gap
-    aspectRatio: 16/10,
+    width: '100%',
+    aspectRatio: 16/9,
     backgroundColor: '#1E293B',
     borderRadius: 12,
     overflow: 'hidden',

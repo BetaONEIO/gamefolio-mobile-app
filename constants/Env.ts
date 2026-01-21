@@ -1,12 +1,11 @@
 import { Platform } from 'react-native';
 
-const GAMEFOLIO_BACKEND_URL = 'https://app.gamefolio.com';
-
 function getBackendUrl(): string {
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('[Env] 🔍 Backend URL Configuration');
   console.log('[Env] Platform:', Platform.OS);
   console.log('[Env] EXPO_PUBLIC_BACKEND_URL:', process.env.EXPO_PUBLIC_BACKEND_URL || 'NOT SET');
+  console.log('[Env] EXPO_PUBLIC_RORK_API_BASE_URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL || 'NOT SET');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   
   // Check if env var is set and valid (not just the Expo dev server)
@@ -26,13 +25,19 @@ function getBackendUrl(): string {
     }
   }
   
-  // Use Gamefolio backend for ALL platforms (web, iOS, Android)
-  // CORS has been configured on app.gamefolio.com to allow requests from all origins
-  console.log('[Env] ✅ USING GAMEFOLIO BACKEND:', GAMEFOLIO_BACKEND_URL);
-  console.log('[Env] ℹ️  Platform:', Platform.OS);
-  console.log('[Env] ℹ️  All platforms use the same backend (CORS configured)');
+  // Use Rork API base URL (automatically provided by the platform)
+  if (process.env.EXPO_PUBLIC_RORK_API_BASE_URL) {
+    const rorkUrl = process.env.EXPO_PUBLIC_RORK_API_BASE_URL.replace(/\/+$/, '');
+    console.log('[Env] ✅ USING RORK BACKEND:', rorkUrl);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    return rorkUrl;
+  }
+  
+  // Fallback for web development
+  const fallbackUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  console.log('[Env] ⚠️ USING FALLBACK URL:', fallbackUrl);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  return GAMEFOLIO_BACKEND_URL;
+  return fallbackUrl;
 }
 
 export const Env = {

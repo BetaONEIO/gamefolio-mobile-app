@@ -119,8 +119,7 @@ const FlameAnimation: React.FC<FlameAnimationProps> = ({ isActive, size = 28 }) 
   });
 
   return (
-    <>
-      <View style={styles.container}>
+    <View style={styles.container}>
         <Animated.View
           style={[
             styles.flameParticle,
@@ -164,10 +163,7 @@ const FlameAnimation: React.FC<FlameAnimationProps> = ({ isActive, size = 28 }) 
         >
           <Flame size={size} color="#FF6B2C" fill="#FF6B2C" />
         </Animated.View>
-      </View>
-
-
-    </>
+    </View>
   );
 };
 

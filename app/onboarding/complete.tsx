@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -9,62 +9,194 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Image } from 'expo-image';
 import { Check } from 'lucide-react-native';
+import OnboardingProgress, { OnboardingStep } from '@/components/OnboardingProgress';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { useAuth } from '@/context/AuthContext';
-import { trpc } from '@/lib/trpc';
+import { useUser } from '@/context/UserContext';
+import { gamefolioOnboarding, mapUserTypeToBackend, getGamefolioToken } from '@/lib/gamefolio-api';
+
+interface SaveStep {
+  id: string;
+  label: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'error';
+  error?: string;
+}
 
 export default function OnboardingCompleteScreen() {
   const router = useRouter();
   const { data, resetOnboarding } = useOnboarding();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, getAccessToken } = useAuth();
+  const { favoriteGames } = useUser();
   const [isSaving, setIsSaving] = useState(false);
   const [hasSaved, setHasSaved] = useState(false);
+  const [overallError, setOverallError] = useState<string | null>(null);
+  const saveAttemptedRef = useRef(false);
+  
+  const [saveSteps, setSaveSteps] = useState<SaveStep[]>([
+    { id: 'profile', label: 'Saving profile', status: 'pending' },
+    { id: 'avatar', label: 'Uploading avatar', status: 'pending' },
+    { id: 'games', label: 'Adding favorite games', status: 'pending' },
+  ]);
 
-  const updateProfileMutation = trpc.user.updateProfile.useMutation();
+  const updateStepStatus = (stepId: string, status: SaveStep['status'], error?: string) => {
+    setSaveSteps(prev => prev.map(step => 
+      step.id === stepId ? { ...step, status, error } : step
+    ));
+  };
 
   useEffect(() => {
     const saveOnboardingData = async () => {
-      if (hasSaved || !user) return;
+      if (saveAttemptedRef.current || !user) return;
+      saveAttemptedRef.current = true;
       
-      if (!data.userType && !data.ageRange) {
-        console.log('[Onboarding] No data to save');
+      const hasRequiredData = data.userType;
+      if (!hasRequiredData) {
+        console.log('[Onboarding] Missing required data (userType)');
         setHasSaved(true);
         return;
       }
 
       setIsSaving(true);
-      try {
-        console.log('[Onboarding] Saving user type:', data.userType);
-        console.log('[Onboarding] Saving age range:', data.ageRange);
-        console.log('[Onboarding] Saving wallet address:', data.walletAddress);
-        
-        const result = await updateProfileMutation.mutateAsync({
-          userType: data.userType || undefined,
-          showUserType: true,
-          ageRange: data.ageRange || undefined,
-        });
+      console.log('[Onboarding] ========================================');
+      console.log('[Onboarding] Starting onboarding data sync');
+      console.log('[Onboarding] User ID:', user.id);
+      console.log('[Onboarding] Username:', data.username || user.username);
+      console.log('[Onboarding] User Type:', data.userType);
+      console.log('[Onboarding] Age Range:', data.ageRange);
+      console.log('[Onboarding] Avatar URI:', data.avatarLocalUri ? 'set' : 'not set');
+      console.log('[Onboarding] Games count:', favoriteGames.length);
+      console.log('[Onboarding] Create wallet:', data.createWallet);
+      console.log('[Onboarding] ========================================');
 
-        if (result.success && result.user) {
-          await updateUser({
-            userType: result.user.userType,
-            ageRange: result.user.ageRange,
-          });
-          console.log('[Onboarding] Profile updated successfully');
+      try {
+        let accessToken = await getAccessToken();
+        if (!accessToken) {
+          accessToken = await getGamefolioToken();
         }
+        
+        if (!accessToken) {
+          throw new Error('No access token available');
+        }
+
+        // STEP 1: Update Profile (REQUIRED)
+        updateStepStatus('profile', 'in_progress');
+        try {
+          const mappedUserType = mapUserTypeToBackend(data.userType || 'viewer');
+          console.log('[Onboarding] Mapped userType:', data.userType, '->', mappedUserType);
+          
+          const profileData = {
+            username: data.username || user.username,
+            displayName: data.username || user.displayName || user.username,
+            bio: 'Just joined Gamefolio!',
+            userType: mappedUserType,
+            ageRange: '18-24',
+          };
+          
+          const profileResult = await gamefolioOnboarding.updateProfile(
+            user.id,
+            profileData,
+            accessToken
+          );
+          
+          if (profileResult.success && profileResult.user) {
+            await updateUser({
+              username: profileResult.user.username,
+              displayName: profileResult.user.displayName,
+              userType: profileResult.user.userType,
+              ageRange: profileResult.user.ageRange,
+            });
+          }
+          
+          updateStepStatus('profile', 'completed');
+          console.log('[Onboarding] ✅ Profile updated successfully');
+        } catch (error: any) {
+          console.error('[Onboarding] ❌ Profile update failed:', error.message);
+          updateStepStatus('profile', 'error', error.message);
+          setOverallError('Failed to save profile. Please try again.');
+          setIsSaving(false);
+          return;
+        }
+
+        // STEP 2: Upload Avatar (Optional)
+        if (data.avatarLocalUri) {
+          updateStepStatus('avatar', 'in_progress');
+          try {
+            const avatarResult = await gamefolioOnboarding.uploadAvatar(
+              data.avatarLocalUri,
+              user.id,
+              accessToken
+            );
+            
+            if (avatarResult.success && avatarResult.avatarUrl) {
+              await updateUser({ avatarUrl: avatarResult.avatarUrl });
+            }
+            
+            updateStepStatus('avatar', 'completed');
+            console.log('[Onboarding] ✅ Avatar uploaded successfully');
+          } catch (error: any) {
+            console.error('[Onboarding] ⚠️ Avatar upload failed:', error.message);
+            updateStepStatus('avatar', 'error', error.message);
+          }
+        } else {
+          updateStepStatus('avatar', 'completed');
+        }
+
+        // STEP 3: Add Favorite Games (Optional)
+        if (favoriteGames.length > 0) {
+          updateStepStatus('games', 'in_progress');
+          let gamesAdded = 0;
+          
+          for (const game of favoriteGames) {
+            try {
+              console.log('[Onboarding] Adding game:', game.name, '(Twitch ID:', game.id, ')');
+              
+              const dbGame = await gamefolioOnboarding.addGameToDatabase(
+                game.id,
+                accessToken
+              );
+              
+              await gamefolioOnboarding.addGameToFavorites(
+                user.id,
+                dbGame.id,
+                accessToken
+              );
+              
+              gamesAdded++;
+              console.log('[Onboarding] ✅ Game added:', game.name);
+            } catch (error: any) {
+              console.error('[Onboarding] ⚠️ Failed to add game:', game.name, error.message);
+            }
+          }
+          
+          if (gamesAdded > 0) {
+            updateStepStatus('games', 'completed');
+            console.log('[Onboarding] ✅ Added', gamesAdded, 'games to favorites');
+          } else {
+            updateStepStatus('games', 'error', 'Could not add games');
+          }
+        } else {
+          updateStepStatus('games', 'completed');
+        }
+
+        console.log('[Onboarding] ========================================');
+        console.log('[Onboarding] ✅ Onboarding sync completed!');
+        console.log('[Onboarding] ========================================');
         
         setHasSaved(true);
         resetOnboarding();
-      } catch (error) {
-        console.error('[Onboarding] Failed to save profile:', error);
-        setHasSaved(true);
+      } catch (error: any) {
+        console.error('[Onboarding] ❌ Onboarding sync failed:', error.message);
+        setOverallError(error.message);
       } finally {
         setIsSaving(false);
       }
     };
 
     saveOnboardingData();
-  }, [user, data, hasSaved, updateProfileMutation, updateUser, resetOnboarding]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   const colors = {
     background: '#0F1520', 
@@ -73,78 +205,81 @@ export default function OnboardingCompleteScreen() {
     textDim: '#94A3B8',
     surface: '#1E293B',
     surfaceHighlight: '#334155',
+    error: '#EF4444',
   };
 
-  const steps = [
-    { label: 'Welcome', status: 'completed' },
-    { label: 'Games', status: 'completed' },
-    { label: 'Avatar', status: 'completed' },
-    { label: 'User Type', status: 'completed' },
-    { label: 'Age', status: 'completed' },
-    { label: 'Wallet', status: 'completed' },
-    { label: 'Complete', status: 'active' },
+  const steps: OnboardingStep[] = [
+    { label: 'Welcome', status: 'completed', route: '/onboarding' },
+    { label: 'Games', status: 'completed', route: '/onboarding/games' },
+    { label: 'Avatar', status: 'completed', route: '/onboarding/avatar' },
+    { label: 'User Type', status: 'completed', route: '/onboarding/user-type' },
+    { label: 'Complete', status: 'active', route: '/onboarding/complete' },
   ];
+
+  const canProceed = hasSaved || !isSaving;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style="light" />
       
       <View style={styles.content}>
-        <View style={styles.progressContainer}>
-          <View style={styles.stepsRow}>
-            {steps.map((step, index) => (
-              <React.Fragment key={index}>
-                <View style={styles.stepWrapper}>
-                  <View style={[
-                    styles.stepCircle, 
-                    step.status === 'active' && { backgroundColor: colors.primary, borderColor: colors.primary },
-                    step.status === 'completed' && { backgroundColor: colors.primary, borderColor: colors.primary },
-                    step.status === 'pending' && { backgroundColor: 'transparent', borderColor: '#334155' }
-                  ]}>
-                    {step.status === 'completed' ? (
-                      <Check size={16} color="#002E15" strokeWidth={3} />
-                    ) : (
-                      <Text style={[
-                        styles.stepNumber,
-                        step.status === 'active' ? { color: '#002E15' } : { color: '#64748B' }
-                      ]}>
-                        {index + 1}
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={[
-                    styles.stepLabel,
-                    step.status === 'active' || step.status === 'completed' ? { color: '#FFFFFF' } : { color: '#64748B' }
-                  ]} numberOfLines={1}>
-                    {step.label}
-                  </Text>
-                </View>
-                
-                {index < steps.length - 1 && (
-                  <View style={[
-                    styles.stepLine,
-                    (steps[index].status === 'completed' && steps[index+1].status !== 'pending') && { backgroundColor: colors.primary }
-                  ]} />
-                )}
-              </React.Fragment>
-            ))}
-          </View>
-        </View>
+        <OnboardingProgress steps={steps} currentIndex={4} />
 
         <View style={styles.mainContent}>
           <View style={styles.iconContainer}>
-            <View style={styles.checkCircle}>
-              <Check size={48} color="#002E15" strokeWidth={4} />
+            <View style={styles.logoCircle}>
+              {isSaving ? (
+                <ActivityIndicator size="large" color="#4ADE80" />
+              ) : (
+                <Image 
+                  source={{ uri: "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/bpo9i1ux8et2igcgnomrk" }}
+                  style={styles.logoImage}
+                  contentFit="contain"
+                />
+              )}
             </View>
             <View style={styles.glowEffect} />
           </View>
 
-          <Text style={styles.title}>Your Gamefolio account is now complete</Text>
+          <Text style={styles.title}>
+            {isSaving ? 'Setting up your account...' : 'Setup Complete'}
+          </Text>
           <Text style={styles.subtitle}>
-            You&apos;re ready to join the game.
+            {isSaving ? 'Please wait while we sync your preferences' : "You're ready to join the game."}
           </Text>
 
-          {data.userType && (
+          {isSaving && (
+            <View style={styles.stepsContainer}>
+              {saveSteps.map((step) => (
+                <View key={step.id} style={styles.saveStepRow}>
+                  <View style={[
+                    styles.saveStepIndicator,
+                    step.status === 'completed' && { backgroundColor: colors.primary },
+                    step.status === 'in_progress' && { backgroundColor: colors.primary, opacity: 0.5 },
+                    step.status === 'error' && { backgroundColor: colors.error },
+                  ]}>
+                    {step.status === 'completed' && <Check size={12} color="#002E15" strokeWidth={3} />}
+                    {step.status === 'in_progress' && <ActivityIndicator size="small" color="#002E15" />}
+                  </View>
+                  <Text style={[
+                    styles.saveStepLabel,
+                    step.status === 'completed' && { color: colors.primary },
+                    step.status === 'error' && { color: colors.error },
+                  ]}>
+                    {step.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {overallError && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{overallError}</Text>
+            </View>
+          )}
+
+          {!isSaving && data.userType && (
             <View style={styles.summaryContainer}>
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabel}>User Type</Text>
@@ -158,16 +293,22 @@ export default function OnboardingCompleteScreen() {
                   <Text style={styles.summaryValue}>{data.ageRange}</Text>
                 </View>
               )}
+              {favoriteGames.length > 0 && (
+                <View style={styles.summaryItem}>
+                  <Text style={styles.summaryLabel}>Favorite Games</Text>
+                  <Text style={styles.summaryValue}>{favoriteGames.length} selected</Text>
+                </View>
+              )}
             </View>
           )}
         </View>
 
         <View style={styles.footer}>
           <TouchableOpacity 
-            style={[styles.primaryButton, isSaving && styles.primaryButtonDisabled]}
+            style={[styles.primaryButton, !canProceed && styles.primaryButtonDisabled]}
             activeOpacity={0.8}
             onPress={() => router.replace('/(drawer)/(tabs)/home')}
-            disabled={isSaving}
+            disabled={!canProceed}
           >
             {isSaving ? (
               <ActivityIndicator color="#002E15" size="small" />
@@ -189,44 +330,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
   },
-  progressContainer: {
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  stepsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  stepWrapper: {
-    alignItems: 'center',
-    zIndex: 1,
-    width: 40,
-  },
-  stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    backgroundColor: '#0F1520',
-  },
-  stepNumber: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-  },
-  stepLabel: {
-    fontSize: 10,
-    textAlign: 'center',
-  },
-  stepLine: {
-    flex: 1,
-    height: 2,
-    backgroundColor: '#334155',
-    marginTop: 13,
-  },
+  
   mainContent: {
     flex: 1,
     alignItems: 'center',
@@ -239,14 +343,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
-  checkCircle: {
+  logoCircle: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#4ADE80',
+    backgroundColor: 'rgba(74, 222, 128, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
+  },
+  logoImage: {
+    width: 70,
+    height: 70,
   },
   glowEffect: {
     position: 'absolute',
@@ -271,6 +379,43 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
+  },
+  stepsContainer: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 16,
+    width: '100%',
+    gap: 12,
+    marginBottom: 24,
+  },
+  saveStepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  saveStepIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveStepLabel: {
+    fontSize: 14,
+    color: '#94A3B8',
+  },
+  errorContainer: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderRadius: 12,
+    padding: 16,
+    width: '100%',
+    marginBottom: 24,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 14,
+    textAlign: 'center',
   },
   summaryContainer: {
     backgroundColor: '#1E293B',

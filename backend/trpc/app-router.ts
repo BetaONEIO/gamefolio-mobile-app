@@ -64,6 +64,7 @@ import getSampleProfileRoute from "./routes/users/get-sample-profile/route";
 import getSampleClipsRoute from "./routes/clips/get-sample-clips/route";
 import getSampleScreenshotsRoute from "./routes/screenshots/get-sample-screenshots/route";
 import getSampleFavoritesRoute from "./routes/users/get-sample-favorites/route";
+import submitReportRoute from "./routes/reports/submit/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -156,6 +157,9 @@ export const appRouter = createTRPCRouter({
   assetRewards: createTRPCRouter({
     getActive: getActiveAssetRewardsRoute,
     claim: claimAssetRewardRoute,
+  }),
+  reports: createTRPCRouter({
+    submit: submitReportRoute,
   }),
 });
 

@@ -1,18 +1,20 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronRight, Eye, Video, VideoOff, Film, X, Upload, Flame, TrendingUp } from 'lucide-react-native';
+import { ChevronRight, Eye, Video, VideoOff, Film, X, Upload, Camera } from 'lucide-react-native';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { ImageBackground, StyleSheet, Text, TouchableOpacity, View, Modal, FlatList, Dimensions, StatusBar, ViewToken, Keyboard, Animated, Image } from 'react-native';
+import { ImageBackground, StyleSheet, Text, TouchableOpacity, View, Modal, FlatList, Dimensions, StatusBar, ViewToken, Keyboard, Animated } from 'react-native';
 import ScrollView from '@/components/ThemedScrollView';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AppHeader from '@/components/AppHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, Clip } from '@/lib/api';
+import { api, Clip, TaggedUser } from '@/lib/api';
 import { shortenGameName, truncateTitle } from '@/constants/formatters';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/context/AuthContext';
 import { useUser } from '@/context/UserContext';
 import ReelViewer from '@/components/ReelViewer';
 import LevelDetailsModal from '@/components/LevelDetailsModal';
+import HeroBanner from '@/components/HeroBanner';
+import AdBanner from '@/components/AdBanner';
 import type { ReelData, Comment } from '@/components/ReelViewer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -22,6 +24,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface LatestUpload {
   id: number;
   title: string;
+  contentType: 'clip' | 'reel' | 'screenshot';
   createdAt: string;
   user: {
     id: number;
@@ -31,166 +34,12 @@ interface LatestUpload {
   } | null;
 }
 
-interface TrendingUser {
-  id: number;
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-  bannerUrl: string | null;
-  totalXP: number;
-  level: number;
-  currentStreak: number;
-  accentColor: string | null;
-}
-
-const MOCK_TRENDING_USERS: TrendingUser[] = [
-  {
-    id: 1,
-    username: 'ProGamer99',
-    displayName: 'Pro Gamer',
-    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100',
-    bannerUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400',
-    totalXP: 15000,
-    level: 25,
-    currentStreak: 12,
-    accentColor: '#4ADE80',
-  },
-  {
-    id: 2,
-    username: 'NinjaPlayer',
-    displayName: 'Ninja Player',
-    avatarUrl: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100',
-    bannerUrl: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=400',
-    totalXP: 12500,
-    level: 20,
-    currentStreak: 8,
-    accentColor: '#F59E0B',
-  },
-  {
-    id: 3,
-    username: 'WarzoneKing',
-    displayName: 'Warzone King',
-    avatarUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100',
-    bannerUrl: 'https://images.unsplash.com/photo-1493711662062-fa541f7f3d24?w=400',
-    totalXP: 10000,
-    level: 18,
-    currentStreak: 5,
-    accentColor: '#EF4444',
-  },
-  {
-    id: 4,
-    username: 'EpicGamer',
-    displayName: 'Epic Gamer',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
-    bannerUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400',
-    totalXP: 9500,
-    level: 17,
-    currentStreak: 3,
-    accentColor: '#8B5CF6',
-  },
-];
-
-const MOCK_LATEST_UPLOADS: LatestUpload[] = [
-  { id: 1, title: 'Nice junk 4k', createdAt: new Date().toISOString(), user: { id: 1, username: 'JawaTheGathering', displayName: 'Jawa', avatarUrl: null } },
-  { id: 2, title: 'Every sim main deserves this', createdAt: new Date().toISOString(), user: { id: 2, username: 'JawaTheGathering', displayName: 'Jawa', avatarUrl: null } },
-  { id: 3, title: 'Insane clutch moment', createdAt: new Date().toISOString(), user: { id: 3, username: 'ProGamer99', displayName: 'Pro Gamer', avatarUrl: null } },
-  { id: 4, title: 'First win of the season', createdAt: new Date().toISOString(), user: { id: 4, username: 'NinjaPlayer', displayName: 'Ninja', avatarUrl: null } },
-];
 
 
-// Mock clips for testing
-const MOCK_CLIPS: Clip[] = [
-  {
-    id: 1,
-    userId: 1,
-    gameId: 1,
-    title: 'Insane 1v5 Clutch in Valorant',
-    description: 'Watch me clutch this impossible round!',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop',
-    videoType: 'clip',
-    duration: 45,
-    views: 12500,
-    shareCode: 'abc123',
-    ageRestricted: false,
-    createdAt: new Date().toISOString(),
-    user: {
-      id: 1,
-      username: 'ProGamer99',
-      displayName: 'Pro Gamer',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100',
-    },
-    game: {
-      id: 1,
-      name: 'Valorant',
-      imageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=100',
-    },
-    _count: {
-      likes: 342,
-      comments: 28,
-    },
-  },
-  {
-    id: 2,
-    userId: 2,
-    gameId: 2,
-    title: 'Epic Fortnite Victory Royale',
-    description: 'Got the dub with 15 eliminations',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800&auto=format&fit=crop',
-    videoType: 'clip',
-    duration: 62,
-    views: 8900,
-    shareCode: 'def456',
-    ageRestricted: false,
-    createdAt: new Date().toISOString(),
-    user: {
-      id: 2,
-      username: 'NinjaPlayer',
-      displayName: 'Ninja Player',
-      avatarUrl: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100',
-    },
-    game: {
-      id: 2,
-      name: 'Fortnite',
-      imageUrl: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=100',
-    },
-    _count: {
-      likes: 567,
-      comments: 45,
-    },
-  },
-  {
-    id: 3,
-    userId: 3,
-    gameId: 3,
-    title: 'Warzone Quad Wipe',
-    description: 'Clean team wipe in Verdansk',
-    videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    thumbnailUrl: 'https://images.unsplash.com/photo-1493711662062-fa541f7f3d24?w=800&auto=format&fit=crop',
-    videoType: 'clip',
-    duration: 38,
-    views: 5200,
-    shareCode: 'ghi789',
-    ageRestricted: false,
-    createdAt: new Date().toISOString(),
-    user: {
-      id: 3,
-      username: 'WarzoneKing',
-      displayName: 'Warzone King',
-      avatarUrl: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100',
-    },
-    game: {
-      id: 3,
-      name: 'Call of Duty: Warzone',
-      imageUrl: 'https://images.unsplash.com/photo-1493711662062-fa541f7f3d24?w=100',
-    },
-    _count: {
-      likes: 189,
-      comments: 12,
-    },
-  },
-];
+
+
+
+
 
 const formatDuration = (seconds: number) => {
   const mins = Math.floor(seconds / 60);
@@ -202,6 +51,55 @@ const formatViews = (views: number) => {
   if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
   if (views >= 1000) return `${(views / 1000).toFixed(1)}K`;
   return views.toString();
+};
+
+const PLACEHOLDER_THUMBNAILS = {
+  clip: [
+    'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=450&fit=crop',
+    'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&h=450&fit=crop',
+    'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800&h=450&fit=crop',
+    'https://images.unsplash.com/photo-1552820728-8b83bb6b773f?w=800&h=450&fit=crop',
+  ],
+  reel: [
+    'https://images.unsplash.com/photo-1591405351990-4726e331f141?w=450&h=800&fit=crop',
+    'https://images.unsplash.com/photo-1563207153-f403bf289096?w=450&h=800&fit=crop',
+    'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=450&h=800&fit=crop',
+    'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=450&h=800&fit=crop',
+  ],
+};
+
+const isValidThumbnailUrl = (url: string | undefined | null): boolean => {
+  if (!url || url.trim() === '') return false;
+  if (url === 'null' || url === 'undefined') return false;
+  const invalidPatterns = [
+    'placeholder',
+    'default-thumbnail',
+    'no-image',
+  ];
+  return !invalidPatterns.some(pattern => url.toLowerCase().includes(pattern.toLowerCase()));
+};
+
+const getClipThumbnail = (clip: Clip, isReel: boolean = false) => {
+  const contentType = isReel ? 'Reel' : 'Clip';
+  
+  // Priority 1: Use the clip's own thumbnail if valid
+  if (isValidThumbnailUrl(clip.thumbnailUrl)) {
+    console.log(`[Thumbnail] ${contentType} ${clip.id} using own thumbnail: ${clip.thumbnailUrl}`);
+    return clip.thumbnailUrl;
+  }
+  
+  // Priority 2: Use the game's image as fallback
+  if (isValidThumbnailUrl(clip.game?.imageUrl)) {
+    console.log(`[Thumbnail] ${contentType} ${clip.id} using game image: ${clip.game?.imageUrl}`);
+    return clip.game!.imageUrl;
+  }
+  
+  // Priority 3: Use a placeholder based on clip id for variety
+  const placeholders = isReel ? PLACEHOLDER_THUMBNAILS.reel : PLACEHOLDER_THUMBNAILS.clip;
+  const placeholderIndex = clip.id % placeholders.length;
+  const placeholder = placeholders[placeholderIndex];
+  console.log(`[Thumbnail] ${contentType} ${clip.id} "${clip.title?.slice(0, 20)}" using placeholder: ${placeholder}`);
+  return placeholder;
 };
 
 export default function HomeScreen() {
@@ -241,8 +139,8 @@ export default function HomeScreen() {
           const clips = await api.clips.getTrending(token || undefined, 'ever');
           console.log('[Home] Received trending clips:', clips.length);
           if (clips.length === 0) {
-            console.log('[Home] No clips from API, using mock data');
-            return MOCK_CLIPS;
+            console.log('[Home] No clips from API');
+            return [];
           }
           return clips;
         }
@@ -270,14 +168,14 @@ export default function HomeScreen() {
         console.log('[Home] Received recommended clips:', shuffled.length);
         
         if (shuffled.length === 0) {
-          console.log('[Home] No clips from favorite games, using mock data');
-          return MOCK_CLIPS;
+          console.log('[Home] No clips from favorite games');
+          return [];
         }
         
         return shuffled.slice(0, 20);
       } catch (error) {
-        console.log('[Home] Error fetching clips, using mock data:', error);
-        return MOCK_CLIPS;
+        console.log('[Home] Error fetching clips:', error);
+        return [];
       }
     },
   });
@@ -290,15 +188,26 @@ export default function HomeScreen() {
       try {
         const clips = await api.clips.getFeed(token || undefined, { page: 1, limit: 20 });
         console.log('[Home] Received feed clips:', clips.length);
-        // If no clips from API, use mock data for testing
+        
+        // Log each clip's thumbnail info for debugging
+        clips.forEach((clip, index) => {
+          console.log(`[Home] Clip ${index + 1}: id=${clip.id}, title="${clip.title}"`);
+          console.log(`  - thumbnailUrl: ${clip.thumbnailUrl || 'NULL'}`);
+          console.log(`  - game imageUrl: ${clip.game?.imageUrl || 'NULL'}`);
+        });
+        
+        // Check for thumbnail issues
+        const uniqueThumbnails = new Set(clips.map(c => c.thumbnailUrl).filter(Boolean));
+        console.log(`[Home] Unique clip thumbnails: ${uniqueThumbnails.size} out of ${clips.length} clips`);
+        
         if (clips.length === 0) {
-          console.log('[Home] No feed clips from API, using mock data');
-          return MOCK_CLIPS;
+          console.log('[Home] No feed clips from API');
+          return [];
         }
         return clips;
       } catch (error) {
-        console.log('[Home] Error fetching feed clips, using mock data:', error);
-        return MOCK_CLIPS;
+        console.log('[Home] Error fetching feed clips:', error);
+        return [];
       }
     },
   });
@@ -310,54 +219,77 @@ export default function HomeScreen() {
       console.log('[Home] Fetching latest reels...');
       const reels = await api.reels.getLatest(token || undefined);
       console.log('[Home] Received latest reels:', reels.length);
+      
+      // Log each reel's thumbnail info for debugging
+      reels.forEach((reel, index) => {
+        console.log(`[Home] Reel ${index + 1}: id=${reel.id}, title="${reel.title}"`);
+        console.log(`  - thumbnailUrl: ${reel.thumbnailUrl || 'NULL'}`);
+        console.log(`  - videoUrl: ${reel.videoUrl || 'NULL'}`);
+        console.log(`  - game imageUrl: ${reel.game?.imageUrl || 'NULL'}`);
+      });
+      
+      // Check for thumbnail issues
+      const uniqueThumbnails = new Set(reels.map(r => r.thumbnailUrl).filter(Boolean));
+      console.log(`[Home] Unique thumbnails: ${uniqueThumbnails.size} out of ${reels.length} reels`);
+      
+      if (uniqueThumbnails.size < reels.length && uniqueThumbnails.size > 0) {
+        console.warn('[Home] ⚠️ Some reels share the same thumbnail - thumbnails may need to be generated per video');
+      }
+      
       return reels;
     },
   });
 
-  const trendingUsersQuery = trpc.users.getTrending.useQuery(
-    { limit: 10 },
-    {
-      retry: false,
-    }
-  );
-  
-  useEffect(() => {
-    if (trendingUsersQuery.error) {
-      console.log('[Home] Error fetching trending users, using mock data:', trendingUsersQuery.error.message);
-    }
-  }, [trendingUsersQuery.error]);
-  
-  const trendingUsers = trendingUsersQuery.data?.users || MOCK_TRENDING_USERS;
 
-  const latestUploadsQuery = trpc.clips.getLatestUploads.useQuery(
-    { limit: 20 },
-    {
-      retry: false,
-    }
-  );
-  
-  useEffect(() => {
-    if (latestUploadsQuery.error) {
-      console.log('[Home] Error fetching latest uploads, using mock data:', latestUploadsQuery.error.message);
-    }
-  }, [latestUploadsQuery.error]);
-  
-  const latestUploads = latestUploadsQuery.data?.uploads || MOCK_LATEST_UPLOADS;
+
+  const { data: latestUploads = [] } = useQuery<LatestUpload[]>({
+    queryKey: ['recent-uploads'],
+    queryFn: async () => {
+      console.log('[Home] Fetching recent uploads from API...');
+      try {
+        const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/recent-uploads`);
+        if (!response.ok) {
+          console.log('[Home] Recent uploads API error:', response.status);
+          return [];
+        }
+        const data = await response.json();
+        console.log('[Home] Received recent uploads:', data.length);
+        return data;
+      } catch (error) {
+        console.log('[Home] Error fetching recent uploads:', error);
+        return [];
+      }
+    },
+    staleTime: 30000,
+  });
 
   
   const tickerRef = useRef<Animated.Value>(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (latestUploads.length === 0) return;
+    
     const tickerWidth = latestUploads.length * 350;
+    let isMounted = true;
+    
     const animateTicker = () => {
+      if (!isMounted) return;
       tickerRef.setValue(0);
       Animated.timing(tickerRef, {
         toValue: -tickerWidth,
         duration: latestUploads.length * 8000,
         useNativeDriver: true,
-      }).start(() => animateTicker());
+      }).start(({ finished }) => {
+        if (finished && isMounted) {
+          animateTicker();
+        }
+      });
     };
     animateTicker();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [latestUploads.length, tickerRef]);
 
   const activeReelId = latestReels[activeReelIndex]?.id;
@@ -585,18 +517,31 @@ export default function HomeScreen() {
               },
             ]}
           >
-            {[...latestUploads, ...latestUploads].map((upload, index) => (
-              <TouchableOpacity
-                key={`${upload.id}-${index}`}
-                style={styles.tickerItem}
-                onPress={() => router.push({ pathname: '/clip/[id]', params: { id: upload.id.toString() } })}
-              >
-                <Upload size={14} color="#FFF" />
-                <Text style={styles.tickerUsername}>{upload.user?.username || 'Unknown'}</Text>
-                <Text style={styles.tickerText}>has just uploaded a clip</Text>
-                <Text style={styles.tickerTitle}>&quot;{upload.title}&quot;</Text>
-              </TouchableOpacity>
-            ))}
+            {[...latestUploads, ...latestUploads].map((upload, index) => {
+              const contentTypeLabel = upload.contentType === 'screenshot' ? 'screenshot' : upload.contentType === 'reel' ? 'reel' : 'clip';
+              const ContentIcon = upload.contentType === 'screenshot' ? Camera : upload.contentType === 'reel' ? Film : Upload;
+              
+              const handlePress = () => {
+                if (upload.contentType === 'screenshot') {
+                  router.push({ pathname: '/(drawer)/(tabs)/trending', params: { type: 'screenshots' } });
+                } else {
+                  router.push({ pathname: '/clip/[id]', params: { id: upload.id.toString() } });
+                }
+              };
+              
+              return (
+                <TouchableOpacity
+                  key={`${upload.id}-${index}`}
+                  style={styles.tickerItem}
+                  onPress={handlePress}
+                >
+                  <ContentIcon size={14} color="#FFF" />
+                  <Text style={styles.tickerUsername}>{upload.user?.username || 'Unknown'}</Text>
+                  <Text style={styles.tickerText}>has just uploaded a {contentTypeLabel}</Text>
+                  <Text style={styles.tickerTitle}>&quot;{upload.title}&quot;</Text>
+                </TouchableOpacity>
+              );
+            })}
           </Animated.View>
         </LinearGradient>
       </View>
@@ -606,26 +551,8 @@ export default function HomeScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Section */}
-        <View style={styles.heroContainer}>
-          <ImageBackground
-            source={{ uri: 'https://images.unsplash.com/photo-1532906619279-a76e736a55e1?q=80&w=800&auto=format&fit=crop' }}
-            style={styles.heroBackground}
-            imageStyle={{ borderRadius: 24 }}
-          >
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.heroGradient}
-            >
-              <View style={styles.heroContent}>
-                <Text style={styles.heroTitle}>Welcome back, Gamers!</Text>
-                <Text style={styles.heroSubtitle}>
-                  Continue sharing your epic moments and discover what the community has been up to.
-                </Text>
-              </View>
-            </LinearGradient>
-          </ImageBackground>
-        </View>
+        {/* Hero Banner */}
+        <HeroBanner />
 
         {/* Featured Clips with Toggle */}
         <View style={styles.sectionHeader}>
@@ -662,14 +589,20 @@ export default function HomeScreen() {
           ) : activeClips.length === 0 ? (
             renderEmptyState(`No ${activeTab} available`)
           ) : (
-            activeClips.map((clip) => (
+            activeClips.map((clip, index) => (
               <TouchableOpacity 
                 key={clip.id} 
                 style={activeTab === 'clips' ? styles.featuredClipCard : styles.featuredReelCard}
-                onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString() } })}
+                onPress={() => {
+                  if (activeTab === 'reels') {
+                    openReelsViewer(index);
+                  } else {
+                    router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString() } });
+                  }
+                }}
               >
                 <ImageBackground
-                  source={{ uri: clip.thumbnailUrl }}
+                  source={{ uri: getClipThumbnail(clip, activeTab === 'reels') }}
                   style={activeTab === 'clips' ? styles.featuredClipThumbnail : styles.featuredReelThumbnail}
                   imageStyle={{ borderRadius: 16 }}
                 >
@@ -678,7 +611,7 @@ export default function HomeScreen() {
                       <View style={styles.statsBadge}>
                         <Text style={styles.statsText}>{formatDuration(clip.duration)}</Text>
                         <View style={styles.statsDivider} />
-                        <Eye size={12} color="#FFF" style={{ marginRight: 4 }} />
+                        <Eye size={12} color="#FFF" />
                         <Text style={styles.statsText}>{formatViews(clip.views)}</Text>
                       </View>
                     </View>
@@ -691,6 +624,11 @@ export default function HomeScreen() {
                       }}>
                         <Text style={styles.latestClipUser}>@{clip.user.username}</Text>
                       </TouchableOpacity>
+                      {clip.taggedUsers && clip.taggedUsers.length > 0 && (
+                        <Text style={styles.taggedUsersText} numberOfLines={1}>
+                          with {clip.taggedUsers.map((u: TaggedUser) => `@${u.username}`).join(', ')}
+                        </Text>
+                      )}
                       {clip.game && (
                         <TouchableOpacity
                           style={styles.gameTag}
@@ -732,7 +670,7 @@ export default function HomeScreen() {
               onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString() } })}
             >
               <ImageBackground
-                source={{ uri: clip.thumbnailUrl }}
+                source={{ uri: getClipThumbnail(clip, false) }}
                 style={styles.latestClipThumbnail}
                 imageStyle={{ borderRadius: 16 }}
               >
@@ -741,7 +679,7 @@ export default function HomeScreen() {
                      <View style={styles.statsBadge}>
                         <Text style={styles.statsText}>{formatDuration(clip.duration)}</Text>
                         <View style={styles.statsDivider} />
-                        <Eye size={12} color="#FFF" style={{ marginRight: 4 }} />
+                        <Eye size={12} color="#FFF" />
                         <Text style={styles.statsText}>{clip.views}</Text>
                      </View>
                   </View>
@@ -774,6 +712,13 @@ export default function HomeScreen() {
         </ScrollView>
 
 
+        {/* Ad Banner */}
+        <AdBanner 
+          size="medium" 
+          placement="between-content"
+          onAdClicked={(adId) => console.log('[Home] Ad clicked:', adId)}
+        />
+
         {/* Latest Reels Section */}
         <View style={styles.sectionHeaderWithAction}>
           <View style={styles.sectionHeaderLeft}>
@@ -798,7 +743,7 @@ export default function HomeScreen() {
               onPress={() => openReelsViewer(index)}
             >
               <ImageBackground
-                source={{ uri: reel.thumbnailUrl }}
+                source={{ uri: getClipThumbnail(reel, true) }}
                 style={styles.reelPreviewThumbnail}
                 imageStyle={{ borderRadius: 16 }}
               >
@@ -815,6 +760,11 @@ export default function HomeScreen() {
                       }}>
                         <Text style={styles.reelPreviewUser}>@{reel.user.username}</Text>
                       </TouchableOpacity>
+                      {reel.taggedUsers && reel.taggedUsers.length > 0 && (
+                        <Text style={styles.reelTaggedUsersText} numberOfLines={1}>
+                          with {reel.taggedUsers.map((u: TaggedUser) => `@${u.username}`).join(', ')}
+                        </Text>
+                      )}
                       {reel.game && (
                         <View style={styles.reelGameBadge}>
                           <Text style={styles.reelGameBadgeText} numberOfLines={1}>{shortenGameName(reel.game.name)}</Text>
@@ -828,80 +778,6 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        {/* Trending Gamefolios Section */}
-        <View style={styles.sectionHeaderWithAction}>
-          <View style={styles.sectionHeaderLeft}>
-            <TrendingUp size={20} color="#4ADE80" />
-            <Text style={styles.sectionTitle}>Trending Gamefolios</Text>
-          </View>
-          <TouchableOpacity style={styles.viewAllButton}>
-            <Text style={styles.viewAllText}>View all</Text>
-            <ChevronRight size={16} color="#4ADE80" />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.clipsList}
-        >
-          {trendingUsers.map((trendingUser) => (
-            <TouchableOpacity 
-              key={trendingUser.id} 
-              style={styles.trendingUserCard}
-              onPress={() => {
-                console.log('[Home] Navigating to user profile:', trendingUser.username);
-                router.push({ pathname: '/user/[id]', params: { id: trendingUser.username } });
-              }}
-              activeOpacity={0.7}
-            >
-              <ImageBackground
-                source={{ uri: trendingUser.bannerUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400' }}
-                style={styles.trendingUserBanner}
-                imageStyle={{ borderRadius: 16 }}
-              >
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.9)']}
-                  style={styles.trendingUserGradient}
-                >
-                  <View style={styles.trendingUserContent}>
-                    <View style={styles.trendingUserAvatarContainer}>
-                      <Image
-                        source={{ uri: trendingUser.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100' }}
-                        style={[
-                          styles.trendingUserAvatar,
-                          { borderColor: trendingUser.accentColor || '#4ADE80' }
-                        ]}
-                      />
-                      <View style={[
-                        styles.trendingUserLevelBadge,
-                        { backgroundColor: trendingUser.accentColor || '#4ADE80' }
-                      ]}>
-                        <Text style={styles.trendingUserLevelText}>{trendingUser.level}</Text>
-                      </View>
-                    </View>
-                    
-                    <Text style={styles.trendingUserDisplayName} numberOfLines={1}>
-                      {trendingUser.displayName}
-                    </Text>
-                    <Text style={styles.trendingUserUsername}>@{trendingUser.username}</Text>
-                    
-                    <View style={styles.trendingUserStats}>
-                      <View style={styles.trendingUserStatItem}>
-                        <Flame size={12} color="#F59E0B" />
-                        <Text style={styles.trendingUserStatText}>{trendingUser.currentStreak} streak</Text>
-                      </View>
-                      <View style={styles.trendingUserStatItem}>
-                        <TrendingUp size={12} color="#4ADE80" />
-                        <Text style={styles.trendingUserStatText}>{(trendingUser.totalXP / 1000).toFixed(1)}k XP</Text>
-                      </View>
-                    </View>
-                  </View>
-                </LinearGradient>
-              </ImageBackground>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
 
         {/* Extra space for scrolling */}
         <View style={{ height: 20 }} />
@@ -962,7 +838,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F1520',
   },
   content: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   heroContainer: {
     height: 400, // Large hero image
@@ -1041,7 +917,9 @@ const styles = StyleSheet.create({
   },
   clipsList: {
     gap: 16,
-    paddingRight: 20,
+    paddingRight: 16,
+    paddingLeft: 16,
+    marginLeft: -16,
     marginBottom: 20,
   },
   featuredClipCard: {
@@ -1057,8 +935,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   featuredReelCard: {
-    width: 130,
-    height: 220,
+    width: 155,
+    height: 275,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1E293B',
@@ -1117,7 +995,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    gap: 6,
+    gap: 4,
   },
   statsText: {
     color: '#FFF',
@@ -1207,8 +1085,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E293B',
   },
   reelPreviewCard: {
-    width: 140,
-    height: 220,
+    width: 155,
+    height: 275,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1E293B',
@@ -1270,6 +1148,18 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600' as const,
   },
+  taggedUsersText: {
+    color: '#4ADE80',
+    fontSize: 11,
+    fontWeight: '500' as const,
+    marginTop: 2,
+  },
+  reelTaggedUsersText: {
+    color: '#4ADE80',
+    fontSize: 10,
+    fontWeight: '500' as const,
+    marginTop: 2,
+  },
   reelsModalContainer: {
     flex: 1,
     backgroundColor: '#000',
@@ -1317,75 +1207,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
   },
-  trendingUserCard: {
-    width: 160,
-    height: 200,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#1E293B',
-  },
-  trendingUserBanner: {
-    width: '100%',
-    height: '100%',
-  },
-  trendingUserGradient: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  trendingUserContent: {
-    padding: 12,
-    alignItems: 'center' as const,
-  },
-  trendingUserAvatarContainer: {
-    position: 'relative' as const,
-    marginBottom: 8,
-  },
-  trendingUserAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderWidth: 3,
-  },
-  trendingUserLevelBadge: {
-    position: 'absolute' as const,
-    bottom: -4,
-    right: -4,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    borderWidth: 2,
-    borderColor: '#1E293B',
-  },
-  trendingUserLevelText: {
-    color: '#002E15',
-    fontSize: 10,
-    fontWeight: '700' as const,
-  },
-  trendingUserDisplayName: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '700' as const,
-    textAlign: 'center' as const,
-  },
-  trendingUserUsername: {
-    color: '#94A3B8',
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  trendingUserStats: {
-    flexDirection: 'row' as const,
-    gap: 12,
-  },
-  trendingUserStatItem: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 4,
-  },
-  trendingUserStatText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '600' as const,
-  },
+
 });

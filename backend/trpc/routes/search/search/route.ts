@@ -1,6 +1,7 @@
 import { publicProcedure } from "@/backend/trpc/create-context";
 import { z } from "zod";
 import { Env } from "@/constants/Env";
+import { supabaseAdmin } from "@/lib/supabase";
 
 const mockHashtags = [
   { id: '1', name: 'valorant', count: 15420 },
@@ -17,16 +18,33 @@ const mockHashtags = [
   { id: '12', name: 'leagueclips', count: 3200 },
 ];
 
-const mockUsers = [
-  { id: '999999', username: 'sample_gamer', displayName: 'Sample Gamer', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&h=400&fit=crop', verified: true, followers: 1247 },
-  { id: '1', username: 'ProGamer123', displayName: 'Pro Gamer', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100', verified: true, followers: 125000 },
-  { id: '2', username: 'NinjaStreamer', displayName: 'Ninja Streamer', avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100', verified: true, followers: 89000 },
-  { id: '3', username: 'GameMaster', displayName: 'Game Master', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100', verified: false, followers: 45000 },
-  { id: '4', username: 'ValPlayer', displayName: 'Valorant Player', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100', verified: true, followers: 67000 },
-  { id: '5', username: 'ApexPro', displayName: 'Apex Professional', avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcabd36?w=100', verified: false, followers: 23000 },
-  { id: '6', username: 'LeagueFan', displayName: 'League Fan', avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=100', verified: false, followers: 34000 },
-  { id: '7', username: 'LeaguePro', displayName: 'League Pro Player', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100', verified: true, followers: 156000 },
-];
+async function searchRealUsers(query: string, limit: number) {
+  try {
+    const { data: users, error } = await supabaseAdmin
+      .from('users')
+      .select('id, username, display_name, avatar_url, is_verified, follower_count')
+      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .order('follower_count', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('[Search] Error fetching real users:', error);
+      return [];
+    }
+
+    return (users || []).map(user => ({
+      id: user.id,
+      username: user.username,
+      displayName: user.display_name || user.username,
+      avatar: user.avatar_url,
+      verified: user.is_verified || false,
+      followers: user.follower_count || 0,
+    }));
+  } catch (error) {
+    console.error('[Search] Unexpected error fetching users:', error);
+    return [];
+  }
+}
 
 interface TwitchToken {
   access_token: string;
@@ -158,14 +176,9 @@ const searchRoute = publicProcedure
     
     console.log(`[Search] Found ${hashtags.length} hashtags`);
 
-    const users = mockUsers
-      .filter(user => 
-        user.username.toLowerCase().includes(searchTerm) || 
-        user.displayName.toLowerCase().includes(searchTerm)
-      )
-      .slice(0, limit);
+    const users = await searchRealUsers(query, limit);
     
-    console.log(`[Search] Found ${users.length} users`);
+    console.log(`[Search] Found ${users.length} real users from database`);
 
     let games: { id: string; name: string; icon: string; category: string; players: number }[] = [];
     try {

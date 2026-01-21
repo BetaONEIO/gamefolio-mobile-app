@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
   },
   ruleText: {
     fontSize: 14,
-    color: '#94A3B8',
+    color: '#4ADE80',
     marginBottom: 4,
   },
   footer: {

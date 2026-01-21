@@ -1,9 +1,11 @@
 import { Drawer } from 'expo-router/drawer';
 import React from 'react';
 import CustomDrawerContent from '@/components/CustomDrawerContent';
+import AuthGuard from '@/components/AuthGuard';
 
 export default function DrawerLayout() {
   return (
+    <AuthGuard>
     <Drawer
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
@@ -43,5 +45,6 @@ export default function DrawerLayout() {
         }}
       />
     </Drawer>
+    </AuthGuard>
   );
 }
