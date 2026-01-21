@@ -68,6 +68,59 @@ async function getTwitchToken(): Promise<string> {
   return cachedTwitchToken.token;
 }
 
+// Helper function to calculate level from XP
+function calculateLevel(totalXP: number): number {
+  let level = 1;
+  let xpNeeded = 0;
+  
+  while (xpNeeded <= totalXP) {
+    xpNeeded += 1000 * level;
+    if (xpNeeded <= totalXP) {
+      level++;
+    }
+  }
+  
+  return level;
+}
+
+// Helper function to award XP to a user
+async function awardXP(userId: number, xpAmount: number): Promise<{ success: boolean; newTotalXP?: number; newLevel?: number }> {
+  try {
+    const { data: currentUser, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('total_xp')
+      .eq('id', userId)
+      .single();
+
+    if (fetchError || !currentUser) {
+      console.error('[XP] Failed to fetch user for XP award:', fetchError);
+      return { success: false };
+    }
+
+    const newTotalXP = (currentUser.total_xp || 0) + xpAmount;
+    const newLevel = calculateLevel(newTotalXP);
+
+    const { error: updateError } = await supabaseAdmin
+      .from('users')
+      .update({
+        total_xp: newTotalXP,
+        level: newLevel,
+      })
+      .eq('id', userId);
+
+    if (updateError) {
+      console.error('[XP] Failed to update XP:', updateError);
+      return { success: false };
+    }
+
+    console.log('[XP] Awarded', xpAmount, 'XP to user', userId, '- New total:', newTotalXP, 'Level:', newLevel);
+    return { success: true, newTotalXP, newLevel };
+  } catch (error) {
+    console.error('[XP] Error awarding XP:', error);
+    return { success: false };
+  }
+}
+
 // REST API Endpoints
 
 // Token Login
@@ -497,6 +550,11 @@ app.get("/api/clips", async (c) => {
     }
 
     console.log('[REST] Found clips:', clips?.length || 0);
+    
+    // Log thumbnail data for debugging
+    clips?.forEach((clip: any, index: number) => {
+      console.log(`[REST] Clip ${index + 1}: id=${clip.id}, thumbnail_url="${clip.thumbnail_url || 'NULL'}", video_url="${clip.video_url || 'NULL'}"`);
+    });
 
     const formattedClips = await Promise.all(clips?.map(async (clip: any) => {
       const { count: likesCount } = await supabaseAdmin
@@ -513,27 +571,27 @@ app.get("/api/clips", async (c) => {
         id: clip.id,
         userId: clip.user_id,
         gameId: clip.game_id,
-        title: clip.title,
+        title: clip.title || 'Untitled',
         description: clip.description || '',
-        videoUrl: clip.video_url,
-        thumbnailUrl: clip.thumbnail_url,
+        videoUrl: clip.video_url || '',
+        thumbnailUrl: clip.thumbnail_url || '',
         videoType: clip.video_type || 'clip',
         duration: clip.duration || 0,
         views: clip.views || 0,
-        shareCode: clip.share_code,
+        shareCode: clip.share_code || '',
         ageRestricted: clip.age_restricted || false,
         createdAt: clip.created_at,
         user: {
-          id: clip.user.id,
-          username: clip.user.username,
-          displayName: clip.user.display_name,
-          avatarUrl: clip.user.avatar_url,
+          id: clip.user?.id || 0,
+          username: clip.user?.username || 'unknown',
+          displayName: clip.user?.display_name || clip.user?.username || 'Unknown',
+          avatarUrl: clip.user?.avatar_url || '',
         },
         game: clip.game ? {
           id: clip.game.id,
-          name: clip.game.name,
-          imageUrl: clip.game.image_url,
-          twitchId: clip.game.twitch_id,
+          name: clip.game.name || 'Unknown Game',
+          imageUrl: clip.game.image_url || '',
+          twitchId: clip.game.twitch_id || '',
         } : null,
         _count: {
           likes: likesCount || 0,
@@ -542,9 +600,93 @@ app.get("/api/clips", async (c) => {
       };
     }) || []);
 
+    console.log('[REST] Returning', formattedClips.length, 'formatted clips');
     return c.json(formattedClips);
   } catch (error) {
     console.error('[REST] Error in clips feed:', error);
+    return c.json([], 500);
+  }
+});
+
+// REST API: Get Latest Clips
+app.get("/api/clips/latest", async (c) => {
+  const limitParam = c.req.query("limit");
+  const limit = limitParam ? parseInt(limitParam, 10) : 20;
+
+  console.log(`[REST] Fetching latest clips - limit: ${limit}`);
+
+  try {
+    const { data: clips, error } = await supabaseAdmin
+      .from('clips')
+      .select(`
+        *,
+        user:users!inner(id, username, display_name, avatar_url),
+        game:games(id, name, image_url, twitch_id)
+      `)
+      .eq('video_type', 'clip')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('[REST] Error fetching latest clips:', error);
+      return c.json([], 500);
+    }
+
+    console.log('[REST] Found latest clips:', clips?.length || 0);
+    
+    // Log thumbnail info for debugging
+    clips?.forEach((clip: any, index: number) => {
+      console.log(`[REST] Latest Clip ${index + 1}: id=${clip.id}, title="${clip.title}", thumbnail_url="${clip.thumbnail_url || 'NULL'}", game_image="${clip.game?.image_url || 'NULL'}"`);
+    });
+
+    const formattedClips = await Promise.all(clips?.map(async (clip: any) => {
+      const { count: likesCount } = await supabaseAdmin
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('clip_id', clip.id);
+
+      const { count: commentsCount } = await supabaseAdmin
+        .from('comments')
+        .select('*', { count: 'exact', head: true })
+        .eq('clip_id', clip.id);
+
+      return {
+        id: clip.id,
+        userId: clip.user_id,
+        gameId: clip.game_id,
+        title: clip.title || 'Untitled',
+        description: clip.description || '',
+        videoUrl: clip.video_url || '',
+        thumbnailUrl: clip.thumbnail_url || '',
+        videoType: clip.video_type || 'clip',
+        duration: clip.duration || 0,
+        views: clip.views || 0,
+        shareCode: clip.share_code || '',
+        ageRestricted: clip.age_restricted || false,
+        createdAt: clip.created_at,
+        user: {
+          id: clip.user?.id || 0,
+          username: clip.user?.username || 'unknown',
+          displayName: clip.user?.display_name || clip.user?.username || 'Unknown',
+          avatarUrl: clip.user?.avatar_url || '',
+        },
+        game: clip.game ? {
+          id: clip.game.id,
+          name: clip.game.name || 'Unknown Game',
+          imageUrl: clip.game.image_url || '',
+          twitchId: clip.game.twitch_id || '',
+        } : null,
+        _count: {
+          likes: likesCount || 0,
+          comments: commentsCount || 0,
+        }
+      };
+    }) || []);
+
+    console.log('[REST] Returning', formattedClips.length, 'latest clips with thumbnails');
+    return c.json(formattedClips);
+  } catch (error) {
+    console.error('[REST] Error in latest clips:', error);
     return c.json([], 500);
   }
 });
@@ -677,6 +819,11 @@ app.get("/api/reels/latest", async (c) => {
     }
 
     console.log('[REST] Found reels:', reels?.length || 0);
+    
+    // Log thumbnail info for debugging
+    reels?.forEach((reel: any, index: number) => {
+      console.log(`[REST] Latest Reel ${index + 1}: id=${reel.id}, title="${reel.title}", thumbnail_url="${reel.thumbnail_url || 'NULL'}", video_url="${reel.video_url || 'NULL'}", game_image="${reel.game?.image_url || 'NULL'}"`);
+    });
 
     const formattedReels = await Promise.all(reels?.map(async (reel: any) => {
       const { count: likesCount } = await supabaseAdmin
@@ -693,27 +840,27 @@ app.get("/api/reels/latest", async (c) => {
         id: reel.id,
         userId: reel.user_id,
         gameId: reel.game_id,
-        title: reel.title,
+        title: reel.title || 'Untitled',
         description: reel.description || '',
-        videoUrl: reel.video_url,
-        thumbnailUrl: reel.thumbnail_url,
+        videoUrl: reel.video_url || '',
+        thumbnailUrl: reel.thumbnail_url || '',
         videoType: reel.video_type || 'reel',
         duration: reel.duration || 0,
         views: reel.views || 0,
-        shareCode: reel.share_code,
+        shareCode: reel.share_code || '',
         ageRestricted: reel.age_restricted || false,
         createdAt: reel.created_at,
         user: {
-          id: reel.user.id,
-          username: reel.user.username,
-          displayName: reel.user.display_name,
-          avatarUrl: reel.user.avatar_url,
+          id: reel.user?.id || 0,
+          username: reel.user?.username || 'unknown',
+          displayName: reel.user?.display_name || reel.user?.username || 'Unknown',
+          avatarUrl: reel.user?.avatar_url || '',
         },
         game: reel.game ? {
           id: reel.game.id,
-          name: reel.game.name,
-          imageUrl: reel.game.image_url,
-          twitchId: reel.game.twitch_id,
+          name: reel.game.name || 'Unknown Game',
+          imageUrl: reel.game.image_url || '',
+          twitchId: reel.game.twitch_id || '',
         } : null,
         _count: {
           likes: likesCount || 0,
@@ -722,6 +869,7 @@ app.get("/api/reels/latest", async (c) => {
       };
     }) || []);
 
+    console.log('[REST] Returning', formattedReels.length, 'latest reels with thumbnails');
     return c.json(formattedReels);
   } catch (error) {
     console.error('[REST] Error in latest reels:', error);
@@ -902,14 +1050,34 @@ app.get("/api/search", async (c) => {
   
   console.log(`[Search REST] Found ${hashtags.length} hashtags`);
 
-  const users = mockUsers
-    .filter(user => 
-      user.username.toLowerCase().includes(searchTerm) || 
-      user.displayName.toLowerCase().includes(searchTerm)
-    )
-    .slice(0, limit);
-  
-  console.log(`[Search REST] Found ${users.length} users`);
+  // Search for real users from database
+  let users: { id: string; username: string; displayName: string; avatar: string; verified: boolean; followers: number }[] = [];
+  try {
+    const { data: dbUsers, error: usersError } = await supabaseAdmin
+      .from('users')
+      .select('id, username, display_name, avatar_url, verified')
+      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .limit(limit);
+
+    if (usersError) {
+      console.error('[Search REST] Error searching users:', usersError);
+    } else if (dbUsers && dbUsers.length > 0) {
+      users = dbUsers.map(user => ({
+        id: String(user.id),
+        username: user.username || '',
+        displayName: user.display_name || user.username || '',
+        avatar: user.avatar_url || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100',
+        verified: user.verified || false,
+        followers: 0,
+      }));
+      console.log(`[Search REST] Found ${users.length} users from database`);
+    }
+  } catch (error) {
+    console.error('[Search REST] Failed to search users:', error);
+  }
+
+  // No fallback to mock users - only return real users from database
+  console.log(`[Search REST] Returning ${users.length} real users (no mock fallback)`);
 
   let games: { id: string; name: string; icon: string; category: string; players: number }[] = [];
   try {
@@ -1430,22 +1598,24 @@ app.post("/api/messages/:userId/read", async (c) => {
 app.get("/api/users/search", async (c) => {
   const query = c.req.query('q');
   
-  if (!query) {
+  if (!query || query.trim().length === 0) {
     return c.json({ users: [] });
   }
 
-  console.log('[Users REST] Searching for:', query);
+  const searchTerm = query.trim();
+  console.log('[Users REST] Searching for:', searchTerm);
 
   try {
     const { data: users, error } = await supabaseAdmin
       .from('users')
       .select('id, username, display_name, avatar_url, level, total_xp')
-      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .or(`username.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%`)
+      .order('total_xp', { ascending: false })
       .limit(20);
 
     if (error) {
       console.error('[Users REST] Error searching users:', error);
-      return c.json({ users: [] });
+      return c.json({ users: [], error: error.message }, 500);
     }
 
     const formattedUsers = (users || []).map(u => ({
@@ -1457,11 +1627,11 @@ app.get("/api/users/search", async (c) => {
       totalXP: u.total_xp ?? 0,
     }));
 
-    console.log('[Users REST] Found', formattedUsers.length, 'users');
+    console.log('[Users REST] Found', formattedUsers.length, 'real users from database');
     return c.json({ users: formattedUsers });
   } catch (error) {
     console.error('[Users REST] Unexpected error:', error);
-    return c.json({ users: [] });
+    return c.json({ users: [], error: 'Search failed' }, 500);
   }
 });
 
@@ -2414,22 +2584,226 @@ app.get("/api/clips/:id/likes", async (c) => {
   }
 });
 
-// REST API: Clips - Get Reactions (Fire counts)
+// REST API: Clips - Get Reactions
 app.get("/api/clips/:id/reactions", async (c) => {
   const clipId = c.req.param('id');
 
+  console.log('[Reactions REST] Getting reactions for clip:', clipId);
+
   try {
-    const { count: likesCount } = await supabaseAdmin
-      .from('likes')
-      .select('*', { count: 'exact', head: true })
+    const { data: reactions, error } = await supabaseAdmin
+      .from('reactions')
+      .select('id, clip_id, user_id, emoji, position_x, position_y, created_at')
       .eq('clip_id', clipId);
 
-    return c.json({
-      fire: likesCount || 0,
-      total: likesCount || 0,
-    });
+    if (error) {
+      console.error('[Reactions REST] Error fetching reactions:', error);
+      return c.json([]);
+    }
+
+    const formattedReactions = (reactions || []).map((r: any) => ({
+      id: r.id,
+      clipId: r.clip_id,
+      userId: r.user_id,
+      emoji: r.emoji,
+      positionX: r.position_x || 50,
+      positionY: r.position_y || 50,
+      createdAt: r.created_at,
+    }));
+
+    console.log('[Reactions REST] Found', formattedReactions.length, 'reactions');
+    return c.json(formattedReactions);
+  } catch (error) {
+    console.error('[Reactions REST] Unexpected error:', error);
+    return c.json([]);
+  }
+});
+
+// REST API: Clips - Add Reaction (Fire)
+app.post("/api/clips/:id/reactions", async (c) => {
+  const clipId = c.req.param('id');
+  const authHeader = c.req.header("Authorization");
+  
+  if (!authHeader) {
+    return c.json({ message: "Not authenticated" }, 401);
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  let userId: number;
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number | string };
+    userId = typeof decoded.userId === 'number' ? decoded.userId : parseInt(String(decoded.userId));
+    
+    if (isNaN(userId)) {
+      return c.json({ message: 'Invalid token payload' }, 401);
+    }
   } catch {
-    return c.json({ fire: 0, total: 0 });
+    return c.json({ message: "Invalid token" }, 401);
+  }
+
+  try {
+    const body = await c.req.json();
+    const { emoji = '🔥', positionX = 50, positionY = 50 } = body;
+
+    console.log('[Reactions REST] Adding reaction to clip:', clipId, 'emoji:', emoji, 'user:', userId);
+
+    // Get the clip to find the owner
+    const { data: clip, error: clipError } = await supabaseAdmin
+      .from('clips')
+      .select('user_id')
+      .eq('id', parseInt(clipId, 10))
+      .single();
+
+    if (clipError || !clip) {
+      console.error('[Reactions REST] Clip not found:', clipId);
+      return c.json({ message: 'Clip not found' }, 404);
+    }
+
+    // Prevent users from firing their own content
+    if (clip.user_id === userId) {
+      console.log('[Reactions REST] User tried to fire their own content');
+      return c.json({ message: 'Cannot react to your own content, casual!' }, 400);
+    }
+
+    // Check if user already has this reaction (fire reactions are permanent)
+    const { data: existing } = await supabaseAdmin
+      .from('reactions')
+      .select('id')
+      .eq('clip_id', parseInt(clipId, 10))
+      .eq('user_id', userId)
+      .eq('emoji', emoji)
+      .maybeSingle();
+
+    if (existing) {
+      console.log('[Reactions REST] User already has this reaction (permanent)');
+      // Get current count for response
+      const { count } = await supabaseAdmin
+        .from('reactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('clip_id', parseInt(clipId, 10))
+        .eq('emoji', emoji);
+      
+      return c.json({ 
+        id: existing.id,
+        reacted: true, 
+        count: count || 0,
+        message: 'Already fired this clip'
+      });
+    }
+
+    const { data: reaction, error } = await supabaseAdmin
+      .from('reactions')
+      .insert({
+        clip_id: parseInt(clipId, 10),
+        user_id: userId,
+        emoji,
+        position_x: positionX,
+        position_y: positionY,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[Reactions REST] Error adding reaction:', error);
+      return c.json({ message: 'Failed to add reaction' }, 500);
+    }
+
+    console.log('[Reactions REST] Reaction added:', reaction.id);
+
+    // Award 5 points to the giver (current user)
+    const giverXPResult = await awardXP(userId, 5);
+    if (giverXPResult.success) {
+      console.log('[Reactions REST] Awarded 5 XP to giver (user:', userId, ')');
+    }
+
+    // Award 5 points to the content creator (clip owner)
+    const creatorXPResult = await awardXP(clip.user_id, 5);
+    if (creatorXPResult.success) {
+      console.log('[Reactions REST] Awarded 5 XP to creator (user:', clip.user_id, ')');
+    }
+
+    // Get updated fire count
+    const { count } = await supabaseAdmin
+      .from('reactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('clip_id', parseInt(clipId, 10))
+      .eq('emoji', emoji);
+
+    return c.json({
+      id: reaction.id,
+      clipId: reaction.clip_id,
+      userId: reaction.user_id,
+      emoji: reaction.emoji,
+      reacted: true,
+      count: count || 1,
+      giverXPAwarded: giverXPResult.success ? 5 : 0,
+      creatorXPAwarded: creatorXPResult.success ? 5 : 0,
+    });
+  } catch (error) {
+    console.error('[Reactions REST] Unexpected error:', error);
+    return c.json({ message: 'Internal server error' }, 500);
+  }
+});
+
+// REST API: Delete Reaction
+app.delete("/api/reactions/:id", async (c) => {
+  const reactionId = c.req.param('id');
+  const authHeader = c.req.header("Authorization");
+  
+  if (!authHeader) {
+    return c.json({ message: "Not authenticated" }, 401);
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  let userId: number;
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number | string };
+    userId = typeof decoded.userId === 'number' ? decoded.userId : parseInt(String(decoded.userId));
+    
+    if (isNaN(userId)) {
+      return c.json({ message: 'Invalid token payload' }, 401);
+    }
+  } catch {
+    return c.json({ message: "Invalid token" }, 401);
+  }
+
+  console.log('[Reactions REST] Deleting reaction:', reactionId, 'user:', userId);
+
+  try {
+    // Verify ownership
+    const { data: reaction, error: fetchError } = await supabaseAdmin
+      .from('reactions')
+      .select('id, user_id')
+      .eq('id', parseInt(reactionId, 10))
+      .single();
+
+    if (fetchError || !reaction) {
+      console.error('[Reactions REST] Reaction not found:', reactionId);
+      return c.json({ message: 'Reaction not found' }, 404);
+    }
+
+    if (reaction.user_id !== userId) {
+      console.error('[Reactions REST] Unauthorized delete attempt');
+      return c.json({ message: 'You can only delete your own reactions' }, 403);
+    }
+
+    const { error: deleteError } = await supabaseAdmin
+      .from('reactions')
+      .delete()
+      .eq('id', parseInt(reactionId, 10));
+
+    if (deleteError) {
+      console.error('[Reactions REST] Error deleting reaction:', deleteError);
+      return c.json({ message: 'Failed to delete reaction' }, 500);
+    }
+
+    console.log('[Reactions REST] Reaction deleted successfully');
+    return c.json({ message: 'Reaction deleted successfully' });
+  } catch (error) {
+    console.error('[Reactions REST] Unexpected error:', error);
+    return c.json({ message: 'Internal server error' }, 500);
   }
 });
 
@@ -2469,6 +2843,72 @@ app.get("/api/clips/:id/comments", async (c) => {
     return c.json(formattedComments);
   } catch {
     return c.json([]);
+  }
+});
+
+// REST API: Clips - Add Comment
+app.post("/api/clips/:id/comments", async (c) => {
+  const clipId = c.req.param('id');
+  const authHeader = c.req.header("Authorization");
+  
+  if (!authHeader) {
+    return c.json({ message: "Not authenticated" }, 401);
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  let userId: number;
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    userId = decoded.userId;
+  } catch {
+    return c.json({ message: "Invalid token" }, 401);
+  }
+
+  try {
+    const body = await c.req.json();
+    const { content } = body;
+
+    if (!content || content.trim().length === 0) {
+      return c.json({ message: "Comment content is required" }, 400);
+    }
+
+    console.log('[Comments REST] Adding comment to clip:', clipId, 'by user:', userId);
+
+    const { data: comment, error } = await supabaseAdmin
+      .from('comments')
+      .insert({
+        clip_id: parseInt(clipId, 10),
+        user_id: userId,
+        content: content.trim(),
+      })
+      .select(`
+        *,
+        user:users!inner(id, username, display_name, avatar_url)
+      `)
+      .single();
+
+    if (error) {
+      console.error('[Comments REST] Error adding comment:', error);
+      return c.json({ message: "Failed to add comment" }, 500);
+    }
+
+    console.log('[Comments REST] Comment added successfully:', comment.id);
+
+    return c.json({
+      id: comment.id,
+      content: comment.content,
+      createdAt: comment.created_at,
+      user: {
+        id: comment.user.id,
+        username: comment.user.username,
+        displayName: comment.user.display_name,
+        avatarUrl: comment.user.avatar_url,
+      },
+    });
+  } catch (error) {
+    console.error('[Comments REST] Unexpected error:', error);
+    return c.json({ message: "Internal server error" }, 500);
   }
 });
 
@@ -2972,7 +3412,6 @@ app.post("/api/oauth/discord/callback", async (c) => {
     console.log("[OAuth/Discord/Mobile] Exchanging code for token...");
     console.log("[OAuth/Discord/Mobile] Redirect URI:", redirectUri);
     
-    // Use mobile Discord credentials if available, fallback to web credentials
     const discordClientId = Env.DISCORD_MOBILE_CLIENT_ID || Env.DISCORD_CLIENT_ID;
     const discordClientSecret = Env.DISCORD_MOBILE_CLIENT_SECRET || Env.DISCORD_CLIENT_SECRET;
     
@@ -3028,25 +3467,17 @@ app.post("/api/oauth/discord/callback", async (c) => {
       .maybeSingle();
     
     let user;
+    let isNewUser = false;
     
     if (existingUser) {
       console.log("[OAuth/Discord/Mobile] Found existing user:", existingUser.username);
       user = existingUser;
     } else {
       console.log("[OAuth/Discord/Mobile] Creating new user for:", discordUser.username);
+      isNewUser = true;
       
-      let username = discordUser.username.replace(/[^a-zA-Z0-9_]/g, "");
-      if (username.length < 3) username = `user_${discordUser.id.slice(-6)}`;
-      
-      const { data: existingUsername } = await supabaseAdmin
-        .from("users")
-        .select("id")
-        .eq("username", username)
-        .maybeSingle();
-      
-      if (existingUsername) {
-        username = `${username}_${Date.now().toString(36)}`;
-      }
+      // Generate temp username for social login users - they'll choose permanent one in onboarding
+      const tempUsername = `temp_${discordUser.id.slice(0, 8)}_${Date.now().toString(36)}`;
       
       const avatarUrl = discordUser.avatar
         ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
@@ -3055,15 +3486,18 @@ app.post("/api/oauth/discord/callback", async (c) => {
       const { data: newUser, error: createError } = await supabaseAdmin
         .from("users")
         .insert({
-          username,
+          username: tempUsername,
           display_name: discordUser.global_name || discordUser.username,
           email: discordUser.email || `discord_${discordUser.id}@placeholder.com`,
           discord_id: discordUser.id,
           avatar_url: avatarUrl,
-          email_verified: !!discordUser.email,
+          email_verified: true, // Discord accounts are pre-verified
           role: "user",
           messaging_enabled: true,
           is_private: false,
+          auth_provider: "discord",
+          user_type: null, // Force onboarding
+          age_range: null, // Force onboarding
         })
         .select()
         .single();
@@ -3088,12 +3522,17 @@ app.post("/api/oauth/discord/callback", async (c) => {
       { expiresIn: "30d" }
     );
     
-    console.log("[OAuth/Discord/Mobile] Login successful for:", user.username);
+    // Check if user needs onboarding
+    const needsOnboarding = !user.user_type || !user.age_range || (user.username && user.username.startsWith('temp_'));
+    
+    console.log("[OAuth/Discord/Mobile] Login successful for:", user.username, "needsOnboarding:", needsOnboarding);
     
     return c.json({
       accessToken,
       refreshToken,
       expiresIn: 7 * 24 * 60 * 60,
+      needsOnboarding,
+      isNewUser,
       user: {
         id: user.id,
         username: user.username,
@@ -3111,7 +3550,9 @@ app.post("/api/oauth/discord/callback", async (c) => {
         messagingEnabled: user.messaging_enabled,
         isPrivate: user.is_private,
         userType: user.user_type,
+        ageRange: user.age_range,
         gfTokenBalance: user.gf_token_balance,
+        authProvider: user.auth_provider || 'discord',
       },
     });
   } catch (error) {
@@ -3210,6 +3651,7 @@ app.get("/api/oauth/google/callback", async (c) => {
       .maybeSingle();
     
     let user;
+    let isNewUser = false;
     
     if (existingUser) {
       console.log("[OAuth/Google] Found existing user:", existingUser.username);
@@ -3225,7 +3667,7 @@ app.get("/api/oauth/google/callback", async (c) => {
         console.log("[OAuth/Google] Found user by email, linking Google ID");
         const { data: updatedUser, error: updateError } = await supabaseAdmin
           .from("users")
-          .update({ google_id: googleUser.id })
+          .update({ google_id: googleUser.id, auth_provider: existingEmail.auth_provider || 'google' })
           .eq("id", existingEmail.id)
           .select()
           .single();
@@ -3238,32 +3680,26 @@ app.get("/api/oauth/google/callback", async (c) => {
         user = updatedUser;
       } else {
         console.log("[OAuth/Google] Creating new user for:", googleUser.email);
+        isNewUser = true;
         
-        let username = googleUser.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
-        if (username.length < 3) username = `user_${googleUser.id.slice(-6)}`;
-        
-        const { data: existingUsername } = await supabaseAdmin
-          .from("users")
-          .select("id")
-          .eq("username", username)
-          .maybeSingle();
-        
-        if (existingUsername) {
-          username = `${username}_${Date.now().toString(36)}`;
-        }
+        // Generate temp username for social login users - they'll choose permanent one in onboarding
+        const tempUsername = `temp_${googleUser.id.slice(0, 8)}_${Date.now().toString(36)}`;
         
         const { data: newUser, error: createError } = await supabaseAdmin
           .from("users")
           .insert({
-            username,
-            display_name: googleUser.name || googleUser.given_name || username,
+            username: tempUsername,
+            display_name: googleUser.name || googleUser.given_name || 'User',
             email: googleUser.email,
             google_id: googleUser.id,
             avatar_url: googleUser.picture || null,
-            email_verified: true,
+            email_verified: true, // Google accounts are pre-verified
             role: "user",
             messaging_enabled: true,
             is_private: false,
+            auth_provider: "google",
+            user_type: null, // Force onboarding
+            age_range: null, // Force onboarding
           })
           .select()
           .single();
@@ -3289,6 +3725,8 @@ app.get("/api/oauth/google/callback", async (c) => {
       { expiresIn: "30d" }
     );
     
+    const needsOnboarding = !user.user_type || !user.age_range || (user.username && user.username.startsWith('temp_'));
+    
     const userData = {
       id: user.id,
       username: user.username,
@@ -3305,18 +3743,204 @@ app.get("/api/oauth/google/callback", async (c) => {
       bio: user.bio,
       messagingEnabled: user.messaging_enabled,
       isPrivate: user.is_private,
+      userType: user.user_type,
+      ageRange: user.age_range,
+      authProvider: user.auth_provider || 'google',
     };
     
     const callbackUrl = new URL(redirectUri || "/");
     callbackUrl.searchParams.set("token", accessToken);
     callbackUrl.searchParams.set("refresh_token", refreshToken);
     callbackUrl.searchParams.set("user", encodeURIComponent(JSON.stringify(userData)));
+    callbackUrl.searchParams.set("needs_onboarding", needsOnboarding.toString());
+    callbackUrl.searchParams.set("is_new_user", isNewUser.toString());
     
     console.log("[OAuth/Google] Redirecting to:", callbackUrl.toString());
     return c.redirect(callbackUrl.toString());
   } catch (error) {
     console.error("[OAuth/Google] Error:", error);
     return c.text("Authorization failed: Internal error", 500);
+  }
+});
+
+// OAuth: Google Mobile (POST endpoint for expo-auth-session)
+app.post("/api/oauth/google/callback", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { idToken, accessToken: googleAccessToken } = body;
+    
+    if (!idToken && !googleAccessToken) {
+      console.error("[OAuth/Google/Mobile] No token received");
+      return c.json({ message: "ID token or access token is required" }, 400);
+    }
+    
+    console.log("[OAuth/Google/Mobile] Processing Google auth...");
+    
+    let googleUser: {
+      id: string;
+      email: string;
+      name?: string;
+      given_name?: string;
+      picture?: string;
+    };
+    
+    if (idToken) {
+      // Verify ID token with Google
+      const tokenInfoResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${idToken}`);
+      
+      if (!tokenInfoResponse.ok) {
+        console.error("[OAuth/Google/Mobile] Invalid ID token");
+        return c.json({ message: "Invalid ID token" }, 400);
+      }
+      
+      const tokenInfo = await tokenInfoResponse.json() as {
+        sub: string;
+        email: string;
+        name?: string;
+        given_name?: string;
+        picture?: string;
+      };
+      
+      googleUser = {
+        id: tokenInfo.sub,
+        email: tokenInfo.email,
+        name: tokenInfo.name,
+        given_name: tokenInfo.given_name,
+        picture: tokenInfo.picture,
+      };
+    } else {
+      // Use access token to get user info
+      const userResponse = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
+        headers: {
+          Authorization: `Bearer ${googleAccessToken}`,
+        },
+      });
+      
+      if (!userResponse.ok) {
+        console.error("[OAuth/Google/Mobile] Failed to fetch user info");
+        return c.json({ message: "Failed to fetch user info from Google" }, 400);
+      }
+      
+      googleUser = await userResponse.json();
+    }
+    
+    console.log("[OAuth/Google/Mobile] Got user:", googleUser.email);
+    
+    const { data: existingUser } = await supabaseAdmin
+      .from("users")
+      .select("*")
+      .eq("google_id", googleUser.id)
+      .maybeSingle();
+    
+    let user;
+    let isNewUser = false;
+    
+    if (existingUser) {
+      console.log("[OAuth/Google/Mobile] Found existing user:", existingUser.username);
+      user = existingUser;
+    } else {
+      const { data: existingEmail } = await supabaseAdmin
+        .from("users")
+        .select("*")
+        .eq("email", googleUser.email)
+        .maybeSingle();
+      
+      if (existingEmail) {
+        console.log("[OAuth/Google/Mobile] Found user by email, linking Google ID");
+        const { data: updatedUser, error: updateError } = await supabaseAdmin
+          .from("users")
+          .update({ google_id: googleUser.id, auth_provider: existingEmail.auth_provider || 'google' })
+          .eq("id", existingEmail.id)
+          .select()
+          .single();
+        
+        if (updateError) {
+          console.error("[OAuth/Google/Mobile] Failed to link Google ID:", updateError);
+          return c.json({ message: "Failed to link account" }, 500);
+        }
+        
+        user = updatedUser;
+      } else {
+        console.log("[OAuth/Google/Mobile] Creating new user for:", googleUser.email);
+        isNewUser = true;
+        
+        const tempUsername = `temp_${googleUser.id.slice(0, 8)}_${Date.now().toString(36)}`;
+        
+        const { data: newUser, error: createError } = await supabaseAdmin
+          .from("users")
+          .insert({
+            username: tempUsername,
+            display_name: googleUser.name || googleUser.given_name || 'User',
+            email: googleUser.email,
+            google_id: googleUser.id,
+            avatar_url: googleUser.picture || null,
+            email_verified: true,
+            role: "user",
+            messaging_enabled: true,
+            is_private: false,
+            auth_provider: "google",
+            user_type: null,
+            age_range: null,
+          })
+          .select()
+          .single();
+        
+        if (createError) {
+          console.error("[OAuth/Google/Mobile] Failed to create user:", createError);
+          return c.json({ message: "Failed to create user" }, 500);
+        }
+        
+        user = newUser;
+      }
+    }
+    
+    const accessToken = jwt.sign(
+      { userId: user.id, username: user.username, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+    
+    const refreshToken = jwt.sign(
+      { userId: user.id },
+      JWT_REFRESH_SECRET,
+      { expiresIn: "30d" }
+    );
+    
+    const needsOnboarding = !user.user_type || !user.age_range || (user.username && user.username.startsWith('temp_'));
+    
+    console.log("[OAuth/Google/Mobile] Login successful for:", user.username, "needsOnboarding:", needsOnboarding);
+    
+    return c.json({
+      accessToken,
+      refreshToken,
+      expiresIn: 7 * 24 * 60 * 60,
+      needsOnboarding,
+      isNewUser,
+      user: {
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name,
+        email: user.email,
+        emailVerified: user.email_verified,
+        role: user.role,
+        totalXP: user.total_xp ?? 0,
+        level: user.level ?? 1,
+        currentStreak: user.current_streak ?? 0,
+        longestStreak: user.longest_streak ?? 0,
+        avatarUrl: user.avatar_url,
+        bannerUrl: user.banner_url,
+        bio: user.bio,
+        messagingEnabled: user.messaging_enabled,
+        isPrivate: user.is_private,
+        userType: user.user_type,
+        ageRange: user.age_range,
+        gfTokenBalance: user.gf_token_balance,
+        authProvider: user.auth_provider || 'google',
+      },
+    });
+  } catch (error) {
+    console.error("[OAuth/Google/Mobile] Error:", error);
+    return c.json({ message: "Internal server error" }, 500);
   }
 });
 
@@ -3900,6 +4524,59 @@ app.delete("/api/screenshots/:id", async (c) => {
   }
 });
 
+// Hero Text API endpoint
+app.get("/api/hero-text/experienced", async (c) => {
+  console.log('[HeroText] Fetching hero text for experienced users');
+  
+  try {
+    // Check if there's custom hero text in the database
+    const { data: heroText, error } = await supabaseAdmin
+      .from('hero_text')
+      .select('*')
+      .eq('target_audience', 'experienced_users')
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (heroText && !error) {
+      console.log('[HeroText] Found custom hero text:', heroText.title);
+      return c.json({
+        title: heroText.title,
+        subtitle: heroText.subtitle,
+        buttonText: heroText.button_text,
+        buttonUrl: heroText.button_url,
+        targetAudience: heroText.target_audience,
+        isActive: heroText.is_active,
+        backgroundUrl: heroText.background_url,
+        backgroundType: heroText.background_type,
+      });
+    }
+
+    // Return default hero text
+    console.log('[HeroText] Using default hero text');
+    return c.json({
+      title: "Build Your Gamefolio",
+      subtitle: "With Your Best Gaming Clips",
+      buttonText: "Start Building Now",
+      buttonUrl: "/upload",
+      targetAudience: "experienced_users",
+      isActive: true,
+      backgroundUrl: "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=1200&auto=format&fit=crop&q=80",
+      backgroundType: "image",
+    });
+  } catch (error) {
+    console.error('[HeroText] Error fetching hero text:', error);
+    // Return fallback on error
+    return c.json({
+      title: "Build Your Gamefolio",
+      subtitle: "With Your Best Gaming Clips",
+      buttonText: "Start Building Now",
+      buttonUrl: "/upload",
+      targetAudience: "experienced_users",
+      isActive: true,
+    });
+  }
+});
+
 console.log('[Backend] 🚀 Mounting tRPC server at /api/trpc');
 app.use(
   "/api/trpc/*",
@@ -3917,6 +4594,71 @@ app.use(
 
 app.get("/", (c) => {
   return c.json({ status: "ok", message: "API is running" });
+});
+
+// Debug endpoint to check fire state for a clip/user
+app.get("/api/debug/fire-state", async (c) => {
+  try {
+    const clipTitle = c.req.query('clipTitle');
+    const username = c.req.query('username');
+
+    console.log('[Debug] Checking fire state for clip:', clipTitle, 'user:', username);
+
+    // Find the clip
+    const { data: clip, error: clipError } = await supabaseAdmin
+      .from('clips')
+      .select('id, title')
+      .ilike('title', `%${clipTitle}%`)
+      .maybeSingle();
+
+    if (clipError || !clip) {
+      return c.json({ error: 'Clip not found', clipTitle }, 404);
+    }
+
+    // Find the user
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, username')
+      .eq('username', username)
+      .maybeSingle();
+
+    if (userError || !user) {
+      return c.json({ error: 'User not found', username }, 404);
+    }
+
+    // Check for fire reaction
+    const { data: reaction } = await supabaseAdmin
+      .from('reactions')
+      .select('id, emoji, created_at')
+      .eq('clip_id', clip.id)
+      .eq('user_id', user.id)
+      .eq('emoji', '🔥')
+      .maybeSingle();
+
+    // Get total fire count for clip
+    const { count: totalFires } = await supabaseAdmin
+      .from('reactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('clip_id', clip.id)
+      .eq('emoji', '🔥');
+
+    const result = {
+      clip: { id: clip.id, title: clip.title },
+      user: { id: user.id, username: user.username },
+      fireState: {
+        hasFired: !!reaction,
+        reactionId: reaction?.id || null,
+        reactionCreatedAt: reaction?.created_at || null,
+      },
+      totalFiresOnClip: totalFires || 0,
+    };
+
+    console.log('[Debug] Fire state result:', JSON.stringify(result, null, 2));
+    return c.json(result);
+  } catch (error) {
+    console.error('[Debug] Error:', error);
+    return c.json({ error: 'Internal error' }, 500);
+  }
 });
 
 export default app;

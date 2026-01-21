@@ -14,7 +14,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { X as XIcon, Play, Copy, Share2, Send, Check, Trash2 } from 'lucide-react-native';
-import { FontAwesome5, FontAwesome6 } from '@expo/vector-icons';
+
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/context/AuthContext';
@@ -184,35 +184,6 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
             </View>
           </View>
 
-          {/* Share Link Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Share Link</Text>
-            <View style={styles.linkRow}>
-              <TextInput
-                style={styles.linkInput}
-                value={clipUrl}
-                editable={false}
-                selectTextOnFocus={false} // Prevent selection to simulate read-only better on some devices
-              />
-              <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
-                  {copied ? (
-                    <Check size={18} color="#4ADE80" />
-                  ) : (
-                    <Copy size={18} color="#94A3B8" />
-                  )}
-                  <Text style={[styles.buttonText, copied && { color: '#4ADE80' }]}>
-                    {copied ? 'Copied' : 'Copy'}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.shareButton} onPress={shareNative}>
-                  <Share2 size={18} color="#FFF" />
-                  <Text style={styles.shareButtonText}>Share</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-
           {/* Share on Gamefolio Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Share on Gamefolio</Text>
@@ -237,29 +208,32 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
             </View>
           </View>
 
-          {/* Share on Social Media Section */}
+          {/* Share Link Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Share on social media</Text>
-            <View style={styles.socialGrid}>
-              <TouchableOpacity style={styles.socialButton}>
-                <FontAwesome6 name="x-twitter" size={20} color="#FFF" />
-                <Text style={styles.socialText}>X</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.socialButton}>
-                <FontAwesome5 name="facebook-f" size={20} color="#1877F2" />
-                <Text style={styles.socialText}>Facebook</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.socialButton}>
-                <FontAwesome5 name="reddit-alien" size={20} color="#FF4500" />
-                <Text style={styles.socialText}>Reddit</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.socialButton}>
-                <FontAwesome5 name="discord" size={20} color="#5865F2" />
-                <Text style={styles.socialText}>Discord</Text>
-              </TouchableOpacity>
+            <Text style={styles.sectionTitle}>Share Link</Text>
+            <View style={styles.linkRow}>
+              <TextInput
+                style={styles.linkInput}
+                value={clipUrl}
+                editable={false}
+                selectTextOnFocus={false}
+              />
+              <View style={styles.actionButtons}>
+                <TouchableOpacity style={styles.copyButton} onPress={copyToClipboard}>
+                  {copied ? (
+                    <Check size={18} color="#4ADE80" />
+                  ) : (
+                    <Copy size={18} color="#94A3B8" />
+                  )}
+                  <Text style={[styles.buttonText, copied && { color: '#4ADE80' }]}>
+                    {copied ? 'Copied' : 'Copy'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.shareButton} onPress={shareNative}>
+                  <Share2 size={18} color="#FFF" />
+                  <Text style={styles.shareButtonText}>Share</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
@@ -495,26 +469,7 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: '#334155',
   },
-  socialGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  socialButton: {
-    flex: 1,
-    backgroundColor: '#1E293B',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
-    gap: 8,
-  },
-  socialText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '500' as const,
-  },
+
   deleteSection: {
     paddingTop: 16,
     borderTopWidth: 1,

@@ -15,10 +15,11 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Search, X, Play, Filter } from 'lucide-react-native';
+import { Search, X, Play, Filter, User } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api, TwitchGame } from '@/lib/api';
+import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/context/AuthContext';
 import AppHeader from '@/components/AppHeader';
 import LevelDetailsModal from '@/components/LevelDetailsModal';
@@ -27,6 +28,14 @@ interface Game {
   id: string;
   name: string;
   boxArt: string;
+}
+
+interface SearchUser {
+  id: number;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  level?: number;
 }
 
 const { width } = Dimensions.get('window');
@@ -41,71 +50,33 @@ interface GameFilterModalProps {
 
 function GameFilterModal({ visible, onClose, onSelectGame, selectedGame }: GameFilterModalProps) {
   const [search, setSearch] = useState('');
-  const [games, setGames] = useState<TwitchGame[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [token, setToken] = useState<string | null>(null);
-  const { getAccessToken } = useAuth();
 
-  useEffect(() => {
-    const fetchToken = async () => {
-      try {
-        const accessToken = await getAccessToken();
-        if (accessToken) {
-          setToken(accessToken);
-        }
-      } catch (error) {
-        console.error('Error getting access token:', error);
-      }
-    };
-    if (visible) {
-      fetchToken();
+  const topGamesQuery = trpc.twitch.getTopGames.useQuery(
+    { limit: 100 },
+    { enabled: visible && !search.trim() }
+  );
+
+  const searchGamesQuery = trpc.twitch.searchGames.useQuery(
+    { query: search.trim(), limit: 100 },
+    { enabled: visible && search.trim().length > 0 }
+  );
+
+  const games = React.useMemo(() => {
+    if (search.trim()) {
+      return (searchGamesQuery.data?.games || []).map(g => ({
+        id: g.id,
+        name: g.name,
+        boxArt: (g as any).icon?.replace?.('{width}', '{width}').replace?.('{height}', '{height}') || '',
+      }));
     }
-  }, [visible, getAccessToken]);
+    return (topGamesQuery.data?.games || []).map(g => ({
+      id: g.id,
+      name: g.name,
+      boxArt: g.boxArt,
+    }));
+  }, [search, topGamesQuery.data, searchGamesQuery.data]);
 
-  const fetchGames = useCallback(async (query: string) => {
-    if (!token) return;
-    
-    const trimmedQuery = query.trim();
-    if (!trimmedQuery || trimmedQuery.length === 0) {
-      setGames([]);
-      setLoading(false);
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const result = await api.games.searchGames(trimmedQuery, 30, token);
-      console.log('[GameFilterModal] Fetched games:', result.games?.length);
-      setGames(result.games || []);
-    } catch (error) {
-      console.error('[GameFilterModal] Error fetching games:', error);
-      setGames([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (!token || !visible) return;
-    
-    if (!search.trim()) {
-      setGames([]);
-      setLoading(false);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      fetchGames(search);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [search, token, visible, fetchGames]);
-
-  useEffect(() => {
-    if (visible && token) {
-      setGames([]);
-    }
-  }, [visible, token]);
+  const loading = search.trim() ? searchGamesQuery.isLoading : topGamesQuery.isLoading;
 
   const getImageUrl = (url: string) => {
     if (!url) return '';
@@ -188,6 +159,7 @@ function GameFilterModal({ visible, onClose, onSelectGame, selectedGame }: GameF
                     <Image
                       source={{ uri: getImageUrl(game.boxArt) }}
                       style={modalStyles.gameImage}
+                      resizeMode="cover"
                     />
                     
                     {isSelected && (
@@ -403,6 +375,28 @@ export default function ExploreScreen() {
     staleTime: 30 * 1000,
   });
 
+  const usersSearchQuery = useQuery({
+    queryKey: ['users', 'search', debouncedSearch],
+    queryFn: async () => {
+      const trimmedSearch = debouncedSearch?.trim() || '';
+      if (!trimmedSearch || trimmedSearch.length === 0) {
+        return { users: [] as SearchUser[] };
+      }
+      try {
+        const token = await getAccessToken();
+        console.log('[Explore] Searching users via API:', trimmedSearch);
+        const result = await api.users.search(trimmedSearch, token || undefined);
+        console.log('[Explore] API user search returned:', result.users?.length, 'users');
+        return result;
+      } catch (error) {
+        console.error('[Explore] User search API error:', error);
+        return { users: [] as SearchUser[] };
+      }
+    },
+    enabled: !!debouncedSearch && debouncedSearch.trim().length > 0,
+    staleTime: 30 * 1000,
+  });
+
   const apiSearchResults = React.useMemo(() => 
     searchQuery_api.data?.games || []
   , [searchQuery_api.data?.games]);
@@ -448,6 +442,15 @@ export default function ExploreScreen() {
         name: game.name,
         boxArt: imageUrl || '',
       } 
+    });
+  }, [router]);
+
+  const handleUserPress = useCallback((user: SearchUser) => {
+    console.log('[Explore] Selected user:', user.username);
+    Keyboard.dismiss();
+    router.push({ 
+      pathname: '/user/[id]', 
+      params: { id: user.id.toString() } 
     });
   }, [router]);
 
@@ -535,7 +538,7 @@ export default function ExploreScreen() {
             <TextInput
               ref={searchInputRef}
               style={styles.searchInput}
-              placeholder="Search games..."
+              placeholder="Search games or users..."
               placeholderTextColor="#64748B"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -575,17 +578,80 @@ export default function ExploreScreen() {
             />
           }
         >
-          {searchQuery_api.isLoading && searchQuery.trim().length > 0 ? (
+          {(searchQuery_api.isLoading || usersSearchQuery.isLoading) && searchQuery.trim().length > 0 ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator color="#4ADE80" size="large" />
-              <Text style={styles.loadingText}>Searching games...</Text>
+              <Text style={styles.loadingText}>Searching...</Text>
             </View>
+          ) : searchQuery.trim().length > 0 && (usersSearchQuery.data?.users?.length || 0) > 0 ? (
+            <>
+              <View style={styles.sectionHeader}>
+                <User size={18} color="#4ADE80" />
+                <Text style={styles.sectionTitle}>Users</Text>
+              </View>
+              <View style={styles.usersGrid}>
+                {usersSearchQuery.data?.users?.map((user) => (
+                  <TouchableOpacity
+                    key={user.id}
+                    style={styles.userCard}
+                    onPress={() => handleUserPress(user)}
+                    activeOpacity={0.7}
+                  >
+                    <Image
+                      source={{ uri: user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop' }}
+                      style={styles.userAvatar}
+                    />
+                    <View style={styles.userInfo}>
+                      <Text style={styles.userDisplayName} numberOfLines={1}>{user.displayName || user.username}</Text>
+                      <Text style={styles.userUsername} numberOfLines={1}>@{user.username}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {displayedGames.length > 0 && (
+                <>
+                  <View style={styles.sectionHeader}>
+                    <Play size={18} color="#4ADE80" />
+                    <Text style={styles.sectionTitle}>Games</Text>
+                  </View>
+                  <View style={styles.gamesGrid}>
+                    {displayedGames.map((game, index) => {
+                      const imageUrl = formatTwitchBoxArt(game.boxArt, 285, 380) || formatTwitchBoxArt(game.icon, 285, 380);
+                      return (
+                        <TouchableOpacity 
+                          key={`${game.id}-${index}`}
+                          style={styles.gameCard} 
+                          onPress={() => handleGamePress(game)}
+                          activeOpacity={0.7}
+                        >
+                          {imageUrl ? (
+                            <Image 
+                              source={{ uri: imageUrl }} 
+                              style={styles.gameImage}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={styles.gameImagePlaceholder}>
+                              <Play color="#4ADE80" size={24} />
+                            </View>
+                          )}
+                          <View style={styles.gameInfo}>
+                            <Text style={styles.gameName} numberOfLines={2}>{game.name}</Text>
+                            <Text style={styles.gameSubtext}>Tap to explore</Text>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+            </>
           ) : displayedGames.length === 0 && searchQuery.trim().length > 0 ? (
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIcon}>
                 <Search size={40} color="#4ADE80" />
               </View>
-              <Text style={styles.emptyTitle}>No games found</Text>
+              <Text style={styles.emptyTitle}>No results found</Text>
               <Text style={styles.emptyMessage}>Try searching with a different keyword</Text>
             </View>
           ) : (
@@ -973,6 +1039,51 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 12,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 16,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+  },
+  usersGrid: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingBottom: 8,
+  },
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A2332',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  userAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#2D3748',
+  },
+  userInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  userDisplayName: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  userUsername: {
+    fontSize: 13,
+    color: '#64748B',
   },
   selectedGameContainer: {
     flexDirection: 'row',

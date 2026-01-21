@@ -48,6 +48,18 @@ const formatDuration = (seconds: number) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
+const PLACEHOLDER_THUMBNAIL = 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&h=600&fit=crop';
+
+const getThumbnailUrl = (item: any): string => {
+  if (item.thumbnailUrl && item.thumbnailUrl.trim() !== '') {
+    return item.thumbnailUrl;
+  }
+  if (item.game?.imageUrl && item.game.imageUrl.trim() !== '') {
+    return item.game.imageUrl;
+  }
+  return PLACEHOLDER_THUMBNAIL;
+};
+
 export default function LatestReelsPage() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [showGameFilter, setShowGameFilter] = useState(false);
@@ -371,7 +383,7 @@ export default function LatestReelsPage() {
               activeOpacity={0.9}
             >
               <ImageBackground
-                source={{ uri: item.thumbnailUrl }}
+                source={{ uri: getThumbnailUrl(item) }}
                 style={styles.reelThumbnail}
                 imageStyle={{ borderRadius: 16 }}
               >

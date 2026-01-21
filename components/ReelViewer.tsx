@@ -524,7 +524,7 @@ const ReelViewer = React.memo(({
       )}
 
       {!showComments && (
-        <View style={[styles.reelOverlayContent, { paddingBottom: insets.bottom + 60 }]} pointerEvents="auto">
+        <View style={[styles.reelOverlayContent, { paddingBottom: insets.bottom + 100 }]} pointerEvents="auto">
         <View style={styles.reelBottomSection}>
           <View style={styles.reelInfoSection}>
             <TouchableOpacity 

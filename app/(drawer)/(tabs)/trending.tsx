@@ -502,6 +502,10 @@ const ReelItem = React.memo(({
           </View>
 
           <View style={styles.reelActionsColumn}>
+            <View style={styles.reelActionButton}>
+              <Text style={styles.reelActionCount}>{formatNumber(item.views)}</Text>
+            </View>
+
             <TouchableOpacity style={styles.reelActionButton} onPress={onLike}>
               <Heart 
                 size={28} 
@@ -594,10 +598,6 @@ const ReelItem = React.memo(({
         </KeyboardAvoidingView>
       </Animated.View>
 
-      <View style={styles.viewsOverlay}>
-        <Eye size={12} color="#FFF" />
-        <Text style={styles.viewsText}>{formatNumber(item.views)}</Text>
-      </View>
     </View>
   );
 });
@@ -1575,15 +1575,7 @@ export default function TrendingScreen() {
     mutationFn: async (screenshotId: number) => {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/screenshots/${screenshotId}/like`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) throw new Error('Failed to like screenshot');
-      return response.json();
+      return api.screenshots.like(screenshotId.toString(), token);
     },
     onSuccess: (data, screenshotId) => {
       queryClient.setQueryData(['screenshots', 'trending', timePeriod], (oldData: ScreenshotWithUser[] | undefined) => {
@@ -1604,15 +1596,7 @@ export default function TrendingScreen() {
     mutationFn: async (screenshotId: number) => {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/screenshots/${screenshotId}/fire`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) throw new Error('Failed to fire screenshot');
-      return response.json();
+      return api.screenshots.fire(screenshotId.toString(), token);
     },
     onSuccess: (data, screenshotId) => {
       queryClient.setQueryData(['screenshots', 'trending', timePeriod], (oldData: ScreenshotWithUser[] | undefined) => {
@@ -1657,7 +1641,10 @@ export default function TrendingScreen() {
     isLoading: isLoadingReels,
   } = useQuery({
     queryKey: ['reels', 'trending', timePeriod],
-    queryFn: () => api.reels.getLatest(),
+    queryFn: async () => {
+      const token = await getAccessToken();
+      return api.reels.getLatest(token || undefined);
+    },
   });
 
   const {
@@ -1668,7 +1655,8 @@ export default function TrendingScreen() {
     queryFn: async () => {
       try {
         console.log('[Trending Clips] Fetching trending clips for period:', timePeriod);
-        const result = await api.clips.getTrending(undefined, getApiTimePeriod(timePeriod));
+        const token = await getAccessToken();
+        const result = await api.clips.getTrending(token || undefined, getApiTimePeriod(timePeriod));
         console.log('[Trending Clips] Received clips:', result?.length || 0);
         return result;
       } catch (error) {
@@ -1696,7 +1684,8 @@ export default function TrendingScreen() {
     queryFn: async () => {
       try {
         console.log('[Trending Screenshots] Fetching screenshots with params:', screenshotQueryParams);
-        const result = await api.screenshots.getTrending(screenshotQueryParams);
+        const token = await getAccessToken();
+        const result = await api.screenshots.getTrending(screenshotQueryParams, token || undefined);
         console.log('[Trending Screenshots] Received screenshots:', result?.length || 0);
         return result;
       } catch (error) {
@@ -2646,11 +2635,15 @@ export default function TrendingScreen() {
                   activeOpacity={1}
                   onPress={() => {
                     if (Platform.OS === 'web') {
-                      const img = document.querySelector('img[src="' + selectedScreenshot.imageUrl + '"]') as HTMLImageElement;
-                      if (img && document.fullscreenElement) {
-                        document.exitFullscreen();
-                      } else if (img) {
-                        img.requestFullscreen();
+                      try {
+                        const img = document.querySelector('img[src="' + selectedScreenshot.imageUrl + '"]') as HTMLImageElement;
+                        if (img && document.fullscreenElement) {
+                          document.exitFullscreen();
+                        } else if (img && img.requestFullscreen) {
+                          img.requestFullscreen().catch(() => {});
+                        }
+                      } catch {
+                        console.log('Fullscreen not supported');
                       }
                     }
                   }}
@@ -2664,33 +2657,43 @@ export default function TrendingScreen() {
                 </TouchableOpacity>
                 
                 {screenshots.length > 1 && (
-                  <>
+                  <View style={styles.screenshotNavOverlay}>
                     <TouchableOpacity
-                      style={styles.modalNavArrowLeft}
+                      style={[styles.screenshotNavArrow, selectedScreenshotIndex === 0 && styles.screenshotNavArrowDisabled]}
                       onPress={() => navigateScreenshot('prev')}
                       activeOpacity={0.7}
+                      disabled={selectedScreenshotIndex === 0}
                     >
-                      <View style={styles.modalNavArrowBg}>
-                        <ChevronLeft size={28} color="#FFF" />
-                      </View>
+                      <ChevronLeft size={20} color={selectedScreenshotIndex === 0 ? '#64748B' : '#FFF'} />
                     </TouchableOpacity>
+                    
+                    <View style={styles.screenshotNavDots}>
+                      {screenshots.slice(
+                        Math.max(0, selectedScreenshotIndex - 2),
+                        Math.min(screenshots.length, selectedScreenshotIndex + 3)
+                      ).map((_, i) => {
+                        const actualIndex = Math.max(0, selectedScreenshotIndex - 2) + i;
+                        return (
+                          <View
+                            key={actualIndex}
+                            style={[
+                              styles.screenshotNavDot,
+                              actualIndex === selectedScreenshotIndex && styles.screenshotNavDotActive
+                            ]}
+                          />
+                        );
+                      })}
+                    </View>
                     
                     <TouchableOpacity
-                      style={styles.modalNavArrowRight}
+                      style={[styles.screenshotNavArrow, selectedScreenshotIndex === screenshots.length - 1 && styles.screenshotNavArrowDisabled]}
                       onPress={() => navigateScreenshot('next')}
                       activeOpacity={0.7}
+                      disabled={selectedScreenshotIndex === screenshots.length - 1}
                     >
-                      <View style={styles.modalNavArrowBg}>
-                        <ChevronRight size={28} color="#FFF" />
-                      </View>
+                      <ChevronRight size={20} color={selectedScreenshotIndex === screenshots.length - 1 ? '#64748B' : '#FFF'} />
                     </TouchableOpacity>
-                    
-                    <View style={styles.modalImageCounter}>
-                      <Text style={styles.modalImageCounterText}>
-                        {selectedScreenshotIndex + 1} / {screenshots.length}
-                      </Text>
-                    </View>
-                  </>
+                  </View>
                 )}
               </View>
 
@@ -3201,6 +3204,7 @@ export default function TrendingScreen() {
                             styles.gameFilterCardImage,
                             !hasContent && styles.gameFilterCardImageDisabled
                           ]}
+                          resizeMode="cover"
                         />
                         {isSelected && (
                           <View style={styles.gameFilterSelectedOverlay}>
@@ -3346,6 +3350,7 @@ export default function TrendingScreen() {
                             styles.gameFilterCardImage,
                             !hasContent && styles.gameFilterCardImageDisabled
                           ]}
+                          resizeMode="cover"
                         />
                         {isSelected && (
                           <View style={styles.gameFilterSelectedOverlay}>
@@ -3491,6 +3496,7 @@ export default function TrendingScreen() {
                             styles.gameFilterCardImage,
                             !hasContent && styles.gameFilterCardImageDisabled
                           ]}
+                          resizeMode="cover"
                         />
                         {isSelected && (
                           <View style={styles.gameFilterSelectedOverlay}>
@@ -5014,20 +5020,25 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 12,
     alignItems: 'center',
+    padding: 8,
+    gap: 10,
   },
   gameFilterCardSelected: {
     backgroundColor: '#2D3748',
   },
   gameFilterCardImage: {
-    width: 100,
-    height: 133,
+    width: 80,
+    height: 107,
+    borderRadius: 8,
+    backgroundColor: '#2D3748',
   },
   gameFilterAllGamesPlaceholder: {
-    width: 100,
-    height: 133,
+    width: 80,
+    height: 107,
     backgroundColor: '#1E293B',
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 8,
   },
   gameFilterSelectedOverlay: {
     position: 'absolute',
@@ -5040,7 +5051,6 @@ const styles = StyleSheet.create({
   },
   gameFilterCardInfo: {
     flex: 1,
-    padding: 12,
     justifyContent: 'center',
   },
   gameFilterCardName: {
@@ -5203,42 +5213,46 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500' as const,
   },
-  modalNavArrowLeft: {
+  screenshotNavOverlay: {
     position: 'absolute',
-    left: 12,
-    top: '50%',
-    transform: [{ translateY: -24 }],
+    top: 16,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
     zIndex: 20,
   },
-  modalNavArrowRight: {
-    position: 'absolute',
-    right: 12,
-    top: '50%',
-    transform: [{ translateY: -24 }],
-    zIndex: 20,
-  },
-  modalNavArrowBg: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  screenshotNavArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  modalImageCounter: {
-    position: 'absolute',
-    bottom: 16,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  screenshotNavArrowDisabled: {
+    backgroundColor: 'rgba(30, 41, 59, 0.5)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  modalImageCounterText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '600' as const,
+  screenshotNavDots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  screenshotNavDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  screenshotNavDotActive: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFF',
   },
 });

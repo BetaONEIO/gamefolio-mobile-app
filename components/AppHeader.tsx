@@ -3,7 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View, Image, TextInput, Animated, K
 import { BlurView } from 'expo-blur';
 import { Bell, Menu, Plus, Search, ChevronLeft, X, Hash, User, Gamepad2, BadgeCheck } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRouter } from 'expo-router';
+import { useNavigation, useRouter, useSegments } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import ProfileDropdown from '@/components/ProfileDropdown';
@@ -74,13 +74,7 @@ const mockHashtags = [
   { id: '10', name: 'gta', count: 3500 },
 ];
 
-const mockUsers = [
-  { id: '1', username: 'ProGamer123', displayName: 'Pro Gamer', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100', verified: true, followers: 125000 },
-  { id: '2', username: 'NinjaStreamer', displayName: 'Ninja Streamer', avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100', verified: true, followers: 89000 },
-  { id: '3', username: 'GameMaster', displayName: 'Game Master', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100', verified: false, followers: 45000 },
-  { id: '4', username: 'ValPlayer', displayName: 'Valorant Player', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100', verified: true, followers: 67000 },
-  { id: '5', username: 'ApexPro', displayName: 'Apex Professional', avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcabd36?w=100', verified: false, followers: 23000 },
-];
+// No mock users - only real users from database will be shown
 
 const mockGames = [
   { id: '1', name: 'Valorant', icon: 'https://static-cdn.jtvnw.net/ttv-boxart/516575-100x100.jpg', category: 'FPS', players: 450000 },
@@ -185,18 +179,14 @@ function searchMockData(query: string, limit: number): SearchResponse {
     .filter(tag => tag.name.toLowerCase().includes(searchTerm))
     .slice(0, limit);
     
-  const users = mockUsers
-    .filter(user => 
-      user.username.toLowerCase().includes(searchTerm) || 
-      user.displayName.toLowerCase().includes(searchTerm)
-    )
-    .slice(0, limit);
+  // No mock users - return empty array, real users come from backend
+  const users: UserResult[] = [];
     
   const games = mockGames
     .filter(game => game.name.toLowerCase().includes(searchTerm))
     .slice(0, limit);
     
-  console.log('[Search] Mock results:', { hashtags: hashtags.length, users: users.length, games: games.length });
+  console.log('[Search] Mock results (users always empty - real users from backend):', { hashtags: hashtags.length, users: users.length, games: games.length });
   
   return { hashtags, users, games };
 }
@@ -225,18 +215,22 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
   const searchInputRef = useRef<TextInput>(null);
   const navigation = useNavigation();
   const router = useRouter();
+  const segments = useSegments();
+  
+  const isInsideDrawer = segments[0] === '(drawer)';
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-    }, 300);
+    }, 150);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
   const searchResults = useQuery({
     queryKey: ['search', debouncedQuery],
-    queryFn: () => searchAll(debouncedQuery, 5),
-    enabled: debouncedQuery.length > 0,
+    queryFn: () => searchAll(debouncedQuery, 8),
+    enabled: debouncedQuery.length >= 1,
+    staleTime: 30000,
   });
 
   useEffect(() => {
@@ -329,9 +323,19 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
           ) : (
             <TouchableOpacity 
               style={styles.iconButton}
-              onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+              onPress={() => {
+                if (isInsideDrawer) {
+                  navigation.dispatch(DrawerActions.openDrawer());
+                } else {
+                  router.back();
+                }
+              }}
             >
-              <Menu size={24} color="#FFF" />
+              {isInsideDrawer ? (
+                <Menu size={24} color="#FFF" />
+              ) : (
+                <ChevronLeft size={24} color="#FFF" />
+              )}
             </TouchableOpacity>
           )}
         </View>
@@ -708,6 +712,8 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 15,
     paddingVertical: 0,
+    height: 44,
+    textAlignVertical: 'center' as const,
     outlineStyle: 'none' as const,
   },
   cancelButton: {

@@ -17,6 +17,7 @@ interface FetchOptions extends RequestInit {
   token?: string;
   skipRetry?: boolean;
   useCookieAuth?: boolean;
+  retryOn401?: boolean;
 }
 
 export const setAuthCallbacks = (
@@ -257,8 +258,6 @@ export interface RegisterRequest {
   displayName: string;
   email: string;
   password: string;
-  dateOfBirth: string;
-  referralCode?: string;
 }
 
 export interface User {
@@ -348,6 +347,13 @@ export interface TwitchGame {
   players?: number;
 }
 
+export interface TaggedUser {
+  id: number;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
 export interface Clip {
   id: number;
   userId: number;
@@ -366,10 +372,39 @@ export interface Clip {
   game: Game;
   isLiked?: boolean;
   isFired?: boolean;
+  taggedUsers?: TaggedUser[];
   _count: {
     likes: number;
     comments: number;
     fires?: number;
+  };
+}
+
+export interface Reaction {
+  id: number;
+  clipId?: number;
+  screenshotId?: number;
+  userId: number;
+  emoji: string;
+  positionX: number;
+  positionY: number;
+  createdAt: string;
+}
+
+export interface Comment {
+  id: number;
+  clipId?: number;
+  screenshotId?: number;
+  userId: number;
+  content: string;
+  createdAt: string;
+  likeCount?: number;
+  isLiked?: boolean;
+  user: {
+    id: number;
+    username: string;
+    displayName: string;
+    avatarUrl: string | null;
   };
 }
 
@@ -444,19 +479,144 @@ export const api = {
       apiFetch<AuthResponse>('/api/auth/token/login', {
         method: 'POST',
         body: JSON.stringify(data),
+        useCookieAuth: true,
       }),
 
-    register: (data: RegisterRequest) =>
-      apiFetch<AuthResponse>('/api/auth/token/register', {
+    register: async (data: RegisterRequest) => {
+      const baseUrl = API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      
+      if (!baseUrl) {
+        console.error('[API] ❌ No backend URL configured for registration');
+        throw new APIError('Backend URL is not configured. Please set EXPO_PUBLIC_BACKEND_URL.');
+      }
+      
+      const url = `${baseUrl}/api/register`;
+      console.log('[API] 🔵 Register request to:', url);
+      console.log('[API] 🔵 Backend URL:', baseUrl);
+      
+      const response = await fetch(url, {
         method: 'POST',
-        body: JSON.stringify(data),
-      }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          username: data.username.toLowerCase(),
+          email: data.email.toLowerCase(),
+          password: data.password,
+          displayName: data.displayName || data.username,
+        }),
+      });
+
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('text/html')) {
+        const htmlText = await response.text();
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('⚠️  REGISTER API RETURNED HTML INSTEAD OF JSON');
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.error('[API] URL:', url);
+        console.error('[API] Status:', response.status);
+        console.error('[API] Content-Type:', contentType);
+        console.error('[API] Backend URL:', baseUrl);
+        console.error('[API] HTML preview:', htmlText.substring(0, 200));
+        console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        throw new APIError(
+          'Server returned HTML instead of JSON. The registration endpoint may not exist or EXPO_PUBLIC_BACKEND_URL is not set correctly.',
+          response.status,
+          { html: htmlText.substring(0, 500), url, baseUrl }
+        );
+      }
+
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (parseError) {
+        console.error('[API] ❌ Failed to parse response as JSON:', parseError);
+        throw new APIError('Invalid response from server - not valid JSON', response.status);
+      }
+      console.log('[API] Register response status:', response.status);
+      console.log('[API] Register response data:', JSON.stringify(responseData, null, 2));
+
+      if (response.status === 201 || response.status === 200) {
+        console.log('[API] ✅ Registration successful');
+        
+        // Handle different response structures from external backend
+        let user: User;
+        let accessToken: string;
+        let refreshToken: string;
+        let expiresIn: number;
+        
+        // Check if user is nested or at root level
+        if (responseData.user) {
+          user = responseData.user;
+        } else if (responseData.id && responseData.username) {
+          // User data is at root level
+          user = {
+            id: responseData.id,
+            username: responseData.username,
+            displayName: responseData.displayName || responseData.display_name || responseData.username,
+            email: responseData.email || null,
+            emailVerified: responseData.emailVerified || responseData.email_verified || false,
+            role: responseData.role || 'user',
+            totalXP: responseData.totalXP || responseData.total_xp || 0,
+            level: responseData.level || 1,
+            currentStreak: responseData.currentStreak || responseData.current_streak || 0,
+            longestStreak: responseData.longestStreak || responseData.longest_streak || 0,
+            avatarUrl: responseData.avatarUrl || responseData.avatar_url || null,
+            bannerUrl: responseData.bannerUrl || responseData.banner_url || null,
+            bio: responseData.bio || null,
+            messagingEnabled: responseData.messagingEnabled ?? responseData.messaging_enabled ?? true,
+            isPrivate: responseData.isPrivate ?? responseData.is_private ?? false,
+            userType: responseData.userType || responseData.user_type,
+            gfTokenBalance: responseData.gfTokenBalance || responseData.gf_token_balance || 0,
+          };
+        } else {
+          console.error('[API] ❌ Invalid register response structure:', responseData);
+          throw new APIError('Invalid response from server: missing user data', response.status, responseData);
+        }
+        
+        // Extract tokens
+        accessToken = responseData.accessToken || responseData.access_token || responseData.token || '';
+        refreshToken = responseData.refreshToken || responseData.refresh_token || '';
+        expiresIn = responseData.expiresIn || responseData.expires_in || 3600;
+        
+        if (!accessToken) {
+          console.warn('[API] ⚠️ No access token in register response');
+        }
+        
+        const result: AuthResponse = {
+          user,
+          accessToken,
+          refreshToken,
+          expiresIn,
+          streakInfo: responseData.streakInfo || responseData.streak_info,
+          gamefolioTokens: responseData.gamefolioTokens || responseData.gamefolio_tokens,
+        };
+        
+        console.log('[API] ✅ Parsed user:', result.user.username);
+        return result;
+      }
+
+      if (response.status === 400) {
+        const errorMessage = responseData.message || responseData.error || 'Registration failed';
+        console.log('[API] ❌ Registration error:', errorMessage);
+        throw new APIError(errorMessage, 400, responseData);
+      }
+
+      throw new APIError(
+        responseData.message || 'Registration failed',
+        response.status,
+        responseData
+      );
+    },
 
     refreshToken: (data: RefreshTokenRequest) =>
       apiFetch<RefreshTokenResponse>('/api/auth/token/refresh', {
         method: 'POST',
         body: JSON.stringify(data),
         skipRetry: true,
+        useCookieAuth: true,
       }),
 
     logout: async (token: string) => {
@@ -472,6 +632,79 @@ export const api = {
         }
         throw error;
       }
+    },
+
+    checkUsername: async (username: string): Promise<{ available: boolean; message?: string }> => {
+      console.log('[API] 🔵 Checking username availability:', username);
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/auth/check-username?username=${encodeURIComponent(username)}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        const data = await response.json();
+        console.log('[API] Username check response:', data);
+        return data;
+      } catch (error) {
+        console.error('[API] Username check error:', error);
+        return { available: false, message: 'Unable to check username' };
+      }
+    },
+
+    verifyCode: async (email: string, code: string): Promise<{ success: boolean; message?: string; user?: User }> => {
+      console.log('[API] 🔵 Verifying code for:', email);
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-code`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email, code }),
+      });
+      
+      const data = await response.json();
+      console.log('[API] Verify code response:', response.status, data);
+      
+      if (response.status === 401) {
+        throw new APIError('Session expired', 401, data);
+      }
+      
+      if (!response.ok) {
+        throw new APIError(data.message || 'Invalid or expired verification code', response.status, data);
+      }
+      
+      return { success: true, message: data.message, user: data.user };
+    },
+
+    resendVerification: async (email: string): Promise<{ success: boolean; message?: string; retryAfterSeconds?: number }> => {
+      console.log('[API] 🔵 Resending verification code to:', email);
+      const response = await fetch(`${API_BASE_URL}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      console.log('[API] Resend verification response:', response.status, data);
+      
+      if (response.status === 401) {
+        throw new APIError('Session expired', 401, data);
+      }
+      
+      if (response.status === 429) {
+        return { success: false, message: data.message, retryAfterSeconds: data.retryAfterSeconds };
+      }
+      
+      if (!response.ok) {
+        throw new APIError(data.message || 'Failed to resend code', response.status, data);
+      }
+      
+      return { success: true, message: data.message || 'New code sent' };
     },
 
     getUser: (token: string) =>
@@ -515,36 +748,119 @@ export const api = {
         token,
       }),
 
-    like: (id: string, token: string) =>
-      apiFetch<{ liked: boolean; likeCount: number }>(`/api/clips/${id}/likes`, {
-        method: 'POST',
+    getLikeStatus: async (id: string, token: string) => {
+      console.log('[Clips API] 🔵 Checking like status for clip:', id);
+      return apiFetch<{ hasLiked: boolean }>(`/api/clips/${id}/likes/status`, {
+        method: 'GET',
         token,
-      }),
+      });
+    },
 
-    fire: (id: string, token: string) =>
-      apiFetch<{ fired: boolean; fireCount: number }>(`/api/clips/${id}/fires`, {
+    like: async (id: string, token: string) => {
+      console.log('[Clips API] 🔵 Toggling like for clip:', id);
+      const response = await apiFetch<{ message: string; liked: boolean; like?: unknown; count: number }>(`/api/clips/${id}/likes`, {
         method: 'POST',
         token,
-      }),
+      });
+      return { liked: response.liked, likeCount: response.count };
+    },
 
-    likeClip: (id: string, token: string) =>
-      apiFetch<{ liked: boolean; likeCount: number }>(`/api/clips/${id}/likes`, {
+    unlike: async (id: string, token: string) => {
+      console.log('[Clips API] 🔵 Unliking clip:', id);
+      const response = await apiFetch<{ message: string; liked: boolean }>(`/api/clips/${id}/likes`, {
+        method: 'DELETE',
+        token,
+      });
+      return { liked: response.liked };
+    },
+
+    getReactions: async (id: string, token?: string) => {
+      console.log('[Clips API] 🔵 Getting reactions for clip:', id);
+      return apiFetch<Reaction[]>(`/api/clips/${id}/reactions`, {
+        method: 'GET',
+        token,
+      });
+    },
+
+    fire: async (id: string, token: string, emoji: string = '🔥') => {
+      console.log('[Clips API] 🔵 Adding fire reaction to clip:', id);
+      const response = await apiFetch<Reaction>(`/api/clips/${id}/reactions`, {
+        method: 'POST',
+        body: JSON.stringify({ emoji }),
+        token,
+      });
+      return { fired: true, fireCount: 1, reaction: response };
+    },
+
+    toggleFire: async (id: string, token: string): Promise<{ fired: boolean; fireCount: number; reactionId?: number }> => {
+      console.log('[Clips API] 🔵 toggleFire - clipId:', id);
+      
+      // Single toggle endpoint - backend automatically detects if user already fired and toggles
+      const response = await apiFetch<{
+        id?: number;
+        clipId?: number;
+        userId?: number;
+        emoji?: string;
+        reacted: boolean;
+        count: number;
+        message?: string;
+        removedReactionId?: number;
+      }>(`/api/clips/${id}/reactions`, {
+        method: 'POST',
+        body: JSON.stringify({ emoji: '🔥' }),
+        token,
+      });
+      
+      console.log('[Clips API] ✅ toggleFire response:', JSON.stringify(response));
+      console.log('[Clips API] ✅ reacted:', response.reacted, 'count:', response.count);
+      
+      return {
+        fired: response.reacted,
+        fireCount: response.count,
+        reactionId: response.reacted ? response.id : undefined,
+      };
+    },
+
+    deleteReaction: async (clipId: string, reactionId: number, token: string) => {
+      console.log('[Clips API] 🔵 Deleting reaction:', reactionId, 'from clip:', clipId);
+      return apiFetch<{ message: string }>(`/api/reactions/${reactionId}`, {
+        method: 'DELETE',
+        token,
+      });
+    },
+
+    likeClip: async (id: string, token: string) => {
+      console.log('[Clips API] 🔵 Toggling like for clip:', id);
+      const response = await apiFetch<{ message: string; liked: boolean; like?: unknown; count: number }>(`/api/clips/${id}/likes`, {
         method: 'POST',
         token,
-      }),
+      });
+      return { liked: response.liked, likeCount: response.count };
+    },
 
     getComments: (id: string, token?: string) =>
-      apiFetch<unknown[]>(`/api/clips/${id}/comments`, {
+      apiFetch<Comment[]>(`/api/clips/${id}/comments`, {
         method: 'GET',
         token,
       }),
 
-    addComment: (id: string, data: { content: string }, token: string) =>
-      apiFetch<{ comment: unknown }>(`/api/clips/${id}/comments`, {
+    addComment: async (id: string, data: { content: string }, token: string) => {
+      console.log('[Clips API] 🔵 Adding comment to clip:', id);
+      const response = await apiFetch<Comment>(`/api/clips/${id}/comments`, {
         method: 'POST',
         body: JSON.stringify(data),
         token,
-      }),
+      });
+      return { comment: response };
+    },
+
+    deleteComment: async (clipId: string, commentId: number, token: string) => {
+      console.log('[Clips API] 🔵 Deleting comment:', commentId);
+      return apiFetch<{ message: string }>(`/api/clips/${clipId}/comments/${commentId}`, {
+        method: 'DELETE',
+        token,
+      });
+    },
 
     delete: (id: string, token: string) =>
       apiFetch<{ success: boolean; message: string }>(`/api/clips/${id}`, {
@@ -578,7 +894,124 @@ export const api = {
       apiFetch<{ success: boolean; message: string }>(`/api/screenshots/${id}`, {
         method: 'DELETE',
         token,
+        useCookieAuth: true,
       }),
+
+    getLikeStatus: async (id: string, token: string) => {
+      console.log('[Screenshots API] 🔵 Checking like status for screenshot:', id);
+      return apiFetch<{ hasLiked: boolean }>(`/api/screenshots/${id}/likes/status`, {
+        method: 'GET',
+        token,
+        useCookieAuth: true,
+      });
+    },
+
+    like: async (id: string, token: string) => {
+      console.log('[Screenshots API] 🔵 Toggling like for screenshot:', id);
+      const response = await apiFetch<{ message: string; liked: boolean; like?: unknown; count: number }>(`/api/screenshots/${id}/likes`, {
+        method: 'POST',
+        token,
+        useCookieAuth: true,
+      });
+      return { liked: response.liked, likeCount: response.count };
+    },
+
+    unlike: async (id: string, token: string) => {
+      console.log('[Screenshots API] 🔵 Unliking screenshot:', id);
+      const response = await apiFetch<{ message: string; liked: boolean }>(`/api/screenshots/${id}/likes`, {
+        method: 'DELETE',
+        token,
+        useCookieAuth: true,
+      });
+      return { liked: response.liked };
+    },
+
+    getReactions: async (id: string, token?: string) => {
+      console.log('[Screenshots API] 🔵 Getting reactions for screenshot:', id);
+      return apiFetch<Reaction[]>(`/api/screenshots/${id}/reactions`, {
+        method: 'GET',
+        token,
+        useCookieAuth: true,
+      });
+    },
+
+    fire: async (id: string, token: string, emoji: string = '🔥') => {
+      console.log('[Screenshots API] 🔵 Adding fire reaction to screenshot:', id);
+      const response = await apiFetch<Reaction>(`/api/screenshots/${id}/reactions`, {
+        method: 'POST',
+        body: JSON.stringify({ emoji }),
+        token,
+        useCookieAuth: true,
+      });
+      return { fired: true, fireCount: 1, reaction: response };
+    },
+
+    toggleFire: async (id: string, token: string, currentUserId: number, isFired: boolean) => {
+      console.log('[Screenshots API] 🔵 Toggling fire for screenshot:', id, 'currently fired:', isFired);
+      
+      if (isFired) {
+        // Fire reactions cannot be removed - the Gamefolio backend doesn't support DELETE for reactions
+        // Once fired, always fired - just return current state
+        console.log('[Screenshots API] ⚠️ User already fired this screenshot - fires cannot be removed');
+        return { fired: true, fireCount: 0 };
+      } else {
+        // Add new reaction - POST always creates a new reaction (no toggle behavior)
+        try {
+          await apiFetch<Reaction>(`/api/screenshots/${id}/reactions`, {
+            method: 'POST',
+            body: JSON.stringify({ emoji: '🔥' }),
+            token,
+            useCookieAuth: true,
+          });
+        } catch (addError) {
+          console.error('[Screenshots API] ❌ Error adding reaction:', addError);
+          if (addError instanceof APIError && addError.status === 401) {
+            throw addError;
+          }
+          return { fired: false, fireCount: 0 };
+        }
+        // Refetch to get accurate count
+        try {
+          const updatedReactions = await apiFetch<Reaction[]>(`/api/screenshots/${id}/reactions`, {
+            method: 'GET',
+            token,
+            useCookieAuth: true,
+          });
+          const updatedFireCount = updatedReactions.filter(r => r.emoji === '🔥').length;
+          return { fired: true, fireCount: updatedFireCount };
+        } catch (refetchError) {
+          console.error('[Screenshots API] ⚠️ Error refetching after add:', refetchError);
+          return { fired: true, fireCount: 1 };
+        }
+      }
+    },
+
+    getComments: (id: string, token?: string) =>
+      apiFetch<Comment[]>(`/api/screenshots/${id}/comments`, {
+        method: 'GET',
+        token,
+        useCookieAuth: true,
+      }),
+
+    addComment: async (id: string, data: { content: string }, token: string) => {
+      console.log('[Screenshots API] 🔵 Adding comment to screenshot:', id);
+      const response = await apiFetch<Comment>(`/api/screenshots/${id}/comments`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+        token,
+        useCookieAuth: true,
+      });
+      return { comment: response };
+    },
+
+    deleteComment: async (screenshotId: string, commentId: number, token: string) => {
+      console.log('[Screenshots API] 🔵 Deleting comment:', commentId);
+      return apiFetch<{ message: string }>(`/api/screenshots/${screenshotId}/comments/${commentId}`, {
+        method: 'DELETE',
+        token,
+        useCookieAuth: true,
+      });
+    },
 
     getTrending: async (params?: { period?: 'recent' | '1w' | '1m' | 'ever'; limit?: number; gameId?: number }, token?: string) => {
       const queryParams = new URLSearchParams();
@@ -672,11 +1105,89 @@ export const api = {
   },
 
   users: {
-    getProfile: (username: string, token?: string) =>
-      apiFetch<{ user: User }>(`/api/users/@${username}`, {
+    search: async (query: string, token?: string) => {
+      console.log('[Users API] 🔵 Searching users:', query);
+      return apiFetch<{
+        users: {
+          id: number;
+          username: string;
+          displayName: string;
+          avatarUrl: string | null;
+          level?: number;
+          totalXP?: number;
+        }[];
+      }>(`/api/users/search?q=${encodeURIComponent(query)}`, {
         method: 'GET',
         token,
-      }),
+      });
+    },
+
+    getProfile: async (username: string, token?: string) => {
+      interface ProfileAPIResponse {
+        user?: User & {
+          clipsCount?: number;
+          followersCount?: number;
+          followingCount?: number;
+        };
+        id?: number;
+        username?: string;
+        displayName?: string;
+        clipsCount?: number;
+        followersCount?: number;
+        followingCount?: number;
+      }
+      
+      const response = await apiFetch<ProfileAPIResponse>(`/api/users/${username}`, {
+        method: 'GET',
+        token,
+      });
+      
+      console.log('[Users API] Raw profile response:', JSON.stringify(response, null, 2));
+      
+      // Handle both wrapped and unwrapped response formats
+      let user: User & { clipsCount?: number; followersCount?: number; followingCount?: number };
+      
+      if (response.user) {
+        // Response has user wrapper: { user: { ... } }
+        user = response.user;
+      } else if (response.id || response.username) {
+        // Response is the user object directly: { id, username, ... }
+        user = response as unknown as User & { clipsCount?: number; followersCount?: number; followingCount?: number };
+      } else {
+        console.error('[Users API] Invalid profile response structure');
+        throw new Error('Invalid profile response');
+      }
+      
+      // Map flat count fields to _count structure if present
+      if (!user._count) {
+        user._count = {
+          clips: user.clipsCount ?? 0,
+          followers: user.followersCount ?? 0,
+          following: user.followingCount ?? 0,
+        };
+      }
+      
+      // Also check for snake_case variants
+      if (user._count.clips === 0 && user._count.followers === 0 && user._count.following === 0) {
+        const anyUser = user as any;
+        user._count = {
+          clips: anyUser.clips_count ?? anyUser.clipsCount ?? anyUser.clipCount ?? 0,
+          followers: anyUser.followers_count ?? anyUser.followersCount ?? anyUser.followerCount ?? 0,
+          following: anyUser.following_count ?? anyUser.followingCount ?? 0,
+        };
+      }
+      
+      console.log('[Users API] Profile stats extracted:', {
+        clips: user._count.clips,
+        followers: user._count.followers,
+        following: user._count.following,
+        rawClipsCount: (user as any).clipsCount,
+        rawFollowersCount: (user as any).followersCount,
+        rawFollowingCount: (user as any).followingCount,
+      });
+      
+      return { user };
+    },
 
     updateProfile: (id: number, data: unknown, token: string) =>
       apiFetch<{ user: User }>(`/api/user`, {
@@ -1044,6 +1555,56 @@ export const api = {
       }>('/api/rewards', {
         method: 'POST',
         body: JSON.stringify(reward),
+        token,
+      });
+    },
+  },
+
+  comments: {
+    likeClipComment: async (commentId: number, token: string) => {
+      console.log('[Comments API] 🔵 Liking clip comment:', commentId);
+      return apiFetch<{ liked: true; likeCount: number }>(`/api/comments/${commentId}/like`, {
+        method: 'POST',
+        token,
+      });
+    },
+
+    unlikeClipComment: async (commentId: number, token: string) => {
+      console.log('[Comments API] 🔵 Unliking clip comment:', commentId);
+      return apiFetch<{ liked: false; likeCount: number }>(`/api/comments/${commentId}/like`, {
+        method: 'DELETE',
+        token,
+      });
+    },
+
+    getClipCommentLikeStatus: async (commentId: number, token?: string) => {
+      console.log('[Comments API] 🔵 Getting clip comment like status:', commentId);
+      return apiFetch<{ hasLiked: boolean; likeCount: number }>(`/api/comments/${commentId}/like`, {
+        method: 'GET',
+        token,
+      });
+    },
+
+    likeScreenshotComment: async (commentId: number, token: string) => {
+      console.log('[Comments API] 🔵 Liking screenshot comment:', commentId);
+      return apiFetch<{ liked: true; likeCount: number }>(`/api/screenshot-comments/${commentId}/like`, {
+        method: 'POST',
+        token,
+      });
+    },
+
+    unlikeScreenshotComment: async (commentId: number, token: string) => {
+      console.log('[Comments API] 🔵 Unliking screenshot comment:', commentId);
+      return apiFetch<{ liked: false; likeCount: number }>(`/api/screenshot-comments/${commentId}/like`, {
+        method: 'DELETE',
+        token,
+      });
+    },
+
+    getScreenshotCommentLikeStatus: async (commentId: number, token?: string) => {
+      console.log('[Comments API] 🔵 Getting screenshot comment like status:', commentId);
+      return apiFetch<{ hasLiked: boolean; likeCount: number }>(`/api/screenshot-comments/${commentId}/like`, {
+        method: 'GET',
         token,
       });
     },

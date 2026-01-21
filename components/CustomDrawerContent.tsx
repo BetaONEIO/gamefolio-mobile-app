@@ -231,8 +231,8 @@ function formatNumber(num: number): string {
   };
 
 export default function CustomDrawerContent(props: DrawerContentComponentProps) {
-  const { user, logout } = useAuth();
-  const { favoriteGames } = useUser();
+  const { user, logout: authLogout } = useAuth();
+  const { favoriteGames, logout: userLogout } = useUser();
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -325,13 +325,17 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
     <View style={styles.container}>
       {/* Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) }]}>
-         <View style={styles.logoContainer}>
+         <TouchableOpacity 
+            style={styles.logoContainer}
+            onPress={() => navigate('/(drawer)/(tabs)/home')}
+            activeOpacity={0.7}
+          >
             <Image 
               source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/bpo9i1ux8et2igcgnomrk' }}
               style={{ width: 32, height: 32 }}
               resizeMode="contain"
             />
-         </View>
+          </TouchableOpacity>
         <TouchableOpacity onPress={() => props.navigation.closeDrawer()} style={styles.closeButton}>
           <X size={24} color="#FFF" />
         </TouchableOpacity>
@@ -671,7 +675,8 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         <TouchableOpacity style={styles.logoutButton} onPress={async () => {
           props.navigation.closeDrawer();
-          await logout();
+          await authLogout();
+          await userLogout();
           router.replace('/');
         }}>
             <LogOut size={20} color="#002E15" style={{ marginRight: 8 }} />

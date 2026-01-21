@@ -13,7 +13,8 @@ import ThemedScrollView from '@/components/ThemedScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Search, Check, Plus, CheckCircle2, X } from 'lucide-react-native';
+import { Search, Check, Plus } from 'lucide-react-native';
+import OnboardingProgress, { OnboardingStep } from '@/components/OnboardingProgress';
 import { Env } from '@/constants/Env';
 import { useUser, TwitchGame } from '@/context/UserContext';
 
@@ -26,6 +27,7 @@ export default function OnboardingGamesScreen() {
   const [loading, setLoading] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
+  const [showSelectionAlert, setShowSelectionAlert] = useState(false);
 
   const colors = {
     background: '#0F1520', 
@@ -36,14 +38,13 @@ export default function OnboardingGamesScreen() {
     surfaceHighlight: '#334155',
   };
 
-  const steps = [
-    { label: 'Welcome', status: 'completed' },
-    { label: 'Games', status: 'active' },
-    { label: 'Avatar', status: 'pending' },
-    { label: 'User Type', status: 'pending' },
-    { label: 'Age', status: 'pending' },
-    { label: 'Wallet', status: 'pending' },
-    { label: 'Complete', status: 'pending' },
+  const steps: OnboardingStep[] = [
+    { label: 'Welcome', status: 'completed', route: '/onboarding' },
+    { label: 'Games', status: 'active', route: '/onboarding/games' },
+    { label: 'Avatar', status: 'pending', route: '/onboarding/avatar' },
+    { label: 'User Type', status: 'pending', route: '/onboarding/user-type' },
+    { label: 'Wallet', status: 'pending', route: '/onboarding/wallet' },
+    { label: 'Complete', status: 'pending', route: '/onboarding/complete' },
   ];
 
   useEffect(() => {
@@ -118,10 +119,10 @@ export default function OnboardingGamesScreen() {
   };
 
   const handleNext = () => {
-    router.push('/onboarding/avatar');
-  };
-
-  const handleSkip = () => {
+    if (selectedGames.length === 0) {
+      setShowSelectionAlert(true);
+      return;
+    }
     router.push('/onboarding/avatar');
   };
 
@@ -130,88 +131,37 @@ export default function OnboardingGamesScreen() {
       <StatusBar style="light" />
       
       <View style={styles.content}>
-        <View style={styles.progressContainer}>
-          <View style={styles.stepsRow}>
-            {steps.map((step, index) => (
-              <React.Fragment key={index}>
-                <View style={styles.stepWrapper}>
-                  <View style={[
-                    styles.stepCircle, 
-                    step.status === 'active' && { backgroundColor: colors.primary, borderColor: colors.primary },
-                    step.status === 'completed' && { backgroundColor: colors.primary, borderColor: colors.primary },
-                    step.status === 'pending' && { backgroundColor: 'transparent', borderColor: '#334155' }
-                  ]}>
-                    {step.status === 'completed' ? (
-                      <Check size={16} color="#002E15" strokeWidth={3} />
-                    ) : (
-                      <Text style={[
-                        styles.stepNumber,
-                        step.status === 'active' ? { color: '#002E15' } : { color: '#64748B' }
-                      ]}>
-                        {index + 1}
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={[
-                    styles.stepLabel,
-                    step.status === 'active' || step.status === 'completed' ? { color: '#FFFFFF' } : { color: '#64748B' }
-                  ]} numberOfLines={1}>
-                    {step.label}
-                  </Text>
-                </View>
-                
-                {index < steps.length - 1 && (
-                  <View style={[
-                    styles.stepLine,
-                    (steps[index].status === 'completed' && steps[index+1].status !== 'pending') && { backgroundColor: colors.primary }
-                  ]} />
-                )}
-              </React.Fragment>
-            ))}
-          </View>
+        <View style={styles.progressWrapper}>
+          <OnboardingProgress steps={steps} currentIndex={1} />
         </View>
 
-        <ThemedScrollView contentContainerStyle={styles.scrollContent}>
+        <ThemedScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
+          
+          <Text style={styles.joystickEmoji}>🕹️</Text>
           
           <Text style={styles.title}>Which games do you enjoy?</Text>
           <Text style={styles.subtitle}>
             Choose your favorite games to play or watch
           </Text>
 
-          <View style={styles.optionalBadge}>
-            <Text style={styles.optionalText}>Optional - Select up to 5</Text>
-          </View>
-
-          <View style={styles.selectedBox}>
-            <View style={styles.selectedGamesList}>
-              {selectedGames.length === 0 ? (
-                <Text style={styles.emptySelectionText}>No games selected yet</Text>
-              ) : (
-                selectedGames.map((game) => (
-                  <View key={game.id} style={styles.selectedGameWrapper}>
-                    <Image 
-                      source={{ uri: getImageUrl(game.box_art_url) }} 
-                      style={styles.selectedGameThumb} 
-                      contentFit="contain"
-                      transition={200}
-                    />
-                    <TouchableOpacity 
-                      style={styles.removeGameButton} 
-                      onPress={() => toggleGame(game)}
-                      activeOpacity={0.7}
-                    >
-                      <X size={12} color="#FFFFFF" strokeWidth={3} />
-                    </TouchableOpacity>
-                  </View>
-                ))
-              )}
-            </View>
-            {selectedGames.length > 0 && (
-              <View style={styles.checkWrapper}>
-                <Check size={20} color="#4ADE80" />
+          {selectedGames.length > 0 && (
+            <View style={styles.selectedBox}>
+              <View style={styles.selectedGamesList}>
+                {selectedGames.map((game) => (
+                  <Image 
+                    key={game.id}
+                    source={{ uri: getImageUrl(game.box_art_url) }} 
+                    style={styles.selectedGameThumb} 
+                    contentFit="cover"
+                    transition={200}
+                  />
+                ))}
               </View>
-            )}
-          </View>
+              <View style={styles.checkWrapper}>
+                <Check size={24} color="#4ADE80" strokeWidth={3} />
+              </View>
+            </View>
+          )}
 
           <View style={styles.searchContainer}>
             <Search size={20} color="#94A3B8" />
@@ -233,17 +183,14 @@ export default function OnboardingGamesScreen() {
                 return (
                   <TouchableOpacity 
                     key={game.id} 
-                    style={[
-                      styles.gameItem,
-                      isSelected && styles.gameItemSelected
-                    ]}
+                    style={styles.gameItem}
                     onPress={() => toggleGame(game)}
                     activeOpacity={0.7}
                   >
                     <Image 
                       source={{ uri: getImageUrl(game.box_art_url) }} 
                       style={styles.gameThumb} 
-                      contentFit="contain"
+                      contentFit="cover"
                       transition={200}
                     />
                     <View style={styles.gameInfo}>
@@ -251,9 +198,11 @@ export default function OnboardingGamesScreen() {
                     </View>
                     <View style={styles.actionIcon}>
                       {isSelected ? (
-                        <CheckCircle2 size={24} color={colors.primary} fill="transparent" />
+                        <Check size={24} color={colors.primary} strokeWidth={3} />
                       ) : (
-                        <Plus size={24} color="#FFFFFF" />
+                        <View style={styles.addCircle}>
+                          <Plus size={16} color="#64748B" strokeWidth={2} />
+                        </View>
                       )}
                     </View>
                   </TouchableOpacity>
@@ -285,6 +234,27 @@ export default function OnboardingGamesScreen() {
           </View>
         </Modal>
 
+        <Modal
+          transparent
+          visible={showSelectionAlert}
+          animationType="fade"
+          onRequestClose={() => setShowSelectionAlert(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.limitAlertBox}>
+              <Text style={styles.limitAlertTitle}>Select Your Games</Text>
+              <Text style={styles.limitAlertText}>Please select your favorite games to continue</Text>
+              <TouchableOpacity 
+                style={styles.limitAlertButton}
+                onPress={() => setShowSelectionAlert(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.limitAlertButtonText}>Okay</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
         <View style={styles.footer}>
           <View style={styles.buttonRow}>
             <TouchableOpacity 
@@ -295,23 +265,13 @@ export default function OnboardingGamesScreen() {
               <Text style={styles.backButtonText}>Back</Text>
             </TouchableOpacity>
 
-            {selectedGames.length === 0 ? (
-              <TouchableOpacity 
-                style={styles.skipButton}
-                activeOpacity={0.8}
-                onPress={handleSkip}
-              >
-                <Text style={styles.skipButtonText}>Skip</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity 
-                style={styles.nextButton}
-                activeOpacity={0.8}
-                onPress={handleNext}
-              >
-                <Text style={styles.nextButtonText}>Next</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity 
+              style={styles.nextButton}
+              activeOpacity={0.8}
+              onPress={handleNext}
+            >
+              <Text style={styles.nextButtonText}>Next</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -325,123 +285,54 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
   },
-  progressContainer: {
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  stepsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  stepWrapper: {
-    alignItems: 'center',
-    zIndex: 1,
-    width: 40,
-  },
-  stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    backgroundColor: '#0F1520',
-  },
-  stepNumber: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-  },
-  stepLabel: {
-    fontSize: 10,
-    textAlign: 'center',
-  },
-  stepLine: {
-    flex: 1,
-    height: 2,
-    backgroundColor: '#334155',
-    marginTop: 13,
+  progressWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: -6,
   },
   scrollContent: {
     flexGrow: 1,
     paddingBottom: 20,
+    paddingHorizontal: 20,
+    paddingRight: 32,
+  },
+  joystickEmoji: {
+    fontSize: 44,
+    textAlign: 'center',
+    marginBottom: 12,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700' as const,
     color: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#94A3B8',
     textAlign: 'center',
     marginBottom: 16,
-    lineHeight: 24,
-  },
-  optionalBadge: {
-    alignSelf: 'center',
-    backgroundColor: 'rgba(148, 163, 184, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  optionalText: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '600' as const,
+    lineHeight: 22,
   },
   selectedBox: {
-    backgroundColor: '#161F2E',
-    borderRadius: 16,
-    padding: 16,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
-    minHeight: 80,
-    borderWidth: 1,
-    borderColor: '#1E293B',
+    marginBottom: 16,
   },
   selectedGamesList: {
     flex: 1,
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 8,
   },
-  emptySelectionText: {
-    color: '#64748B',
-    fontSize: 14,
-    fontStyle: 'italic',
-  },
-  selectedGameWrapper: {
-    position: 'relative',
-    marginRight: 8,
-    marginBottom: 8,
-  },
   selectedGameThumb: {
-    width: 45,
-    height: 60,
-    borderRadius: 6,
+    width: 50,
+    height: 65,
+    borderRadius: 8,
     backgroundColor: '#334155',
-  },
-  removeGameButton: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#EF4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#161F2E',
-    zIndex: 10,
   },
   checkWrapper: {
     marginLeft: 12,
@@ -452,8 +343,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    height: 50,
-    marginBottom: 24,
+    height: 48,
+    marginBottom: 16,
   },
   searchInput: {
     flex: 1,
@@ -462,24 +353,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   gamesList: {
-    gap: 12,
+    gap: 8,
   },
   gameItem: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 12,
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  gameItemSelected: {
-    borderWidth: 1,
-    borderColor: '#4ADE80',
-    backgroundColor: '#162221',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
   },
   gameThumb: {
-    width: 45,
-    height: 60,
-    borderRadius: 6,
+    width: 50,
+    height: 65,
+    borderRadius: 8,
     backgroundColor: '#334155',
   },
   gameInfo: {
@@ -495,9 +384,19 @@ const styles = StyleSheet.create({
   actionIcon: {
     padding: 4,
   },
+  addCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#64748B',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   footer: {
-    paddingTop: 20,
+    paddingTop: 16,
     paddingBottom: 20,
+    paddingHorizontal: 20,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -515,21 +414,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700' as const,
     color: '#FFFFFF',
-  },
-  skipButton: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  skipButtonText: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: '#94A3B8',
   },
   nextButton: {
     flex: 1,

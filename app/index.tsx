@@ -17,6 +17,8 @@ import { StatusBar } from 'expo-status-bar';
 import { Lock, Eye, EyeOff, ArrowRight, User as UserIcon, AlertCircle, CheckCircle, Calendar, LogOut } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { api, APIError } from '@/lib/api';
+import { useDebounce } from '@/hooks/useDebounce';
+import { isUsernameAppropriate } from '@/lib/profanity-filter';
 import CustomAlert from '@/components/CustomAlert';
 import BirthdayModal from '@/components/BirthdayModal';
 import * as WebBrowser from 'expo-web-browser';
@@ -88,7 +90,6 @@ export default function LoginScreen() {
   const params = useLocalSearchParams();
   const { login: loginUser, isLoading: authLoading, isAuthenticated, user, logout: logoutUser } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
-  const [referralCode, setReferralCode] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -109,6 +110,14 @@ export default function LoginScreen() {
     type: 'error',
   });
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [usernameAvailability, setUsernameAvailability] = useState<{
+    checking: boolean;
+    available: boolean | null;
+    message: string;
+  }>({ checking: false, available: null, message: '' });
+  
+  const debouncedUsername = useDebounce(username, 300);
 
   const discovery = {
     authorizationEndpoint: 'https://discord.com/api/oauth2/authorize',
@@ -156,7 +165,20 @@ export default function LoginScreen() {
           
           if (data.accessToken && data.refreshToken && data.user) {
             await loginUser(data.user, data.accessToken, data.refreshToken, data.expiresIn || 7 * 24 * 60 * 60);
-            router.replace('/(drawer)/(tabs)/home');
+            
+            // Check if user needs onboarding (social login users with temp username or missing userType/ageRange)
+            const needsOnboarding = data.needsOnboarding || 
+              !data.user.userType || 
+              !data.user.ageRange || 
+              (data.user.username && data.user.username.startsWith('temp_'));
+            
+            if (needsOnboarding) {
+              console.log('[Discord OAuth] User needs onboarding, redirecting...');
+              router.replace('/onboarding');
+            } else {
+              console.log('[Discord OAuth] Login complete, redirecting to home...');
+              router.replace('/(drawer)/(tabs)/home');
+            }
           } else {
             throw new Error('Invalid response from server');
           }
@@ -188,20 +210,68 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (params.ref) {
-      const refCode = Array.isArray(params.ref) ? params.ref[0] : params.ref;
-      setReferralCode(refCode);
       setIsLogin(false);
-      console.log('[Login] Referral code detected:', refCode);
+      console.log('[Login] Referral code detected:', params.ref);
     }
   }, [params.ref]);
+
+  useEffect(() => {
+    const checkUsername = async () => {
+      if (isLogin || !debouncedUsername || debouncedUsername.length < 3) {
+        setUsernameAvailability({ checking: false, available: null, message: '' });
+        return;
+      }
+      
+      if (!isUsernameValid(debouncedUsername)) {
+        setUsernameAvailability({ checking: false, available: null, message: '' });
+        return;
+      }
+      
+      setUsernameAvailability(prev => ({ ...prev, checking: true }));
+      
+      try {
+        const result = await api.auth.checkUsername(debouncedUsername.toLowerCase());
+        console.log('[Username Check] Result:', result);
+        setUsernameAvailability({
+          checking: false,
+          available: result.available,
+          message: result.available ? 'Username available' : (result.message || 'Username taken'),
+        });
+      } catch (error) {
+        console.error('[Username Check] Error:', error);
+        setUsernameAvailability({ checking: false, available: null, message: '' });
+      }
+    };
+    
+    checkUsername();
+  }, [debouncedUsername, isLogin]);
 
   useEffect(() => {
     if (!authLoading) {
       console.log('[Login] Auth loaded');
       console.log('[Login] isAuthenticated:', isAuthenticated);
       console.log('[Login] user:', user?.username || 'null');
+      console.log('[Login] emailVerified:', user?.emailVerified);
       if (isAuthenticated && user) {
-        console.log('[Login] User already authenticated, redirecting...');
+        // Check if email is verified first
+        if (!user.emailVerified) {
+          console.log('[Login] Email not verified, redirecting to verify-code...');
+          router.replace({
+            pathname: '/verify-code',
+            params: { email: user.email || '' }
+          });
+          return;
+        }
+        
+        // Check if onboarding is needed
+        const needsOnboarding = !user.userType;
+        if (needsOnboarding) {
+          console.log('[Login] Onboarding incomplete, redirecting to onboarding...');
+          router.replace('/onboarding');
+          return;
+        }
+        
+        console.log('[Login] User already authenticated, redirecting to home...');
         router.replace('/(drawer)/(tabs)/home');
       }
     }
@@ -219,6 +289,14 @@ export default function LoginScreen() {
   // Validation helpers
   const isUsernameValid = (name: string) => /^[a-zA-Z0-9_]{3,20}$/.test(name);
   const isEmailValid = (mail: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail);
+  
+  const getUsernameValidation = (name: string) => {
+    if (!name || name.length < 3) return { valid: false, message: '' };
+    const appropriateCheck = isUsernameAppropriate(name);
+    return appropriateCheck;
+  };
+  
+  const usernameValidation = getUsernameValidation(username);
   
   const getPasswordStrength = (pass: string) => ({
     length: pass.length >= 8,
@@ -264,7 +342,18 @@ export default function LoginScreen() {
         console.log('[Login] Success:', result.user.username);
         
         if (!result.user.emailVerified) {
-          showAlert('Email Verification Required', 'Please verify your email before continuing.', 'error');
+          console.log('[Login] Email not verified, redirecting to verify-code...');
+          router.replace({
+            pathname: '/verify-code',
+            params: { email: result.user.email || '' }
+          });
+          return;
+        }
+        
+        const needsOnboarding = !result.user.userType;
+        if (needsOnboarding) {
+          console.log('[Login] Onboarding incomplete, redirecting to onboarding...');
+          router.replace('/onboarding');
           return;
         }
         
@@ -283,6 +372,10 @@ export default function LoginScreen() {
       // Sign Up Validation
       if (!isUsernameValid(username)) {
         showAlert('Error', 'Invalid username format');
+        return;
+      }
+      if (!usernameValidation.valid) {
+        showAlert('Error', usernameValidation.message || 'Invalid username');
         return;
       }
       if (!isEmailValid(email)) {
@@ -309,19 +402,36 @@ export default function LoginScreen() {
           displayName: username,
           email,
           password,
-          dateOfBirth: birthday.toISOString(),
-          referralCode: referralCode || undefined,
         });
 
         console.log('[Register] Success:', result.user.username);
-        showAlert('Success', 'Account created! Please log in.', 'success');
-        setIsLogin(true);
-        setPassword('');
-        setConfirmPassword('');
+        
+        // Store the user session
+        await loginUser(
+          result.user,
+          result.accessToken,
+          result.refreshToken,
+          result.expiresIn,
+          result.streakInfo,
+          result.gamefolioTokens
+        );
+        
+        // Navigate to email verification screen
+        router.push({
+          pathname: '/verify-code',
+          params: { email: email }
+        });
       } catch (error) {
         console.error('[Register] Error:', error);
         if (error instanceof APIError) {
-          showAlert('Registration Failed', error.message);
+          const errorMessage = error.message.toLowerCase();
+          if (errorMessage.includes('username already taken') || errorMessage.includes('username')) {
+            showAlert('Username Taken', 'This username is already in use. Please choose a different one.');
+          } else if (errorMessage.includes('email') && (errorMessage.includes('registered') || errorMessage.includes('already'))) {
+            showAlert('Email Already Registered', 'This email address is already registered. Please use a different email or try logging in.');
+          } else {
+            showAlert('Registration Failed', error.message);
+          }
         } else {
           showAlert('Registration Failed', 'Failed to create account');
         }
@@ -470,6 +580,38 @@ export default function LoginScreen() {
                       <AlertCircle size={16} color="#EAB308" />
                       <Text style={[styles.validationText, { color: '#EAB308' }]}>
                         Username must be 3-20 characters, letters/numbers/underscores only
+                      </Text>
+                    </View>
+                  )}
+                  {username.length >= 3 && isUsernameValid(username) && !usernameValidation.valid && (
+                    <View style={[styles.validationBox, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }]}>
+                      <AlertCircle size={16} color="#EF4444" />
+                      <Text style={[styles.validationText, { color: '#EF4444' }]}>
+                        {usernameValidation.message}
+                      </Text>
+                    </View>
+                  )}
+                  {username.length >= 3 && isUsernameValid(username) && usernameAvailability.checking && (
+                    <View style={[styles.validationBox, { backgroundColor: 'rgba(148, 163, 184, 0.1)', borderColor: 'rgba(148, 163, 184, 0.2)' }]}>
+                      <ActivityIndicator size="small" color="#94A3B8" />
+                      <Text style={[styles.validationText, { color: '#94A3B8' }]}>
+                        Checking availability...
+                      </Text>
+                    </View>
+                  )}
+                  {username.length >= 3 && isUsernameValid(username) && !usernameAvailability.checking && usernameAvailability.available === true && (
+                    <View style={[styles.validationBox, styles.validationSuccess]}>
+                      <CheckCircle size={16} color="#4ADE80" />
+                      <Text style={[styles.validationText, { color: '#4ADE80' }]}>
+                        {usernameAvailability.message}
+                      </Text>
+                    </View>
+                  )}
+                  {username.length >= 3 && isUsernameValid(username) && !usernameAvailability.checking && usernameAvailability.available === false && (
+                    <View style={[styles.validationBox, { backgroundColor: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }]}>
+                      <AlertCircle size={16} color="#EF4444" />
+                      <Text style={[styles.validationText, { color: '#EF4444' }]}>
+                        {usernameAvailability.message}
                       </Text>
                     </View>
                   )}
@@ -624,8 +766,10 @@ export default function LoginScreen() {
 
             {/* Google Login Button */}
             <TouchableOpacity 
-              style={[styles.socialButton, styles.googleButton]}
+              style={[styles.socialButton, styles.googleButton, isGoogleLoading && styles.mainButtonDisabled]}
               onPress={async () => {
+                if (isGoogleLoading) return;
+                setIsGoogleLoading(true);
                 try {
                   const redirectUri = Linking.createURL('/oauth-callback');
                   const backendUrl = Env.BACKEND_URL || '';
@@ -638,11 +782,25 @@ export default function LoginScreen() {
                     const token = url.searchParams.get('token');
                     const refreshToken = url.searchParams.get('refresh_token');
                     const userData = url.searchParams.get('user');
+                    const needsOnboardingParam = url.searchParams.get('needs_onboarding');
                     
                     if (token && refreshToken && userData) {
                       const user = JSON.parse(decodeURIComponent(userData));
                       await loginUser(user, token, refreshToken, 7 * 24 * 60 * 60);
-                      router.replace('/(drawer)/(tabs)/home');
+                      
+                      // Check if user needs onboarding
+                      const needsOnboarding = needsOnboardingParam === 'true' || 
+                        !user.userType || 
+                        !user.ageRange || 
+                        (user.username && user.username.startsWith('temp_'));
+                      
+                      if (needsOnboarding) {
+                        console.log('[OAuth] Google user needs onboarding, redirecting...');
+                        router.replace('/onboarding');
+                      } else {
+                        console.log('[OAuth] Google login complete, redirecting to home...');
+                        router.replace('/(drawer)/(tabs)/home');
+                      }
                     } else {
                       showAlert('Error', 'Failed to authenticate with Google');
                     }
@@ -650,12 +808,21 @@ export default function LoginScreen() {
                 } catch (error) {
                   console.error('[OAuth] Google error:', error);
                   showAlert('Error', 'Failed to connect to Google');
+                } finally {
+                  setIsGoogleLoading(false);
                 }
               }}
               activeOpacity={0.8}
+              disabled={isGoogleLoading}
             >
-              <GoogleIcon />
-              <Text style={styles.googleButtonText}>Continue with Google</Text>
+              {isGoogleLoading ? (
+                <ActivityIndicator size="small" color="#1F2937" />
+              ) : (
+                <>
+                  <GoogleIcon />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </>
+              )}
             </TouchableOpacity>
 
             {/* Discord Login Button */}
@@ -679,42 +846,6 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Developer Bypass Button */}
-            <TouchableOpacity 
-              style={[styles.socialButton, { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#334155', marginTop: 8 }]}
-              onPress={async () => {
-                 const mockUser = {
-                  id: 999,
-                  username: 'GuestDev',
-                  displayName: 'Guest Developer',
-                  email: 'guest@dev.local',
-                  emailVerified: true,
-                  role: 'user',
-                  totalXP: 1000,
-                  level: 5,
-                  currentStreak: 3,
-                  longestStreak: 10,
-                  avatarUrl: null,
-                  bannerUrl: null,
-                  bio: 'Just a guest developer passing through.',
-                  messagingEnabled: true,
-                  isPrivate: false,
-                  userType: 'Casual',
-                  gfTokenBalance: 500
-                };
-                
-                await loginUser(
-                  mockUser, 
-                  'mock-access-token', 
-                  'mock-refresh-token', 
-                  3600
-                );
-                router.replace('/(drawer)/(tabs)/home');
-              }}
-            >
-              <Lock size={20} color="#94A3B8" style={{ marginRight: 10 }} />
-              <Text style={[styles.socialButtonText, { color: '#94A3B8' }]}>Developer Bypass (No Auth)</Text>
-            </TouchableOpacity>
 
           </View>
         </ScrollView>
@@ -749,7 +880,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingBottom: 40,
-    paddingTop: 80,
+    paddingTop: 20,
   },
   logoContainer: {
     alignItems: 'center',

@@ -2,18 +2,99 @@ import { useAuth } from '@/context/AuthContext';
 import { View, Text, StyleSheet, Image, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, ScrollView, Keyboard, Modal, StatusBar, PanResponder, GestureResponderEvent, LayoutChangeEvent, FlatList, Animated } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import ShareClipModal from '@/components/ShareClipModal';
-import { Heart, MessageSquare, Flame, Share2, Send, Flag, Play, Pause, Volume2, VolumeX, Maximize, X, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import ReportModal from '@/components/ReportModal';
+
+import { Heart, MessageSquare, Flame, Share2, Send, Flag, Play, Pause, Volume2, VolumeX, Maximize, X, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react-native';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as ScreenOrientation from 'expo-screen-orientation';
-import { api, Clip } from '@/lib/api';
+import { api, Clip, TaggedUser, APIError } from '@/lib/api';
+import { getGamefolioToken, forceRefreshGamefolioToken } from '@/lib/gamefolio-api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import AppHeader from '@/components/AppHeader';
 import { LinearGradient } from 'expo-linear-gradient';
 import ReelViewer, { ReelData, Comment as ReelComment } from '@/components/ReelViewer';
 import FlameAnimation from '@/components/FlameAnimation';
+
+let hasShownAuthError = false;
+
+const getErrorMessage = (error: unknown, context?: string): { title: string; message: string; isAuthError: boolean; shouldShowAlert: boolean; shouldLogout?: boolean } => {
+  if (error instanceof APIError) {
+    if (error.status === 401) {
+      // Don't auto-logout for fire/like actions - just show a message to retry
+      const isReactionAction = context === 'fire' || context === 'like';
+      if (isReactionAction) {
+        return {
+          title: 'Action Failed',
+          message: 'Unable to complete this action. Please try again.',
+          isAuthError: true,
+          shouldShowAlert: false,
+          shouldLogout: false,
+        };
+      }
+      const shouldAlert = !hasShownAuthError;
+      hasShownAuthError = true;
+      return {
+        title: 'Session Expired',
+        message: 'Your session has expired. You will be logged out.',
+        isAuthError: true,
+        shouldShowAlert: shouldAlert,
+        shouldLogout: true,
+      };
+    }
+    if (error.status === 429) {
+      return {
+        title: 'Slow Down',
+        message: error.message || 'You\'re doing that too fast. Please wait a moment and try again.',
+        isAuthError: false,
+        shouldShowAlert: false,
+      };
+    }
+    if (error.status === 403) {
+      return {
+        title: 'Access Denied',
+        message: 'You don\'t have permission to perform this action.',
+        isAuthError: false,
+        shouldShowAlert: false,
+      };
+    }
+    return {
+      title: 'Error',
+      message: error.message || 'Something went wrong. Please try again.',
+      isAuthError: false,
+      shouldShowAlert: false,
+    };
+  }
+  
+  if (error instanceof Error) {
+    if (error.message === 'Not authenticated') {
+      const shouldAlert = !hasShownAuthError;
+      hasShownAuthError = true;
+      return {
+        title: 'Session Expired',
+        message: 'Your session has expired. You will be logged out.',
+        isAuthError: true,
+        shouldShowAlert: shouldAlert,
+        shouldLogout: true,
+      };
+    }
+    return {
+      title: 'Error',
+      message: error.message,
+      isAuthError: false,
+      shouldShowAlert: false,
+    };
+  }
+  
+  return {
+    title: 'Error',
+    message: 'An unexpected error occurred. Please try again.',
+    isAuthError: false,
+    shouldShowAlert: false,
+  };
+};
 
 
 
@@ -38,14 +119,15 @@ const timeAgo = (dateString: string) => {
   return `${Math.floor(months / 12)}y ago`;
 };
 
-const formatNumber = (num: number): string => {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + 'M';
+const formatNumber = (num: number | null | undefined): string => {
+  const safeNum = typeof num === 'number' && !isNaN(num) ? num : 0;
+  if (safeNum >= 1000000) {
+    return (safeNum / 1000000).toFixed(1) + 'M';
   }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'K';
+  if (safeNum >= 1000) {
+    return (safeNum / 1000).toFixed(1) + 'K';
   }
-  return num.toString();
+  return safeNum.toString();
 };
 
 const ExpandableText = ({ text, maxLength = 150 }: { text: string; maxLength?: number }) => {
@@ -81,8 +163,9 @@ ClipThumbnail.displayName = 'ClipThumbnail';
 
 export default function ClipDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams();
+  const { id, fromUser } = useLocalSearchParams();
   const clipId = Array.isArray(id) ? id[0] : id;
+  const fromUsername = Array.isArray(fromUser) ? fromUser[0] : fromUser;
   const insets = useSafeAreaInsets();
   const [currentClipIndex, setCurrentClipIndex] = useState(0);
   const clipsFlatListRef = useRef<FlatList>(null);
@@ -102,31 +185,183 @@ export default function ClipDetailScreen() {
   const progressBarWidthRef = useRef<number>(0);
   const fullscreenProgressBarWidthRef = useRef<number>(0);
   const [, setIsSeeking] = useState(false);
-  const [localIsLiked, setLocalIsLiked] = useState(false);
-  const [localIsFired, setLocalIsFired] = useState(false);
-  const [localLikeCount, setLocalLikeCount] = useState(0);
-  const [localFireCount, setLocalFireCount] = useState(0);
+  const [localIsLiked, setLocalIsLiked] = useState<boolean | null>(null);
+  const [localIsFired, setLocalIsFired] = useState<boolean | null>(null);
+  const [localLikeCount, setLocalLikeCount] = useState<number | null>(null);
+  const [localFireCount, setLocalFireCount] = useState<number | null>(null);
+  const [localUserReactionId, setLocalUserReactionId] = useState<number | null>(null);
+  const lastSyncedClipId = useRef<string | null>(null);
   const [showFlameAnimation, setShowFlameAnimation] = useState(false);
+  const [isReportModalVisible, setIsReportModalVisible] = useState(false);
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const likeScale = useRef(new Animated.Value(1)).current;
+  const isLikeInProgress = useRef(false);
+  const isFireInProgress = useRef(false);
+
+  const [likeCooldown, setLikeCooldown] = useState(0);
+  const [fireCooldown, setFireCooldown] = useState(0);
+  const likeCooldownProgress = useRef(new Animated.Value(0)).current;
+  const fireCooldownProgress = useRef(new Animated.Value(0)).current;
+  const COOLDOWN_DURATION = 5000;
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'warning' | 'success' } | null>(null);
+  const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+
+  const showToast = useCallback((message: string, type: 'error' | 'warning' | 'success' = 'error') => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToast({ message, type });
+    Animated.timing(toastOpacity, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+    toastTimeoutRef.current = setTimeout(() => {
+      Animated.timing(toastOpacity, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => setToast(null));
+    }, 3000);
+  }, [toastOpacity]);
   
   const { getAccessToken, user: currentUser } = useAuth();
+  
+  const submitReportMutation = useMutation({
+    mutationFn: async (data: { contentType: string; contentId: number; reason: string; details?: string; contentTitle?: string; reportedUserId?: number; reportedUsername?: string }) => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/reports`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('Failed to submit report');
+      return response.json();
+    },
+    onSuccess: () => {
+      console.log('[ClipDetail] Report submitted successfully');
+    },
+    onError: (error) => {
+      console.error('[ClipDetail] Error submitting report:', error);
+    },
+  });
   const queryClient = useQueryClient();
 
-  // Fetch all clips for horizontal scrolling
-  const { data: allClips = [] } = useQuery<Clip[]>({
-    queryKey: ['clips', 'feed'],
+  const deleteClipMutation = useMutation({
+    mutationFn: async (clipIdToDelete: string) => {
+      console.log('[ClipDetail] Attempting to delete clip:', clipIdToDelete);
+      let token = await getGamefolioToken();
+      if (!token) {
+        console.log('[ClipDetail] No Gamefolio token, trying to refresh...');
+        token = await forceRefreshGamefolioToken();
+      }
+      if (!token) throw new Error('Not authenticated');
+      console.log('[ClipDetail] Using Gamefolio token for delete');
+      return api.clips.delete(clipIdToDelete, token);
+    },
+    onSuccess: () => {
+      console.log('[ClipDetail] Clip deleted successfully');
+      setIsDeleteModalVisible(false);
+      setIsDeleting(false);
+      queryClient.invalidateQueries({ queryKey: ['clips'] });
+      queryClient.invalidateQueries({ queryKey: ['userClips'] });
+      router.back();
+    },
+    onError: (error) => {
+      console.error('[ClipDetail] Error deleting clip:', error);
+      setIsDeleting(false);
+      showToast('Failed to delete clip. Please try again.', 'error');
+    },
+  });
+
+  // Fetch the specific clip first
+  const { data: clip, isLoading } = useQuery<Clip>({
+    queryKey: ['clip', clipId],
     queryFn: async () => {
       const token = await getAccessToken();
-      console.log('[ClipDetail] Fetching all clips for swipe navigation');
+      console.log('[ClipDetail] Fetching clip:', clipId);
+      const clipData = await api.clips.getClip(clipId || '', token || undefined);
+      console.log('[ClipDetail] Received clip data:', clipData);
+      console.log('[ClipDetail] clip.isFired from API:', clipData.isFired);
+      return clipData;
+    },
+    enabled: !!clipId,
+  });
+
+  // Query to check if user has fired this clip - THIS IS THE SOURCE OF TRUTH FROM BACKEND
+  const { data: userFireStatus } = useQuery({
+    queryKey: ['clip', clipId, 'fire-status', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id || !clipId) return { hasFired: false, userReactionId: null, fireCount: 0 };
       try {
-        const clips = await api.clips.getFeed(token || undefined, { page: 1, limit: 50 });
-        return clips.filter(c => c.videoType !== 'reel');
+        const token = await getGamefolioToken();
+        if (!token) return { hasFired: false, userReactionId: null, fireCount: 0 };
+        console.log('[ClipDetail] 🔍 BACKEND CHECK - Fetching fire status for clip:', clipId, 'user:', currentUser.id);
+        const reactions = await api.clips.getReactions(clipId, token);
+        const fireReactions = reactions.filter(r => r.emoji === '🔥');
+        const userFireReaction = fireReactions.find(r => Number(r.userId) === Number(currentUser.id));
+        const userHasFired = !!userFireReaction;
+        console.log('[ClipDetail] 🔍 BACKEND RESULT - hasFired:', userHasFired, 'reactionId:', userFireReaction?.id, 'totalFires:', fireReactions.length);
+        return { hasFired: userHasFired, fireCount: fireReactions.length, userReactionId: userFireReaction?.id || null };
+      } catch (error) {
+        console.log('[ClipDetail] Error checking fire status:', error);
+        return { hasFired: false, userReactionId: null, fireCount: 0 };
+      }
+    },
+    enabled: !!clipId && !!currentUser?.id,
+    staleTime: 0, // Always refetch to get accurate status
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+
+  const isOwnClip = clip?.userId === currentUser?.id;
+
+  const { mutate: deleteClip } = deleteClipMutation;
+  const handleDeleteClip = useCallback(() => {
+    if (!clipId) return;
+    setIsDeleting(true);
+    deleteClip(clipId);
+  }, [clipId, deleteClip]);
+
+  // Fetch clips for horizontal scrolling - either from specific user or general feed
+  const { data: feedClips = [] } = useQuery<Clip[]>({
+    queryKey: fromUsername ? ['userClips', fromUsername] : ['clips', 'feed'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      try {
+        if (fromUsername) {
+          console.log('[ClipDetail] Fetching clips from user:', fromUsername);
+          const userClips = await api.users.getUserClips(fromUsername);
+          return userClips.filter((c: Clip) => c.videoType !== 'reel');
+        } else {
+          console.log('[ClipDetail] Fetching all clips for swipe navigation');
+          const clips = await api.clips.getFeed(token || undefined, { page: 1, limit: 50 });
+          return clips.filter((c: Clip) => c.videoType !== 'reel');
+        }
       } catch (error) {
         console.log('[ClipDetail] Error fetching clips:', error);
         return [];
       }
     },
   });
+
+  // Combine clips: ensure the current clip is always in the list
+  const allClips = React.useMemo(() => {
+    if (!clip) return feedClips;
+    
+    const clipExistsInFeed = feedClips.some(c => c.id.toString() === clipId);
+    if (clipExistsInFeed) {
+      return feedClips;
+    }
+    // Prepend the current clip if it's not in the feed
+    return [clip, ...feedClips];
+  }, [feedClips, clip, clipId]);
 
   // Find the index of current clip in all clips
   useEffect(() => {
@@ -142,26 +377,44 @@ export default function ClipDetailScreen() {
     }
   }, [allClips, clipId, currentClipIndex]);
 
-  const { data: clip, isLoading } = useQuery<Clip>({
-    queryKey: ['clip', clipId],
-    queryFn: async () => {
-      const token = await getAccessToken();
-      console.log('[ClipDetail] Fetching clip:', clipId);
-      const clipData = await api.clips.getClip(clipId || '', token || undefined);
-      console.log('[ClipDetail] Received clip data:', clipData);
-      return clipData;
-    },
-    enabled: !!clipId,
-  });
-
   useEffect(() => {
-    if (clip) {
-      setLocalIsLiked(clip.isLiked || false);
-      setLocalIsFired(clip.isFired || false);
-      setLocalLikeCount(clip._count?.likes || 0);
-      setLocalFireCount(clip._count?.fires || 0);
+    // Only sync on initial load or clip change - don't continuously override local state
+    if (lastSyncedClipId.current === clipId) {
+      return;
     }
-  }, [clip]);
+    
+    // Skip sync if mutation is in progress
+    if (isFireInProgress.current || isLikeInProgress.current) {
+      console.log('[ClipDetail] Skipping initial sync - mutation in progress');
+      return;
+    }
+    
+    // Initial sync from backend data
+    if (clip && userFireStatus) {
+      const backendHasFired = userFireStatus.hasFired === true;
+      const backendFireCount = userFireStatus.fireCount ?? 0;
+      
+      console.log('[ClipDetail] 📡 INITIAL SYNC FROM BACKEND:');
+      console.log('[ClipDetail]   - Backend hasFired:', backendHasFired);
+      console.log('[ClipDetail]   - Backend fireCount:', backendFireCount);
+      console.log('[ClipDetail]   - Backend reactionId:', userFireStatus.userReactionId);
+      
+      setLocalIsFired(backendHasFired);
+      setLocalFireCount(backendFireCount);
+      setLocalUserReactionId(userFireStatus.userReactionId ?? null);
+      setLocalIsLiked(clip.isLiked === true);
+      setLocalLikeCount(clip._count?.likes || 0);
+      lastSyncedClipId.current = clipId || null;
+    } else if (clip && !userFireStatus) {
+      // Fallback for when userFireStatus hasn't loaded yet
+      console.log('[ClipDetail] Initial sync (waiting for backend fire status)');
+      setLocalIsLiked(clip.isLiked === true);
+      setLocalIsFired(clip.isFired === true);
+      setLocalLikeCount(clip._count?.likes || 0);
+      setLocalFireCount(clip._count?.fires ?? 0);
+      // Don't set lastSyncedClipId yet - wait for userFireStatus to load
+    }
+  }, [clip, clipId, userFireStatus]);
 
   const { data: comments = [], refetch: refetchComments } = useQuery<any[]>({
     queryKey: ['clip', clipId, 'comments'],
@@ -174,16 +427,33 @@ export default function ClipDetailScreen() {
   });
 
   const addCommentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const token = await getAccessToken();
-      if (!token) throw new Error('Not authenticated');
-      return api.clips.addComment(clipId || '', { content }, token);
+    mutationFn: async (data: { clipId: number; content: string }) => {
+      console.log('[ClipDetail] Adding comment, getting Gamefolio token...');
+      const token = await getGamefolioToken();
+      console.log('[ClipDetail] Gamefolio token retrieved:', token ? 'yes (length: ' + token.length + ')' : 'no');
+      if (!token) {
+        console.error('[ClipDetail] No token available for comment');
+        throw new Error('Please log in to comment');
+      }
+      console.log('[ClipDetail] Adding comment via REST API to /api/clips/' + data.clipId + '/comments');
+      console.log('[ClipDetail] Comment content:', data.content);
+      const result = await api.clips.addComment(data.clipId.toString(), { content: data.content }, token);
+      console.log('[ClipDetail] Comment API response:', JSON.stringify(result));
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      console.log('[ClipDetail] Comment added successfully:', JSON.stringify(data));
       setComment('');
       Keyboard.dismiss();
       refetchComments();
-      queryClient.invalidateQueries({ queryKey: ['clip', clipId] });
+      // Invalidate clip query to update comment count
+      queryClient.invalidateQueries({ queryKey: ['clip', variables.clipId.toString()] });
+    },
+    onError: (error: any) => {
+      console.error('[ClipDetail] Failed to add comment:', error);
+      console.error('[ClipDetail] Error name:', error?.name);
+      console.error('[ClipDetail] Error message:', error?.message);
+      console.error('[ClipDetail] Error status:', error?.status);
     },
   });
 
@@ -328,6 +598,7 @@ export default function ClipDetailScreen() {
   };
 
   const handleVideoPress = useCallback(() => {
+    togglePlayPause();
     setShowControls(true);
     if (controlsTimeoutRef.current) {
       clearTimeout(controlsTimeoutRef.current);
@@ -335,7 +606,7 @@ export default function ClipDetailScreen() {
     controlsTimeoutRef.current = setTimeout(() => {
       setShowControls(false);
     }, 3000);
-  }, []);
+  }, [togglePlayPause]);
 
   const handleSeek = useCallback((locationX: number, barWidth: number, isFullscreenSeek: boolean = false) => {
     if (duration <= 0 || barWidth <= 0) return;
@@ -473,40 +744,195 @@ export default function ClipDetailScreen() {
   };
 
   const handlePostComment = () => {
-    if (comment.trim().length === 0) return;
-    addCommentMutation.mutate(comment.trim());
+    if (comment.trim().length === 0 || !clipId) return;
+    console.log('[ClipDetail] handlePostComment called with:', comment.trim());
+    addCommentMutation.mutate({
+      clipId: parseInt(clipId, 10),
+      content: comment.trim(),
+    });
   };
 
   const likeMutation = useMutation({
-    mutationFn: async () => {
-      const token = await getAccessToken();
+    mutationFn: async ({ clipIdToLike, previousLiked, isRetry = false }: { clipIdToLike: string; previousLiked: boolean; isRetry?: boolean }) => {
+      console.log('[ClipDetail] Like mutation starting for clip:', clipIdToLike, 'was liked:', previousLiked, 'isRetry:', isRetry);
+      let token = await getGamefolioToken();
+      console.log('[ClipDetail] Using Gamefolio token for like:', token ? 'present' : 'missing');
       if (!token) throw new Error('Not authenticated');
-      return api.clips.like(clipId || '', token);
+      
+      try {
+        return await api.clips.like(clipIdToLike, token);
+      } catch (error) {
+        if (error instanceof APIError && error.status === 401 && !isRetry) {
+          console.log('[ClipDetail] Got 401, attempting token refresh...');
+          const newToken = await forceRefreshGamefolioToken();
+          if (newToken) {
+            console.log('[ClipDetail] Token refreshed, retrying like...');
+            return await api.clips.like(clipIdToLike, newToken);
+          }
+        }
+        throw error;
+      }
     },
-    onSuccess: (data) => {
+    onSuccess: (data, variables) => {
+      console.log('[ClipDetail] Like mutation success:', JSON.stringify(data));
+      isLikeInProgress.current = false;
+      // Server response is the source of truth - use the values directly
+      setLocalIsLiked(data.liked);
       setLocalLikeCount(data.likeCount);
-      queryClient.invalidateQueries({ queryKey: ['clip', clipId] });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      // Invalidate clip query to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['clip', variables.clipIdToLike] });
+    },
+    onError: (error, variables) => {
+      isLikeInProgress.current = false;
+      // Revert optimistic update on error
+      setLocalIsLiked(variables.previousLiked);
+      setLocalLikeCount(prev => variables.previousLiked ? prev : Math.max(0, (prev ?? 0) - 1));
+      
+      const { message, isAuthError } = getErrorMessage(error, 'like');
+      if (error instanceof APIError && error.status === 429) {
+        console.log('[ClipDetail] Rate limited on like action');
+        showToast(message, 'warning');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      } else if (isAuthError) {
+        console.error('[ClipDetail] Like mutation auth error:', error);
+        // Don't auto-logout for like actions - just show error
+        showToast('Unable to like. Please try again.', 'error');
+      } else {
+        console.error('[ClipDetail] Like mutation error:', error);
+        showToast(message, 'error');
+      }
     },
   });
 
   const fireMutation = useMutation({
-    mutationFn: async () => {
-      const token = await getAccessToken();
-      if (!token) throw new Error('Not authenticated');
-      return api.clips.fire(clipId || '', token);
+    mutationFn: async ({ clipIdToFire, previousFired, userReactionId, isRetry = false }: { clipIdToFire: string; previousFired: boolean; userReactionId?: number | null; isRetry?: boolean }) => {
+      console.log('[ClipDetail] Fire mutation starting for clip:', clipIdToFire, 'was fired:', previousFired, 'reactionId:', userReactionId, 'isRetry:', isRetry);
+      
+      // Double-check user is available (should be caught in handleFire, but safety check)
+      if (!currentUser?.id) {
+        console.error('[ClipDetail] Fire mutation called without user - this should not happen');
+        throw new Error('Please sign in to react');
+      }
+      
+      let token = await getGamefolioToken();
+      console.log('[ClipDetail] Using Gamefolio token for fire:', token ? `present (${token.length} chars)` : 'missing');
+      
+      if (!token) {
+        console.error('[ClipDetail] No Gamefolio token available for fire');
+        throw new Error('Session expired. Please try again.');
+      }
+      
+      try {
+        console.log('[ClipDetail] Calling api.clips.toggleFire');
+        const result = await api.clips.toggleFire(clipIdToFire, token);
+        console.log('[ClipDetail] toggleFire API result:', JSON.stringify(result));
+        return result;
+      } catch (error) {
+        console.error('[ClipDetail] Fire API error:', error);
+        if (error instanceof APIError && error.status === 401 && !isRetry) {
+          console.log('[ClipDetail] Got 401, attempting token refresh...');
+          const newToken = await forceRefreshGamefolioToken();
+          if (newToken) {
+            console.log('[ClipDetail] Token refreshed, retrying fire...');
+            return await api.clips.toggleFire(clipIdToFire, newToken);
+          } else {
+            console.error('[ClipDetail] Token refresh failed');
+            throw new Error('Session expired. Please log in again.');
+          }
+        }
+        throw error;
+      }
     },
-    onSuccess: (data) => {
-      setLocalFireCount(data.fireCount);
-      queryClient.invalidateQueries({ queryKey: ['clip', clipId] });
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    onSuccess: (data, variables) => {
+      console.log('[ClipDetail] Fire mutation success:', JSON.stringify(data));
+      console.log('[ClipDetail] Fire mutation - previousFired:', variables.previousFired, 'serverFired:', data.fired, 'serverCount:', data.fireCount, 'newReactionId:', data.reactionId);
+      
+      isFireInProgress.current = false;
+      
+      // Server response is the source of truth - use the values directly (same as like)
+      const newFiredState = data.fired === true;
+      const newFireCount = typeof data.fireCount === 'number' ? data.fireCount : 0;
+      
+      console.log('[ClipDetail] 🔥 MUTATION RESULT - fired:', newFiredState, 'count:', newFireCount);
+      
+      setLocalIsFired(newFiredState);
+      setLocalFireCount(newFireCount);
+      setLocalUserReactionId(newFiredState && data.reactionId ? data.reactionId : null);
+      
+      // Invalidate clip query to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['clip', variables.clipIdToFire] });
+    },
+    onError: (error, variables) => {
+      isFireInProgress.current = false;
+      // Revert optimistic update on error - fire was not previously set
+      setLocalIsFired(false);
+      setLocalFireCount(prev => Math.max(0, (prev ?? 0) - 1));
+      
+      const { message, isAuthError } = getErrorMessage(error, 'fire');
+      
+      // Check for daily limit error
+      const errorMessage = error instanceof APIError ? error.message?.toLowerCase() : '';
+      const isDailyLimitError = errorMessage.includes('daily') || 
+                                errorMessage.includes('limit') || 
+                                errorMessage.includes('fires for today') ||
+                                (error instanceof APIError && error.status === 403 && errorMessage.includes('fire'));
+      
+      if (isDailyLimitError) {
+        console.log('[ClipDetail] Daily fire limit reached');
+        showToast("You've used all your fires for today. Come back tomorrow!", 'warning');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      } else if (error instanceof APIError && error.status === 429) {
+        console.log('[ClipDetail] Rate limited on fire action');
+        showToast(message, 'warning');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      } else if (error instanceof APIError && error.status === 400 && errorMessage.includes('own content')) {
+        console.log('[ClipDetail] Cannot fire own content');
+        showToast("You can't fire your own content!", 'warning');
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      } else if (isAuthError) {
+        console.error('[ClipDetail] Fire mutation auth error:', error);
+        showToast('Unable to update fire. Please try again.', 'error');
+      } else {
+        console.error('[ClipDetail] Fire mutation error:', error);
+        showToast(message, 'error');
+      }
     },
   });
 
-  const { mutate: mutateLikeAction } = likeMutation;
+  useEffect(() => {
+    if (likeCooldown > 0) {
+      const timer = setInterval(() => {
+        setLikeCooldown(prev => Math.max(0, prev - 100));
+      }, 100);
+      return () => clearInterval(timer);
+    }
+  }, [likeCooldown]);
+
+  useEffect(() => {
+    if (fireCooldown > 0) {
+      const timer = setInterval(() => {
+        setFireCooldown(prev => Math.max(0, prev - 100));
+      }, 100);
+      return () => clearInterval(timer);
+    }
+  }, [fireCooldown]);
+
+  const { mutate: mutateLikeAction, isPending: isLikePending } = likeMutation;
   const handleLike = useCallback(() => {
-    const newLikedState = !localIsLiked;
+    if (isLikePending || isLikeInProgress.current || !clipId || likeCooldown > 0) {
+      if (likeCooldown > 0) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      }
+      console.log('[ClipDetail] Like mutation already in progress, cooldown active, or no clipId, ignoring click');
+      return;
+    }
+    isLikeInProgress.current = true;
+    const wasLiked = localIsLiked === true;
+    const newLikedState = !wasLiked;
+    console.log('[ClipDetail] handleLike called, wasLiked:', wasLiked, 'newLikedState:', newLikedState);
+    // Optimistic update
     setLocalIsLiked(newLikedState);
+    setLocalLikeCount(prev => newLikedState ? (prev ?? 0) + 1 : Math.max(0, (prev ?? 0) - 1));
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Animated.sequence([
       Animated.timing(likeScale, {
@@ -521,18 +947,67 @@ export default function ClipDetailScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-    mutateLikeAction();
-  }, [localIsLiked, likeScale, mutateLikeAction]);
+    // Start cooldown
+    setLikeCooldown(COOLDOWN_DURATION);
+    likeCooldownProgress.setValue(1);
+    Animated.timing(likeCooldownProgress, {
+      toValue: 0,
+      duration: COOLDOWN_DURATION,
+      useNativeDriver: false,
+    }).start();
+    mutateLikeAction({ clipIdToLike: clipId, previousLiked: wasLiked });
+  }, [localIsLiked, likeScale, mutateLikeAction, isLikePending, clipId, likeCooldown, likeCooldownProgress]);
 
-  const { mutate: mutateFireAction } = fireMutation;
+  const { mutate: mutateFireAction, isPending: isFirePending } = fireMutation;
   const handleFire = useCallback(() => {
-    const newFiredState = !localIsFired;
-    setLocalIsFired(newFiredState);
+    console.log('[ClipDetail] ========== HANDLE FIRE START ==========');
+    console.log('[ClipDetail] Current localIsFired:', localIsFired);
+    
+    if (!currentUser?.id) {
+      console.log('[ClipDetail] No authenticated user, showing login prompt');
+      showToast('Please sign in to react to clips', 'error');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+    
+    // Fire reactions are permanent - cannot be removed once given
+    if (localIsFired === true) {
+      console.log('[ClipDetail] Already fired - fire reactions are permanent');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+    
+    if (isFirePending || isFireInProgress.current || !clipId || fireCooldown > 0) {
+      if (fireCooldown > 0) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      }
+      return;
+    }
+    
+    isFireInProgress.current = true;
+    
+    console.log('[ClipDetail] FIRE ACTION - adding permanent fire reaction');
+    
+    // Optimistic update - fire can only be added, never removed
+    setLocalIsFired(true);
+    setLocalFireCount(prev => (prev ?? 0) + 1);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
     setShowFlameAnimation(true);
     setTimeout(() => setShowFlameAnimation(false), 1500);
-    mutateFireAction();
-  }, [localIsFired, mutateFireAction]);
+    
+    // Start cooldown
+    setFireCooldown(COOLDOWN_DURATION);
+    fireCooldownProgress.setValue(1);
+    Animated.timing(fireCooldownProgress, {
+      toValue: 0,
+      duration: COOLDOWN_DURATION,
+      useNativeDriver: false,
+    }).start();
+    
+    // Call the API to add fire reaction (permanent, no toggle)
+    mutateFireAction({ clipIdToFire: clipId, previousFired: false, userReactionId: localUserReactionId });
+  }, [localIsFired, mutateFireAction, isFirePending, clipId, fireCooldown, fireCooldownProgress, currentUser, showToast, localUserReactionId]);
 
   const [isMutedForReel, setIsMutedForReel] = useState(false);
   const [showReelComments, setShowReelComments] = useState(false);
@@ -569,17 +1044,26 @@ export default function ClipDetailScreen() {
   }, [reelCommentsData]);
 
   const addReelCommentMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const token = await getAccessToken();
-      if (!token) throw new Error('Not authenticated');
-      return api.clips.addComment(clipId || '', { content }, token);
+    mutationFn: async (data: { clipId: number; content: string }) => {
+      console.log('[ClipDetail Reel] Adding comment, getting Gamefolio token...');
+      const token = await getGamefolioToken();
+      console.log('[ClipDetail Reel] Gamefolio token retrieved:', token ? 'yes (length: ' + token.length + ')' : 'no');
+      if (!token) {
+        console.error('[ClipDetail Reel] No token available for comment');
+        throw new Error('Please log in to comment');
+      }
+      console.log('[ClipDetail Reel] Adding comment via REST API to /api/clips/' + data.clipId + '/comments');
+      const result = await api.clips.addComment(data.clipId.toString(), { content: data.content }, token);
+      console.log('[ClipDetail Reel] Comment API response:', JSON.stringify(result));
+      return result;
     },
     onSuccess: (data: any, variables) => {
+      console.log('[ClipDetail Reel] Comment added successfully:', JSON.stringify(data));
       if (user) {
         const newComment: ReelComment = {
-          id: data?.id || Date.now(),
+          id: data?.comment?.id || data?.id || Date.now(),
           userId: user.id,
-          content: variables,
+          content: data?.comment?.content || data?.content || reelCommentText,
           createdAt: new Date().toISOString(),
           user: {
             id: user.id,
@@ -592,7 +1076,13 @@ export default function ClipDetailScreen() {
       }
       setReelCommentText('');
       Keyboard.dismiss();
-      queryClient.invalidateQueries({ queryKey: ['clip', clipId] });
+      queryClient.invalidateQueries({ queryKey: ['clip', clipId, 'reel-comments'] });
+      queryClient.invalidateQueries({ queryKey: ['clip', variables.clipId.toString()] });
+    },
+    onError: (error: any) => {
+      console.error('[ClipDetail Reel] Failed to add comment:', error);
+      console.error('[ClipDetail Reel] Error name:', error?.name);
+      console.error('[ClipDetail Reel] Error message:', error?.message);
     },
   });
 
@@ -608,24 +1098,73 @@ export default function ClipDetailScreen() {
 
   const { mutate: mutateReelComment } = addReelCommentMutation;
   const handleReelCommentSubmit = useCallback(() => {
-    if (!reelCommentText.trim() || !user) return;
+    if (!reelCommentText.trim() || !user || !clipId) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    mutateReelComment(reelCommentText.trim());
-  }, [reelCommentText, user, mutateReelComment]);
+    mutateReelComment({
+      clipId: parseInt(clipId, 10),
+      content: reelCommentText.trim(),
+    });
+  }, [reelCommentText, user, clipId, mutateReelComment]);
 
   const handleReelUserPress = useCallback((username: string) => {
     router.push({ pathname: '/user/[id]', params: { id: username } });
   }, [router]);
 
-  const { mutate: mutateLike } = likeMutation;
+  const { mutate: mutateLike, isPending: isLikePendingForReel } = likeMutation;
   const handleReelLike = useCallback(() => {
-    mutateLike();
-  }, [mutateLike]);
+    if (isLikePendingForReel || isLikeInProgress.current || !clipId) {
+      console.log('[ClipDetail Reel] Like mutation already in progress or no clipId, ignoring click');
+      return;
+    }
+    isLikeInProgress.current = true;
+    const wasLiked = localIsLiked === true;
+    const newLikedState = !wasLiked;
+    console.log('[ClipDetail Reel] handleReelLike called, wasLiked:', wasLiked, 'newLikedState:', newLikedState);
+    // Optimistic update
+    setLocalIsLiked(newLikedState);
+    setLocalLikeCount(prev => newLikedState ? (prev ?? 0) + 1 : Math.max(0, (prev ?? 0) - 1));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    mutateLike({ clipIdToLike: clipId, previousLiked: wasLiked });
+  }, [mutateLike, isLikePendingForReel, localIsLiked, clipId]);
 
-  const { mutate: mutateFire } = fireMutation;
+  const { mutate: mutateFire, isPending: isFirePendingForReel } = fireMutation;
   const handleReelFire = useCallback(() => {
-    mutateFire();
-  }, [mutateFire]);
+    console.log('[ClipDetail Reel] ========== HANDLE REEL FIRE START ==========');
+    
+    if (!currentUser?.id) {
+      console.log('[ClipDetail Reel] No authenticated user');
+      showToast('Please sign in to react to clips', 'error');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
+    
+    // Fire reactions are permanent - cannot be removed once given
+    if (localIsFired === true) {
+      console.log('[ClipDetail Reel] Already fired - fire reactions are permanent');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+    
+    if (isFirePendingForReel || isFireInProgress.current || !clipId) {
+      console.log('[ClipDetail Reel] Fire mutation already in progress or no clipId, ignoring click');
+      return;
+    }
+    
+    isFireInProgress.current = true;
+    
+    console.log('[ClipDetail Reel] handleReelFire - adding permanent fire reaction');
+    
+    // Optimistic update - fire can only be added, never removed
+    setLocalIsFired(true);
+    setLocalFireCount(prev => (prev ?? 0) + 1);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
+    setShowFlameAnimation(true);
+    setTimeout(() => setShowFlameAnimation(false), 1500);
+    
+    // Call the API to add fire reaction (permanent, no toggle)
+    mutateFire({ clipIdToFire: clipId, previousFired: false, userReactionId: localUserReactionId });
+  }, [mutateFire, isFirePendingForReel, localIsFired, clipId, localUserReactionId, currentUser, showToast]);
 
   const handleReelShare = useCallback(() => {
     setIsShareModalVisible(true);
@@ -734,21 +1273,38 @@ export default function ClipDetailScreen() {
 
             {/* Always visible play/pause overlay when paused */}
             {!isPlaying && isCurrentClip && (
-              <TouchableOpacity 
-                style={styles.playOverlay} 
-                onPress={(e) => { e.stopPropagation(); togglePlayPause(); }}
-                activeOpacity={0.8}
-              >
+              <View style={styles.playOverlay} pointerEvents="none">
                 <View style={styles.playButtonLarge}>
-                  <Play size={40} color="#FFF" fill="#FFF" />
+                  <Play size={56} color="#FFF" fill="#FFF" />
                 </View>
-              </TouchableOpacity>
+              </View>
             )}
 
-            {/* Views counter overlay */}
-            <View style={styles.viewsOverlay}>
-              <Text style={styles.viewsOverlayText}>👁 {formatNumber(clipItem.views || 190)}</Text>
-            </View>
+            {/* Top right buttons */}
+            {isCurrentClip && (showControls || isHovering || !isPlaying) && (
+              <View style={styles.topRightButtons}>
+                {isOwnClip && (
+                  <TouchableOpacity 
+                    onPress={(e) => { e.stopPropagation(); setIsDeleteModalVisible(true); }} 
+                    style={styles.topRightDeleteButton} 
+                    activeOpacity={0.7}
+                  >
+                    <Trash2 size={20} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity 
+                  onPress={(e) => { e.stopPropagation(); toggleMute(); }} 
+                  style={styles.topRightVolumeButton} 
+                  activeOpacity={0.7}
+                >
+                  {isMuted ? (
+                    <VolumeX size={20} color="#FFF" />
+                  ) : (
+                    <Volume2 size={20} color="#FFF" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Controls overlay - shows on hover/tap */}
             {isCurrentClip && (
@@ -760,7 +1316,15 @@ export default function ClipDetailScreen() {
                 pointerEvents={showControls || isHovering || !isPlaying ? 'auto' : 'none'}
               >
                 <View style={styles.controlsGradient} />
+
                 <View style={styles.progressBarContainer}>
+                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); togglePlayPause(); }} style={styles.controlButton}>
+                    {isPlaying ? (
+                      <Pause size={18} color="#FFF" fill="#FFF" />
+                    ) : (
+                      <Play size={18} color="#FFF" fill="#FFF" />
+                    )}
+                  </TouchableOpacity>
                   <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
                   <View
                     style={styles.progressBar}
@@ -807,33 +1371,8 @@ export default function ClipDetailScreen() {
                     />
                   </View>
                   <Text style={styles.timeText}>{formatTime(duration)}</Text>
-                </View>
-
-                <View style={styles.bottomControls}>
-                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); togglePlayPause(); }} style={styles.controlButton}>
-                    {isPlaying ? (
-                      <Pause size={24} color="#FFF" fill="#FFF" />
-                    ) : (
-                      <Play size={24} color="#FFF" fill="#FFF" />
-                    )}
-                  </TouchableOpacity>
-
-                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleMute(); }} style={styles.controlButton}>
-                    {isMuted ? (
-                      <VolumeX size={24} color="#FFF" />
-                    ) : (
-                      <Volume2 size={24} color="#FFF" />
-                    )}
-                  </TouchableOpacity>
-
-                  <View style={{ flex: 1 }} />
-
-                  <TouchableOpacity 
-                    onPress={(e) => { e.stopPropagation(); handleFullscreen(); }} 
-                    style={styles.fullscreenButton} 
-                    activeOpacity={0.7}
-                  >
-                    <Maximize size={22} color="#4ADE80" />
+                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleFullscreen(); }} style={styles.controlButton}>
+                    <Maximize size={18} color="#4ADE80" />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -842,13 +1381,21 @@ export default function ClipDetailScreen() {
 
           {/* Clip Content */}
           <View style={styles.contentContainer}>
-            <TouchableOpacity 
-              style={styles.userRow}
-              onPress={() => router.push({ pathname: '/user/[id]', params: { id: clipItem.user.id.toString() } })}
-            >
-              <Image source={{ uri: clipItem.user.avatarUrl }} style={styles.avatar} />
-              <Text style={styles.username}>@{clipItem.user.username}</Text>
-            </TouchableOpacity>
+            <View style={styles.userRowContainer}>
+              <TouchableOpacity 
+                style={styles.userRow}
+                onPress={() => router.push({ pathname: '/user/[id]', params: { id: clipItem.user.id.toString() } })}
+              >
+                <Image source={{ uri: clipItem.user.avatarUrl }} style={styles.avatar} />
+                <Text style={styles.username}>@{clipItem.user.username}</Text>
+              </TouchableOpacity>
+              {clipItem.taggedUsers && clipItem.taggedUsers.length > 0 && (
+                <Text style={styles.taggedUsersText}>
+                  with {clipItem.taggedUsers.map((u: TaggedUser) => `@${u.username}`).join(', ')}
+                </Text>
+              )}
+              <Text style={styles.viewCountText}>{formatNumber(clipItem.views || 0)} views</Text>
+            </View>
 
             <Text style={styles.title}>{clipItem.title}</Text>
             {clipItem.description && (
@@ -869,32 +1416,74 @@ export default function ClipDetailScreen() {
             )}
 
             <View style={styles.metadataRow}>
-              <Text style={styles.metadataText}>📅 {timeAgo(clipItem.createdAt)}</Text>
+              <Text style={styles.metadataText}>{timeAgo(clipItem.createdAt)}</Text>
             </View>
 
             <View style={styles.actionsRow}>
-              <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+              <TouchableOpacity 
+                style={[styles.actionButton, likeCooldown > 0 && styles.actionButtonCooldown]} 
+                onPress={handleLike} 
+                disabled={isLikePending || likeCooldown > 0}
+              >
                 <Animated.View style={{ transform: [{ scale: likeScale }] }}>
-                  <Heart 
-                    size={24} 
-                    color={localIsLiked ? "#4ADE80" : "#64748B"} 
-                    fill={localIsLiked ? "#4ADE80" : "transparent"}
-                  />
+                  <View style={styles.iconWithCooldown}>
+                    <Heart 
+                      size={24} 
+                      color={localIsLiked === true ? "#4ADE80" : likeCooldown > 0 ? "#475569" : "#64748B"} 
+                      fill={localIsLiked === true ? "#4ADE80" : "transparent"}
+                    />
+                    {likeCooldown > 0 && (
+                      <Animated.View style={[
+                        styles.cooldownOverlay,
+                        {
+                          opacity: likeCooldownProgress.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, 0.8],
+                          }),
+                        },
+                      ]}>
+                        <Text style={styles.cooldownText}>{Math.ceil(likeCooldown / 1000)}</Text>
+                      </Animated.View>
+                    )}
+                  </View>
                 </Animated.View>
-                <Text style={styles.actionCount}>{formatNumber(localLikeCount)}</Text>
+                <Text style={[styles.actionCount, likeCooldown > 0 && styles.actionCountCooldown]}>
+                  {formatNumber(localLikeCount ?? clipItem._count?.likes ?? 0)}
+                </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.actionButton} onPress={handleFire}>
-                {showFlameAnimation ? (
-                  <FlameAnimation isActive={true} size={24} />
-                ) : (
-                  <Flame 
-                    size={24} 
-                    color={localIsFired ? "#FF6B2C" : "#64748B"} 
-                    fill={localIsFired ? "#FF6B2C" : "transparent"}
-                  />
-                )}
-                <Text style={styles.actionCount}>{formatNumber(localFireCount)}</Text>
+              <TouchableOpacity 
+                style={[styles.actionButton, fireCooldown > 0 && styles.actionButtonCooldown]} 
+                onPress={handleFire} 
+                disabled={isFirePending || fireCooldown > 0}
+              >
+                <View style={styles.iconWithCooldown}>
+                  {showFlameAnimation ? (
+                    <FlameAnimation isActive={true} size={24} />
+                  ) : (
+                    <Flame 
+                      size={24} 
+                      color={localIsFired === true ? "#FF6B2C" : fireCooldown > 0 ? "#475569" : "#64748B"} 
+                      fill={localIsFired === true ? "#FF6B2C" : "transparent"}
+                    />
+                  )}
+                  {fireCooldown > 0 && (
+                    <Animated.View style={[
+                      styles.cooldownOverlay,
+                      {
+                        opacity: fireCooldownProgress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 0.8],
+                        }),
+                      },
+                    ]}>
+                      <Text style={styles.cooldownText}>{Math.ceil(fireCooldown / 1000)}</Text>
+                    </Animated.View>
+                  )}
+                </View>
+                <Text style={[styles.actionCount, fireCooldown > 0 && styles.actionCountCooldown]}>
+                  {formatNumber(localFireCount ?? clipItem._count?.fires ?? 0)}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.actionButton} onPress={() => setIsCommentsModalVisible(true)}>
@@ -908,7 +1497,10 @@ export default function ClipDetailScreen() {
 
               <View style={{ flex: 1 }} />
 
-              <TouchableOpacity style={styles.reportButton}>
+              <TouchableOpacity 
+                style={styles.reportButton}
+                onPress={() => setIsReportModalVisible(true)}
+              >
                 <Flag size={20} color="#64748B" />
                 <Text style={styles.reportText}>Report</Text>
               </TouchableOpacity>
@@ -918,7 +1510,28 @@ export default function ClipDetailScreen() {
             <View style={styles.commentsSection}>
               <Text style={styles.commentsSectionTitle}>Comments</Text>
               
-              {(clipItem._count?.comments || 0) > 0 ? (
+              {isCurrentClip && comments.length > 0 ? (
+                <>
+                  {comments.slice(0, 5).map((commentItem: any) => (
+                    <View key={commentItem.id} style={styles.inlineCommentItem}>
+                      <TouchableOpacity onPress={() => router.push({ pathname: '/user/[id]', params: { id: commentItem.user.username } })}>
+                        <Image source={{ uri: commentItem.user.avatarUrl }} style={styles.inlineCommentAvatar} />
+                      </TouchableOpacity>
+                      <View style={styles.inlineCommentContent}>
+                        <Text style={styles.inlineCommentText} numberOfLines={2}>
+                          <Text style={styles.inlineCommentUsername}>{commentItem.user.displayName || commentItem.user.username}</Text>
+                          <Text style={styles.inlineCommentBody}> {commentItem.content}</Text>
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                  {comments.length > 5 && (
+                    <TouchableOpacity onPress={() => setIsCommentsModalVisible(true)} style={styles.viewAllCommentsButton}>
+                      <Text style={styles.viewAllCommentsText}>View all {comments.length} comments</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              ) : (clipItem._count?.comments || 0) > 0 && !isCurrentClip ? (
                 <TouchableOpacity onPress={() => setIsCommentsModalVisible(true)} style={styles.viewAllCommentsButton}>
                   <Text style={styles.viewAllCommentsText}>View all {clipItem._count?.comments || 0} comments</Text>
                 </TouchableOpacity>
@@ -939,7 +1552,7 @@ export default function ClipDetailScreen() {
         </ScrollView>
       </View>
     );
-  }, [currentClipIndex, isMuted, isPlaying, showControls, isHovering, currentTime, duration, playerInstance, insets.bottom, handleSeek, handleProgressBarLayout, progressPanResponder, router, handleVideoPress, togglePlayPause, toggleMute, handleFullscreen, handleLike, handleFire, localIsLiked, localIsFired, localLikeCount, localFireCount, showFlameAnimation, likeScale]);
+  }, [currentClipIndex, isMuted, isPlaying, showControls, isHovering, currentTime, duration, playerInstance, insets.bottom, handleSeek, handleProgressBarLayout, progressPanResponder, router, handleVideoPress, togglePlayPause, toggleMute, handleFullscreen, handleLike, handleFire, localIsLiked, localIsFired, localLikeCount, localFireCount, showFlameAnimation, likeScale, isOwnClip, comments, isLikePending, isFirePending, likeCooldown, fireCooldown, likeCooldownProgress, fireCooldownProgress]);
 
   if (isLoading || !clip) {
     return (
@@ -1099,7 +1712,7 @@ export default function ClipDetailScreen() {
           maxToRenderPerBatch={2}
           windowSize={3}
           initialNumToRender={1}
-          extraData={currentClipIndex}
+          extraData={{ currentClipIndex, localIsFired, localFireCount, localIsLiked, localLikeCount }}
         />
       ) : (
         <ScrollView 
@@ -1158,21 +1771,38 @@ export default function ClipDetailScreen() {
 
           {/* Always visible play/pause overlay when paused */}
           {!isPlaying && (
-            <TouchableOpacity 
-              style={styles.playOverlay} 
-              onPress={(e) => { e.stopPropagation(); togglePlayPause(); }}
-              activeOpacity={0.8}
-            >
+            <View style={styles.playOverlay} pointerEvents="none">
               <View style={styles.playButtonLarge}>
-                <Play size={40} color="#FFF" fill="#FFF" />
+                <Play size={56} color="#FFF" fill="#FFF" />
               </View>
-            </TouchableOpacity>
+            </View>
           )}
 
-          {/* Views counter overlay */}
-          <View style={styles.viewsOverlay}>
-            <Text style={styles.viewsOverlayText}>👁 {formatNumber(clip.views || 190)}</Text>
-          </View>
+          {/* Top right buttons */}
+          {(showControls || isHovering || !isPlaying) && (
+            <View style={styles.topRightButtons}>
+              {isOwnClip && (
+                <TouchableOpacity 
+                  onPress={(e) => { e.stopPropagation(); setIsDeleteModalVisible(true); }} 
+                  style={styles.topRightDeleteButton} 
+                  activeOpacity={0.7}
+                >
+                  <Trash2 size={20} color="#EF4444" />
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity 
+                onPress={(e) => { e.stopPropagation(); toggleMute(); }} 
+                style={styles.topRightVolumeButton} 
+                activeOpacity={0.7}
+              >
+                {isMuted ? (
+                  <VolumeX size={20} color="#FFF" />
+                ) : (
+                  <Volume2 size={20} color="#FFF" />
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Controls overlay - shows on hover/tap */}
           <View 
@@ -1183,7 +1813,15 @@ export default function ClipDetailScreen() {
             pointerEvents={showControls || isHovering || !isPlaying ? 'auto' : 'none'}
           >
             <View style={styles.controlsGradient} />
+
             <View style={styles.progressBarContainer}>
+              <TouchableOpacity onPress={(e) => { e.stopPropagation(); togglePlayPause(); }} style={styles.controlButton}>
+                {isPlaying ? (
+                  <Pause size={18} color="#FFF" fill="#FFF" />
+                ) : (
+                  <Play size={18} color="#FFF" fill="#FFF" />
+                )}
+              </TouchableOpacity>
               <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
               <View
                 style={styles.progressBar}
@@ -1230,47 +1868,29 @@ export default function ClipDetailScreen() {
                 />
               </View>
               <Text style={styles.timeText}>{formatTime(duration)}</Text>
-            </View>
-
-            <View style={styles.bottomControls}>
-              <TouchableOpacity onPress={(e) => { e.stopPropagation(); togglePlayPause(); }} style={styles.controlButton}>
-                {isPlaying ? (
-                  <Pause size={24} color="#FFF" fill="#FFF" />
-                ) : (
-                  <Play size={24} color="#FFF" fill="#FFF" />
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={(e) => { e.stopPropagation(); toggleMute(); }} style={styles.controlButton}>
-                {isMuted ? (
-                  <VolumeX size={24} color="#FFF" />
-                ) : (
-                  <Volume2 size={24} color="#FFF" />
-                )}
-              </TouchableOpacity>
-
-              <View style={{ flex: 1 }} />
-
-              {/* Fullscreen button */}
-              <TouchableOpacity 
-                onPress={(e) => { e.stopPropagation(); handleFullscreen(); }} 
-                style={styles.fullscreenButton} 
-                activeOpacity={0.7}
-              >
-                <Maximize size={22} color="#4ADE80" />
+              <TouchableOpacity onPress={(e) => { e.stopPropagation(); handleFullscreen(); }} style={styles.controlButton}>
+                <Maximize size={18} color="#4ADE80" />
               </TouchableOpacity>
             </View>
           </View>
         </TouchableOpacity>
 
         <View style={styles.contentContainer}>
-          <TouchableOpacity 
-            style={styles.userRow}
-            onPress={() => router.push({ pathname: '/user/[id]', params: { id: clip.user.id.toString() } })}
-          >
-            <Image source={{ uri: clip.user.avatarUrl }} style={styles.avatar} />
-            <Text style={styles.username}>@{clip.user.username}</Text>
-          </TouchableOpacity>
+          <View style={styles.userRowContainer}>
+            <TouchableOpacity 
+              style={styles.userRow}
+              onPress={() => router.push({ pathname: '/user/[id]', params: { id: clip.user.id.toString() } })}
+            >
+              <Image source={{ uri: clip.user.avatarUrl }} style={styles.avatar} />
+              <Text style={styles.username}>@{clip.user.username}</Text>
+            </TouchableOpacity>
+            {clip.taggedUsers && clip.taggedUsers.length > 0 && (
+              <Text style={styles.taggedUsersText}>
+                with {clip.taggedUsers.map((u: TaggedUser) => `@${u.username}`).join(', ')}
+              </Text>
+            )}
+            <Text style={styles.viewCountText}>{formatNumber(clip.views || 0)} views</Text>
+          </View>
 
           <Text style={styles.title}>{clip.title}</Text>
           {clip.description && (
@@ -1284,11 +1904,11 @@ export default function ClipDetailScreen() {
           )}
 
           <View style={styles.metadataRow}>
-            <Text style={styles.metadataText}>📅 {timeAgo(clip.createdAt)}</Text>
+            <Text style={styles.metadataText}>{timeAgo(clip.createdAt)}</Text>
           </View>
 
           <View style={styles.actionsRow}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleLike}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleLike} disabled={isLikePending}>
               <Animated.View style={{ transform: [{ scale: likeScale }] }}>
                 <Heart 
                   size={24} 
@@ -1296,25 +1916,25 @@ export default function ClipDetailScreen() {
                   fill={localIsLiked ? "#4ADE80" : "transparent"}
                 />
               </Animated.View>
-              <Text style={styles.actionCount}>{formatNumber(localLikeCount)}</Text>
+              <Text style={styles.actionCount}>{String(formatNumber(localLikeCount ?? clip?._count?.likes ?? 0))}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionButton} onPress={handleFire}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleFire} disabled={isFirePending}>
               {showFlameAnimation ? (
                 <FlameAnimation isActive={true} size={24} />
               ) : (
                 <Flame 
                   size={24} 
-                  color={localIsFired ? "#FF6B2C" : "#64748B"} 
-                  fill={localIsFired ? "#FF6B2C" : "transparent"}
+                  color={localIsFired === true ? "#FF6B2C" : "#64748B"} 
+                  fill={localIsFired === true ? "#FF6B2C" : "transparent"}
                 />
               )}
-              <Text style={styles.actionCount}>{formatNumber(localFireCount)}</Text>
+              <Text style={styles.actionCount}>{String(formatNumber(localFireCount ?? clip?._count?.fires ?? 0))}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton} onPress={() => setIsCommentsModalVisible(true)}>
               <MessageSquare size={24} color="#64748B" />
-              <Text style={styles.actionCount}>{formatNumber(comments.length)}</Text>
+              <Text style={styles.actionCount}>{String(formatNumber(comments.length))}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionButton} onPress={() => setIsShareModalVisible(true)}>
@@ -1323,7 +1943,10 @@ export default function ClipDetailScreen() {
 
             <View style={{ flex: 1 }} />
 
-            <TouchableOpacity style={styles.reportButton}>
+            <TouchableOpacity 
+              style={styles.reportButton}
+              onPress={() => setIsReportModalVisible(true)}
+            >
               <Flag size={20} color="#64748B" />
               <Text style={styles.reportText}>Report</Text>
             </TouchableOpacity>
@@ -1335,7 +1958,7 @@ export default function ClipDetailScreen() {
             
             {comments.length > 0 ? (
               <>
-                {comments.slice(0, 3).map((commentItem: any) => (
+                {comments.slice(0, 5).map((commentItem: any) => (
                   <View key={commentItem.id} style={styles.inlineCommentItem}>
                     <TouchableOpacity onPress={() => router.push({ pathname: '/user/[id]', params: { id: commentItem.user.username } })}>
                       <Image source={{ uri: commentItem.user.avatarUrl }} style={styles.inlineCommentAvatar} />
@@ -1348,7 +1971,7 @@ export default function ClipDetailScreen() {
                     </View>
                   </View>
                 ))}
-                {comments.length > 3 && (
+                {comments.length > 5 && (
                   <TouchableOpacity onPress={() => setIsCommentsModalVisible(true)} style={styles.viewAllCommentsButton}>
                     <Text style={styles.viewAllCommentsText}>View all {comments.length} comments</Text>
                   </TouchableOpacity>
@@ -1447,6 +2070,60 @@ export default function ClipDetailScreen() {
         isOwnClip={clip?.userId === currentUser?.id}
         clip={clip} 
       />
+
+      <ReportModal
+        visible={isReportModalVisible}
+        onClose={() => setIsReportModalVisible(false)}
+        onSubmit={async (reason, details) => {
+          await submitReportMutation.mutateAsync({
+            contentType: 'clip',
+            contentId: clip?.id || 0,
+            reason,
+            details,
+            contentTitle: clip?.title,
+            reportedUserId: clip?.userId,
+            reportedUsername: clip?.user?.username,
+          });
+        }}
+        contentType="clip"
+        contentId={clip?.id || 0}
+        contentTitle={clip?.title}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={isDeleteModalVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => !isDeleting && setIsDeleteModalVisible(false)}
+      >
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalContent}>
+            <Text style={styles.deleteModalTitle}>Delete Clip</Text>
+            <Text style={styles.deleteModalMessage}>Are you sure you want to delete this clip? This action cannot be undone.</Text>
+            <View style={styles.deleteModalButtons}>
+              <TouchableOpacity 
+                style={styles.deleteModalCancelButton}
+                onPress={() => !isDeleting && setIsDeleteModalVisible(false)}
+                disabled={isDeleting}
+              >
+                <Text style={styles.deleteModalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.deleteModalConfirmButton}
+                onPress={handleDeleteClip}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.deleteModalConfirmText}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Fullscreen Modal */}
       <Modal
@@ -1589,6 +2266,22 @@ export default function ClipDetailScreen() {
           </TouchableOpacity>
         </View>
       </Modal>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Animated.View 
+          style={[
+            styles.toastContainer, 
+            { opacity: toastOpacity, top: insets.top + 60 },
+            toast.type === 'warning' && styles.toastWarning,
+            toast.type === 'error' && styles.toastError,
+            toast.type === 'success' && styles.toastSuccess,
+          ]}
+          pointerEvents="none"
+        >
+          <Text style={styles.toastText}>{toast.message}</Text>
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -1661,6 +2354,7 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 9,
     backgroundColor: '#000',
     position: 'relative' as const,
+    overflow: 'hidden' as const,
   },
   video: {
     width: '100%',
@@ -1676,21 +2370,21 @@ const styles = StyleSheet.create({
     alignItems: 'center' as const,
   },
   playButtonLarge: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center' as const,
     alignItems: 'center' as const,
-    paddingLeft: 4,
+    paddingLeft: 6,
   },
   controlsOverlay: {
     position: 'absolute' as const,
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
     zIndex: 10,
   },
   controlsGradient: {
@@ -1698,21 +2392,21 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 120,
+    height: 80,
     backgroundColor: 'transparent',
     backgroundImage: 'linear-gradient(transparent, rgba(0,0,0,0.8))',
   },
   progressBarContainer: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    height: 36,
   },
   timeText: {
     color: '#FFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600' as const,
-    minWidth: 40,
+    minWidth: 36,
   },
   progressBar: {
     flex: 1,
@@ -1735,10 +2429,31 @@ const styles = StyleSheet.create({
     backgroundColor: '#4ADE80',
     marginLeft: -8,
   },
-  bottomControls: {
+
+  topRightButtons: {
+    position: 'absolute' as const,
+    top: 10,
+    right: 10,
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: 12,
+    gap: 8,
+    zIndex: 15,
+  },
+  topRightDeleteButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  topRightVolumeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
   controlButton: {
     width: 32,
@@ -1760,10 +2475,26 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 16,
   },
+  userRowContainer: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: 12,
+  },
   userRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    marginBottom: 12,
+  },
+  viewCountText: {
+    color: '#94A3B8',
+    fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  taggedUsersText: {
+    color: '#4ADE80',
+    fontSize: 13,
+    fontWeight: '500' as const,
+    marginLeft: 12,
   },
   avatar: {
     width: 40,
@@ -2103,19 +2834,126 @@ const styles = StyleSheet.create({
     justifyContent: 'center' as const,
     alignItems: 'center' as const,
   },
-  viewsOverlay: {
-    position: 'absolute' as const,
-    bottom: 12,
-    right: 12,
+  deleteModalOverlay: {
+    flex: 1,
     backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    zIndex: 5,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    padding: 20,
   },
-  viewsOverlayText: {
+  deleteModalContent: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+  },
+  deleteModalTitle: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 20,
+    fontWeight: 'bold' as const,
+    marginBottom: 12,
+    textAlign: 'center' as const,
+  },
+  deleteModalMessage: {
+    color: '#94A3B8',
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center' as const,
+    marginBottom: 24,
+  },
+  deleteModalButtons: {
+    flexDirection: 'row' as const,
+    gap: 12,
+  },
+  deleteModalCancelButton: {
+    flex: 1,
+    backgroundColor: '#334155',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center' as const,
+  },
+  deleteModalCancelText: {
+    color: '#FFF',
+    fontSize: 16,
     fontWeight: '600' as const,
+  },
+  deleteModalConfirmButton: {
+    flex: 1,
+    backgroundColor: '#EF4444',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center' as const,
+  },
+  deleteModalConfirmText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  toastContainer: {
+    position: 'absolute' as const,
+    left: 20,
+    right: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#1E293B',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 9999,
+    alignItems: 'center' as const,
+  },
+  toastWarning: {
+    backgroundColor: '#78350F',
+    borderLeftWidth: 4,
+    borderLeftColor: '#F59E0B',
+  },
+  toastError: {
+    backgroundColor: '#7F1D1D',
+    borderLeftWidth: 4,
+    borderLeftColor: '#EF4444',
+  },
+  toastSuccess: {
+    backgroundColor: '#14532D',
+    borderLeftWidth: 4,
+    borderLeftColor: '#4ADE80',
+  },
+  toastText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '500' as const,
+    textAlign: 'center' as const,
+  },
+  actionButtonCooldown: {
+    opacity: 0.6,
+  },
+  actionCountCooldown: {
+    color: '#475569',
+  },
+  iconWithCooldown: {
+    position: 'relative' as const,
+    width: 24,
+    height: 24,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  cooldownOverlay: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 21, 32, 0.85)',
+    borderRadius: 12,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  cooldownText: {
+    color: '#94A3B8',
+    fontSize: 10,
+    fontWeight: 'bold' as const,
   },
 });

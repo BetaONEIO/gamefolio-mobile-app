@@ -1,17 +1,22 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator, Animated, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import ScrollView from '@/components/ThemedScrollView';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, MessageCircle, Play, Camera, ChevronDown, Zap, LayoutGrid } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, Mail, Play, Camera, Flag } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import AppHeader from '@/components/AppHeader';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
 import ProfileBannerModal from '@/components/ProfileBannerModal';
+import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import LevelBadge from '@/components/LevelBadge';
 import StyledUsername from '@/components/StyledUsername';
+import { api, Clip, Screenshot } from '@/lib/api';
+import ReportModal from '@/components/ReportModal';
+import ShareProfileModal from '@/components/ShareProfileModal';
 import { trpc } from '@/lib/trpc';
+import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
@@ -27,11 +32,12 @@ export default function PublicProfileScreen() {
 
   const isMe = currentUser && (currentUser.username === username);
 
-  // Fetch Profile
-  const { data: profileData, isLoading: isProfileLoading } = trpc.users.getProfile.useQuery(
-    { username: username || '' },
-    { enabled: !!username }
-  );
+  // Fetch Profile via REST API
+  const { data: profileData, isLoading: isProfileLoading } = useQuery({
+    queryKey: ['userProfile', username],
+    queryFn: () => api.users.getProfile(username || ''),
+    enabled: !!username,
+  });
 
   const user = profileData?.user;
   const userId = user?.id;
@@ -39,35 +45,49 @@ export default function PublicProfileScreen() {
   const bgColor = user?.backgroundColor || '#0F1520';
   const accentColor = user?.accentColor || '#4ADE80';
 
-  // Fetch clips (and reels)
-  const { data: allClips = [] } = trpc.clips.getUserClips.useQuery(
-    { userId: userId || 0 },
-    { enabled: !!userId }
-  );
+  // Fetch clips (and reels) via REST API
+  const { data: allClips = [] } = useQuery({
+    queryKey: ['userClips', username],
+    queryFn: () => api.users.getUserClips(username || ''),
+    enabled: !!username,
+  });
 
-  const clips = allClips.filter(c => c.videoType !== 'reel' && c.userId === userId);
-  const reels = allClips.filter(c => c.videoType === 'reel' && c.userId === userId);
+  const clips = allClips.filter((c: Clip) => c.videoType !== 'reel' && c.userId === userId);
+  const reels = allClips.filter((c: Clip) => c.videoType === 'reel' && c.userId === userId);
 
-  // Fetch screenshots
-  const { data: allScreenshots = [] } = trpc.screenshots.getUserScreenshots.useQuery(
-    { userId: userId || 0 },
-    { enabled: !!userId }
-  );
+  // Fetch screenshots via REST API
+  const { data: allScreenshots = [] } = useQuery({
+    queryKey: ['userScreenshots', userId],
+    queryFn: () => api.screenshots.getUserScreenshots(userId || 0),
+    enabled: !!userId,
+  });
 
-  const screenshots = allScreenshots.filter(s => s.userId === userId);
+  const screenshots = allScreenshots.filter((s: Screenshot) => s.userId === userId);
 
-  // Fetch favorite games
-  const { data: favoriteGames = [] } = trpc.users.getFavorites.useQuery(
-    { username: username || '' },
-    { enabled: !!username }
-  );
+  // Fetch favorite games via REST API
+  const { data: favoriteGames = [] } = useQuery({
+    queryKey: ['userFavorites', username],
+    queryFn: () => api.users.getFavorites(username || ''),
+    enabled: !!username,
+  });
 
   const [isFollowing, setIsFollowing] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
   const [isBannerModalVisible, setIsBannerModalVisible] = useState(false);
-  const [isEngagementExpanded, setIsEngagementExpanded] = useState(false);
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-  const [tooltipVisible, setTooltipVisible] = useState<string | null>(null);
+
+  const [isReportModalVisible, setIsReportModalVisible] = useState(false);
+  const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
+  const [isScreenshotModalVisible, setIsScreenshotModalVisible] = useState(false);
+  const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+
+  const submitReportMutation = trpc.reports.submit.useMutation({
+    onSuccess: () => {
+      console.log('[UserProfile] Report submitted successfully');
+    },
+    onError: (error) => {
+      console.error('[UserProfile] Error submitting report:', error);
+    },
+  });
 
   // Format duration helper
   const formatDuration = (seconds: number) => {
@@ -120,15 +140,6 @@ export default function PublicProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
       <AppHeader showBackButton />
-      <TouchableOpacity 
-        style={styles.gamefolioButton}
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-          router.push('/sample-profile');
-        }}
-      >
-        <LayoutGrid size={20} color="#FFF" />
-      </TouchableOpacity>
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {/* Banner */}
         <TouchableOpacity 
@@ -138,213 +149,159 @@ export default function PublicProfileScreen() {
         >
           {displayProfile.banner ? (
             <>
-              <Image source={{ uri: displayProfile.banner }} style={styles.banner} />
+              <Image source={{ uri: displayProfile.banner }} style={styles.banner} resizeMode="cover" />
               <LinearGradient
-                colors={['transparent', `${bgColor}CC`, `${bgColor}FF`, bgColor]}
+                colors={['transparent', `${bgColor}99`, `${bgColor}DD`, bgColor]}
                 style={styles.bannerGradient}
-                locations={[0, 0.5, 0.85, 1]}
+                locations={[0, 0.4, 0.7, 1]}
+                pointerEvents="none"
+              />
+              <LinearGradient
+                colors={[`${bgColor}60`, 'transparent']}
+                style={styles.bannerGradientTop}
+                locations={[0, 1]}
+                pointerEvents="none"
               />
             </>
           ) : (
             <>
               <View style={[styles.banner, { backgroundColor: accentColor }]} />
               <LinearGradient
-                colors={['transparent', `${bgColor}CC`, `${bgColor}FF`, bgColor]}
+                colors={['transparent', `${bgColor}99`, `${bgColor}DD`, bgColor]}
                 style={styles.bannerGradient}
-                locations={[0, 0.5, 0.85, 1]}
+                locations={[0, 0.4, 0.7, 1]}
+                pointerEvents="none"
+              />
+              <LinearGradient
+                colors={[`${bgColor}60`, 'transparent']}
+                style={styles.bannerGradientTop}
+                locations={[0, 1]}
+                pointerEvents="none"
               />
             </>
           )}
+          
+          <TouchableOpacity 
+            style={styles.bannerShareButton} 
+            onPress={(e) => {
+              e.stopPropagation();
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setIsShareModalVisible(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Share2 size={20} color="#FFF" />
+          </TouchableOpacity>
         </TouchableOpacity>
 
         <View style={styles.content}>
           {/* Profile Picture and Action Buttons Row */}
-          <View style={styles.topRowWithActions}>
-            <View style={styles.avatarWrapper}>
-              <TouchableOpacity onPress={() => setIsProfileModalVisible(true)}>
-                <View style={styles.avatarContainer}>
-                  <Image source={{ uri: displayProfile.avatar }} style={styles.avatar} />
+          <View style={styles.profileRow}>
+            <View style={styles.avatarSection}>
+              <View style={styles.avatarWrapper}>
+                <TouchableOpacity onPress={() => setIsProfileModalVisible(true)}>
+                  <Image 
+                    source={{ uri: displayProfile.avatar }} 
+                    style={[styles.avatar, { borderColor: bgColor }]} 
+                  />
                   {user.isOnline && !isMe && (
-                    <View style={styles.onlineIndicator}>
-                      <View style={styles.onlineDot} />
-                    </View>
+                    <View style={styles.onlineIndicator} />
                   )}
-                  <View style={styles.levelContainer}>
-                    <LevelBadge level={displayProfile.level} size={36} />
+                </TouchableOpacity>
+                <View style={styles.badgesContainer}>
+                  <View style={styles.levelBadgeContainer}>
+                    <LevelBadge level={displayProfile.level} size={32} thickness={3} />
                   </View>
                 </View>
-              </TouchableOpacity>
+              </View>
             </View>
 
+            {/* Action Buttons - Top Right */}
             {!isMe && (
-              <View style={styles.rightColumn}>
-                <View style={styles.actionButtonsContainer}>
-                  <TouchableOpacity 
-                    style={[styles.followButton, { backgroundColor: isFollowing ? '#334155' : accentColor }]}
-                    onPress={() => setIsFollowing(!isFollowing)}
-                  >
-                    {isFollowing ? (
-                      <Text style={[styles.followButtonText, styles.followingButtonText]}>Following</Text>
-                    ) : (
-                      <>
-                        <UserPlus size={16} color="#000" />
-                        <Text style={styles.followButtonText}>Follow</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
+              <View style={styles.actionButtonsRow}>
+                <TouchableOpacity 
+                  style={[styles.followButtonSmall, { backgroundColor: isFollowing ? '#334155' : accentColor }]}
+                  onPress={() => setIsFollowing(!isFollowing)}
+                >
+                  {isFollowing ? (
+                    <Text style={[styles.followButtonTextSmall, styles.followingButtonText]}>Following</Text>
+                  ) : (
+                    <>
+                      <UserPlus size={14} color="#000" />
+                      <Text style={styles.followButtonTextSmall}>Follow</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
 
-                  <TouchableOpacity 
-                    style={styles.messageButton}
-                    onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username: username } })}
-                  >
-                    <MessageCircle size={20} color="#94A3B8" />
-                    <Text style={styles.messageButtonText}>Message</Text>
-                  </TouchableOpacity>
-                </View>
+                <TouchableOpacity 
+                  style={styles.messageIconButtonSmall}
+                  onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username: username } })}
+                >
+                  <Mail size={18} color="#FFF" />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.reportIconButtonSmall}
+                  onPress={() => setIsReportModalVisible(true)}
+                >
+                  <Flag size={16} color="#EF4444" />
+                </TouchableOpacity>
               </View>
             )}
           </View>
 
-          {/* Username/Display Name underneath profile picture */}
-          <View style={styles.userInfoContainer}>
-            <View style={styles.handleRow}>
-              <StyledUsername 
-                username={displayProfile.name} 
-                textStyleId={(user as any)?.textStyleId || 'default'}
-                fontSize={24}
-              />
-              {displayProfile.verified && (
-                <View style={styles.verifiedBadge}>
-                  <Check size={10} color="#FFF" strokeWidth={4} />
+          {/* Profile Header */}
+          <View style={styles.header}>
+            <View style={styles.userInfoSection}>
+              <View style={styles.nameRow}>
+                <View style={styles.nameRowLeft}>
+                  <StyledUsername 
+                    username={displayProfile.name} 
+                    textStyleId={(user as any)?.textStyleId || 'default'}
+                    fontSize={26}
+                  />
+                  {displayProfile.verified && (
+                    <View style={styles.verifiedBadge}>
+                      <Check size={10} color="#FFF" strokeWidth={4} />
+                    </View>
+                  )}
                 </View>
-              )}
+              </View>
+              <Text style={styles.handle}>{displayProfile.handle}</Text>
             </View>
-            <Text style={styles.handle}>{displayProfile.handle}</Text>
           </View>
-
-          {/* Share button */}
-          {!isMe && (
-            <View style={styles.shareButtonContainer}>
-              <TouchableOpacity style={styles.shareButton}>
-                <Share2 size={20} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Member since text */}
-          <Text style={styles.memberSince}>Member since {displayProfile.joined}</Text>
-
-          {/* Stats underneath member since */}
-          <View style={styles.statsRow}>
-            <Text style={styles.statText}><Text style={styles.statBold}>{displayProfile.stats.clips}</Text> Clips</Text>
-            <Text style={styles.statText}><Text style={styles.statBold}>{displayProfile.stats.followers}</Text> Followers</Text>
-            <Text style={styles.statText}><Text style={styles.statBold}>{displayProfile.stats.following}</Text> Following</Text>
-            <TouchableOpacity 
-              onPress={() => {
-                setIsEngagementExpanded(!isEngagementExpanded);
-                Animated.timing(rotateAnim, {
-                  toValue: isEngagementExpanded ? 0 : 1,
-                  duration: 200,
-                  useNativeDriver: true,
-                }).start();
-              }}
-              style={styles.dropdownButton}
-            >
-              <Animated.View
-                style={{
-                  transform: [
-                    {
-                      rotate: rotateAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: ['0deg', '180deg'],
-                      }),
-                    },
-                  ],
-                }}
-              >
-                <ChevronDown size={16} color="#94A3B8" />
-              </Animated.View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Dividing line */}
-          <View style={styles.statsDivider} />
-
-          {/* Dividing line */}
-          <View style={styles.statsDivider} />
-
-          {/* Engagement stats (expandable) */}
-          {isEngagementExpanded && (
-            <View style={styles.engagementContainer}>
-              <LinearGradient
-                colors={['rgba(34, 197, 94, 0.15)', 'rgba(34, 197, 94, 0.05)']}
-                style={styles.engagementGradient}
-              >
-                <View style={styles.engagementRow}>
-                  <TouchableOpacity 
-                    style={styles.engagementItem}
-                    onPress={() => setTooltipVisible('likes')}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.engagementIconWrapper}>
-                      <Heart size={16} color="#F472B6" fill="#F472B6" />
-                    </View>
-                    <Text style={styles.engagementValue}>{displayProfile.engagement.likes}</Text>
-                    {tooltipVisible === 'likes' && (
-                      <View style={styles.tooltip}>
-                        <Text style={styles.tooltipText}>Likes</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.engagementItem}
-                    onPress={() => setTooltipVisible('flame')}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.engagementIconWrapper}>
-                      <Flame size={16} color="#FB923C" fill="#FB923C" />
-                    </View>
-                    <Text style={styles.engagementValue}>{displayProfile.engagement.fires}</Text>
-                    {tooltipVisible === 'flame' && (
-                      <View style={styles.tooltip}>
-                        <Text style={styles.tooltipText}>Flames</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.engagementItem}
-                    onPress={() => setTooltipVisible('streak')}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.engagementIconWrapper}>
-                      <Zap size={16} color="#FBBF24" fill="#FBBF24" />
-                    </View>
-                    <Text style={styles.engagementValue}>{displayProfile.engagement.streak} days</Text>
-                    {tooltipVisible === 'streak' && (
-                      <View style={styles.tooltip}>
-                        <Text style={styles.tooltipText}>Streak</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </LinearGradient>
-            </View>
-          )}
 
           <View style={styles.infoSection}>
+            <Text style={styles.memberSince}>Member since {displayProfile.joined}</Text>
             <Text style={styles.bio}>{displayProfile.bio}</Text>
+            <View style={styles.divider} />
 
-            <View style={styles.platformsRow}>
-              {displayProfile.platforms.map((platform, index) => (
-                <View key={index} style={[styles.platformTag, { backgroundColor: platform.color }]}>
-                  {platform.type === 'xbox' && <Gamepad2 size={12} color="#FFF" />}
-                  {platform.type === 'ps' && <Gamepad2 size={12} color="#FFF" />}
-                  {platform.type === 'pc' && <Monitor size={12} color="#FFF" />}
-                  <Text style={styles.platformText}>{platform.name}</Text>
-                </View>
-              ))}
+            <View style={styles.statsRowCompact}>
+              <View style={styles.statColumn}>
+                <Text style={styles.statNumber}>{displayProfile.stats.clips}</Text>
+                <Text style={styles.statLabel}>Clips</Text>
+              </View>
+              <View style={styles.statColumn}>
+                <Text style={styles.statNumber}>{displayProfile.stats.followers}</Text>
+                <Text style={styles.statLabel}>Followers</Text>
+              </View>
+              <View style={styles.statColumn}>
+                <Text style={styles.statNumber}>{displayProfile.stats.following}</Text>
+                <Text style={styles.statLabel}>Following</Text>
+              </View>
             </View>
+
+          <View style={styles.platformsRow}>
+            {displayProfile.platforms.map((platform, index) => (
+              <View key={index} style={[styles.platformTag, { backgroundColor: platform.color }]}>
+                {platform.type === 'xbox' && <Gamepad2 size={12} color="#FFF" />}
+                {platform.type === 'ps' && <Gamepad2 size={12} color="#FFF" />}
+                {platform.type === 'pc' && <Monitor size={12} color="#FFF" />}
+                <Text style={styles.platformText}>{platform.name}</Text>
+              </View>
+            ))}
           </View>
+        </View>
 
           {/* Tabs */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsContainer} contentContainerStyle={styles.tabsContent}>
@@ -386,7 +343,7 @@ export default function PublicProfileScreen() {
                   <TouchableOpacity 
                     key={clip.id} 
                     style={styles.clipItem}
-                    onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString() } })}
+                    onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString(), fromUser: username } })}
                   >
                     <Image source={{ uri: clip.thumbnailUrl }} style={styles.clipImage} />
                     <LinearGradient
@@ -420,7 +377,7 @@ export default function PublicProfileScreen() {
           )}
 
           {activeTab === 'Reels' && (
-            <View style={styles.grid}>
+            <View style={styles.reelsGrid}>
               {reels.length === 0 ? (
                 <View style={styles.emptyStateContainer}>
                   <View style={styles.emptyStateIcon}>
@@ -445,7 +402,7 @@ export default function PublicProfileScreen() {
                   <TouchableOpacity 
                       key={reel.id} 
                       style={styles.reelItem}
-                      onPress={() => router.push({ pathname: '/clip/[id]', params: { id: reel.id.toString() } })}
+                      onPress={() => router.push({ pathname: '/clip/[id]', params: { id: reel.id.toString(), fromUser: username } })}
                   >
                     <Image source={{ uri: reel.thumbnailUrl }} style={styles.reelImage} />
                     <LinearGradient
@@ -500,8 +457,17 @@ export default function PublicProfileScreen() {
                   </TouchableOpacity>
                 </View>
               ) : (
-                screenshots.map((item) => (
-                  <View key={item.id} style={styles.screenshotCard}>
+                screenshots.map((item, index) => (
+                  <TouchableOpacity 
+                    key={item.id} 
+                    style={styles.screenshotCard}
+                    onPress={() => {
+                      setSelectedScreenshotIndex(index);
+                      setIsScreenshotModalVisible(true);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                    activeOpacity={0.8}
+                  >
                     <Image source={{ uri: item.thumbnailUrl }} style={styles.screenshotImage} />
                     <View style={styles.screenshotContent}>
                         <Text style={styles.screenshotTitle}>{item.title}</Text>
@@ -528,23 +494,23 @@ export default function PublicProfileScreen() {
                             </View>
                         </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 ))
               )}
             </View>
           )}
           
           {activeTab === 'Favorites' && (
-            <View style={styles.grid}>
+            <View style={styles.favoritesGrid}>
               {favoriteGames.map((game) => (
-                <TouchableOpacity key={game.id} style={styles.clipItem} activeOpacity={0.8}>
-                    <Image source={{ uri: getImageUrl(game.imageUrl) }} style={styles.clipImage} resizeMode="cover" />
+                <TouchableOpacity key={game.id} style={styles.favoriteItem} activeOpacity={0.8}>
+                    <Image source={{ uri: getImageUrl(game.imageUrl) }} style={styles.favoriteImage} resizeMode="cover" />
                     <LinearGradient
                         colors={['transparent', 'rgba(0,0,0,0.9)']}
-                        style={styles.clipGradient}
+                        style={styles.favoriteGradient}
                     />
-                    <View style={styles.clipBottom}>
-                        <Text style={styles.clipTitle} numberOfLines={2}>{game.name}</Text>
+                    <View style={styles.favoriteBottom}>
+                        <Text style={styles.favoriteTitle} numberOfLines={2}>{game.name}</Text>
                     </View>
                 </TouchableOpacity>
               ))}
@@ -569,17 +535,60 @@ export default function PublicProfileScreen() {
         username={displayProfile.handle}
       />
 
-      <Modal
-        visible={tooltipVisible !== null}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setTooltipVisible(null)}
-      >
-        <Pressable 
-          style={styles.modalOverlay}
-          onPress={() => setTooltipVisible(null)}
-        />
-      </Modal>
+      <ReportModal
+        visible={isReportModalVisible}
+        onClose={() => setIsReportModalVisible(false)}
+        onSubmit={async (reason, details) => {
+          await submitReportMutation.mutateAsync({
+            contentType: 'user',
+            contentId: userId || 0,
+            reason,
+            details,
+            contentTitle: user?.displayName || user?.username,
+            reportedUserId: userId,
+            reportedUsername: user?.username,
+          });
+        }}
+        contentType="user"
+        contentId={userId || 0}
+        contentTitle={user?.displayName || user?.username}
+      />
+
+      <ScreenshotViewerModal
+        visible={isScreenshotModalVisible}
+        onClose={() => setIsScreenshotModalVisible(false)}
+        screenshot={screenshots[selectedScreenshotIndex] || null}
+        screenshots={screenshots}
+        initialIndex={selectedScreenshotIndex}
+        handle={user?.username || ''}
+        isOwner={isMe || false}
+      />
+
+      <ShareProfileModal
+        visible={isShareModalVisible}
+        onClose={() => setIsShareModalVisible(false)}
+        profile={{
+          displayName: user?.displayName || user?.username || '',
+          username: user?.username || '',
+          bio: user?.bio || 'No bio yet.',
+          avatarUrl: user?.avatarUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2670&auto=format&fit=crop',
+          bannerUrl: user?.bannerUrl ?? undefined,
+          level: user?.level || 1,
+          totalXP: user?.totalXP || 0,
+          verified: user?.emailVerified || false,
+          stats: {
+            clips: user?._count?.clips || 0,
+            followers: user?._count?.followers || 0,
+            following: user?._count?.following || 0,
+          },
+          engagement: {
+            likes: 0,
+            fires: 0,
+            streak: user?.currentStreak || 0,
+          },
+          games: favoriteGames.map((g: any) => ({ id: g.id, name: g.name, imageUrl: g.imageUrl })),
+        }}
+      />
     </View>
   );
 }
@@ -609,105 +618,135 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: '100%',
   },
+  bannerGradientTop: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 40,
+  },
+  bannerShareButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
   content: {
     flex: 1,
     paddingHorizontal: 16,
-    marginTop: -80,
+    marginTop: -90,
   },
-  topRowWithActions: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+  header: {
     marginBottom: 16,
+    marginTop: 8,
   },
-  rightColumn: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  actionButtonsContainer: {
-    marginTop: 16,
-    gap: 8,
-  },
-  messageButton: {
+  profileRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
-    borderWidth: 1,
-    borderColor: '#334155',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 8,
-  },
-  messageButtonText: {
-    color: '#FFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  shareButtonContainer: {
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  shareButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  avatarWrapper: {
-    position: 'relative',
-  },
-  avatarContainer: {
-    width: 114,
-    height: 114,
-    borderRadius: 57,
-    borderWidth: 4,
-    borderColor: '#0F1520', // Should be dynamic but static for now or passed via style prop
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatar: {
-    width: 114,
-    height: 114,
-    borderRadius: 57,
-    resizeMode: 'cover',
-  },
-  userInfoContainer: {
-    alignItems: 'center',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
     marginBottom: 12,
   },
-  handleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  avatarSection: {
+    marginBottom: 0,
   },
-  levelContainer: {
-    position: 'absolute',
-    bottom: -12,
-    alignSelf: 'center',
-    zIndex: 10,
-  },
-  levelSeparator: {
-    display: 'none' as const,
-  },
-  headerActions: {
+  actionButtonsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 8,
   },
-  followButton: {
+  followButtonSmall: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#4ADE80',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 8,
-    gap: 8,
+    gap: 6,
   },
-  followingButton: {
-    backgroundColor: '#334155',
+  followButtonTextSmall: {
+    color: '#002E15',
+    fontWeight: '600' as const,
+    fontSize: 13,
+  },
+  messageIconButtonSmall: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderWidth: 1,
+    borderColor: '#334155',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportIconButtonSmall: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userInfoSection: {
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  reportUserButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  avatarWrapper: {
+    position: 'relative',
+  },
+  avatar: {
+    width: 148,
+    height: 148,
+    borderRadius: 74,
+    borderWidth: 4,
+  },
+  badgesContainer: {
+    position: 'relative',
+  },
+  levelBadgeContainer: {
+    position: 'absolute',
+    bottom: -12,
+    left: '50%',
+    marginLeft: -16,
+  },
+  onlineIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#22C55E',
+    borderWidth: 3,
+    borderColor: '#0F1520',
+  },
+  followButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4ADE80',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 8,
   },
   followButtonText: {
     color: '#002E15',
@@ -717,146 +756,81 @@ const styles = StyleSheet.create({
   followingButtonText: {
     color: '#FFF',
   },
-  iconButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(30, 41, 59, 0.8)',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
   infoSection: {
-    marginTop: 0,
-    alignItems: 'center',
+    marginTop: 8,
+    alignItems: 'flex-start',
   },
   nameRow: {
-    // Removed old nameRow styles
-  },
-  name: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
+    width: '100%',
+  },
+  nameRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+    flex: 1,
   },
   handle: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#94A3B8',
-    marginRight: 8,
+    marginBottom: 8,
+    textAlign: 'left',
   },
   verifiedBadge: {
     backgroundColor: '#3B82F6',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 4,
   },
-  usernameDivider: {
-    height: 1,
-    backgroundColor: '#334155',
-    width: '100%',
-    marginTop: 8,
+  statsRowCompact: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 24,
     marginBottom: 12,
   },
-  statsRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+  statColumn: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
   },
-  statsDivider: {
+  statNumber: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  statLabel: {
+    color: '#94A3B8',
+    fontSize: 15,
+  },
+  divider: {
     height: 1,
     backgroundColor: '#334155',
-    width: '60%',
-    alignSelf: 'center',
+    width: '65%',
     marginBottom: 16,
-  },
-  dropdownButton: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  statText: {
-    color: '#94A3B8',
-    marginRight: 16,
-    fontSize: 14,
-  },
-  statBold: {
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
-  engagementContainer: {
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  engagementGradient: {
-    marginHorizontal: -16,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.2)',
-  },
-  engagementRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-  },
-  engagementItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-    position: 'relative',
-  },
-  engagementIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tooltip: {
-    position: 'absolute',
-    top: -35,
-    left: '50%',
-    transform: [{ translateX: -30 }],
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    zIndex: 1000,
-  },
-  tooltipText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-  },
-  engagementValue: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
   },
   memberSince: {
     color: '#64748B',
     fontSize: 12,
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   bio: {
     color: '#E2E8F0',
     fontSize: 14,
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   platformsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     marginBottom: 24,
-    justifyContent: 'center',
   },
   platformTag: {
     flexDirection: 'row',
@@ -898,14 +872,25 @@ const styles = StyleSheet.create({
     color: '#FFF',
   },
   grid: {
+    flexDirection: 'column',
+    gap: 12,
+    paddingBottom: 40,
+  },
+  reelsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingBottom: 40,
+  },
+  favoritesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
     paddingBottom: 40,
   },
   clipItem: {
-    width: (width - 32 - 12) / 2,
-    aspectRatio: 16/10,
+    width: '100%',
+    aspectRatio: 16/9,
     backgroundColor: '#1E293B',
     borderRadius: 12,
     overflow: 'hidden',
@@ -1095,6 +1080,39 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
+  favoriteItem: {
+    width: (width - 32 - 12) / 2,
+    aspectRatio: 3/4,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  favoriteImage: {
+    width: '100%',
+    height: '100%',
+  },
+  favoriteGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: '50%',
+  },
+  favoriteBottom: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    right: 10,
+  },
+  favoriteTitle: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
   emptyState: {
     width: '100%',
     padding: 40,
@@ -1144,36 +1162,5 @@ const styles = StyleSheet.create({
     color: '#0F1520',
     fontSize: 16,
     fontWeight: '700' as const,
-  },
-  onlineIndicator: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#22C55E',
-    borderWidth: 3,
-    borderColor: '#0F1520',
-  },
-  onlineDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#22C55E',
-  },
-  gamefolioButton: {
-    position: 'absolute',
-    top: 60,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(30, 41, 59, 0.9)',
-    borderWidth: 1,
-    borderColor: '#334155',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
   },
 });

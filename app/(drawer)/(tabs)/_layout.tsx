@@ -1,12 +1,16 @@
 import { Tabs } from "expo-router";
 import { Compass, Flame, Home, PlusCircle, User } from "lucide-react-native";
 import React, { useState } from "react";
-import { Platform, View, Pressable } from "react-native";
+import { View, Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import CircularUploadMenu from '@/components/CircularUploadMenu';
 
 export default function TabLayout() {
   const [menuVisible, setMenuVisible] = useState(false);
-
+  const insets = useSafeAreaInsets();
+  
+  const tabBarHeight = 55 + Math.max(insets.bottom, 10);
+  const tabBarPaddingBottom = Math.max(insets.bottom, 10);
 
   return (
     <>
@@ -17,8 +21,8 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#0F1520',
           borderTopColor: '#1E293B',
-          height: Platform.OS === 'ios' ? 85 : 65,
-          paddingBottom: Platform.OS === 'ios' ? 25 : 10,
+          height: tabBarHeight,
+          paddingBottom: tabBarPaddingBottom,
           paddingTop: 6,
           overflow: 'visible',
         },

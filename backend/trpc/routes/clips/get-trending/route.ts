@@ -66,6 +66,11 @@ export default publicProcedure
         .select('*', { count: 'exact', head: true })
         .eq('clip_id', clip.id);
 
+      const { count: firesCount } = await supabaseAdmin
+        .from('fires')
+        .select('*', { count: 'exact', head: true })
+        .eq('clip_id', clip.id);
+
       return {
         id: clip.id,
         userId: clip.user_id,
@@ -95,6 +100,7 @@ export default publicProcedure
         _count: {
           likes: likesCount || 0,
           comments: commentsCount || 0,
+          fires: firesCount || 0,
         }
       };
     }) || []);

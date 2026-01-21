@@ -19,8 +19,6 @@ export default function OnboardingLayout() {
         <Stack.Screen name="games" />
         <Stack.Screen name="avatar" />
         <Stack.Screen name="user-type" />
-        <Stack.Screen name="age" />
-        <Stack.Screen name="wallet" />
         <Stack.Screen name="complete" options={{ animation: 'fade', gestureEnabled: false }} />
       </Stack>
     </OnboardingProvider>

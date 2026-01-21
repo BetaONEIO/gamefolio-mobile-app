@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   StyleSheet, 
   Text, 
   View, 
-  TouchableOpacity, 
+  TouchableOpacity,
+  ScrollView, 
 } from 'react-native';
-import ThemedScrollView from '@/components/ThemedScrollView';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -21,6 +21,7 @@ import {
   Scroll,
   Check
 } from 'lucide-react-native';
+import OnboardingProgress, { OnboardingStep } from '@/components/OnboardingProgress';
 
 export default function OnboardingUserTypeScreen() {
   const router = useRouter();
@@ -36,14 +37,12 @@ export default function OnboardingUserTypeScreen() {
     surfaceHighlight: '#334155',
   };
 
-  const steps = [
-    { label: 'Welcome', status: 'completed' },
-    { label: 'Games', status: 'completed' },
-    { label: 'Avatar', status: 'completed' },
-    { label: 'User Type', status: 'active' },
-    { label: 'Age', status: 'pending' },
-    { label: 'Wallet', status: 'pending' },
-    { label: 'Complete', status: 'pending' },
+  const steps: OnboardingStep[] = [
+    { label: 'Welcome', status: 'completed', route: '/onboarding' },
+    { label: 'Games', status: 'completed', route: '/onboarding/games' },
+    { label: 'Avatar', status: 'completed', route: '/onboarding/avatar' },
+    { label: 'User Type', status: 'active', route: '/onboarding/user-type' },
+    { label: 'Complete', status: 'pending', route: '/onboarding/complete' },
   ];
 
   const userTypes = [
@@ -115,13 +114,8 @@ export default function OnboardingUserTypeScreen() {
 
   const handleSelectType = (id: string) => {
     setSelectedType(id);
+    setUserType(id);
   };
-
-  useEffect(() => {
-    if (selectedType) {
-      setUserType(selectedType);
-    }
-  }, [selectedType, setUserType]);
 
   const canProceed = selectedType !== null;
 
@@ -130,49 +124,13 @@ export default function OnboardingUserTypeScreen() {
       <StatusBar style="light" />
       
       <View style={styles.content}>
-        <View style={styles.progressContainer}>
-          <View style={styles.stepsRow}>
-            {steps.map((step, index) => (
-              <React.Fragment key={index}>
-                <View style={styles.stepWrapper}>
-                  <View style={[
-                    styles.stepCircle, 
-                    step.status === 'active' && { backgroundColor: colors.primary, borderColor: colors.primary },
-                    step.status === 'completed' && { backgroundColor: colors.primary, borderColor: colors.primary },
-                    step.status === 'pending' && { backgroundColor: 'transparent', borderColor: '#334155' }
-                  ]}>
-                    {step.status === 'completed' ? (
-                      <Check size={16} color="#002E15" strokeWidth={3} />
-                    ) : (
-                      <Text style={[
-                        styles.stepNumber,
-                        step.status === 'active' ? { color: '#002E15' } : { color: '#64748B' }
-                      ]}>
-                        {index + 1}
-                      </Text>
-                    )}
-                  </View>
-                  <Text style={[
-                    styles.stepLabel,
-                    step.status === 'active' || step.status === 'completed' ? { color: '#FFFFFF' } : { color: '#64748B' }
-                  ]} numberOfLines={1}>
-                    {step.label}
-                  </Text>
-                </View>
-                
-                {index < steps.length - 1 && (
-                  <View style={[
-                    styles.stepLine,
-                    (steps[index].status === 'completed' && steps[index+1].status !== 'pending') && { backgroundColor: colors.primary }
-                  ]} />
-                )}
-              </React.Fragment>
-            ))}
-          </View>
-        </View>
+        <OnboardingProgress steps={steps} currentIndex={3} />
 
-        <ThemedScrollView contentContainerStyle={styles.scrollContent}>
-          
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
           <Text style={styles.title}>What type of user are you?</Text>
           <Text style={styles.subtitle}>
             Select the one that best describes you
@@ -188,14 +146,14 @@ export default function OnboardingUserTypeScreen() {
                   key={type.id}
                   style={[
                     styles.card,
-                    isSelected && [styles.cardSelected, { borderColor: type.color }]
+                    isSelected && [styles.cardSelected, { borderColor: colors.primary }]
                   ]}
                   onPress={() => handleSelectType(type.id)}
                   activeOpacity={0.7}
                 >
                   <View style={[
                     styles.iconCircle,
-                    { backgroundColor: isSelected ? type.color : type.bgColor }
+                    { backgroundColor: isSelected ? colors.primary : type.bgColor }
                   ]}>
                     <Icon 
                       size={24} 
@@ -204,12 +162,12 @@ export default function OnboardingUserTypeScreen() {
                   </View>
                   <Text style={[
                     styles.cardTitle,
-                    isSelected && { color: type.color }
+                    isSelected && { color: colors.primary }
                   ]}>{type.title}</Text>
                   <Text style={styles.cardDescription}>{type.description}</Text>
                   
                   {isSelected && (
-                    <View style={[styles.checkBadge, { backgroundColor: type.color }]}>
+                    <View style={[styles.checkBadge, { backgroundColor: colors.primary }]}>
                       <Check size={12} color="#FFFFFF" strokeWidth={3} />
                     </View>
                   )}
@@ -218,7 +176,7 @@ export default function OnboardingUserTypeScreen() {
             })}
           </View>
 
-        </ThemedScrollView>
+        </ScrollView>
 
         <View style={styles.footer}>
           <View style={styles.buttonRow}>
@@ -238,7 +196,7 @@ export default function OnboardingUserTypeScreen() {
               activeOpacity={0.8}
               onPress={() => {
                 if (canProceed) {
-                  router.push('/onboarding/age');
+                  router.push('/onboarding/complete');
                 }
               }}
               disabled={!canProceed}
@@ -263,46 +221,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 24,
   },
-  progressContainer: {
-    marginTop: 20,
-    marginBottom: 30,
-  },
-  stepsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-  },
-  stepWrapper: {
-    alignItems: 'center',
-    zIndex: 1,
-    width: 40,
-  },
-  stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-    backgroundColor: '#0F1520',
-  },
-  stepNumber: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-  },
-  stepLabel: {
-    fontSize: 10,
-    textAlign: 'center',
-  },
-  stepLine: {
+  
+  scrollView: {
     flex: 1,
-    height: 2,
-    backgroundColor: '#334155',
-    marginTop: 13,
   },
   scrollContent: {
-    flexGrow: 1,
     paddingBottom: 20,
   },
   title: {

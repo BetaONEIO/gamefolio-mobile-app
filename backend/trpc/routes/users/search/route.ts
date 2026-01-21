@@ -1,31 +1,45 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
-
-const mockUsers = [
-  { id: 2, username: 'names21080', displayName: 'names21080', avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop', isOnline: false },
-  { id: 3, username: 'Arrowking96', displayName: 'Arrowking96', avatarUrl: 'https://images.unsplash.com/photo-1599566150163-29194dcabd36?w=100&h=100&fit=crop', isOnline: true },
-  { id: 4, username: 'JawaTheGathering', displayName: 'JawaTheGathering', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop', isOnline: true },
-  { id: 5, username: 'Leumas', displayName: 'Leumas', avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop', isOnline: false },
-  { id: 6, username: 'GamerPro99', displayName: 'GamerPro99', avatarUrl: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=100&h=100&fit=crop', isOnline: false },
-  { id: 7, username: 'PlayerOne', displayName: 'PlayerOne', avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop', isOnline: true },
-  { id: 8, username: 'NightOwl', displayName: 'NightOwl', avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop', isOnline: false },
-  { id: 9, username: 'ShadowStrike', displayName: 'ShadowStrike', avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&h=100&fit=crop', isOnline: true },
-  { id: 10, username: 'CyberNinja', displayName: 'CyberNinja', avatarUrl: 'https://images.unsplash.com/photo-1507591064344-4c6ce005b128?w=100&h=100&fit=crop', isOnline: false },
-];
+import { supabaseAdmin } from "@/lib/supabase";
 
 const searchUsersRoute = protectedProcedure
   .input(z.object({
     query: z.string().min(1),
   }))
   .query(async ({ ctx, input }) => {
-    console.log('[Users] Searching users with query:', input.query, 'by user:', ctx.userId);
+    const searchTerm = input.query.trim();
+    console.log('[tRPC Users] Searching users with query:', searchTerm, 'by user:', ctx.userId);
     
-    const results = mockUsers.filter(user => 
-      user.username.toLowerCase().includes(input.query.toLowerCase()) ||
-      user.displayName.toLowerCase().includes(input.query.toLowerCase())
-    );
-    
-    return results.filter(user => user.id !== ctx.userId);
+    try {
+      const { data: users, error } = await supabaseAdmin
+        .from('users')
+        .select('id, username, display_name, avatar_url, is_online, level, total_xp')
+        .or(`username.ilike.%${searchTerm}%,display_name.ilike.%${searchTerm}%`)
+        .neq('id', ctx.userId)
+        .order('total_xp', { ascending: false })
+        .limit(20);
+
+      if (error) {
+        console.error('[tRPC Users] Error searching users:', error);
+        return [];
+      }
+
+      const formattedUsers = (users || []).map(user => ({
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name || user.username,
+        avatarUrl: user.avatar_url,
+        isOnline: user.is_online || false,
+        level: user.level ?? 1,
+        totalXP: user.total_xp ?? 0,
+      }));
+
+      console.log('[tRPC Users] Found', formattedUsers.length, 'real users from database');
+      return formattedUsers;
+    } catch (error) {
+      console.error('[tRPC Users] Unexpected error:', error);
+      return [];
+    }
   });
 
 export default searchUsersRoute;
