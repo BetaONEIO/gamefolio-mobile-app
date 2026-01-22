@@ -17,6 +17,7 @@ import AppHeader from '@/components/AppHeader';
 import { LinearGradient } from 'expo-linear-gradient';
 import ReelViewer, { ReelData, Comment as ReelComment } from '@/components/ReelViewer';
 import FlameAnimation from '@/components/FlameAnimation';
+import { CommentText } from '@/utils/parseCommentText';
 
 let hasShownAuthError = false;
 
@@ -163,9 +164,10 @@ ClipThumbnail.displayName = 'ClipThumbnail';
 
 export default function ClipDetailScreen() {
   const router = useRouter();
-  const { id, fromUser } = useLocalSearchParams();
+  const { id, fromUser, contentType } = useLocalSearchParams();
   const clipId = Array.isArray(id) ? id[0] : id;
   const fromUsername = Array.isArray(fromUser) ? fromUser[0] : fromUser;
+  const browseContentType = Array.isArray(contentType) ? contentType[0] : contentType;
   const insets = useSafeAreaInsets();
   const [currentClipIndex, setCurrentClipIndex] = useState(0);
   const clipsFlatListRef = useRef<FlatList>(null);
@@ -330,14 +332,22 @@ export default function ClipDetailScreen() {
   }, [clipId, deleteClip]);
 
   // Fetch clips for horizontal scrolling - either from specific user or general feed
+  // When contentType is specified, only browse that type (clips or reels)
   const { data: feedClips = [] } = useQuery<Clip[]>({
-    queryKey: fromUsername ? ['userClips', fromUsername] : ['clips', 'feed'],
+    queryKey: fromUsername ? ['userClips', fromUsername, browseContentType] : ['clips', 'feed', browseContentType],
     queryFn: async () => {
       const token = await getAccessToken();
       try {
         if (fromUsername) {
-          console.log('[ClipDetail] Fetching clips from user:', fromUsername);
+          console.log('[ClipDetail] Fetching content from user:', fromUsername, 'contentType:', browseContentType);
           const userClips = await api.users.getUserClips(fromUsername);
+          // Filter based on content type - if coming from Clips tab, only show clips; if from Reels tab, only show reels
+          if (browseContentType === 'reel') {
+            return userClips.filter((c: Clip) => c.videoType === 'reel');
+          } else if (browseContentType === 'clip') {
+            return userClips.filter((c: Clip) => c.videoType !== 'reel');
+          }
+          // Default: only clips (not reels) for backward compatibility
           return userClips.filter((c: Clip) => c.videoType !== 'reel');
         } else {
           console.log('[ClipDetail] Fetching all clips for swipe navigation');
@@ -1520,7 +1530,7 @@ export default function ClipDetailScreen() {
                       <View style={styles.inlineCommentContent}>
                         <Text style={styles.inlineCommentText} numberOfLines={2}>
                           <Text style={styles.inlineCommentUsername}>{commentItem.user.displayName || commentItem.user.username}</Text>
-                          <Text style={styles.inlineCommentBody}> {commentItem.content}</Text>
+                          <Text style={styles.inlineCommentBody}> <CommentText content={commentItem.content} /></Text>
                         </Text>
                       </View>
                     </View>
@@ -2028,7 +2038,7 @@ export default function ClipDetailScreen() {
                     <View style={styles.commentContent}>
                       <Text style={styles.commentText}>
                         <Text style={styles.commentUsername}>{commentItem.user.displayName || commentItem.user.username}</Text>
-                        <Text style={styles.commentBody}> {commentItem.content}</Text>
+                        <Text style={styles.commentBody}> <CommentText content={commentItem.content} /></Text>
                       </Text>
                       <Text style={styles.commentTime}>{timeAgo(commentItem.createdAt)}</Text>
                     </View>

@@ -553,7 +553,7 @@ export default function ProfileScreen() {
                 <ClipItem 
                   key={clip.id} 
                   clip={clip} 
-                  onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id } })}
+                  onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id, fromUser: user?.username } })}
                   onDelete={() => handleDeleteClip(clip.id)}
                 />
               ))
@@ -588,7 +588,7 @@ export default function ProfileScreen() {
                 <ReelItem 
                   key={reel.id} 
                   reel={reel}
-                  onPress={() => router.push({ pathname: '/clip/[id]', params: { id: reel.id } })}
+                  onPress={() => router.push({ pathname: '/clip/[id]', params: { id: reel.id, fromUser: user?.username } })}
                   onDelete={() => handleDeleteReel(reel.id)}
                 />
               ))
@@ -815,14 +815,14 @@ const styles = StyleSheet.create({
     marginTop: -90,
   },
   header: {
-    marginBottom: 16,
-    marginTop: 8,
+    marginBottom: 12,
+    marginTop: 0,
   },
   topRowWithActions: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   rightColumn: {
     flex: 1,
@@ -905,7 +905,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 2,
     width: '100%',
   },
   nameRowLeft: {
@@ -924,7 +924,7 @@ const styles = StyleSheet.create({
   handle: {
     fontSize: 15,
     color: '#94A3B8',
-    marginBottom: 8,
+    marginBottom: 4,
     textAlign: 'left',
   },
   verifiedBadge: {

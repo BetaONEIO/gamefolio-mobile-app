@@ -343,7 +343,7 @@ export default function PublicProfileScreen() {
                   <TouchableOpacity 
                     key={clip.id} 
                     style={styles.clipItem}
-                    onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString(), fromUser: username } })}
+                    onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString(), fromUser: username, contentType: 'clip' } })}
                   >
                     <Image source={{ uri: clip.thumbnailUrl }} style={styles.clipImage} />
                     <LinearGradient
@@ -402,7 +402,7 @@ export default function PublicProfileScreen() {
                   <TouchableOpacity 
                       key={reel.id} 
                       style={styles.reelItem}
-                      onPress={() => router.push({ pathname: '/clip/[id]', params: { id: reel.id.toString(), fromUser: username } })}
+                      onPress={() => router.push({ pathname: '/clip/[id]', params: { id: reel.id.toString(), fromUser: username, contentType: 'reel' } })}
                   >
                     <Image source={{ uri: reel.thumbnailUrl }} style={styles.reelImage} />
                     <LinearGradient

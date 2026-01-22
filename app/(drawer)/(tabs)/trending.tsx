@@ -58,6 +58,7 @@ import { api } from '@/lib/api';
 import { shortenGameName, formatNumber as formatNum, truncateTitle } from '@/constants/formatters';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
+import { CommentText } from '@/utils/parseCommentText';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as Haptics from 'expo-haptics';
 import ShareClipModal from '@/components/ShareClipModal';
@@ -387,7 +388,7 @@ const ReelItem = React.memo(({
       <View style={styles.reelCommentContent}>
         <Text style={styles.reelCommentText}>
           <Text style={styles.reelCommentUsername}>{c.user.displayName}</Text>{' '}
-          {c.content}
+          <CommentText content={c.content} />
         </Text>
         <Text style={styles.reelCommentTime}>{timeAgo(c.createdAt)}</Text>
       </View>
@@ -928,7 +929,7 @@ const ClipItem = React.memo(({
       <View style={styles.reelCommentContent}>
         <Text style={styles.reelCommentText}>
           <Text style={styles.reelCommentUsername}>{c.user.displayName}</Text>{' '}
-          {c.content}
+          <CommentText content={c.content} />
         </Text>
         <Text style={styles.reelCommentTime}>{timeAgo(c.createdAt)}</Text>
       </View>
@@ -2814,7 +2815,7 @@ export default function TrendingScreen() {
                         <View style={styles.commentContent}>
                           <Text style={styles.commentText}>
                             <Text style={styles.commentUsername}>{c.user.displayName}</Text>{' '}
-                            {c.content}
+                            <CommentText content={c.content} />
                           </Text>
                           <Text style={styles.commentTime}>{timeAgo(c.createdAt)}</Text>
                         </View>
@@ -2878,7 +2879,7 @@ export default function TrendingScreen() {
                       <View style={styles.commentContent}>
                         <Text style={styles.commentText}>
                           <Text style={styles.commentUsername}>{c.user.displayName}</Text>{' '}
-                          {c.content}
+                          <CommentText content={c.content} />
                         </Text>
                         <Text style={styles.commentTime}>{timeAgo(c.createdAt)}</Text>
                       </View>
@@ -3581,7 +3582,7 @@ const styles = StyleSheet.create({
   reelUserRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   reelAvatar: {
     width: 40,
@@ -3615,7 +3616,7 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 15,
     fontWeight: '600' as const,
-    marginBottom: 6,
+    marginBottom: 4,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -3623,7 +3624,7 @@ const styles = StyleSheet.create({
   reelDescription: {
     color: 'rgba(255,255,255,0.9)',
     fontSize: 14,
-    marginBottom: 8,
+    marginBottom: 4,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -3641,7 +3642,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   reelGameText: {
     color: '#4ADE80',
@@ -3684,7 +3685,7 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
   },
   clipTopInfo: {
-    marginBottom: 8,
+    marginBottom: 4,
     pointerEvents: 'auto',
   },
   clipBottomActions: {
