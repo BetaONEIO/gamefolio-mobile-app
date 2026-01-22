@@ -52,3 +52,5 @@ build/
 .DS_Store
 
 node_modules/
+bun.lock
+bun.lockb
