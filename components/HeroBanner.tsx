@@ -132,23 +132,9 @@ export default function HeroBanner() {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    height: 380,
-    marginBottom: 24,
-    borderRadius: 24,
+    height: 200,
+    marginBottom: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(74, 222, 128, 0.2)',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#4ADE80',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
   },
 
   backgroundImage: {
@@ -157,15 +143,13 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   backgroundImageStyle: {
-    borderRadius: 24,
   },
   gradient: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   contentContainer: {
     alignItems: 'center',
@@ -174,26 +158,26 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
   },
   heroTitle: {
-    fontSize: 32,
+    fontSize: 24,
     fontWeight: '800' as const,
     color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 40,
+    lineHeight: 30,
     letterSpacing: -0.5,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
   heroSubtitle: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '500' as const,
     color: '#4ADE80',
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 28,
+    lineHeight: 18,
+    marginBottom: 12,
     paddingHorizontal: 8,
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
@@ -204,10 +188,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#4ADE80',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 14,
-    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 8,
     ...Platform.select({
       ios: {
         shadowColor: '#4ADE80',
@@ -221,7 +205,7 @@ const styles = StyleSheet.create({
     }),
   },
   ctaButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700' as const,
     color: '#002E15',
     letterSpacing: 0.3,
@@ -233,25 +217,25 @@ const styles = StyleSheet.create({
   },
   loadingContent: {
     alignItems: 'center',
-    gap: 16,
+    gap: 10,
   },
   loadingTitle: {
-    width: 200,
-    height: 32,
-    backgroundColor: '#334155',
-    borderRadius: 8,
-  },
-  loadingSubtitle: {
-    width: 280,
-    height: 20,
+    width: 180,
+    height: 24,
     backgroundColor: '#334155',
     borderRadius: 6,
   },
-  loadingButton: {
-    width: 160,
-    height: 44,
+  loadingSubtitle: {
+    width: 240,
+    height: 16,
     backgroundColor: '#334155',
-    borderRadius: 14,
-    marginTop: 12,
+    borderRadius: 4,
+  },
+  loadingButton: {
+    width: 140,
+    height: 36,
+    backgroundColor: '#334155',
+    borderRadius: 10,
+    marginTop: 8,
   },
 });

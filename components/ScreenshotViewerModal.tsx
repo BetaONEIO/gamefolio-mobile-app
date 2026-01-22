@@ -9,6 +9,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import * as Haptics from 'expo-haptics';
 import FlameAnimation from '@/components/FlameAnimation';
+import { CommentText } from '@/utils/parseCommentText';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -543,7 +544,7 @@ export default function ScreenshotViewerModal({
                       <View style={styles.inlineCommentContent}>
                         <Text style={styles.inlineCommentText} numberOfLines={2}>
                           <Text style={styles.inlineCommentUsername}>{commentItem.user.displayName || commentItem.user.username}</Text>
-                          <Text style={styles.inlineCommentBody}> {commentItem.content}</Text>
+                          <Text style={styles.inlineCommentBody}> <CommentText content={commentItem.content} /></Text>
                         </Text>
                       </View>
                     </View>
@@ -606,7 +607,7 @@ export default function ScreenshotViewerModal({
                       <View style={styles.commentContent}>
                         <Text style={styles.commentText}>
                           <Text style={styles.commentUsername}>{commentItem.user.displayName || commentItem.user.username}</Text>
-                          <Text style={styles.commentBody}> {commentItem.content}</Text>
+                          <Text style={styles.commentBody}> <CommentText content={commentItem.content} /></Text>
                         </Text>
                         <Text style={styles.commentTime}>{timeAgo(commentItem.createdAt)}</Text>
                       </View>

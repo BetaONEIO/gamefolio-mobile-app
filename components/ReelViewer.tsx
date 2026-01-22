@@ -36,6 +36,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as Haptics from 'expo-haptics';
 import FlameAnimation from '@/components/FlameAnimation';
+import { CommentText } from '@/utils/parseCommentText';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -177,6 +178,7 @@ const ReelViewer = React.memo(({
   const insets = useSafeAreaInsets();
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
+  const [playIconType, setPlayIconType] = useState<'play' | 'pause'>('play');
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [localIsLiked, setLocalIsLiked] = useState(item.isLiked || false);
   const [localIsFired, setLocalIsFired] = useState(item.isFired || false);
@@ -333,20 +335,26 @@ const ReelViewer = React.memo(({
   }, []);
 
   const togglePlayPause = useCallback(() => {
+    let willPlay = false;
+    
     if (Platform.OS === 'web' && videoRef.current) {
       if (videoRef.current.paused) {
         videoRef.current.play().catch(() => {});
+        willPlay = true;
       } else {
         videoRef.current.pause();
+        willPlay = false;
       }
     } else {
       try {
         const p = playerRef.current;
         if (p && typeof p.pause === 'function' && typeof p.play === 'function') {
-          if (isPlaying && p.playing) {
+          if (p.playing) {
             p.pause();
-          } else if (!isPlaying && !p.playing) {
+            willPlay = false;
+          } else {
             p.play();
+            willPlay = true;
           }
         }
       } catch (error) {
@@ -354,6 +362,7 @@ const ReelViewer = React.memo(({
       }
     }
     
+    setPlayIconType(willPlay ? 'play' : 'pause');
     setShowPlayIcon(true);
     Animated.sequence([
       Animated.timing(playIconOpacity, {
@@ -368,7 +377,7 @@ const ReelViewer = React.memo(({
         useNativeDriver: true,
       }),
     ]).start(() => setShowPlayIcon(false));
-  }, [isPlaying, playIconOpacity]);
+  }, [playIconOpacity]);
 
   const handleDoubleTap = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -422,7 +431,7 @@ const ReelViewer = React.memo(({
       <View style={styles.reelCommentContent}>
         <Text style={styles.reelCommentText}>
           <Text style={styles.reelCommentUsername}>{c.user.displayName}</Text>{' '}
-          {c.content}
+          <CommentText content={c.content} />
         </Text>
         <Text style={styles.reelCommentTime}>{timeAgo(c.createdAt)}</Text>
       </View>
@@ -491,7 +500,7 @@ const ReelViewer = React.memo(({
           {showPlayIcon && (
             <Animated.View style={[styles.playIconOverlay, { opacity: playIconOpacity }]}>
               <View style={styles.playIconCircle}>
-                {isPlaying ? (
+                {playIconType === 'pause' ? (
                   <Pause size={40} color="#FFF" fill="#FFF" />
                 ) : (
                   <Play size={40} color="#FFF" fill="#FFF" style={{ marginLeft: 4 }} />
@@ -524,7 +533,7 @@ const ReelViewer = React.memo(({
       )}
 
       {!showComments && (
-        <View style={[styles.reelOverlayContent, { paddingBottom: insets.bottom + 100 }]} pointerEvents="auto">
+        <View style={[styles.reelOverlayContent, { paddingBottom: insets.bottom + 70 }]} pointerEvents="auto">
         <View style={styles.reelBottomSection}>
           <View style={styles.reelInfoSection}>
             <TouchableOpacity 
@@ -755,7 +764,7 @@ const styles = StyleSheet.create({
   },
   reelOverlayContent: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 60,
     left: 0,
     right: 0,
     paddingHorizontal: 16,
