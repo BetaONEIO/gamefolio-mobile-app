@@ -2,6 +2,7 @@ import { protectedProcedure } from "../../../create-context";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
 import { TRPCError } from "@trpc/server";
+import { sendPushNotification } from "../../../../lib/push-notifications";
 
 export default protectedProcedure
   .input(
@@ -53,6 +54,29 @@ export default protectedProcedure
       .from('screenshot_likes')
       .select('*', { count: 'exact', head: true })
       .eq('screenshot_id', input.screenshotId);
+
+    if (!existingLike) {
+      const { data: screenshot } = await supabaseAdmin
+        .from('screenshots')
+        .select('user_id, title')
+        .eq('id', input.screenshotId)
+        .single();
+
+      if (screenshot && screenshot.user_id !== ctx.userId) {
+        const { data: liker } = await supabaseAdmin
+          .from('users')
+          .select('username')
+          .eq('id', ctx.userId)
+          .single();
+
+        sendPushNotification(
+          screenshot.user_id,
+          'New Like! ❤️',
+          `${liker?.username || 'Someone'} liked your screenshot${screenshot.title ? `: ${screenshot.title}` : ''}`,
+          { type: 'like', contentType: 'screenshot', contentId: input.screenshotId }
+        ).catch(err => console.error('[Notifications] Failed to send like notification:', err));
+      }
+    }
 
     return {
       hasLiked: !existingLike,

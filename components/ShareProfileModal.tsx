@@ -39,7 +39,7 @@ interface ProfileData {
   totalXP: number;
   verified: boolean;
   stats: {
-    clips: number;
+    uploads: number;
     followers: number;
     following: number;
   };
@@ -167,8 +167,8 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
                   
                   <View style={styles.statsRow}>
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{profile.stats.clips}</Text>
-                      <Text style={styles.statLabel}>Clips</Text>
+                      <Text style={styles.statValue}>{profile.stats.uploads}</Text>
+                      <Text style={styles.statLabel}>Uploads</Text>
                     </View>
                     <View style={styles.statItem}>
                       <Text style={styles.statValue}>{profile.stats.followers}</Text>

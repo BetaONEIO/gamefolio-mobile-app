@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Gamefolio Alpha",
+    "name": "Gamefolio",
     "slug": "gamefolio-alpha",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -21,7 +21,8 @@
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
         "UIBackgroundModes": [
-          "audio"
+          "audio",
+          "remote-notification"
         ],
         "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to access your Face ID biometric data."
       },
@@ -37,11 +38,10 @@
       },
       "package": "app.rork.gamefolio_alpha",
       "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.VIBRATE",
-        "android.permission.RECORD_AUDIO"
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "android.permission.VIBRATE"
       ],
       "manifest": {
         "android:supportsPictureInPicture": true
@@ -59,6 +59,13 @@
       ],
       "expo-font",
       "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#FF6B35"
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -88,14 +95,6 @@
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "extra": {
-      "router": {
-        "origin": "https://rork.com/"
-      },
-      "eas": {
-        "projectId": "2e7876f1-e190-468f-9567-a839d3733e61"
-      }
     }
   }
 }

@@ -2,6 +2,7 @@ import { protectedProcedure } from "../../../create-context";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
 import { TRPCError } from "@trpc/server";
+import { sendPushNotification } from "../../../../lib/push-notifications";
 
 export default protectedProcedure
   .input(
@@ -53,6 +54,29 @@ export default protectedProcedure
       .from('likes')
       .select('*', { count: 'exact', head: true })
       .eq('clip_id', input.clipId);
+
+    if (!existingLike) {
+      const { data: clip } = await supabaseAdmin
+        .from('clips')
+        .select('user_id, title')
+        .eq('id', input.clipId)
+        .single();
+
+      if (clip && clip.user_id !== ctx.userId) {
+        const { data: liker } = await supabaseAdmin
+          .from('users')
+          .select('username')
+          .eq('id', ctx.userId)
+          .single();
+
+        sendPushNotification(
+          clip.user_id,
+          'New Like! ❤️',
+          `${liker?.username || 'Someone'} liked your clip${clip.title ? `: ${clip.title}` : ''}`,
+          { type: 'like', contentType: 'clip', contentId: input.clipId }
+        ).catch(err => console.error('[Notifications] Failed to send like notification:', err));
+      }
+    }
 
     return {
       hasLiked: !existingLike,

@@ -397,7 +397,7 @@ const ReelItem = React.memo(({
 
   return (
     <View style={styles.reelContainer}>
-      <Animated.View style={[styles.videoSection, { height: videoHeight }]}>
+      <View style={styles.reelVideoWrapper}>
         <TouchableOpacity 
           activeOpacity={1} 
           style={styles.videoTouchable}
@@ -446,26 +446,10 @@ const ReelItem = React.memo(({
               </View>
             </Animated.View>
           )}
-
-
         </TouchableOpacity>
+      </View>
 
-        {showComments && (
-          <View style={[styles.miniReelInfo, { paddingTop: insets.top + 50 }]}>
-            <TouchableOpacity 
-              style={styles.miniUserRow}
-              onPress={() => onUserPress(item.user.username)}
-            >
-              <Image source={{ uri: item.user.avatarUrl }} style={styles.miniAvatar} />
-              <Text style={styles.miniUsername}>@{item.user.username}</Text>
-            </TouchableOpacity>
-            <Text style={styles.miniTitle} numberOfLines={1}>{truncateTitle(item.title)}</Text>
-          </View>
-        )}
-      </Animated.View>
-
-      {!showComments && (
-        <View style={[styles.reelOverlayContent, { paddingBottom: insets.bottom + 60 }]} pointerEvents="box-none">
+      <View style={[styles.reelOverlayContent, { bottom: insets.bottom + 60 }]} pointerEvents="box-none">
         <View style={styles.reelBottomSection}>
           <View style={styles.reelInfoSection}>
             <TouchableOpacity 
@@ -537,7 +521,6 @@ const ReelItem = React.memo(({
           </View>
         </View>
       </View>
-      )}
 
       <Animated.View style={[styles.commentsSection, { height: commentsHeight }]}>
         <View style={styles.commentsHeader}>
@@ -2368,8 +2351,9 @@ export default function TrendingScreen() {
         keyExtractor={(item) => `reel-${item.id}`}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={SCREEN_HEIGHT}
+        snapToAlignment="start"
         decelerationRate="fast"
+        disableIntervalMomentum
         onViewableItemsChanged={onViewableItemsChangedRef.current}
         viewabilityConfig={viewabilityConfig}
         getItemLayout={getItemLayout}
@@ -2444,8 +2428,9 @@ export default function TrendingScreen() {
         keyExtractor={(item) => `clip-${item.id}`}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={SCREEN_HEIGHT}
+        snapToAlignment="start"
         decelerationRate="fast"
+        disableIntervalMomentum
         onViewableItemsChanged={onViewableItemsChangedRef.current}
         viewabilityConfig={viewabilityConfig}
         getItemLayout={getItemLayout}
@@ -4638,10 +4623,21 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: 100,
   },
-  videoSection: {
-    width: SCREEN_WIDTH,
+  reelVideoWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: '#000',
-    overflow: 'hidden',
+  },
+  videoSection: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#000',
   },
   commentsSection: {
     backgroundColor: '#0F1520',

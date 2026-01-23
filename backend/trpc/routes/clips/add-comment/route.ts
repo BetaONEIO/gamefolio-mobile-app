@@ -2,6 +2,7 @@ import { protectedProcedure } from "../../../create-context";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
 import { TRPCError } from "@trpc/server";
+import { sendPushNotification } from "../../../../lib/push-notifications";
 
 export default protectedProcedure
   .input(
@@ -31,6 +32,27 @@ export default protectedProcedure
         code: 'INTERNAL_SERVER_ERROR',
         message: 'Failed to add comment',
       });
+    }
+
+    const { data: clip } = await supabaseAdmin
+      .from('clips')
+      .select('user_id, title')
+      .eq('id', input.clipId)
+      .single();
+
+    if (clip && clip.user_id !== ctx.userId) {
+      const { data: commenter } = await supabaseAdmin
+        .from('users')
+        .select('username')
+        .eq('id', ctx.userId)
+        .single();
+
+      sendPushNotification(
+        clip.user_id,
+        'New Comment! 💬',
+        `${commenter?.username || 'Someone'} commented: "${input.content.slice(0, 50)}${input.content.length > 50 ? '...' : ''}"`,
+        { type: 'comment', contentType: 'clip', contentId: input.clipId, commentId: comment.id }
+      ).catch(err => console.error('[Notifications] Failed to send comment notification:', err));
     }
 
     return {

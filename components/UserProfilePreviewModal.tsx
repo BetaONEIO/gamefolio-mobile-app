@@ -30,7 +30,7 @@ interface UserProfilePreviewModalProps {
     verified?: boolean;
     bio?: string;
     stats?: {
-      clips: number;
+      uploads: number;
       followers: number;
       following: number;
     };
@@ -66,7 +66,7 @@ export default function UserProfilePreviewModal({
     });
   };
 
-  const stats = user.stats || { clips: 0, followers: 0, following: 0 };
+  const stats = user.stats || { uploads: 0, followers: 0, following: 0 };
   const engagement = user.engagement || { likes: 0, fires: 0, streak: 0 };
   const favoriteGames = user.favoriteGames || ['Fortnite', 'Call of Duty', 'Apex Legends'];
 
@@ -138,8 +138,8 @@ export default function UserProfilePreviewModal({
 
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{stats.clips}</Text>
-                <Text style={styles.statLabel}>Clips</Text>
+                <Text style={styles.statValue}>{stats.uploads}</Text>
+                <Text style={styles.statLabel}>Uploads</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>

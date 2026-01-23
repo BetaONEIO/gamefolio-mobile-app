@@ -1,5 +1,5 @@
 import { createTRPCReact } from '@trpc/react-query';
-import { httpBatchLink } from '@trpc/client';
+import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import type { AppRouter } from '@/backend/trpc/app-router';
 import { Env } from '@/constants/Env';
 import superjson from 'superjson';
@@ -46,3 +46,20 @@ export function createTRPCClientForReact() {
     ],
   });
 }
+
+export const trpcClient = createTRPCClient<AppRouter>({
+  links: [
+    httpBatchLink({
+      url: getTRPCUrl(),
+      transformer: superjson,
+      headers: async () => {
+        const token = authTokenGetter ? await authTokenGetter() : null;
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+      },
+    }),
+  ],
+});

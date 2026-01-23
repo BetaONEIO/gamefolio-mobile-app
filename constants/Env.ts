@@ -55,7 +55,9 @@ export const Env = {
   // Mobile Discord OAuth (separate app to avoid breaking web)
   DISCORD_MOBILE_CLIENT_ID: "1454431347874594921",
   DISCORD_MOBILE_CLIENT_SECRET: process.env.EXPO_PUBLIC_DISCORD_MOBILE_CLIENT_SECRET || "",
-  GOOGLE_CLIENT_ID: "",
+  GOOGLE_CLIENT_ID: "203672150024-8f69dg3dboaafmf69jmr638b0ruh19ph.apps.googleusercontent.com",
+  GOOGLE_IOS_CLIENT_ID: "203672150024-fl71oftg0e7f3a3jorlb9qcuergo9qkd.apps.googleusercontent.com",
+  GOOGLE_ANDROID_CLIENT_ID: "203672150024-8f69dg3dboaafmf69jmr638b0ruh19ph.apps.googleusercontent.com",
   GOOGLE_CLIENT_SECRET: "",
   JWT_SECRET: "Jkdjsl$22Awj2@32kjlskjfads232s",
   VITE_CROSSMINT_CLIENT_API_KEY: "sk_production_5TGyr883rroECYXkfd8BtyPbZg7rVb8EEQw76cCYM4ojxYtTwvMaKftY7rhmBgxFhwvXvbnx1pLSthfkHQ1VrxyxSawma2sVVjyyJkuEJyWUQqcVGyGYCexX9H4ZWSsXhpvQNjgpsTZLcbyY8hh8rpWqUqQvJWyWgFMeaZR4vnWbsbAYxrTzo9h5U735iDvaG84vbt9sX9mguhJknNyz68FL",

@@ -712,6 +712,73 @@ export const api = {
         method: 'GET',
         token,
       }),
+
+    googleLogin: (data: {
+      email: string;
+      displayName: string;
+      photoURL: string | null;
+      uid: string;
+    }) =>
+      apiFetch<AuthResponse & { needsOnboarding?: boolean }>('/api/auth/token/google', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    discordLogin: (data: {
+      id: string;
+      username: string;
+      discriminator: string;
+      email: string | null;
+      avatar: string | null;
+    }) =>
+      apiFetch<AuthResponse & { needsOnboarding?: boolean }>('/api/auth/token/discord', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    forgotPassword: async (email: string): Promise<{ success: boolean; message: string }> => {
+      console.log('[API] 🔵 Requesting password reset for:', email);
+      const baseUrl = API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      
+      const response = await fetch(`${baseUrl}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      console.log('[API] Forgot password response:', response.status, data);
+      
+      if (!response.ok && response.status !== 200) {
+        throw new APIError(data.message || 'Failed to send password reset email', response.status, data);
+      }
+      
+      return { success: true, message: data.message || 'Password reset email sent' };
+    },
+
+    resetPassword: async (token: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+      console.log('[API] 🔵 Resetting password with token');
+      const baseUrl = API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      
+      const response = await fetch(`${baseUrl}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, newPassword }),
+      });
+      
+      const data = await response.json();
+      console.log('[API] Reset password response:', response.status, data);
+      
+      if (!response.ok) {
+        throw new APIError(data.message || 'Failed to reset password', response.status, data);
+      }
+      
+      return { success: true, message: data.message || 'Password reset successfully' };
+    },
   },
 
   clips: {

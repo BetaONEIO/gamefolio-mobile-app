@@ -4,12 +4,14 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect, useMemo } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { AuthProvider } from "@/context/AuthContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { UserProvider } from "@/context/UserContext";
 import { LootboxCollectionProvider } from "@/context/LootboxCollectionContext";
 import { RevenueCatProvider } from "@/context/RevenueCatContext";
+import { NotificationsProvider } from "@/context/NotificationsContext";
 import { trpc, createTRPCClientForReact } from "@/lib/trpc";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -21,6 +23,8 @@ const queryClient = new QueryClient();
 
 function AppContent() {
   useOnlineStatus();
+  const { isAuthenticated } = useAuth();
+  usePushNotifications(isAuthenticated);
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0F1520' }}>
@@ -76,11 +80,13 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <RevenueCatProvider>
           <AuthProvider>
-            <UserProvider>
-              <LootboxCollectionProvider>
-                <AppContent />
-              </LootboxCollectionProvider>
-            </UserProvider>
+            <NotificationsProvider>
+              <UserProvider>
+                <LootboxCollectionProvider>
+                  <AppContent />
+                </LootboxCollectionProvider>
+              </UserProvider>
+            </NotificationsProvider>
           </AuthProvider>
         </RevenueCatProvider>
       </QueryClientProvider>

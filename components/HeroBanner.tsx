@@ -134,7 +134,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     marginBottom: 16,
+    marginHorizontal: -16,
+    paddingHorizontal: 0,
     overflow: 'hidden',
+    alignSelf: 'center',
   },
 
   backgroundImage: {

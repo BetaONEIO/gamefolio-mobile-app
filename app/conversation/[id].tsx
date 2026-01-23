@@ -466,7 +466,7 @@ export default function ConversationScreen() {
           verified: true,
           bio: 'Gaming enthusiast | Content creator',
           stats: {
-            clips: 42,
+            uploads: 42,
             followers: 1250,
             following: 380,
           },

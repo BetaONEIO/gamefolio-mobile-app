@@ -23,49 +23,34 @@ import CustomAlert from '@/components/CustomAlert';
 import BirthdayModal from '@/components/BirthdayModal';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
-import * as Linking from 'expo-linking';
 import { Env } from '@/constants/Env';
-import Constants from 'expo-constants';
 
 WebBrowser.maybeCompleteAuthSession();
 
-// Use mobile Discord client ID if available, fallback to web client ID
+// Discord OAuth configuration
 const DISCORD_CLIENT_ID = Env.DISCORD_MOBILE_CLIENT_ID || Env.DISCORD_CLIENT_ID;
+const DISCORD_REDIRECT_URI = AuthSession.makeRedirectUri({
+  scheme: 'rork-app',
+  path: 'auth/discord/callback',
+});
 
-// Use AuthSession.makeRedirectUri for proper redirect URI generation
-const getDiscordRedirectUri = (): string => {
-  const isExpoGo = Constants.appOwnership === 'expo';
-  
-  if (isExpoGo) {
-    // For Expo Go, use the Expo auth proxy with useProxy
-    const proxyUri = AuthSession.makeRedirectUri({
+// Google OAuth configuration
+const GOOGLE_CLIENT_ID = Platform.select({
+  ios: Env.GOOGLE_IOS_CLIENT_ID,
+  android: Env.GOOGLE_CLIENT_ID,
+  default: Env.GOOGLE_CLIENT_ID,
+}) || '';
+
+const GOOGLE_REDIRECT_URI = Platform.OS === 'ios' 
+  ? `com.googleusercontent.apps.203672150024-fl71oftg0e7f3a3jorlb9qcuergo9qkd:/oauth2redirect/google`
+  : AuthSession.makeRedirectUri({
       scheme: 'rork-app',
-      path: 'auth/discord/callback',
-      preferLocalhost: false,
+      path: 'auth/google/callback',
     });
-    console.log('[Discord OAuth] Generated proxy redirect URI:', proxyUri);
-    return proxyUri;
-  }
-  
-  // For standalone/production builds, use the custom scheme
-  const nativeRedirectUri = AuthSession.makeRedirectUri({
-    scheme: 'rork-app',
-    path: 'auth/discord/callback',
-  });
-  console.log('[Discord OAuth] Running standalone, using native scheme:', nativeRedirectUri);
-  return nativeRedirectUri;
-};
 
-const DISCORD_REDIRECT_URI = getDiscordRedirectUri();
-
-// Log the exact redirect URI for Discord configuration
-console.log('[Discord OAuth] ==========================================');
-console.log('[Discord OAuth] ADD THIS REDIRECT URI TO DISCORD:');
-console.log('[Discord OAuth]', DISCORD_REDIRECT_URI);
-console.log('[Discord OAuth] ==========================================');
-
-console.log('[Discord OAuth] Using client ID:', DISCORD_CLIENT_ID);
-console.log('[Discord OAuth] Redirect URI:', DISCORD_REDIRECT_URI);
+console.log('[OAuth] Discord Client ID:', DISCORD_CLIENT_ID);
+console.log('[OAuth] Discord Redirect URI:', DISCORD_REDIRECT_URI);
+console.log('[OAuth] Google Redirect URI:', GOOGLE_REDIRECT_URI);
 
 
 
@@ -119,68 +104,86 @@ export default function LoginScreen() {
   
   const debouncedUsername = useDebounce(username, 300);
 
-  const discovery = {
+  // Discord OAuth discovery
+  const discordDiscovery = {
     authorizationEndpoint: 'https://discord.com/api/oauth2/authorize',
     tokenEndpoint: 'https://discord.com/api/oauth2/token',
     revocationEndpoint: 'https://discord.com/api/oauth2/token/revoke',
   };
 
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+  // Google OAuth discovery
+  const googleDiscovery = {
+    authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenEndpoint: 'https://oauth2.googleapis.com/token',
+    revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
+  };
+
+  // Discord auth request
+  const [discordRequest, discordResponse, promptDiscordAsync] = AuthSession.useAuthRequest(
     {
       clientId: DISCORD_CLIENT_ID,
       scopes: ['identify', 'email'],
       redirectUri: DISCORD_REDIRECT_URI,
-      responseType: AuthSession.ResponseType.Code,
-      usePKCE: false,
+      responseType: AuthSession.ResponseType.Token,
     },
-    discovery
+    discordDiscovery
   );
 
+  // Google auth request
+  const [googleRequest, googleResponse, promptGoogleAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: GOOGLE_CLIENT_ID,
+      scopes: ['openid', 'profile', 'email'],
+      redirectUri: GOOGLE_REDIRECT_URI,
+      responseType: AuthSession.ResponseType.Token,
+    },
+    googleDiscovery
+  );
+
+  // Handle Discord OAuth response
   useEffect(() => {
     const handleDiscordAuth = async () => {
-      if (response?.type === 'success' && response.params.code) {
+      if (discordResponse?.type === 'success' && discordResponse.params.access_token) {
         setIsDiscordLoading(true);
         try {
-          console.log('[Discord OAuth] Got authorization code, exchanging for tokens...');
-          console.log('[Discord OAuth] Redirect URI used:', DISCORD_REDIRECT_URI);
+          console.log('[Discord OAuth] Got access token, fetching user info...');
           
-          const backendUrl = Env.BACKEND_URL || '';
-          const tokenResponse = await fetch(`${backendUrl}/api/oauth/discord/callback`, {
-            method: 'POST',
+          // Fetch Discord user info
+          const userResponse = await fetch('https://discord.com/api/users/@me', {
             headers: {
-              'Content-Type': 'application/json',
+              Authorization: `Bearer ${discordResponse.params.access_token}`,
             },
-            body: JSON.stringify({
-              code: response.params.code,
-              redirectUri: DISCORD_REDIRECT_URI,
-            }),
           });
 
-          if (!tokenResponse.ok) {
-            const errorData = await tokenResponse.json().catch(() => ({}));
-            throw new Error(errorData.message || 'Failed to exchange code for tokens');
+          if (!userResponse.ok) {
+            throw new Error('Failed to fetch Discord user info');
           }
 
-          const data = await tokenResponse.json();
+          const discordUser = await userResponse.json();
+          console.log('[Discord OAuth] Got user info:', discordUser.username);
+
+          // Send to backend
+          const data = await api.auth.discordLogin({
+            id: discordUser.id,
+            username: discordUser.username,
+            discriminator: discordUser.discriminator || '0',
+            email: discordUser.email || null,
+            avatar: discordUser.avatar || null,
+          });
           
-          if (data.accessToken && data.refreshToken && data.user) {
-            await loginUser(data.user, data.accessToken, data.refreshToken, data.expiresIn || 7 * 24 * 60 * 60);
-            
-            // Check if user needs onboarding (social login users with temp username or missing userType/ageRange)
-            const needsOnboarding = data.needsOnboarding || 
-              !data.user.userType || 
-              !data.user.ageRange || 
-              (data.user.username && data.user.username.startsWith('temp_'));
-            
-            if (needsOnboarding) {
-              console.log('[Discord OAuth] User needs onboarding, redirecting...');
-              router.replace('/onboarding');
-            } else {
-              console.log('[Discord OAuth] Login complete, redirecting to home...');
-              router.replace('/(drawer)/(tabs)/home');
-            }
+          await loginUser(data.user, data.accessToken, data.refreshToken, data.expiresIn || 7 * 24 * 60 * 60);
+          
+          const needsOnboarding = data.needsOnboarding || 
+            !data.user.userType || 
+            !data.user.ageRange || 
+            (data.user.username && data.user.username.startsWith('temp_'));
+          
+          if (needsOnboarding) {
+            console.log('[Discord OAuth] User needs onboarding, redirecting...');
+            router.replace('/onboarding');
           } else {
-            throw new Error('Invalid response from server');
+            console.log('[Discord OAuth] Login complete, redirecting to home...');
+            router.replace('/(drawer)/(tabs)/home');
           }
         } catch (error: any) {
           console.error('[Discord OAuth] Error:', error);
@@ -188,15 +191,75 @@ export default function LoginScreen() {
         } finally {
           setIsDiscordLoading(false);
         }
-      } else if (response?.type === 'error') {
-        console.error('[Discord OAuth] Error response:', response.error);
-        showAlert('Discord Login Failed', response.error?.message || 'Authentication was cancelled or failed');
+      } else if (discordResponse?.type === 'error') {
+        console.error('[Discord OAuth] Error response:', discordResponse.error);
+        showAlert('Discord Login Failed', discordResponse.error?.message || 'Authentication was cancelled or failed');
       }
     };
 
     handleDiscordAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [response]);
+  }, [discordResponse]);
+
+  // Handle Google OAuth response
+  useEffect(() => {
+    const handleGoogleAuth = async () => {
+      if (googleResponse?.type === 'success' && googleResponse.params.access_token) {
+        setIsGoogleLoading(true);
+        try {
+          console.log('[Google OAuth] Got access token, fetching user info...');
+          
+          // Fetch Google user info
+          const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: {
+              Authorization: `Bearer ${googleResponse.params.access_token}`,
+            },
+          });
+
+          if (!userResponse.ok) {
+            throw new Error('Failed to fetch Google user info');
+          }
+
+          const googleUser = await userResponse.json();
+          console.log('[Google OAuth] Got user info:', googleUser.email);
+
+          // Send to backend
+          const data = await api.auth.googleLogin({
+            email: googleUser.email,
+            displayName: googleUser.name || googleUser.email.split('@')[0],
+            photoURL: googleUser.picture || null,
+            uid: googleUser.id,
+          });
+          
+          await loginUser(data.user, data.accessToken, data.refreshToken, data.expiresIn || 7 * 24 * 60 * 60);
+          
+          const needsOnboarding = data.needsOnboarding || 
+            !data.user.userType || 
+            !data.user.ageRange || 
+            (data.user.username && data.user.username.startsWith('temp_'));
+          
+          if (needsOnboarding) {
+            console.log('[Google OAuth] User needs onboarding, redirecting...');
+            router.replace('/onboarding');
+          } else {
+            console.log('[Google OAuth] Login complete, redirecting to home...');
+            router.replace('/(drawer)/(tabs)/home');
+          }
+        } catch (error: any) {
+          console.error('[Google OAuth] Error:', error);
+          showAlert('Google Login Failed', error.message || 'Failed to authenticate with Google');
+        } finally {
+          setIsGoogleLoading(false);
+        }
+      } else if (googleResponse?.type === 'error') {
+        console.error('[Google OAuth] Error response:', googleResponse.error);
+        showAlert('Google Login Failed', googleResponse.error?.message || 'Authentication was cancelled or failed');
+      }
+    };
+
+    handleGoogleAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleResponse]);
 
   const showAlert = (title: string, message: string, type: 'error' | 'success' = 'error') => {
     setAlertConfig({ visible: true, title, message, type });
@@ -766,54 +829,13 @@ export default function LoginScreen() {
 
             {/* Google Login Button */}
             <TouchableOpacity 
-              style={[styles.socialButton, styles.googleButton, isGoogleLoading && styles.mainButtonDisabled]}
-              onPress={async () => {
-                if (isGoogleLoading) return;
-                setIsGoogleLoading(true);
-                try {
-                  const redirectUri = Linking.createURL('/oauth-callback');
-                  const backendUrl = Env.BACKEND_URL || '';
-                  const authUrl = `${backendUrl}/api/oauth/google?redirect_uri=${encodeURIComponent(redirectUri)}`;
-                  console.log('[OAuth] Opening Google auth:', authUrl);
-                  const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-                  
-                  if (result.type === 'success' && result.url) {
-                    const url = new URL(result.url);
-                    const token = url.searchParams.get('token');
-                    const refreshToken = url.searchParams.get('refresh_token');
-                    const userData = url.searchParams.get('user');
-                    const needsOnboardingParam = url.searchParams.get('needs_onboarding');
-                    
-                    if (token && refreshToken && userData) {
-                      const user = JSON.parse(decodeURIComponent(userData));
-                      await loginUser(user, token, refreshToken, 7 * 24 * 60 * 60);
-                      
-                      // Check if user needs onboarding
-                      const needsOnboarding = needsOnboardingParam === 'true' || 
-                        !user.userType || 
-                        !user.ageRange || 
-                        (user.username && user.username.startsWith('temp_'));
-                      
-                      if (needsOnboarding) {
-                        console.log('[OAuth] Google user needs onboarding, redirecting...');
-                        router.replace('/onboarding');
-                      } else {
-                        console.log('[OAuth] Google login complete, redirecting to home...');
-                        router.replace('/(drawer)/(tabs)/home');
-                      }
-                    } else {
-                      showAlert('Error', 'Failed to authenticate with Google');
-                    }
-                  }
-                } catch (error) {
-                  console.error('[OAuth] Google error:', error);
-                  showAlert('Error', 'Failed to connect to Google');
-                } finally {
-                  setIsGoogleLoading(false);
-                }
+              style={[styles.socialButton, styles.googleButton, (!googleRequest || isGoogleLoading) && styles.mainButtonDisabled]}
+              onPress={() => {
+                console.log('[Google OAuth] Starting auth flow...');
+                promptGoogleAsync();
               }}
               activeOpacity={0.8}
-              disabled={isGoogleLoading}
+              disabled={!googleRequest || isGoogleLoading}
             >
               {isGoogleLoading ? (
                 <ActivityIndicator size="small" color="#1F2937" />
@@ -827,14 +849,13 @@ export default function LoginScreen() {
 
             {/* Discord Login Button */}
             <TouchableOpacity 
-              style={[styles.socialButton, styles.discordButton, (!request || isDiscordLoading) && styles.mainButtonDisabled]}
+              style={[styles.socialButton, styles.discordButton, (!discordRequest || isDiscordLoading) && styles.mainButtonDisabled]}
               onPress={() => {
                 console.log('[Discord OAuth] Starting auth flow...');
-                console.log('[Discord OAuth] Redirect URI:', DISCORD_REDIRECT_URI);
-                promptAsync();
+                promptDiscordAsync();
               }}
               activeOpacity={0.8}
-              disabled={!request || isDiscordLoading}
+              disabled={!discordRequest || isDiscordLoading}
             >
               {isDiscordLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />

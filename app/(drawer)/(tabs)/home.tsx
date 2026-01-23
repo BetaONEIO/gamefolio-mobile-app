@@ -22,16 +22,10 @@ import * as Haptics from 'expo-haptics';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface LatestUpload {
-  id: number;
-  title: string;
-  contentType: 'clip' | 'reel' | 'screenshot';
-  createdAt: string;
-  user: {
-    id: number;
-    username: string;
-    displayName: string;
-    avatarUrl: string | null;
-  } | null;
+  clipId: number;
+  username: string;
+  clipTitle: string;
+  uploadedAt: string;
 }
 
 
@@ -517,31 +511,18 @@ export default function HomeScreen() {
               },
             ]}
           >
-            {[...latestUploads, ...latestUploads].map((upload, index) => {
-              const contentTypeLabel = upload.contentType === 'screenshot' ? 'screenshot' : upload.contentType === 'reel' ? 'reel' : 'clip';
-              const ContentIcon = upload.contentType === 'screenshot' ? Camera : upload.contentType === 'reel' ? Film : Upload;
-              
-              const handlePress = () => {
-                if (upload.contentType === 'screenshot') {
-                  router.push({ pathname: '/(drawer)/(tabs)/trending', params: { type: 'screenshots' } });
-                } else {
-                  router.push({ pathname: '/clip/[id]', params: { id: upload.id.toString() } });
-                }
-              };
-              
-              return (
-                <TouchableOpacity
-                  key={`${upload.id}-${index}`}
-                  style={styles.tickerItem}
-                  onPress={handlePress}
-                >
-                  <ContentIcon size={14} color="#FFF" />
-                  <Text style={styles.tickerUsername}>{upload.user?.username || 'Unknown'}</Text>
-                  <Text style={styles.tickerText}>has just uploaded a {contentTypeLabel}</Text>
-                  <Text style={styles.tickerTitle}>&quot;{upload.title}&quot;</Text>
-                </TouchableOpacity>
-              );
-            })}
+            {[...latestUploads, ...latestUploads].map((upload, index) => (
+              <TouchableOpacity
+                key={`${upload.clipId}-${index}`}
+                style={styles.tickerItem}
+                onPress={() => router.push({ pathname: '/clip/[id]', params: { id: upload.clipId.toString() } })}
+              >
+                <Upload size={14} color="#FFF" />
+                <Text style={styles.tickerUsername}>{upload.username}</Text>
+                <Text style={styles.tickerText}>has just uploaded a clip</Text>
+                <Text style={styles.tickerTitle}>&quot;{upload.clipTitle}&quot;</Text>
+              </TouchableOpacity>
+            ))}
           </Animated.View>
         </LinearGradient>
       </View>

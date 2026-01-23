@@ -507,6 +507,140 @@ app.patch("/api/user", async (c) => {
   }
 });
 
+// REST API: Get Recent Uploads (for ticker)
+app.get("/api/recent-uploads", async (c) => {
+  const limitParam = c.req.query("limit");
+  const limit = limitParam ? parseInt(limitParam, 10) : 10;
+
+  console.log(`[REST] Fetching recent uploads - limit: ${limit}`);
+
+  try {
+    // Fetch recent clips
+    const { data: clips, error: clipsError } = await supabaseAdmin
+      .from('clips')
+      .select(`
+        id,
+        title,
+        video_type,
+        created_at,
+        user:users!inner(id, username, display_name, avatar_url)
+      `)
+      .eq('video_type', 'clip')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (clipsError) {
+      console.error('[REST] Error fetching recent clips:', clipsError);
+    }
+
+    // Fetch recent reels
+    const { data: reels, error: reelsError } = await supabaseAdmin
+      .from('clips')
+      .select(`
+        id,
+        title,
+        video_type,
+        created_at,
+        user:users!inner(id, username, display_name, avatar_url)
+      `)
+      .eq('video_type', 'reel')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (reelsError) {
+      console.error('[REST] Error fetching recent reels:', reelsError);
+    }
+
+    // Fetch recent screenshots
+    const { data: screenshots, error: screenshotsError } = await supabaseAdmin
+      .from('screenshots')
+      .select(`
+        id,
+        title,
+        created_at,
+        user:users!inner(id, username, display_name, avatar_url)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (screenshotsError) {
+      console.error('[REST] Error fetching recent screenshots:', screenshotsError);
+    }
+
+    // Combine and format all uploads
+    const allUploads: Array<{
+      id: number;
+      title: string;
+      contentType: 'clip' | 'reel' | 'screenshot';
+      createdAt: string;
+      user: {
+        id: number;
+        username: string;
+        displayName: string;
+        avatarUrl: string | null;
+      } | null;
+    }> = [];
+
+    // Add clips
+    (clips || []).forEach((clip: any) => {
+      allUploads.push({
+        id: clip.id,
+        title: clip.title || 'Untitled Clip',
+        contentType: 'clip',
+        createdAt: clip.created_at,
+        user: clip.user ? {
+          id: clip.user.id,
+          username: clip.user.username,
+          displayName: clip.user.display_name || clip.user.username,
+          avatarUrl: clip.user.avatar_url,
+        } : null,
+      });
+    });
+
+    // Add reels
+    (reels || []).forEach((reel: any) => {
+      allUploads.push({
+        id: reel.id,
+        title: reel.title || 'Untitled Reel',
+        contentType: 'reel',
+        createdAt: reel.created_at,
+        user: reel.user ? {
+          id: reel.user.id,
+          username: reel.user.username,
+          displayName: reel.user.display_name || reel.user.username,
+          avatarUrl: reel.user.avatar_url,
+        } : null,
+      });
+    });
+
+    // Add screenshots
+    (screenshots || []).forEach((ss: any) => {
+      allUploads.push({
+        id: ss.id,
+        title: ss.title || 'Untitled Screenshot',
+        contentType: 'screenshot',
+        createdAt: ss.created_at,
+        user: ss.user ? {
+          id: ss.user.id,
+          username: ss.user.username,
+          displayName: ss.user.display_name || ss.user.username,
+          avatarUrl: ss.user.avatar_url,
+        } : null,
+      });
+    });
+
+    // Sort by createdAt descending and take top results
+    allUploads.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const recentUploads = allUploads.slice(0, limit);
+
+    console.log('[REST] Returning', recentUploads.length, 'recent uploads');
+    return c.json(recentUploads);
+  } catch (error) {
+    console.error('[REST] Error in recent uploads:', error);
+    return c.json([], 500);
+  }
+});
+
 // REST API: Get Clips Feed
 app.get("/api/clips", async (c) => {
   const pageParam = c.req.query("page");

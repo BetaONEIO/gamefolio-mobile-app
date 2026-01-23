@@ -65,6 +65,8 @@ import getSampleClipsRoute from "./routes/clips/get-sample-clips/route";
 import getSampleScreenshotsRoute from "./routes/screenshots/get-sample-screenshots/route";
 import getSampleFavoritesRoute from "./routes/users/get-sample-favorites/route";
 import submitReportRoute from "./routes/reports/submit/route";
+import registerTokenRoute from "./routes/notifications/register-token/route";
+import sendBroadcastRoute from "./routes/notifications/send-broadcast/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -160,6 +162,10 @@ export const appRouter = createTRPCRouter({
   }),
   reports: createTRPCRouter({
     submit: submitReportRoute,
+  }),
+  notifications: createTRPCRouter({
+    registerToken: registerTokenRoute,
+    sendBroadcast: sendBroadcastRoute,
   }),
 });
 

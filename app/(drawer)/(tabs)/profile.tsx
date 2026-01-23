@@ -240,7 +240,7 @@ export default function ProfileScreen() {
     totalXP: user?.totalXP || 0,
     verified: user?.emailVerified || false,
     stats: {
-      clips: profileStats?._count?.clips ?? user?._count?.clips ?? 0,
+      uploads: clips.length + reels.length + screenshots.length,
       followers: profileStats?._count?.followers ?? user?._count?.followers ?? 0,
       following: profileStats?._count?.following ?? user?._count?.following ?? 0
     },
@@ -487,8 +487,8 @@ export default function ProfileScreen() {
 
           <View style={styles.statsRowCompact}>
             <View style={styles.statColumn}>
-              <Text style={styles.statNumber}>{profileData.stats.clips}</Text>
-              <Text style={styles.statLabel}>Clips</Text>
+              <Text style={styles.statNumber}>{profileData.stats.uploads}</Text>
+              <Text style={styles.statLabel}>Uploads</Text>
             </View>
             <View style={styles.statColumn}>
               <Text style={styles.statNumber}>{profileData.stats.followers}</Text>
@@ -722,7 +722,11 @@ export default function ProfileScreen() {
           level: profileData.level,
           totalXP: profileData.totalXP,
           verified: profileData.verified,
-          stats: profileData.stats,
+          stats: {
+            uploads: profileData.stats.uploads,
+            followers: profileData.stats.followers,
+            following: profileData.stats.following,
+          },
           engagement: profileData.engagement,
           platforms: profileData.platforms,
           userType: user?.userType || 'gamer',

@@ -119,7 +119,7 @@ export default function PublicProfileScreen() {
       level: user.level || 1,
       verified: user.emailVerified,
       stats: {
-        clips: user._count?.clips || 0,
+        uploads: clips.length + reels.length + screenshots.length,
         followers: user._count?.followers || 0,
         following: user._count?.following || 0
       },
@@ -278,8 +278,8 @@ export default function PublicProfileScreen() {
 
             <View style={styles.statsRowCompact}>
               <View style={styles.statColumn}>
-                <Text style={styles.statNumber}>{displayProfile.stats.clips}</Text>
-                <Text style={styles.statLabel}>Clips</Text>
+                <Text style={styles.statNumber}>{displayProfile.stats.uploads}</Text>
+                <Text style={styles.statLabel}>Uploads</Text>
               </View>
               <View style={styles.statColumn}>
                 <Text style={styles.statNumber}>{displayProfile.stats.followers}</Text>
@@ -577,7 +577,7 @@ export default function PublicProfileScreen() {
           totalXP: user?.totalXP || 0,
           verified: user?.emailVerified || false,
           stats: {
-            clips: user?._count?.clips || 0,
+            uploads: clips.length + reels.length + screenshots.length,
             followers: user?._count?.followers || 0,
             following: user?._count?.following || 0,
           },
