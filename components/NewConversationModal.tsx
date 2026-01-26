@@ -9,6 +9,8 @@ import {
   FlatList,
   Image,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { X, Search, UserPlus } from 'lucide-react-native';
 import { api, User } from '@/lib/api';
@@ -81,7 +83,10 @@ export default function NewConversationModal({
       transparent
       onRequestClose={handleClose}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView 
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.title}>New Conversation</Text>
@@ -134,7 +139,7 @@ export default function NewConversationModal({
             />
           )}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "384680393602",
-    "project_id": "gamefolio-f5890",
-    "storage_bucket": "gamefolio-f5890.firebasestorage.app"
+    "project_number": "717007379643",
+    "project_id": "gamefolio-e8bde",
+    "storage_bucket": "gamefolio-e8bde.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:384680393602:android:a7cae5ebbdd1ee6cdbad9b",
+        "mobilesdk_app_id": "1:717007379643:android:1329f164c65e1075071d9e",
         "android_client_info": {
-          "package_name": "app.rork.gamefolio_alpha"
+          "package_name": "app.rork.gamefolio"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCuNh6Q48_oKBnOFNPOfv7HEOzdhEQNgUI"
+          "current_key": "AIzaSyADHhhrl5lI9LgKpbM0gCLXAzrH2ZIZrX8"
         }
       ],
       "services": {

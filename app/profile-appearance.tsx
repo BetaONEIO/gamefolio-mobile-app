@@ -21,11 +21,11 @@ import AppearanceStudioModal from '@/components/AppearanceStudioModal';
 type TabType = 'profile';
 
 const QUICK_THEMES = [
-  { id: 'basic', name: 'Basic', accentColor: '#4ADE80', backgroundColor: '#0F1520' },
+  { id: 'basic', name: 'Basic', accentColor: '#4ADE80', backgroundColor: '#0B2232' },
   { id: 'purple_night', name: 'Purple Night', accentColor: '#A855F7', backgroundColor: '#1E1B4B' },
-  { id: 'golden_yellow', name: 'Golden Yellow', accentColor: '#FACC15', backgroundColor: '#451A03' },
-  { id: 'rose_gold', name: 'Rose Gold', accentColor: '#F472B6', backgroundColor: '#4C0519' },
-  { id: 'sunset_orange', name: 'Sunset Orange', accentColor: '#FB923C', backgroundColor: '#431407' },
+  { id: 'golden_yellow', name: 'Golden Yellow', accentColor: '#FACC15', backgroundColor: '#713F12' },
+  { id: 'rose_gold', name: 'Rose Gold', accentColor: '#F472B6', backgroundColor: '#4C1D4D' },
+  { id: 'sunset_orange', name: 'Sunset Orange', accentColor: '#FB7185', backgroundColor: '#431407' },
   { id: 'arctic_blue', name: 'Arctic Blue', accentColor: '#38BDF8', backgroundColor: '#0C4A6E' },
   { id: 'midnight_black', name: 'Midnight Black', accentColor: '#FFFFFF', backgroundColor: '#000000' },
   { id: 'white', name: 'White', accentColor: '#FFFFFF', backgroundColor: '#FFFFFF' },

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { useRevenueCat } from '@/context/RevenueCatContext';
-import { X, Check, Crown, Zap, Star, Shield } from 'lucide-react-native';
+import { X, Crown, Upload, Sparkles, Gift, Store } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -12,18 +12,15 @@ interface PaywallModalProps {
 
 export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
   const { offerings, isLoadingOfferings, purchasePackage, isPurchasing, restorePurchases, isRestoring } = useRevenueCat();
-  const [selectedPackage, setSelectedPackage] = React.useState<'monthly' | 'yearly'>('yearly');
 
   const currentOffering = offerings?.current;
-  const monthlyPackage = currentOffering?.availablePackages.find(pkg => pkg.identifier === 'monthly');
-  const yearlyPackage = currentOffering?.availablePackages.find(pkg => pkg.identifier === 'yearly');
+  const introPackage = currentOffering?.availablePackages.find(pkg => pkg.identifier === 'monthly');
 
   const handlePurchase = async () => {
-    const pkg = selectedPackage === 'monthly' ? monthlyPackage : yearlyPackage;
-    if (!pkg) return;
+    if (!introPackage) return;
 
     try {
-      await purchasePackage(pkg);
+      await purchasePackage(introPackage);
       onClose();
     } catch (error: any) {
       if (!error?.userCancelled) {
@@ -42,10 +39,10 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
   };
 
   const features = [
-    { icon: Zap, text: 'Unlimited uploads & storage', color: '#FFD700' },
-    { icon: Crown, text: 'Exclusive Pro badge & styling', color: '#FF6B6B' },
-    { icon: Star, text: 'Priority support & early features', color: '#4ECDC4' },
-    { icon: Shield, text: 'Advanced privacy controls', color: '#A78BFA' },
+    { icon: Upload, title: 'Unlimited upload space', subtitle: 'Share your clips without limits' },
+    { icon: Sparkles, title: 'Animated profile customization', subtitle: 'Custom banners, borders & effects' },
+    { icon: Gift, title: '100s of exclusive assets', subtitle: 'Premium stickers, badges & themes' },
+    { icon: Store, title: 'Store discounts', subtitle: 'Save on games and merchandise' },
   ];
 
   return (
@@ -73,27 +70,42 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
               </TouchableOpacity>
 
               <View style={styles.header}>
-                <View style={styles.crownContainer}>
-                  <LinearGradient
-                    colors={['#FFD700', '#FFA500']}
-                    style={styles.crownGradient}
-                  >
-                    <Crown size={40} color="#fff" />
-                  </LinearGradient>
+                <View style={styles.iconContainer}>
+                  <View style={styles.glowOuter}>
+                    <View style={styles.glowMiddle}>
+                      <View style={styles.glowInner}>
+                        <View style={styles.iconBox}>
+                          <View style={styles.proBadge}>
+                            <Text style={styles.proText}>PRO</Text>
+                          </View>
+                          <Crown size={36} color="#10B981" strokeWidth={2.5} fill="#10B98130" />
+                        </View>
+                      </View>
+                    </View>
+                  </View>
                 </View>
-                <Text style={styles.title}>Upgrade to Pro</Text>
-                <Text style={styles.subtitle}>Unlock the full Gamefolio experience</Text>
+                <Text style={styles.title}>
+                  Gamefolio <Text style={styles.titlePro}>Pro</Text>
+                </Text>
+                <Text style={styles.subtitle}>
+                  Unlock the ultimate experience and level up your gaming profile today.
+                </Text>
               </View>
+
+              <Text style={styles.benefitsTitle}>Premium Benefits</Text>
 
               <View style={styles.featuresContainer}>
                 {features.map((feature, index) => {
                   const Icon = feature.icon;
                   return (
                     <View key={index} style={styles.featureItem}>
-                      <View style={[styles.featureIcon, { backgroundColor: feature.color + '20' }]}>
-                        <Icon size={24} color={feature.color} />
+                      <View style={styles.featureIcon}>
+                        <Icon size={18} color="#10B981" strokeWidth={2.5} />
                       </View>
-                      <Text style={styles.featureText}>{feature.text}</Text>
+                      <View style={styles.featureTextContainer}>
+                        <Text style={styles.featureTitle}>{feature.title}</Text>
+                        <Text style={styles.featureSubtitle}>{feature.subtitle}</Text>
+                      </View>
                     </View>
                   );
                 })}
@@ -101,99 +113,66 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
 
               {isLoadingOfferings ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#FFD700" />
-                  <Text style={styles.loadingText}>Loading plans...</Text>
+                  <ActivityIndicator size="large" color="#10B981" />
+                  <Text style={styles.loadingText}>Loading offer...</Text>
                 </View>
               ) : (
                 <>
-                  <View style={styles.plansContainer}>
-                    {yearlyPackage && (
-                      <TouchableOpacity
-                        style={[
-                          styles.planCard,
-                          selectedPackage === 'yearly' && styles.planCardSelected
-                        ]}
-                        onPress={() => setSelectedPackage('yearly')}
-                        activeOpacity={0.8}
-                      >
-                        {selectedPackage === 'yearly' && (
-                          <View style={styles.selectedBadge}>
-                            <Text style={styles.selectedBadgeText}>BEST VALUE</Text>
-                          </View>
-                        )}
-                        <View style={styles.planHeader}>
-                          <Text style={styles.planName}>Annual</Text>
-                          {selectedPackage === 'yearly' && (
-                            <View style={styles.checkCircle}>
-                              <Check size={16} color="#fff" />
-                            </View>
-                          )}
-                        </View>
-                        <Text style={styles.planPrice}>{yearlyPackage.product.priceString}/year</Text>
-                        <Text style={styles.planSavings}>Save 17% vs monthly</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {monthlyPackage && (
-                      <TouchableOpacity
-                        style={[
-                          styles.planCard,
-                          selectedPackage === 'monthly' && styles.planCardSelected
-                        ]}
-                        onPress={() => setSelectedPackage('monthly')}
-                        activeOpacity={0.8}
-                      >
-                        <View style={styles.planHeader}>
-                          <Text style={styles.planName}>Monthly</Text>
-                          {selectedPackage === 'monthly' && (
-                            <View style={styles.checkCircle}>
-                              <Check size={16} color="#fff" />
-                            </View>
-                          )}
-                        </View>
-                        <Text style={styles.planPrice}>{monthlyPackage.product.priceString}/month</Text>
-                        <Text style={styles.planDetails}>Billed monthly</Text>
-                      </TouchableOpacity>
-                    )}
+                  <View style={styles.pricingContainer}>
+                    <View style={styles.specialBadge}>
+                      <Text style={styles.specialBadgeText}>SPECIAL INTRO OFFER</Text>
+                    </View>
+                    <View style={styles.priceRow}>
+                      <Text style={styles.mainPrice}>
+                        {introPackage?.product.introPrice?.priceString || introPackage?.product.priceString || '£0.99'}
+                      </Text>
+                      <Text style={styles.pricePeriod}>/ 1st month</Text>
+                    </View>
+                    <Text style={styles.thenPrice}>
+                      Then {introPackage?.product.priceString || '£3.00'}/month, Cancel anytime.
+                    </Text>
                   </View>
 
                   <TouchableOpacity
-                    style={[styles.subscribeButton, (isPurchasing || !currentOffering) && styles.subscribeButtonDisabled]}
+                    style={[styles.upgradeButton, (isPurchasing || !introPackage) && styles.upgradeButtonDisabled]}
                     onPress={handlePurchase}
-                    disabled={isPurchasing || !currentOffering}
+                    disabled={isPurchasing || !introPackage}
                     activeOpacity={0.8}
                   >
-                    <LinearGradient
-                      colors={['#FFD700', '#FFA500']}
-                      style={styles.buttonGradient}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    >
-                      {isPurchasing ? (
-                        <ActivityIndicator color="#000" />
-                      ) : (
-                        <Text style={styles.subscribeButtonText}>Subscribe Now</Text>
-                      )}
-                    </LinearGradient>
+                    {isPurchasing ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Text style={styles.upgradeButtonText}>Upgrade to Pro</Text>
+                        <Text style={styles.upgradeArrow}>→</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.maybeLaterButton}
+                    onPress={onClose}
+                  >
+                    <Text style={styles.maybeLaterText}>Maybe Later</Text>
                   </TouchableOpacity>
                 </>
               )}
 
-              <TouchableOpacity
-                style={styles.restoreButton}
-                onPress={handleRestore}
-                disabled={isRestoring}
-              >
-                {isRestoring ? (
-                  <ActivityIndicator size="small" color="#A0A0A0" />
-                ) : (
-                  <Text style={styles.restoreButtonText}>Restore Purchases</Text>
-                )}
-              </TouchableOpacity>
-
-              <Text style={styles.disclaimer}>
-                Cancel anytime. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period.
-              </Text>
+              <View style={styles.footer}>
+                <View style={styles.footerLinks}>
+                  <Text style={styles.footerLink}>Terms of Service</Text>
+                  <Text style={styles.footerDivider}>•</Text>
+                  <Text style={styles.footerLink}>Privacy Policy</Text>
+                  <Text style={styles.footerDivider}>•</Text>
+                  <TouchableOpacity onPress={handleRestore} disabled={isRestoring}>
+                    {isRestoring ? (
+                      <ActivityIndicator size="small" color="#666" />
+                    ) : (
+                      <Text style={styles.footerLink}>Restore Purchase</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
             </ScrollView>
           </LinearGradient>
         </View>
@@ -205,11 +184,11 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.9)',
+    backgroundColor: 'rgba(0,0,0,0.95)',
     justifyContent: 'flex-end',
   },
   container: {
-    height: '90%',
+    height: '92%',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
@@ -227,157 +206,215 @@ const styles = StyleSheet.create({
   closeButton: {
     alignSelf: 'flex-end',
     padding: 8,
-    marginBottom: 8,
+    marginBottom: 16,
+    backgroundColor: '#1E2538',
+    borderRadius: 20,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 40,
   },
-  crownContainer: {
-    marginBottom: 16,
+  iconContainer: {
+    marginBottom: 20,
   },
-  crownGradient: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  glowOuter: {
+    width: 120,
+    height: 120,
+    borderRadius: 32,
+    backgroundColor: '#10B98108',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: {
-    fontSize: 32,
+  glowMiddle: {
+    width: 104,
+    height: 104,
+    borderRadius: 28,
+    backgroundColor: '#10B98115',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  glowInner: {
+    width: 88,
+    height: 88,
+    borderRadius: 24,
+    backgroundColor: '#10B98125',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    backgroundColor: '#1A2332',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  proText: {
+    fontSize: 10,
     fontWeight: '700' as const,
     color: '#fff',
-    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  title: {
+    fontSize: 34,
+    fontWeight: '700' as const,
+    color: '#fff',
+    marginBottom: 12,
+  },
+  titlePro: {
+    color: '#10B981',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#A0A0A0',
+    fontSize: 15,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 20,
+  },
+  benefitsTitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#6B7280',
+    marginBottom: 20,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   featuresContainer: {
-    marginBottom: 32,
+    marginBottom: 36,
   },
   featureItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
+    alignItems: 'flex-start',
+    marginBottom: 24,
   },
   featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#10B98118',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 14,
   },
-  featureText: {
-    fontSize: 16,
-    color: '#fff',
+  featureTextContainer: {
     flex: 1,
+    paddingTop: 2,
+  },
+  featureTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#fff',
+    marginBottom: 4,
+  },
+  featureSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
   },
   loadingContainer: {
     alignItems: 'center',
     padding: 40,
   },
   loadingText: {
-    color: '#A0A0A0',
+    color: '#6B7280',
     marginTop: 16,
     fontSize: 14,
   },
-  plansContainer: {
-    marginBottom: 24,
-    gap: 12,
-  },
-  planCard: {
-    backgroundColor: '#1E2538',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  planCardSelected: {
-    borderColor: '#FFD700',
-    backgroundColor: '#252B3F',
-  },
-  selectedBadge: {
-    position: 'absolute',
-    top: -1,
-    right: -1,
-    backgroundColor: '#FFD700',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderTopRightRadius: 14,
-    borderBottomLeftRadius: 14,
-  },
-  selectedBadgeText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    color: '#000',
-    letterSpacing: 0.5,
-  },
-  planHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  pricingContainer: {
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 28,
   },
-  planName: {
-    fontSize: 20,
-    fontWeight: '600' as const,
+  specialBadge: {
+    backgroundColor: '#10B98120',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  specialBadgeText: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    color: '#10B981',
+    letterSpacing: 1,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 12,
+  },
+  mainPrice: {
+    fontSize: 56,
+    fontWeight: '700' as const,
     color: '#fff',
   },
-  checkCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#FFD700',
+  pricePeriod: {
+    fontSize: 18,
+    color: '#6B7280',
+    marginLeft: 4,
+  },
+  thenPrice: {
+    fontSize: 15,
+    color: '#9CA3AF',
+  },
+  upgradeButton: {
+    backgroundColor: '#10B981',
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 32,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  planPrice: {
-    fontSize: 28,
-    fontWeight: '700' as const,
-    color: '#FFD700',
-    marginBottom: 4,
-  },
-  planSavings: {
-    fontSize: 14,
-    color: '#4ECDC4',
-  },
-  planDetails: {
-    fontSize: 14,
-    color: '#A0A0A0',
-  },
-  subscribeButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
     marginBottom: 16,
   },
-  subscribeButtonDisabled: {
+  upgradeButtonDisabled: {
     opacity: 0.5,
   },
-  buttonGradient: {
-    paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  subscribeButtonText: {
+  upgradeButtonText: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: '#000',
+    color: '#fff',
+    marginRight: 8,
   },
-  restoreButton: {
+  upgradeArrow: {
+    fontSize: 18,
+    color: '#fff',
+  },
+  maybeLaterButton: {
     paddingVertical: 16,
     alignItems: 'center',
+    marginBottom: 24,
   },
-  restoreButtonText: {
-    fontSize: 14,
-    color: '#A0A0A0',
+  maybeLaterText: {
+    fontSize: 16,
+    color: '#6B7280',
   },
-  disclaimer: {
+  footer: {
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: '#1E2538',
+  },
+  footerLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  footerLink: {
     fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-    marginTop: 16,
-    lineHeight: 18,
+    color: '#6B7280',
+  },
+  footerDivider: {
+    fontSize: 12,
+    color: '#374151',
+    marginHorizontal: 8,
   },
 });

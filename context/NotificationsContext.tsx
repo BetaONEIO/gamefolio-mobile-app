@@ -17,15 +17,20 @@ Notifications.setNotificationHandler({
   }),
 });
 
-async function registerForPushNotificationsAsync(): Promise<string | null> {
+interface PushTokens {
+  expoToken: string | null;
+  deviceToken: string | null;
+}
+
+async function registerForPushNotificationsAsync(): Promise<PushTokens> {
   if (Platform.OS === 'web') {
     console.log('[Notifications] Web platform - skipping push registration');
-    return null;
+    return { expoToken: null, deviceToken: null };
   }
 
   if (!Device.isDevice) {
     console.log('[Notifications] Must use physical device for push notifications');
-    return null;
+    return { expoToken: null, deviceToken: null };
   }
 
   try {
@@ -40,7 +45,7 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
 
     if (finalStatus !== 'granted') {
       console.log('[Notifications] Permission not granted');
-      return null;
+      return { expoToken: null, deviceToken: null };
     }
 
     const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
@@ -49,11 +54,15 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
       console.log('[Notifications] No project ID found, using default');
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({
+    // Get Expo push token (for Expo push service)
+    const expoTokenData = await Notifications.getExpoPushTokenAsync({
       projectId: projectId || process.env.EXPO_PUBLIC_PROJECT_ID,
     });
+    console.log('[Notifications] Expo push token:', expoTokenData.data);
 
-    console.log('[Notifications] Push token obtained:', tokenData.data);
+    // Get native device token (for Firebase Console)
+    const deviceTokenData = await Notifications.getDevicePushTokenAsync();
+    console.log('[Notifications] Native device token (use this in Firebase):', deviceTokenData.data);
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
@@ -64,15 +73,19 @@ async function registerForPushNotificationsAsync(): Promise<string | null> {
       });
     }
 
-    return tokenData.data;
+    return { 
+      expoToken: expoTokenData.data, 
+      deviceToken: deviceTokenData.data as string 
+    };
   } catch (error) {
     console.error('[Notifications] Error getting push token:', error);
-    return null;
+    return { expoToken: null, deviceToken: null };
   }
 }
 
 export const [NotificationsProvider, useNotifications] = createContextHook(() => {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
+  const [devicePushToken, setDevicePushToken] = useState<string | null>(null);
   const [notification, setNotification] = useState<Notifications.Notification | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<string>('undetermined');
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
@@ -102,10 +115,17 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
   const initialize = useCallback(async () => {
     console.log('[Notifications] Initializing...');
 
-    const token = await registerForPushNotificationsAsync();
-    if (token) {
-      setExpoPushToken(token);
-      await registerToken(token);
+    const tokens = await registerForPushNotificationsAsync();
+    if (tokens.expoToken) {
+      setExpoPushToken(tokens.expoToken);
+      await registerToken(tokens.expoToken);
+    }
+    if (tokens.deviceToken) {
+      setDevicePushToken(tokens.deviceToken);
+      console.log('[Notifications] ========================================');
+      console.log('[Notifications] DEVICE TOKEN FOR FIREBASE CONSOLE:');
+      console.log('[Notifications]', tokens.deviceToken);
+      console.log('[Notifications] ========================================');
     }
 
     const permResult = await Notifications.getPermissionsAsync();
@@ -152,10 +172,13 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
   }, [isAuthenticated, expoPushToken, registerToken]);
 
   const requestPermission = useCallback(async () => {
-    const token = await registerForPushNotificationsAsync();
-    if (token) {
-      setExpoPushToken(token);
-      await registerToken(token);
+    const tokens = await registerForPushNotificationsAsync();
+    if (tokens.expoToken) {
+      setExpoPushToken(tokens.expoToken);
+      await registerToken(tokens.expoToken);
+    }
+    if (tokens.deviceToken) {
+      setDevicePushToken(tokens.deviceToken);
     }
     const permResult = await Notifications.getPermissionsAsync();
     setPermissionStatus(permResult.status);
@@ -168,6 +191,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
 
   return {
     expoPushToken,
+    devicePushToken,
     notification,
     permissionStatus,
     requestPermission,

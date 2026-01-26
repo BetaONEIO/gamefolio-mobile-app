@@ -9,6 +9,8 @@ import {
   Image,
   ActivityIndicator,
   RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MessageSquare, Search, UserPlus, LogOut } from 'lucide-react-native';
@@ -264,7 +266,11 @@ export default function MessagesScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       <LinearGradient
         colors={['#0F1520', '#020617']}
         style={StyleSheet.absoluteFill}
@@ -355,7 +361,7 @@ export default function MessagesScreen() {
         onClose={() => setIsNewConversationModalVisible(false)}
         onSelectUser={handleSelectUser}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

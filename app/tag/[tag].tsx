@@ -4,6 +4,7 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, Eye, Play, Settings, Camera, Hash } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
+import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { api, Clip } from '@/lib/api';
@@ -99,7 +100,7 @@ export default function TagScreen() {
           activeOpacity={0.8}
         >
           <ImageBackground 
-            source={{ uri: item.thumbnailUrl }} 
+            source={{ uri: item.videoType === 'reel' ? getReelThumbnail(item) : getClipThumbnail(item) }} 
             style={styles.screenshotGridThumbnail} 
             imageStyle={{ borderRadius: 8 }}
           >
@@ -123,7 +124,7 @@ export default function TagScreen() {
           activeOpacity={0.8}
         >
           <ImageBackground 
-            source={{ uri: item.thumbnailUrl }} 
+            source={{ uri: item.videoType === 'reel' ? getReelThumbnail(item) : getClipThumbnail(item) }} 
             style={styles.reelGridThumbnail} 
             imageStyle={{ borderRadius: 12 }}
           >
@@ -160,7 +161,7 @@ export default function TagScreen() {
           }}
           activeOpacity={0.8}
         >
-          <ImageBackground source={{ uri: item.thumbnailUrl }} style={styles.contentThumbnail} imageStyle={{ borderRadius: 16 }}>
+          <ImageBackground source={{ uri: item.videoType === 'reel' ? getReelThumbnail(item) : getClipThumbnail(item) }} style={styles.contentThumbnail} imageStyle={{ borderRadius: 16 }}>
             <LinearGradient
               colors={['rgba(0,0,0,0.6)', 'transparent', 'transparent', 'rgba(0,0,0,0.8)']}
               style={styles.contentGradient}

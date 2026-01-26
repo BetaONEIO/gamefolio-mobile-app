@@ -398,7 +398,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
           >
             {Platform.OS !== 'web' ? (
               <BlurView 
-                intensity={80} 
+                intensity={100} 
                 tint="dark" 
                 style={StyleSheet.absoluteFill}
               >
@@ -617,6 +617,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     zIndex: 10,
+    backgroundColor: '#0F1520',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -677,12 +678,12 @@ const styles = StyleSheet.create({
   },
   darkOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
   webBlurFallback: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 14, 20, 0.95)',
-    backdropFilter: 'blur(30px)',
+    backgroundColor: 'rgba(15, 21, 32, 0.85)',
+    backdropFilter: 'blur(40px)',
   },
   searchContainer: {
     position: 'absolute',

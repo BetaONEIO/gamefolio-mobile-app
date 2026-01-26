@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>AIzaSyAN6zW4tP_-kMkcooP3SMb-Q4Qh58h9nNQ</string>
+	<string>AIzaSyBdOemlhDCOQ--85EubtBeYg3kLQszzI8w</string>
 	<key>GCM_SENDER_ID</key>
-	<string>384680393602</string>
+	<string>717007379643</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>app.rork.gamefolio-alpha</string>
+	<string>app.rork.gamefolio</string>
 	<key>PROJECT_ID</key>
-	<string>gamefolio-f5890</string>
+	<string>gamefolio-e8bde</string>
 	<key>STORAGE_BUCKET</key>
-	<string>gamefolio-f5890.firebasestorage.app</string>
+	<string>gamefolio-e8bde.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:384680393602:ios:a141b04b01a1fa69dbad9b</string>
+	<string>1:717007379643:ios:0a44009cb8821a93071d9e</string>
 </dict>
 </plist>

@@ -83,6 +83,78 @@ function calculateLevel(totalXP: number): number {
   return level;
 }
 
+// Match both public and authenticated/private URL formats
+const SUPABASE_PUBLIC_PATTERN = /\/storage\/v1\/object\/public\/([^\/]+)\/(.+)$/;
+
+// Helper function to generate signed URL for private Supabase storage
+async function generateSignedUrl(publicUrl: string | null | undefined): Promise<string | null> {
+  if (!publicUrl) return null;
+  
+  // Skip if it's not a Supabase storage URL
+  if (!publicUrl.includes('/storage/v1/object/')) {
+    return publicUrl;
+  }
+  
+  // Skip if it's already a signed URL
+  if (publicUrl.includes('/storage/v1/object/sign/') || publicUrl.includes('token=')) {
+    return publicUrl;
+  }
+  
+  try {
+    let bucket: string | null = null;
+    let path: string | null = null;
+    
+    // Try matching public URL format first
+    let match = publicUrl.match(SUPABASE_PUBLIC_PATTERN);
+    if (match) {
+      [, bucket, path] = match;
+    }
+    
+    // Try matching authenticated URL format if public didn't match
+    if (!bucket || !path) {
+      const authMatch = publicUrl.match(/\/storage\/v1\/object\/(?!public\/)(?!sign\/)([^\/]+)\/(.+)$/);
+      if (authMatch) {
+        [, bucket, path] = authMatch;
+      }
+    }
+    
+    if (!bucket || !path) {
+      console.log('[SignedURL] Could not parse URL:', publicUrl.substring(0, 80));
+      return publicUrl;
+    }
+    
+    // Decode the path in case it has URL-encoded characters
+    const decodedPath = decodeURIComponent(path);
+    
+    const { data, error } = await supabaseAdmin.storage
+      .from(bucket)
+      .createSignedUrl(decodedPath, 3600); // 1 hour expiry
+    
+    if (error) {
+      console.error('[SignedURL] Error generating signed URL for bucket:', bucket, 'error:', error.message);
+      return publicUrl;
+    }
+    
+    return data.signedUrl;
+  } catch (error) {
+    console.error('[SignedURL] Unexpected error:', error);
+    return publicUrl;
+  }
+}
+
+// Helper function to generate signed URLs for multiple fields in an object
+async function signMediaUrls<T extends Record<string, any>>(obj: T, fields: string[]): Promise<T> {
+  const result = { ...obj };
+  
+  for (const field of fields) {
+    if (result[field]) {
+      (result as any)[field] = await generateSignedUrl(result[field]);
+    }
+  }
+  
+  return result;
+}
+
 // Helper function to award XP to a user
 async function awardXP(userId: number, xpAmount: number): Promise<{ success: boolean; newTotalXP?: number; newLevel?: number }> {
   try {
@@ -707,8 +779,8 @@ app.get("/api/clips", async (c) => {
         gameId: clip.game_id,
         title: clip.title || 'Untitled',
         description: clip.description || '',
-        videoUrl: clip.video_url || '',
-        thumbnailUrl: clip.thumbnail_url || '',
+        videoUrl: await generateSignedUrl(clip.video_url) || '',
+        thumbnailUrl: await generateSignedUrl(clip.thumbnail_url) || '',
         videoType: clip.video_type || 'clip',
         duration: clip.duration || 0,
         views: clip.views || 0,
@@ -719,7 +791,7 @@ app.get("/api/clips", async (c) => {
           id: clip.user?.id || 0,
           username: clip.user?.username || 'unknown',
           displayName: clip.user?.display_name || clip.user?.username || 'Unknown',
-          avatarUrl: clip.user?.avatar_url || '',
+          avatarUrl: await generateSignedUrl(clip.user?.avatar_url) || '',
         },
         game: clip.game ? {
           id: clip.game.id,
@@ -790,8 +862,8 @@ app.get("/api/clips/latest", async (c) => {
         gameId: clip.game_id,
         title: clip.title || 'Untitled',
         description: clip.description || '',
-        videoUrl: clip.video_url || '',
-        thumbnailUrl: clip.thumbnail_url || '',
+        videoUrl: await generateSignedUrl(clip.video_url) || '',
+        thumbnailUrl: await generateSignedUrl(clip.thumbnail_url) || '',
         videoType: clip.video_type || 'clip',
         duration: clip.duration || 0,
         views: clip.views || 0,
@@ -802,7 +874,7 @@ app.get("/api/clips/latest", async (c) => {
           id: clip.user?.id || 0,
           username: clip.user?.username || 'unknown',
           displayName: clip.user?.display_name || clip.user?.username || 'Unknown',
-          avatarUrl: clip.user?.avatar_url || '',
+          avatarUrl: await generateSignedUrl(clip.user?.avatar_url) || '',
         },
         game: clip.game ? {
           id: clip.game.id,
@@ -894,8 +966,8 @@ app.get("/api/clips/trending", async (c) => {
         gameId: clip.game_id,
         title: clip.title,
         description: clip.description || '',
-        videoUrl: clip.video_url,
-        thumbnailUrl: clip.thumbnail_url,
+        videoUrl: await generateSignedUrl(clip.video_url),
+        thumbnailUrl: await generateSignedUrl(clip.thumbnail_url),
         videoType: clip.video_type || 'clip',
         duration: clip.duration || 0,
         views: clip.views || 0,
@@ -906,7 +978,7 @@ app.get("/api/clips/trending", async (c) => {
           id: clip.user.id,
           username: clip.user.username,
           displayName: clip.user.display_name,
-          avatarUrl: clip.user.avatar_url,
+          avatarUrl: await generateSignedUrl(clip.user.avatar_url),
         },
         game: clip.game ? {
           id: clip.game.id,
@@ -976,8 +1048,8 @@ app.get("/api/reels/latest", async (c) => {
         gameId: reel.game_id,
         title: reel.title || 'Untitled',
         description: reel.description || '',
-        videoUrl: reel.video_url || '',
-        thumbnailUrl: reel.thumbnail_url || '',
+        videoUrl: await generateSignedUrl(reel.video_url) || '',
+        thumbnailUrl: await generateSignedUrl(reel.thumbnail_url) || '',
         videoType: reel.video_type || 'reel',
         duration: reel.duration || 0,
         views: reel.views || 0,
@@ -988,7 +1060,7 @@ app.get("/api/reels/latest", async (c) => {
           id: reel.user?.id || 0,
           username: reel.user?.username || 'unknown',
           displayName: reel.user?.display_name || reel.user?.username || 'Unknown',
-          avatarUrl: reel.user?.avatar_url || '',
+          avatarUrl: await generateSignedUrl(reel.user?.avatar_url) || '',
         },
         game: reel.game ? {
           id: reel.game.id,
@@ -1054,8 +1126,8 @@ app.get("/api/reels/trending", async (c) => {
         gameId: reel.game_id,
         title: reel.title,
         description: reel.description || '',
-        videoUrl: reel.video_url,
-        thumbnailUrl: reel.thumbnail_url,
+        videoUrl: await generateSignedUrl(reel.video_url),
+        thumbnailUrl: await generateSignedUrl(reel.thumbnail_url),
         videoType: reel.video_type || 'reel',
         duration: reel.duration || 0,
         views: reel.views || 0,
@@ -1066,7 +1138,7 @@ app.get("/api/reels/trending", async (c) => {
           id: reel.user.id,
           username: reel.user.username,
           displayName: reel.user.display_name,
-          avatarUrl: reel.user.avatar_url,
+          avatarUrl: await generateSignedUrl(reel.user.avatar_url),
         },
         game: reel.game ? {
           id: reel.game.id,
@@ -1912,8 +1984,8 @@ app.get("/api/search/clips", async (c) => {
         userId: clip.user_id,
         title: clip.title,
         description: clip.description || '',
-        videoUrl: clip.video_url,
-        thumbnailUrl: clip.thumbnail_url,
+        videoUrl: await generateSignedUrl(clip.video_url),
+        thumbnailUrl: await generateSignedUrl(clip.thumbnail_url),
         videoType: clip.video_type,
         duration: clip.duration || 0,
         views: clip.views || 0,
@@ -1924,7 +1996,7 @@ app.get("/api/search/clips", async (c) => {
           id: clip.user.id,
           username: clip.user.username,
           displayName: clip.user.display_name,
-          avatarUrl: clip.user.avatar_url,
+          avatarUrl: await generateSignedUrl(clip.user.avatar_url),
         },
         game: clip.game ? {
           id: clip.game.id,
@@ -1991,8 +2063,8 @@ app.get("/api/search/reels", async (c) => {
         id: reel.id,
         userId: reel.user_id,
         title: reel.title,
-        videoUrl: reel.video_url,
-        thumbnailUrl: reel.thumbnail_url,
+        videoUrl: await generateSignedUrl(reel.video_url),
+        thumbnailUrl: await generateSignedUrl(reel.thumbnail_url),
         videoType: reel.video_type,
         duration: reel.duration || 0,
         views: reel.views || 0,
@@ -2001,7 +2073,7 @@ app.get("/api/search/reels", async (c) => {
           id: reel.user.id,
           username: reel.user.username,
           displayName: reel.user.display_name,
-          avatarUrl: reel.user.avatar_url,
+          avatarUrl: await generateSignedUrl(reel.user.avatar_url),
         },
         _count: {
           likes: likesCount || 0,
@@ -4656,6 +4728,51 @@ app.delete("/api/screenshots/:id", async (c) => {
     console.error('[Screenshots REST] Error:', error);
     return c.json({ message: 'Internal server error' }, 500);
   }
+});
+
+// REST API: Generate Signed URL for private storage
+app.post("/api/storage/signed-url", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { url, urls } = body;
+    
+    // Handle single URL
+    if (url) {
+      console.log('[Storage] Generating signed URL for:', url);
+      const signedUrl = await generateSignedUrl(url);
+      return c.json({ signedUrl });
+    }
+    
+    // Handle multiple URLs
+    if (urls && Array.isArray(urls)) {
+      console.log('[Storage] Generating signed URLs for', urls.length, 'items');
+      const signedUrls = await Promise.all(
+        urls.map(async (u: string) => ({
+          original: u,
+          signed: await generateSignedUrl(u),
+        }))
+      );
+      return c.json({ signedUrls });
+    }
+    
+    return c.json({ message: 'URL or URLs array required' }, 400);
+  } catch (error) {
+    console.error('[Storage] Error generating signed URL:', error);
+    return c.json({ message: 'Failed to generate signed URL' }, 500);
+  }
+});
+
+// REST API: Get Signed URL (GET method for simpler access)
+app.get("/api/storage/signed-url", async (c) => {
+  const url = c.req.query('url');
+  
+  if (!url) {
+    return c.json({ message: 'URL parameter required' }, 400);
+  }
+  
+  console.log('[Storage] Generating signed URL for:', url);
+  const signedUrl = await generateSignedUrl(url);
+  return c.json({ signedUrl });
 });
 
 // Hero Text API endpoint

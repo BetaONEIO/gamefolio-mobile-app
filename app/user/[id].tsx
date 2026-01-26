@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIn
 import ScrollView from '@/components/ThemedScrollView';
 import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, Mail, Play, Camera, Flag } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
+import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -17,6 +18,7 @@ import ReportModal from '@/components/ReportModal';
 import ShareProfileModal from '@/components/ShareProfileModal';
 import { trpc } from '@/lib/trpc';
 import { useQuery } from '@tanstack/react-query';
+import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
@@ -79,6 +81,7 @@ export default function PublicProfileScreen() {
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
   const [isScreenshotModalVisible, setIsScreenshotModalVisible] = useState(false);
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+  const [onlineTooltipVisible, setOnlineTooltipVisible] = useState(false);
 
   const submitReportMutation = trpc.reports.submit.useMutation({
     onSuccess: () => {
@@ -141,6 +144,12 @@ export default function PublicProfileScreen() {
     <View style={[styles.container, { backgroundColor: bgColor }]}>
       <AppHeader showBackButton />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {isBirthdayToday(user?.birthday) && (
+          <BirthdayBanner 
+            displayName={user?.displayName || user?.username || 'User'} 
+            isOwnProfile={isMe || false} 
+          />
+        )}
         {/* Banner */}
         <TouchableOpacity 
           style={styles.bannerContainer}
@@ -204,10 +213,26 @@ export default function PublicProfileScreen() {
                     source={{ uri: displayProfile.avatar }} 
                     style={[styles.avatar, { borderColor: bgColor }]} 
                   />
-                  {user.isOnline && !isMe && (
-                    <View style={styles.onlineIndicator} />
-                  )}
                 </TouchableOpacity>
+                {user.isOnline && !isMe && (
+                  <TouchableOpacity 
+                    style={styles.onlineIndicator}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setOnlineTooltipVisible(true);
+                      setTimeout(() => setOnlineTooltipVisible(false), 2000);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.onlineIndicatorInner} />
+                    {onlineTooltipVisible && (
+                      <View style={styles.onlineTooltip}>
+                        <Text style={styles.onlineTooltipText}>{displayProfile.handle} is online</Text>
+                        <View style={styles.onlineTooltipArrow} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )}
                 <View style={styles.badgesContainer}>
                   <View style={styles.levelBadgeContainer}>
                     <LevelBadge level={displayProfile.level} size={32} thickness={3} />
@@ -345,7 +370,7 @@ export default function PublicProfileScreen() {
                     style={styles.clipItem}
                     onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString(), fromUser: username, contentType: 'clip' } })}
                   >
-                    <Image source={{ uri: clip.thumbnailUrl }} style={styles.clipImage} />
+                    <Image source={{ uri: getClipThumbnail(clip) }} style={styles.clipImage} />
                     <LinearGradient
                       colors={['transparent', 'rgba(0,0,0,0.8)']}
                       style={styles.clipGradient}
@@ -404,7 +429,7 @@ export default function PublicProfileScreen() {
                       style={styles.reelItem}
                       onPress={() => router.push({ pathname: '/clip/[id]', params: { id: reel.id.toString(), fromUser: username, contentType: 'reel' } })}
                   >
-                    <Image source={{ uri: reel.thumbnailUrl }} style={styles.reelImage} />
+                    <Image source={{ uri: getReelThumbnail(reel) }} style={styles.reelImage} />
                     <LinearGradient
                       colors={['transparent', 'rgba(0,0,0,0.8)']}
                       style={styles.reelGradient}
@@ -468,7 +493,7 @@ export default function PublicProfileScreen() {
                     }}
                     activeOpacity={0.8}
                   >
-                    <Image source={{ uri: item.thumbnailUrl }} style={styles.screenshotImage} />
+                    <Image source={{ uri: getScreenshotThumbnail(item) }} style={styles.screenshotImage} />
                     <View style={styles.screenshotContent}>
                         <Text style={styles.screenshotTitle}>{item.title}</Text>
                         <Text style={styles.screenshotHandle}>{displayProfile.handle}</Text>
@@ -730,12 +755,53 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#22C55E',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#0F1520',
     borderWidth: 3,
     borderColor: '#0F1520',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  onlineIndicatorInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#22C55E',
+  },
+  onlineTooltip: {
+    position: 'absolute',
+    top: -40,
+    left: '50%',
+    transform: [{ translateX: -60 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    zIndex: 1000,
+    minWidth: 120,
+  },
+  onlineTooltipText: {
+    color: '#22C55E',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  onlineTooltipArrow: {
+    position: 'absolute',
+    bottom: -6,
+    left: '50%',
+    marginLeft: -6,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: 'rgba(0, 0, 0, 0.9)',
   },
   followButton: {
     flex: 1,

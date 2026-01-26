@@ -27,30 +27,35 @@ import { Env } from '@/constants/Env';
 
 WebBrowser.maybeCompleteAuthSession();
 
+// OAuth is only supported on native platforms
+const IS_NATIVE = Platform.OS !== 'web';
+
 // Discord OAuth configuration
-const DISCORD_CLIENT_ID = Env.DISCORD_MOBILE_CLIENT_ID || Env.DISCORD_CLIENT_ID;
-const DISCORD_REDIRECT_URI = AuthSession.makeRedirectUri({
+const DISCORD_CLIENT_ID = IS_NATIVE ? (Env.DISCORD_MOBILE_CLIENT_ID || Env.DISCORD_CLIENT_ID || 'placeholder') : 'placeholder';
+const DISCORD_REDIRECT_URI = IS_NATIVE ? AuthSession.makeRedirectUri({
   scheme: 'rork-app',
   path: 'auth/discord/callback',
-});
+}) : 'https://placeholder.com';
 
 // Google OAuth configuration
-const GOOGLE_CLIENT_ID = Platform.select({
+const GOOGLE_CLIENT_ID = IS_NATIVE ? (Platform.select({
   ios: Env.GOOGLE_IOS_CLIENT_ID,
   android: Env.GOOGLE_CLIENT_ID,
   default: Env.GOOGLE_CLIENT_ID,
-}) || '';
+}) || 'placeholder') : 'placeholder';
 
-const GOOGLE_REDIRECT_URI = Platform.OS === 'ios' 
-  ? `com.googleusercontent.apps.203672150024-fl71oftg0e7f3a3jorlb9qcuergo9qkd:/oauth2redirect/google`
+const GOOGLE_REDIRECT_URI = IS_NATIVE ? (Platform.OS === 'ios' 
+  ? `com.googleusercontent.apps.203672150024-jiibs6emo1qkqmusjsfr8qnus8ut0raa:/oauth2redirect/google`
   : AuthSession.makeRedirectUri({
       scheme: 'rork-app',
       path: 'auth/google/callback',
-    });
+    })) : 'https://placeholder.com';
 
-console.log('[OAuth] Discord Client ID:', DISCORD_CLIENT_ID);
-console.log('[OAuth] Discord Redirect URI:', DISCORD_REDIRECT_URI);
-console.log('[OAuth] Google Redirect URI:', GOOGLE_REDIRECT_URI);
+if (IS_NATIVE) {
+  console.log('[OAuth] Discord Client ID:', DISCORD_CLIENT_ID);
+  console.log('[OAuth] Discord Redirect URI:', DISCORD_REDIRECT_URI);
+  console.log('[OAuth] Google Redirect URI:', GOOGLE_REDIRECT_URI);
+}
 
 
 
@@ -829,13 +834,17 @@ export default function LoginScreen() {
 
             {/* Google Login Button */}
             <TouchableOpacity 
-              style={[styles.socialButton, styles.googleButton, (!googleRequest || isGoogleLoading) && styles.mainButtonDisabled]}
+              style={[styles.socialButton, styles.googleButton, (IS_NATIVE && (!googleRequest || isGoogleLoading)) && styles.mainButtonDisabled]}
               onPress={() => {
+                if (!IS_NATIVE) {
+                  showAlert('Mobile Only', 'Google login is only available on the mobile app');
+                  return;
+                }
                 console.log('[Google OAuth] Starting auth flow...');
                 promptGoogleAsync();
               }}
               activeOpacity={0.8}
-              disabled={!googleRequest || isGoogleLoading}
+              disabled={IS_NATIVE && (!googleRequest || isGoogleLoading)}
             >
               {isGoogleLoading ? (
                 <ActivityIndicator size="small" color="#1F2937" />
@@ -849,13 +858,17 @@ export default function LoginScreen() {
 
             {/* Discord Login Button */}
             <TouchableOpacity 
-              style={[styles.socialButton, styles.discordButton, (!discordRequest || isDiscordLoading) && styles.mainButtonDisabled]}
+              style={[styles.socialButton, styles.discordButton, (IS_NATIVE && (!discordRequest || isDiscordLoading)) && styles.mainButtonDisabled]}
               onPress={() => {
+                if (!IS_NATIVE) {
+                  showAlert('Mobile Only', 'Discord login is only available on the mobile app');
+                  return;
+                }
                 console.log('[Discord OAuth] Starting auth flow...');
                 promptDiscordAsync();
               }}
               activeOpacity={0.8}
-              disabled={!discordRequest || isDiscordLoading}
+              disabled={IS_NATIVE && (!discordRequest || isDiscordLoading)}
             >
               {isDiscordLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
@@ -1017,8 +1030,12 @@ const styles = StyleSheet.create({
   },
   googleButton: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   googleButtonText: {
     color: '#1F2937',
@@ -1026,7 +1043,12 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
   },
   discordButton: {
-    backgroundColor: '#5865F2',
+    backgroundColor: '#7289DA',
+    shadowColor: '#7289DA',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 3,
   },
   socialButtonText: {
     color: '#FFFFFF',

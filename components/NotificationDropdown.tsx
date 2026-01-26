@@ -8,7 +8,8 @@ import {
   TouchableOpacity, 
   FlatList, 
   Animated,
-  Platform
+  Platform,
+  Image
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { UserPlus, X, Heart, Flame, MessagesSquare, MessageSquare } from 'lucide-react-native';
@@ -36,7 +37,7 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: '1',
     type: 'message',
-    user: { id: 'user1', name: 'names21080', initial: 'N' },
+    user: { id: 'user1', name: 'names21080', initial: 'N', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop' },
     title: 'New Message',
     description: 'names21080 sent you a message: "Never mind I..."',
     time: '4d ago',
@@ -46,7 +47,7 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: '2',
     type: 'flame',
-    user: { id: 'user1', name: 'names21080', initial: 'N' },
+    user: { id: 'user1', name: 'names21080', initial: 'N', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop' },
     title: 'New Flame',
     description: 'names21080 reacted with a flame to your post',
     time: '4d ago',
@@ -57,7 +58,7 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: '3',
     type: 'follower',
-    user: { id: 'user1', name: 'names21080', initial: 'N' },
+    user: { id: 'user1', name: 'names21080', initial: 'N', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop' },
     title: 'New Follower',
     description: 'names21080 started following you',
     time: '4d ago',
@@ -66,7 +67,7 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: '4',
     type: 'like',
-    user: { id: 'user2', name: 'user123', initial: 'U' },
+    user: { id: 'user2', name: 'user123', initial: 'U', avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcabd36?w=100&h=100&fit=crop' },
     title: 'New Like',
     description: 'user123 liked your post',
     time: '5d ago',
@@ -77,7 +78,7 @@ const MOCK_NOTIFICATIONS: Notification[] = [
   {
     id: '5',
     type: 'comment',
-    user: { id: 'user3', name: 'admin', initial: 'A' },
+    user: { id: 'user3', name: 'admin', initial: 'A', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop' },
     title: 'New Comment',
     description: 'admin commented on your post: "Great work!"',
     time: '1w ago',
@@ -188,7 +189,14 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
         <View style={styles.headerRow}>
           <View style={styles.userRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{item.user.initial}</Text>
+              {item.user.avatar ? (
+                <Image 
+                  source={{ uri: item.user.avatar }} 
+                  style={styles.avatarImage} 
+                />
+              ) : (
+                <Text style={styles.avatarText}>{item.user.initial}</Text>
+              )}
             </View>
             <Text style={styles.title}>{item.title}</Text>
           </View>
@@ -387,13 +395,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#1E293B',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
   },
   avatarText: {
     color: '#4ADE80',

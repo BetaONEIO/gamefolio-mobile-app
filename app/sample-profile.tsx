@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIn
 import ScrollView from '@/components/ThemedScrollView';
 import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, MessageCircle, Play, Camera, ChevronDown, Zap, LayoutGrid } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
+import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useRef } from 'react';
 import { useRouter } from 'expo-router';
@@ -39,6 +40,7 @@ export default function SampleProfileScreen() {
   const [isEngagementExpanded, setIsEngagementExpanded] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
   const [tooltipVisible, setTooltipVisible] = useState<string | null>(null);
+  const [onlineTooltipVisible, setOnlineTooltipVisible] = useState(false);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -174,6 +176,25 @@ export default function SampleProfileScreen() {
                     </View>
                   </View>
                 </TouchableOpacity>
+                {user.isOnline && (
+                  <TouchableOpacity 
+                    style={styles.avatarOnlineDot}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setOnlineTooltipVisible(true);
+                      setTimeout(() => setOnlineTooltipVisible(false), 2000);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.avatarOnlineDotInner} />
+                    {onlineTooltipVisible && (
+                      <View style={styles.onlineTooltip}>
+                        <Text style={styles.onlineTooltipText}>{displayProfile.handle} is online</Text>
+                        <View style={styles.onlineTooltipArrow} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
               
               <View style={styles.userInfoContainer}>
@@ -350,7 +371,7 @@ export default function SampleProfileScreen() {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     }}
                   >
-                    <Image source={{ uri: clip.thumbnailUrl }} style={styles.clipImage} />
+                    <Image source={{ uri: getClipThumbnail(clip) }} style={styles.clipImage} />
                     <LinearGradient
                       colors={['transparent', 'rgba(0,0,0,0.8)']}
                       style={styles.clipGradient}
@@ -402,7 +423,7 @@ export default function SampleProfileScreen() {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       }}
                   >
-                    <Image source={{ uri: reel.thumbnailUrl }} style={styles.reelImage} />
+                    <Image source={{ uri: getReelThumbnail(reel) }} style={styles.reelImage} />
                     <LinearGradient
                       colors={['transparent', 'rgba(0,0,0,0.8)']}
                       style={styles.reelGradient}
@@ -448,7 +469,7 @@ export default function SampleProfileScreen() {
               ) : (
                 screenshots.map((item) => (
                   <View key={item.id} style={styles.screenshotCard}>
-                    <Image source={{ uri: item.thumbnailUrl }} style={styles.screenshotImage} />
+                    <Image source={{ uri: getScreenshotThumbnail(item) }} style={styles.screenshotImage} />
                     <View style={styles.screenshotContent}>
                         <Text style={styles.screenshotTitle}>{item.title}</Text>
                         <Text style={styles.screenshotHandle}>{displayProfile.handle}</Text>
@@ -1065,5 +1086,55 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100,
+  },
+  avatarOnlineDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#0F1520',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  avatarOnlineDotInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#22C55E',
+  },
+  onlineTooltip: {
+    position: 'absolute',
+    top: -40,
+    left: '50%',
+    transform: [{ translateX: -60 }],
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    zIndex: 1000,
+    minWidth: 120,
+  },
+  onlineTooltipText: {
+    color: '#22C55E',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  onlineTooltipArrow: {
+    position: 'absolute',
+    bottom: -6,
+    left: '50%',
+    marginLeft: -6,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: 'rgba(0, 0, 0, 0.9)',
   },
 });

@@ -286,6 +286,8 @@ export interface User {
   isOnline?: boolean;
   lastActive?: string | null;
   isPro?: boolean;
+  birthday?: string | null;
+  birthdayLastUpdated?: string | null;
   _count?: {
     followers: number;
     following: number;

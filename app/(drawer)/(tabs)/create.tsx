@@ -787,7 +787,7 @@ export default function CreateScreen() {
                         onPress={() => handleMentionSelect(item.username)}
                       >
                         <Image 
-                          source={{ uri: item.avatarUrl }} 
+                          source={{ uri: item.avatarUrl ?? undefined }} 
                           style={styles.mentionAvatar}
                         />
                         <View style={{ flex: 1 }}>

@@ -120,81 +120,77 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
             </View>
 
             <View style={styles.profileCard}>
-              {profile.bannerUrl ? (
-                <>
+              <View style={styles.bannerSection}>
+                {profile.bannerUrl ? (
                   <Image 
                     source={{ uri: profile.bannerUrl }} 
                     style={styles.cardBannerImage} 
                   />
+                ) : (
                   <LinearGradient
-                    colors={['rgba(0,0,0,0.3)', 'rgba(15,21,32,0.95)', '#0F1520']}
-                    locations={[0, 0.5, 1]}
-                    style={styles.cardGradient}
+                    colors={['#1E293B', '#334155']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.cardBannerFallback}
                   />
-                </>
-              ) : (
+                )}
                 <LinearGradient
-                  colors={['#1E293B', '#0F1520']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.cardGradient}
+                  colors={['transparent', 'rgba(30,41,59,0.8)', '#1E293B']}
+                  locations={[0, 0.6, 1]}
+                  style={styles.bannerOverlay}
                 />
-              )}
+              </View>
               
-              <View style={styles.cardHeader}>
-                <View style={styles.avatarSection}>
-                  <View style={styles.avatarWrapper}>
-                    <Image 
-                      source={{ uri: profile.avatarUrl }} 
-                      style={styles.avatar} 
-                    />
-                    <View style={[styles.avatarRing, profile.borderColor ? { borderColor: profile.borderColor } : undefined]} />
+              <View style={styles.avatarContainer}>
+                <View style={styles.avatarWrapper}>
+                  <Image 
+                    source={{ uri: profile.avatarUrl }} 
+                    style={styles.avatar} 
+                  />
+                  <View style={[styles.avatarRing, profile.borderColor ? { borderColor: profile.borderColor } : undefined]} />
+                </View>
+              </View>
+              
+              <View style={styles.userInfo}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.displayName} numberOfLines={1}>{profile.displayName}</Text>
+                  {profile.verified && (
+                    <View style={styles.verifiedBadge}>
+                      <Check size={8} color="#FFF" strokeWidth={4} />
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.username}>@{profile.username}</Text>
+                
+                <Text style={styles.bio} numberOfLines={2}>{profile.bio}</Text>
+                
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{profile.stats.uploads}</Text>
+                    <Text style={styles.statLabel}>Uploads</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{profile.stats.followers}</Text>
+                    <Text style={styles.statLabel}>Followers</Text>
+                  </View>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{profile.stats.following}</Text>
+                    <Text style={styles.statLabel}>Following</Text>
                   </View>
                 </View>
                 
-                <View style={styles.userInfo}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.displayName}>{profile.displayName}</Text>
-                    <Text style={styles.username}>@{profile.username}</Text>
-                    {profile.verified && (
-                      <View style={styles.verifiedBadge}>
-                        <Check size={8} color="#FFF" strokeWidth={4} />
+                {topGames.length > 0 && (
+                  <View style={styles.gamesRow}>
+                    {topGames.map((game, index) => (
+                      <View key={game.id || index} style={styles.gameItem}>
+                        <Image 
+                          source={{ uri: getImageUrl(game.imageUrl) }} 
+                          style={styles.gameImage} 
+                        />
                       </View>
-                    )}
+                    ))}
                   </View>
-                  
-                  <Text style={styles.bio} numberOfLines={1}>{profile.bio}</Text>
-                  
-                  <View style={styles.statsRow}>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{profile.stats.uploads}</Text>
-                      <Text style={styles.statLabel}>Uploads</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{profile.stats.followers}</Text>
-                      <Text style={styles.statLabel}>Followers</Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{profile.stats.following}</Text>
-                      <Text style={styles.statLabel}>Following</Text>
-                    </View>
-                  </View>
-                  
-                  {topGames.length > 0 ? (
-                    <View style={styles.gamesRow}>
-                      {topGames.map((game, index) => (
-                        <View key={game.id || index} style={styles.gameItem}>
-                          <Image 
-                            source={{ uri: getImageUrl(game.imageUrl) }} 
-                            style={styles.gameImage} 
-                          />
-                        </View>
-                      ))}
-                    </View>
-                  ) : (
-                    <Text style={styles.noGamesText}>No games added yet</Text>
-                  )}
-                </View>
+                )}
               </View>
               
               <View style={styles.cardDivider} />
@@ -347,42 +343,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E293B',
     borderWidth: 1,
     borderColor: '#334155',
-    minHeight: 400,
+  },
+  bannerSection: {
+    height: 100,
+    width: '100%',
+    position: 'relative',
   },
   cardBannerImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: '50%',
     width: '100%',
+    height: '100%',
     resizeMode: 'cover',
   },
-  cardGradient: {
+  cardBannerFallback: {
+    width: '100%',
+    height: '100%',
+  },
+  bannerOverlay: {
     position: 'absolute',
-    top: 0,
+    bottom: 0,
     left: 0,
     right: 0,
-    height: '50%',
-    width: '100%',
+    height: 40,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 16,
-    marginTop: 120,
-  },
-  avatarSection: {
+  avatarContainer: {
     alignItems: 'center',
+    marginTop: -45,
+    zIndex: 10,
   },
   avatarWrapper: {
     position: 'relative',
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     backgroundColor: '#1E293B',
+    borderWidth: 3,
+    borderColor: '#1E293B',
   },
   avatarRing: {
     position: 'absolute',
@@ -390,65 +387,75 @@ const styles = StyleSheet.create({
     left: -3,
     right: -3,
     bottom: -3,
-    borderRadius: 43,
+    borderRadius: 48,
     borderWidth: 3,
     borderColor: '#4ADE80',
   },
   userInfo: {
-    flex: 1,
-    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 14,
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 6,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   displayName: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
+    textAlign: 'center',
+    maxWidth: '80%',
   },
   username: {
     color: '#94A3B8',
     fontSize: 14,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   verifiedBadge: {
     backgroundColor: '#3B82F6',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   bio: {
     color: '#94A3B8',
     fontSize: 13,
-    marginBottom: 10,
+    marginBottom: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+    paddingHorizontal: 8,
   },
   statsRow: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 10,
+    justifyContent: 'center',
+    gap: 20,
+    marginBottom: 12,
   },
   statItem: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
   statValue: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   statLabel: {
     color: '#94A3B8',
-    fontSize: 12,
+    fontSize: 11,
+    marginTop: 2,
   },
   gamesRow: {
     flexDirection: 'row',
-    gap: 6,
+    justifyContent: 'center',
+    gap: 8,
   },
   gameItem: {
     borderRadius: 6,
@@ -457,14 +464,9 @@ const styles = StyleSheet.create({
     borderColor: '#334155',
   },
   gameImage: {
-    width: 32,
-    height: 42,
+    width: 36,
+    height: 48,
     backgroundColor: '#1E293B',
-  },
-  noGamesText: {
-    color: '#64748B',
-    fontSize: 12,
-    fontStyle: 'italic',
   },
   cardDivider: {
     height: 1,

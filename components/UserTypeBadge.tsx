@@ -133,6 +133,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     gap: 4,
+    marginTop: 8,
   },
   badgeText: {
     fontWeight: '600' as const,

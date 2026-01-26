@@ -1420,6 +1420,7 @@ export default function TrendingScreen() {
   const [twitchToken, setTwitchToken] = useState<string | null>(null);
   const [searchedGames, setSearchedGames] = useState<Game[]>([]);
   const [topGames, setTopGames] = useState<Game[]>([]);
+  const [contentGames, setContentGames] = useState<Game[]>([]);
   const [isSearchingGames, setIsSearchingGames] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
@@ -1474,6 +1475,8 @@ export default function TrendingScreen() {
       fetchTopGames(twitchToken);
     }
   }, [twitchToken, fetchTopGames]);
+
+
   const [isTabFocused, setIsTabFocused] = useState(true);
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareContent, setShareContent] = useState<ClipWithUser | ScreenshotWithUser | null>(null);
@@ -1898,6 +1901,30 @@ export default function TrendingScreen() {
     console.log('[Trending Screenshots] Processing screenshots - API screenshots:', apiScreenshots.length);
     return apiScreenshots;
   }, [screenshotsData]);
+
+  useEffect(() => {
+    const gamesMap = new Map<number, Game>();
+    
+    allReels.forEach(reel => {
+      if (reel.game && reel.game.id && !gamesMap.has(reel.game.id)) {
+        gamesMap.set(reel.game.id, reel.game);
+      }
+    });
+    
+    allClips.forEach(clip => {
+      if (clip.game && clip.game.id && !gamesMap.has(clip.game.id)) {
+        gamesMap.set(clip.game.id, clip.game);
+      }
+    });
+    
+    allScreenshots.forEach(screenshot => {
+      if (screenshot.game && screenshot.game.id && !gamesMap.has(screenshot.game.id)) {
+        gamesMap.set(screenshot.game.id, screenshot.game);
+      }
+    });
+    
+    setContentGames(Array.from(gamesMap.values()));
+  }, [allReels, allClips, allScreenshots]);
 
   const screenshots = useMemo(() => {
     if (!selectedScreenshotGame) return allScreenshots;
@@ -3133,11 +3160,11 @@ export default function TrendingScreen() {
                   <ActivityIndicator size="large" color="#4ADE80" />
                 </View>
               ) : (
-                <View style={styles.gameFilterGrid}>
+                <View style={styles.gameFilterGridNew}>
                   <TouchableOpacity
                     style={[
-                      styles.gameFilterCard,
-                      selectedReelGame === null && styles.gameFilterCardSelected
+                      styles.gameFilterCardNew,
+                      selectedReelGame === null && styles.gameFilterCardNewSelected
                     ]}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -3148,21 +3175,29 @@ export default function TrendingScreen() {
                       setSearchedGames([]);
                     }}
                   >
-                    <View style={styles.gameFilterAllGamesPlaceholder}>
-                      <Gamepad2 size={40} color="#4ADE80" />
+                    <View style={styles.gameFilterAllGamesPlaceholderNew}>
+                      <Gamepad2 size={32} color="#4ADE80" />
                     </View>
                     {selectedReelGame === null && (
-                      <View style={styles.gameFilterSelectedOverlay}>
-                        <Check size={20} color="#4ADE80" />
+                      <View style={styles.gameFilterSelectedBadge}>
+                        <Check size={14} color="#0F1520" />
                       </View>
                     )}
-                    <View style={styles.gameFilterCardInfo}>
-                      <Text style={styles.gameFilterCardName} numberOfLines={2}>All Games</Text>
-                      <Text style={styles.gameFilterCardCount}>{allReels.length}</Text>
+                    <View style={styles.gameFilterCardOverlay}>
+                      <Text style={styles.gameFilterCardNameNew} numberOfLines={2}>All Games</Text>
                     </View>
                   </TouchableOpacity>
 
-                  {(reelGameSearch.length > 0 ? searchedGames : topGames).map((game) => {
+                  {(reelGameSearch.length > 0 ? searchedGames : (topGames.length > 0 ? topGames : contentGames))
+                    .slice()
+                    .sort((a, b) => {
+                      const aCount = allReels.filter(r => r.game?.id === a.id).length;
+                      const bCount = allReels.filter(r => r.game?.id === b.id).length;
+                      if (aCount > 0 && bCount === 0) return -1;
+                      if (aCount === 0 && bCount > 0) return 1;
+                      return 0;
+                    })
+                    .map((game) => {
                     const reelCount = allReels.filter(r => r.game?.id === game.id).length;
                     const isSelected = selectedReelGame === game.id.toString();
                     const hasContent = reelCount > 0;
@@ -3171,9 +3206,9 @@ export default function TrendingScreen() {
                       <TouchableOpacity
                         key={`reel-game-${game.id}`}
                         style={[
-                          styles.gameFilterCard,
-                          isSelected && styles.gameFilterCardSelected,
-                          !hasContent && styles.gameFilterCardDisabled
+                          styles.gameFilterCardNew,
+                          isSelected && styles.gameFilterCardNewSelected,
+                          !hasContent && styles.gameFilterCardNewFaded
                         ]}
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -3186,20 +3221,19 @@ export default function TrendingScreen() {
                       >
                         <Image
                           source={{ uri: game.imageUrl }}
-                          style={[
-                            styles.gameFilterCardImage,
-                            !hasContent && styles.gameFilterCardImageDisabled
-                          ]}
+                          style={styles.gameFilterCardImageNew}
                           resizeMode="cover"
                         />
                         {isSelected && (
-                          <View style={styles.gameFilterSelectedOverlay}>
-                            <Check size={20} color="#4ADE80" />
+                          <View style={styles.gameFilterSelectedBadge}>
+                            <Check size={14} color="#0F1520" />
                           </View>
                         )}
-                        <View style={styles.gameFilterCardInfo}>
-                          <Text style={[styles.gameFilterCardName, !hasContent && styles.gameFilterCardNameDisabled]} numberOfLines={2}>{game.name}</Text>
-                          <Text style={[styles.gameFilterCardCount, !hasContent && styles.gameFilterCardCountDisabled]}>{reelCount} {reelCount === 1 ? 'reel' : 'reels'}</Text>
+                        <View style={styles.gameFilterCardOverlay}>
+                          <Text style={styles.gameFilterCardNameNew} numberOfLines={2}>{game.name}</Text>
+                          {hasContent && (
+                            <Text style={styles.gameFilterCardCountNew}>{reelCount} {reelCount === 1 ? 'reel' : 'reels'}</Text>
+                          )}
                         </View>
                       </TouchableOpacity>
                     );
@@ -3279,11 +3313,11 @@ export default function TrendingScreen() {
                   <ActivityIndicator size="large" color="#4ADE80" />
                 </View>
               ) : (
-                <View style={styles.gameFilterGrid}>
+                <View style={styles.gameFilterGridNew}>
                   <TouchableOpacity
                     style={[
-                      styles.gameFilterCard,
-                      selectedClipGame === null && styles.gameFilterCardSelected
+                      styles.gameFilterCardNew,
+                      selectedClipGame === null && styles.gameFilterCardNewSelected
                     ]}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -3294,21 +3328,29 @@ export default function TrendingScreen() {
                       setSearchedGames([]);
                     }}
                   >
-                    <View style={styles.gameFilterAllGamesPlaceholder}>
-                      <Gamepad2 size={40} color="#4ADE80" />
+                    <View style={styles.gameFilterAllGamesPlaceholderNew}>
+                      <Gamepad2 size={32} color="#4ADE80" />
                     </View>
                     {selectedClipGame === null && (
-                      <View style={styles.gameFilterSelectedOverlay}>
-                        <Check size={20} color="#4ADE80" />
+                      <View style={styles.gameFilterSelectedBadge}>
+                        <Check size={14} color="#0F1520" />
                       </View>
                     )}
-                    <View style={styles.gameFilterCardInfo}>
-                      <Text style={styles.gameFilterCardName} numberOfLines={2}>All Games</Text>
-                      <Text style={styles.gameFilterCardCount}>{allClips.length}</Text>
+                    <View style={styles.gameFilterCardOverlay}>
+                      <Text style={styles.gameFilterCardNameNew} numberOfLines={2}>All Games</Text>
                     </View>
                   </TouchableOpacity>
 
-                  {(clipGameSearch.length > 0 ? searchedGames : topGames).map((game) => {
+                  {(clipGameSearch.length > 0 ? searchedGames : (topGames.length > 0 ? topGames : contentGames))
+                    .slice()
+                    .sort((a, b) => {
+                      const aCount = allClips.filter(c => c.game?.id === a.id).length;
+                      const bCount = allClips.filter(c => c.game?.id === b.id).length;
+                      if (aCount > 0 && bCount === 0) return -1;
+                      if (aCount === 0 && bCount > 0) return 1;
+                      return 0;
+                    })
+                    .map((game) => {
                     const clipCount = allClips.filter(c => c.game?.id === game.id).length;
                     const isSelected = selectedClipGame === game.id.toString();
                     const hasContent = clipCount > 0;
@@ -3317,9 +3359,9 @@ export default function TrendingScreen() {
                       <TouchableOpacity
                         key={`clip-game-${game.id}`}
                         style={[
-                          styles.gameFilterCard,
-                          isSelected && styles.gameFilterCardSelected,
-                          !hasContent && styles.gameFilterCardDisabled
+                          styles.gameFilterCardNew,
+                          isSelected && styles.gameFilterCardNewSelected,
+                          !hasContent && styles.gameFilterCardNewFaded
                         ]}
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -3332,20 +3374,19 @@ export default function TrendingScreen() {
                       >
                         <Image
                           source={{ uri: game.imageUrl }}
-                          style={[
-                            styles.gameFilterCardImage,
-                            !hasContent && styles.gameFilterCardImageDisabled
-                          ]}
+                          style={styles.gameFilterCardImageNew}
                           resizeMode="cover"
                         />
                         {isSelected && (
-                          <View style={styles.gameFilterSelectedOverlay}>
-                            <Check size={20} color="#4ADE80" />
+                          <View style={styles.gameFilterSelectedBadge}>
+                            <Check size={14} color="#0F1520" />
                           </View>
                         )}
-                        <View style={styles.gameFilterCardInfo}>
-                          <Text style={[styles.gameFilterCardName, !hasContent && styles.gameFilterCardNameDisabled]} numberOfLines={2}>{game.name}</Text>
-                          <Text style={[styles.gameFilterCardCount, !hasContent && styles.gameFilterCardCountDisabled]}>{clipCount} {clipCount === 1 ? 'clip' : 'clips'}</Text>
+                        <View style={styles.gameFilterCardOverlay}>
+                          <Text style={styles.gameFilterCardNameNew} numberOfLines={2}>{game.name}</Text>
+                          {hasContent && (
+                            <Text style={styles.gameFilterCardCountNew}>{clipCount} {clipCount === 1 ? 'clip' : 'clips'}</Text>
+                          )}
                         </View>
                       </TouchableOpacity>
                     );
@@ -3425,11 +3466,11 @@ export default function TrendingScreen() {
                   <ActivityIndicator size="large" color="#4ADE80" />
                 </View>
               ) : (
-                <View style={styles.gameFilterGrid}>
+                <View style={styles.gameFilterGridNew}>
                   <TouchableOpacity
                     style={[
-                      styles.gameFilterCard,
-                      selectedScreenshotGame === null && styles.gameFilterCardSelected
+                      styles.gameFilterCardNew,
+                      selectedScreenshotGame === null && styles.gameFilterCardNewSelected
                     ]}
                     onPress={() => {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -3440,21 +3481,29 @@ export default function TrendingScreen() {
                       setSearchedGames([]);
                     }}
                   >
-                    <View style={styles.gameFilterAllGamesPlaceholder}>
-                      <Gamepad2 size={40} color="#4ADE80" />
+                    <View style={styles.gameFilterAllGamesPlaceholderNew}>
+                      <Gamepad2 size={32} color="#4ADE80" />
                     </View>
                     {selectedScreenshotGame === null && (
-                      <View style={styles.gameFilterSelectedOverlay}>
-                        <Check size={20} color="#4ADE80" />
+                      <View style={styles.gameFilterSelectedBadge}>
+                        <Check size={14} color="#0F1520" />
                       </View>
                     )}
-                    <View style={styles.gameFilterCardInfo}>
-                      <Text style={styles.gameFilterCardName} numberOfLines={2}>All Games</Text>
-                      <Text style={styles.gameFilterCardCount}>{allScreenshots.length}</Text>
+                    <View style={styles.gameFilterCardOverlay}>
+                      <Text style={styles.gameFilterCardNameNew} numberOfLines={2}>All Games</Text>
                     </View>
                   </TouchableOpacity>
 
-                  {(screenshotGameSearch.length > 0 ? searchedGames : topGames).map((game) => {
+                  {(screenshotGameSearch.length > 0 ? searchedGames : (topGames.length > 0 ? topGames : contentGames))
+                    .slice()
+                    .sort((a, b) => {
+                      const aCount = allScreenshots.filter(s => s.game?.id === a.id).length;
+                      const bCount = allScreenshots.filter(s => s.game?.id === b.id).length;
+                      if (aCount > 0 && bCount === 0) return -1;
+                      if (aCount === 0 && bCount > 0) return 1;
+                      return 0;
+                    })
+                    .map((game) => {
                     const screenshotCount = allScreenshots.filter(s => s.game?.id === game.id).length;
                     const isSelected = selectedScreenshotGame === game.id.toString();
                     const hasContent = screenshotCount > 0;
@@ -3463,9 +3512,9 @@ export default function TrendingScreen() {
                       <TouchableOpacity
                         key={`screenshot-game-${game.id}`}
                         style={[
-                          styles.gameFilterCard,
-                          isSelected && styles.gameFilterCardSelected,
-                          !hasContent && styles.gameFilterCardDisabled
+                          styles.gameFilterCardNew,
+                          isSelected && styles.gameFilterCardNewSelected,
+                          !hasContent && styles.gameFilterCardNewFaded
                         ]}
                         onPress={() => {
                           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -3478,20 +3527,19 @@ export default function TrendingScreen() {
                       >
                         <Image
                           source={{ uri: game.imageUrl }}
-                          style={[
-                            styles.gameFilterCardImage,
-                            !hasContent && styles.gameFilterCardImageDisabled
-                          ]}
+                          style={styles.gameFilterCardImageNew}
                           resizeMode="cover"
                         />
                         {isSelected && (
-                          <View style={styles.gameFilterSelectedOverlay}>
-                            <Check size={20} color="#4ADE80" />
+                          <View style={styles.gameFilterSelectedBadge}>
+                            <Check size={14} color="#0F1520" />
                           </View>
                         )}
-                        <View style={styles.gameFilterCardInfo}>
-                          <Text style={[styles.gameFilterCardName, !hasContent && styles.gameFilterCardNameDisabled]} numberOfLines={2}>{game.name}</Text>
-                          <Text style={[styles.gameFilterCardCount, !hasContent && styles.gameFilterCardCountDisabled]}>{screenshotCount} {screenshotCount === 1 ? 'screenshot' : 'screenshots'}</Text>
+                        <View style={styles.gameFilterCardOverlay}>
+                          <Text style={styles.gameFilterCardNameNew} numberOfLines={2}>{game.name}</Text>
+                          {hasContent && (
+                            <Text style={styles.gameFilterCardCountNew}>{screenshotCount}</Text>
+                          )}
                         </View>
                       </TouchableOpacity>
                     );
@@ -5078,6 +5126,71 @@ const styles = StyleSheet.create({
   },
   gameFilterCardCountDisabled: {
     color: '#475569',
+  },
+  gameFilterGridNew: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  gameFilterCardNew: {
+    width: (SCREEN_WIDTH - 40 - 20) / 3,
+    aspectRatio: 0.75,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#1E293B',
+    position: 'relative',
+  },
+  gameFilterCardNewSelected: {
+    borderWidth: 2,
+    borderColor: '#4ADE80',
+  },
+  gameFilterCardNewFaded: {
+    opacity: 0.4,
+  },
+  gameFilterCardImageNew: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#2D3748',
+  },
+  gameFilterAllGamesPlaceholderNew: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1A2332',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gameFilterSelectedBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    zIndex: 10,
+    backgroundColor: '#4ADE80',
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gameFilterCardOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 8,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+  },
+  gameFilterCardNameNew: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '600' as const,
+    textAlign: 'center',
+  },
+  gameFilterCardCountNew: {
+    color: '#4ADE80',
+    fontSize: 10,
+    fontWeight: '500' as const,
+    textAlign: 'center',
+    marginTop: 2,
   },
   slideshowContainer: {
     marginBottom: 16,
