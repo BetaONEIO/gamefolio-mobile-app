@@ -1314,13 +1314,15 @@ export const api = {
       }),
 
     getUserClips: (username: string, token?: string) =>
-      apiFetch<Clip[]>(`/api/users/@${username}/clips`, {
+      apiFetch<Clip[]>(`/api/users/${username}/clips`, {
         method: 'GET',
         token,
       }),
     
+    // Note: getFavorites should use tRPC (users.getFavorites) instead of REST
+    // This REST endpoint may not exist on production
     getFavorites: (username: string, token?: string) =>
-      apiFetch<Game[]>(`/api/users/@${username}/games/favorites`, {
+      apiFetch<Game[]>(`/api/users/${username}/games/favorites`, {
         method: 'GET',
         token,
       }),
