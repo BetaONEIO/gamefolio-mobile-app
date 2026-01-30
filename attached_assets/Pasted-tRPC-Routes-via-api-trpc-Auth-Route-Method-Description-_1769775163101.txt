@@ -1,0 +1,230 @@
+tRPC Routes (via /api/trpc/*)
+Auth
+| Route | Method | Description |
+|-------|--------|-------------|
+| auth.register | mutation | Register new user |
+| auth.login | mutation | Login with credentials |
+| auth.tokenLogin | mutation | Token-based login |
+| auth.tokenRegister | mutation | Token-based registration |
+| auth.tokenRefresh | mutation | Refresh access token |
+| auth.getUser | query | Get current user |
+| auth.logout | mutation | Logout user |
+User (Current User)
+| Route | Method | Description |
+|-------|--------|-------------|
+| user.updateProfile | mutation | Update user profile |
+| user.updateOnlineStatus | mutation | Update online status |
+| user.addXP | mutation | Add XP to user |
+| user.claimDailyLootbox | mutation | Claim daily lootbox |
+| user.getAvatarBorders | query | Get available avatar borders |
+| user.updateAvatarBorder | mutation | Update avatar border |
+| user.updateBirthday | mutation | Update birthday |
+Users (Other Users)
+| Route | Method | Description |
+|-------|--------|-------------|
+| users.getFavorites | query | Get user's favorites |
+| users.getProfile | query | Get user profile by ID/username |
+| users.getTrending | query | Get trending users |
+| users.search | query | Search users |
+| users.block | mutation | Block a user |
+| users.unblock | mutation | Unblock a user |
+| users.getBlocked | query | Get blocked users list |
+| users.getAvatarBorder | query | Get user's avatar border |
+| users.getSampleProfile | query | Get sample profile |
+| users.getSampleFavorites | query | Get sample favorites |
+Clips
+| Route | Method | Description |
+|-------|--------|-------------|
+| clips.getUserClips | query | Get clips by user |
+| clips.getClip | query | Get single clip |
+| clips.getComments | query | Get clip comments |
+| clips.getFeed | query | Get clips feed |
+| clips.getTrending | query | Get trending clips |
+| clips.getLatest | query | Get latest clips |
+| clips.getLatestUploads | query | Get latest uploads |
+| clips.like | mutation | Like a clip |
+| clips.fire | mutation | Fire (react to) a clip |
+| clips.addComment | mutation | Add comment to clip |
+| clips.delete | mutation | Delete a clip |
+| clips.getByShareCode | query | Get clip by share code |
+| clips.getSampleClips | query | Get sample clips |
+Screenshots
+| Route | Method | Description |
+|-------|--------|-------------|
+| screenshots.getUserScreenshots | query | Get screenshots by user |
+| screenshots.getTrending | query | Get trending screenshots |
+| screenshots.getComments | query | Get screenshot comments |
+| screenshots.like | mutation | Like a screenshot |
+| screenshots.fire | mutation | Fire a screenshot |
+| screenshots.addComment | mutation | Add comment |
+| screenshots.delete | mutation | Delete screenshot |
+| screenshots.getByShareCode | query | Get by share code |
+| screenshots.getSampleScreenshots | query | Get sample screenshots |
+Reels
+| Route | Method | Description |
+|-------|--------|-------------|
+| reels.getLatest | query | Get latest reels |
+| reels.getTrending | query | Get trending reels |
+Messages
+| Route | Method | Description |
+|-------|--------|-------------|
+| messages.getConversations | query | Get all conversations |
+| messages.getMessages | query | Get messages with a user |
+| messages.send | mutation | Send a message |
+| messages.startConversation | mutation | Start new conversation |
+| messages.deleteMessage | mutation | Delete a message |
+| messages.deleteConversation | mutation | Delete conversation |
+| messages.markRead | mutation | Mark messages as read |
+Search
+| Route | Method | Description |
+|-------|--------|-------------|
+| search.search | query | General search |
+Twitch
+| Route | Method | Description |
+|-------|--------|-------------|
+| twitch.searchGames | query | Search Twitch games |
+| twitch.getTopGames | query | Get top Twitch games |
+Tags
+| Route | Method | Description |
+|-------|--------|-------------|
+| tags.getTrending | query | Get trending tags |
+Rewards
+| Route | Method | Description |
+|-------|--------|-------------|
+| rewards.getAll | query | Get all rewards |
+| rewards.getUserRewards | query | Get user's rewards |
+| rewards.add | mutation | Add reward |
+| rewards.redeemCode | mutation | Redeem reward code |
+Asset Rewards
+| Route | Method | Description |
+|-------|--------|-------------|
+| assetRewards.getActive | query | Get active asset rewards |
+| assetRewards.claim | mutation | Claim asset reward |
+Reports
+| Route | Method | Description |
+|-------|--------|-------------|
+| reports.submit | mutation | Submit a report |
+Notifications
+| Route | Method | Description |
+|-------|--------|-------------|
+| notifications.registerToken | mutation | Register push token |
+| notifications.sendBroadcast | mutation | Send broadcast notification |
+
+---
+REST API Endpoints (Hono)
+Authentication
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/auth/token/login | POST | No | Login with username/password |
+| /api/auth/token/register | POST | No | Register new account |
+| /api/auth/token/refresh | POST | No | Refresh access token |
+| /api/auth/token/logout | POST | Yes | Logout |
+| /api/user | GET | Yes | Get current user profile |
+| /api/user | PATCH | Yes | Update current user profile |
+OAuth
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/oauth/discord | GET | No | Initiate Discord OAuth |
+| /api/oauth/discord/callback | GET | No | Discord OAuth callback (web) |
+| /api/oauth/discord/callback | POST | No | Discord OAuth callback (mobile) |
+| /api/oauth/google | GET | No | Initiate Google OAuth |
+| /api/oauth/google/callback | GET | No | Google OAuth callback (web) |
+| /api/oauth/google/callback | POST | No | Google OAuth callback (mobile) |
+Clips
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/clips | GET | No | Get clips feed (paginated) |
+| /api/clips/latest | GET | No | Get latest clips |
+| /api/clips/trending | GET | No | Get trending clips |
+| /api/clips/hashtag/:hashtag | GET | No | Get clips by hashtag |
+| /api/clips/:id | GET | No | Get single clip |
+| /api/clips/:id/likes | GET | No | Get clip likes count |
+| /api/clips/:id/reactions | GET | No | Get clip reactions |
+| /api/clips/:id/reactions | POST | Yes | Add reaction (fire) to clip |
+| /api/clips/:id/comments | GET | No | Get clip comments |
+| /api/clips/:id/comments | POST | Yes | Add comment to clip |
+Reels
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/reels/latest | GET | No | Get latest reels |
+| /api/reels/trending | GET | No | Get trending reels |
+Reactions
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/reactions/:id | DELETE | Yes | Delete a reaction |
+Messages
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/messages/conversations | GET | Yes | Get all conversations |
+| /api/messages/start | POST | Yes | Start new conversation |
+| /api/messages | POST | Yes | Send message |
+| /api/messages/:userId | GET | Yes | Get messages with user |
+| /api/messages/:messageId | DELETE | Yes | Delete message |
+| /api/messages/conversations/:userId | DELETE | Yes | Delete conversation |
+| /api/messages/:userId/read | POST | Yes | Mark messages as read |
+Users
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/users/search | GET | No | Search users |
+| /api/users/featured | GET | No | Get featured users |
+| /api/users/trending | GET | No | Get trending users |
+| /api/users/blocked | GET | Yes | Get blocked users |
+| /api/users/:username | GET | No | Get user by username |
+| /api/users/:username/clips | GET | No | Get user's clips |
+| /api/users/:userId/block | POST | Yes | Block user |
+| /api/users/:userId/unblock | POST | Yes | Unblock user |
+Games
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/games | GET | No | Get all games |
+| /api/games/trending | GET | No | Get trending games |
+| /api/games/:id | GET | No | Get game by ID |
+| /api/games/:id/clips | GET | No | Get clips by game |
+| /api/games/:gameId/screenshots | GET | No | Get screenshots by game |
+Search
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/search | GET | No | General search (hashtags, users, games) |
+| /api/search/clips | GET | No | Search clips |
+| /api/search/reels | GET | No | Search reels |
+| /api/search/screenshots | GET | No | Search screenshots |
+Trending
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/trending/clips/likes | GET | No | Trending clips by likes |
+| /api/trending/clips/comments | GET | No | Trending clips by comments |
+| /api/trending/reels/likes | GET | No | Trending reels by likes |
+Tags
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/tags/trending | GET | No | Get trending tags |
+Misc
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| /api/recent-uploads | GET | No | Get recent uploads (for ticker) |
+
+---
+Database Tables Used (Supabase)
+users - User profiles
+clips - Video clips and reels
+screenshots - Screenshots
+games - Games (from Twitch)
+likes - Clip/screenshot likes
+comments - Comments on clips/screenshots
+reactions - Fire reactions on clips
+messages - Direct messages
+blocked_users - Block relationships
+rewards - Reward definitions
+user_rewards - User claimed rewards
+asset_rewards - Asset rewards
+---
+External APIs Used
+1. Twitch API - Game search, top games
+2. Discord OAuth - Social login
+3. Google OAuth - Social login
+
+---
+Authentication
+JWT-based with access tokens (7 days) and refresh tokens (30 days)
+Tokens signed with JWT_SECRET and JWT_REFRESH_SECRET
+Bearer token in Authorization header
