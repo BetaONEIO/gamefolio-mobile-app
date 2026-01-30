@@ -18,6 +18,8 @@ interface FetchOptions extends RequestInit {
   skipRetry?: boolean;
   useCookieAuth?: boolean;
   retryOn401?: boolean;
+  acceptHtml?: boolean;
+  htmlFallback?: unknown;
 }
 
 export const setAuthCallbacks = (
@@ -31,7 +33,7 @@ async function apiFetch<T>(
   endpoint: string,
   options: FetchOptions = {}
 ): Promise<T> {
-  const { token, skipRetry, useCookieAuth, ...fetchOptions } = options;
+  const { token, skipRetry, useCookieAuth, acceptHtml, htmlFallback, ...fetchOptions } = options;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -103,21 +105,36 @@ async function apiFetch<T>(
     
     if (contentType && contentType.includes('text/html')) {
       const htmlText = await response.text();
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.error('⚠️  API RETURNED HTML INSTEAD OF JSON');
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.error('[API] URL:', url);
-      console.error('[API] Status:', response.status);
-      console.error('[API] Content-Type:', contentType);
-      console.error('[API]');
-      console.error('[API] This usually means:');
-      console.error('[API] 1. EXPO_PUBLIC_BACKEND_URL is not set correctly');
-      console.error('[API] 2. The backend server is not running');
-      console.error('[API] 3. The endpoint does not exist on the backend');
-      console.error('[API]');
-      console.error('[API] Current backend URL:', baseUrl);
-      console.error('[API] HTML preview:', htmlText.substring(0, 200));
-      console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log('[API] ℹ️ Received HTML response from:', url);
+      console.log('[API] Status:', response.status);
+      
+      // If acceptHtml is enabled, return the fallback or try to parse HTML
+      if (acceptHtml) {
+        console.log('[API] ✅ HTML response accepted, using fallback or parsing');
+        
+        // If a fallback is provided, use it
+        if (htmlFallback !== undefined) {
+          return htmlFallback as T;
+        }
+        
+        // Try to extract JSON from HTML if embedded (some backends embed JSON in script tags)
+        const jsonMatch = htmlText.match(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i);
+        if (jsonMatch && jsonMatch[1]) {
+          try {
+            const embeddedJson = JSON.parse(jsonMatch[1].trim());
+            console.log('[API] ✅ Extracted embedded JSON from HTML');
+            return embeddedJson as T;
+          } catch {
+            console.log('[API] ⚠️ Could not parse embedded JSON');
+          }
+        }
+        
+        // Return the HTML as a string wrapped in an object
+        return { html: htmlText, isHtmlResponse: true } as unknown as T;
+      }
+      
+      console.warn('[API] ⚠️ API returned HTML instead of JSON');
+      console.warn('[API] HTML preview:', htmlText.substring(0, 200));
       throw new APIError(
         'Server returned HTML instead of JSON. Please verify EXPO_PUBLIC_BACKEND_URL is set correctly and points to your backend server.',
         response.status,
@@ -737,6 +754,37 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(data),
       }),
+
+    // Mobile OAuth flow - Discord
+    discordMobileInit: async () => {
+      console.log('[API] 🔵 Initializing Discord mobile OAuth...');
+      return apiFetch<{ authUrl: string }>('/api/auth/mobile/discord/init', {
+        method: 'GET',
+      });
+    },
+
+    // Mobile OAuth flow - Exchange code for tokens
+    mobileExchange: async (code: string) => {
+      console.log('[API] 🔵 Exchanging OAuth code for tokens...');
+      return apiFetch<AuthResponse & { needsOnboarding?: boolean }>('/api/auth/mobile/exchange', {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+      });
+    },
+
+    // Mobile Google login (after Firebase auth)
+    googleMobileLogin: (data: {
+      email: string;
+      displayName: string;
+      photoURL: string | null;
+      uid: string;
+    }) => {
+      console.log('[API] 🔵 Google mobile login...');
+      return apiFetch<AuthResponse & { needsOnboarding?: boolean }>('/api/auth/mobile/google', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    },
 
     forgotPassword: async (email: string): Promise<{ success: boolean; message: string }> => {
       console.log('[API] 🔵 Requesting password reset for:', email);
@@ -1625,6 +1673,54 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(reward),
         token,
+      });
+    },
+  },
+
+  subscription: {
+    sync: async (token: string, data: { isPro: boolean; subscriptionType: 'yearly' | 'monthly' | null }) => {
+      console.log('[Subscription API] 🔵 Syncing subscription status to backend...');
+      return apiFetch<{ success: boolean; user: User }>('/api/subscription/sync', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        token,
+      });
+    },
+
+    getStatus: async (token: string) => {
+      console.log('[Subscription API] 🔵 Fetching subscription status...');
+      return apiFetch<{
+        isPro: boolean;
+        proSubscriptionType: 'yearly' | 'monthly' | null;
+        proSubscriptionStartDate: string | null;
+        proSubscriptionEndDate: string | null;
+      }>('/api/subscription/status', {
+        method: 'GET',
+        token,
+        acceptHtml: true,
+        htmlFallback: {
+          isPro: false,
+          proSubscriptionType: null,
+          proSubscriptionStartDate: null,
+          proSubscriptionEndDate: null,
+        },
+      });
+    },
+  },
+
+  wallet: {
+    getStatus: async (token: string) => {
+      console.log('[Wallet API] 🔵 Fetching wallet status...');
+      return apiFetch<{
+        address: string;
+        network: string;
+        balance?: string;
+        ready: boolean;
+      }>('/api/me/wallet', {
+        method: 'GET',
+        token,
+        acceptHtml: true,
+        htmlFallback: null,
       });
     },
   },

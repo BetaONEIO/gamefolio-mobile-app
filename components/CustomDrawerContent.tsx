@@ -1,5 +1,6 @@
 import { useAuth } from '@/context/AuthContext';
 import { useUser } from '@/context/UserContext';
+import { useRevenueCat } from '@/context/RevenueCatContext';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter, usePathname } from 'expo-router';
 import { 
@@ -17,13 +18,15 @@ import {
   Settings,
   Plus,
   Crown,
-  ArrowRight
+  ArrowRight,
+  Check
 } from 'lucide-react-native';
 import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, Animated, LayoutChangeEvent, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AddGamesModal from '@/components/AddGamesModal';
 import PaywallModal from '@/components/PaywallModal';
+import ProBadge from '@/components/ProBadge';
 
 
 
@@ -61,6 +64,7 @@ type NavItemProps = {
 export default function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { user, logout: authLogout } = useAuth();
   const { favoriteGames, logout: userLogout } = useUser();
+  const { isPro, logoutFromRevenueCat } = useRevenueCat();
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -119,7 +123,10 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             />
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user?.displayName || user?.username || 'User'}</Text>
+            <View style={styles.userNameRow}>
+              <Text style={styles.userName}>{user?.displayName || user?.username || 'User'}</Text>
+              {isPro && <ProBadge size="small" style={styles.proBadge} />}
+            </View>
             <Text style={styles.userHandle}>@{user?.username || 'user'}</Text>
           </View>
         </TouchableOpacity>
@@ -140,16 +147,30 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
           </View>
         </View>
 
-        {/* Pro Button */}
-        <TouchableOpacity 
-          style={styles.proButton}
-          onPress={() => setShowPaywallModal(true)}
-          activeOpacity={0.8}
-        >
-          <Crown size={18} color="#A3E635" strokeWidth={2.5} />
-          <Text style={styles.proButtonText}>Upgrade to Pro</Text>
-          <ArrowRight size={16} color="#A3E635" strokeWidth={2.5} />
-        </TouchableOpacity>
+        {/* Pro Button or Pro Status */}
+        {isPro ? (
+          <TouchableOpacity 
+            style={styles.proStatusContainer}
+            onPress={() => navigate('/manage-subscription')}
+            activeOpacity={0.8}
+          >
+            <View style={styles.proStatusBadge}>
+              <Crown size={16} color="#10B981" strokeWidth={2.5} />
+              <Text style={styles.proStatusText}>Pro Member</Text>
+              <Check size={14} color="#10B981" strokeWidth={2.5} />
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={styles.proButton}
+            onPress={() => setShowPaywallModal(true)}
+            activeOpacity={0.8}
+          >
+            <Crown size={18} color="#A3E635" strokeWidth={2.5} />
+            <Text style={styles.proButtonText}>Upgrade to Pro</Text>
+            <ArrowRight size={16} color="#A3E635" strokeWidth={2.5} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.divider} />
@@ -203,8 +224,8 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
           <NavItem 
             icon={Wallet}
             label="Wallet"
-            onPress={() => navigate('/(drawer)/wallet')}
-            isActive={pathname.includes('wallet')}
+            onPress={() => navigate('/(drawer)/crypto/dashboard')}
+            isActive={pathname.includes('crypto')}
           />
           <NavItem 
             icon={Layers}
@@ -300,6 +321,7 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         <TouchableOpacity style={styles.logoutButton} onPress={async () => {
           props.navigation.closeDrawer();
+          await logoutFromRevenueCat();
           await authLogout();
           await userLogout();
           router.replace('/');
@@ -549,5 +571,34 @@ const styles = StyleSheet.create({
   addGamesText: {
     color: '#64748B',
     fontSize: 14,
+  },
+  userNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  proBadge: {
+    marginLeft: 6,
+  },
+  proStatusContainer: {
+    marginHorizontal: 20,
+    marginBottom: 16,
+  },
+  proStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  proStatusText: {
+    color: '#10B981',
+    fontSize: 15,
+    fontWeight: '600' as const,
+    flex: 1,
   },
 });

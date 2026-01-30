@@ -45,6 +45,7 @@ function AppContent() {
         <Stack.Screen name="reset-password" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="account-settings" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="profile-appearance" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="manage-subscription" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="user/[id]" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="clip/[id]" options={{ presentation: 'transparentModal', animation: 'fade', headerShown: false }} />
         <Stack.Screen name="+not-found" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
@@ -78,8 +79,8 @@ export default function RootLayout() {
   return (
     <trpc.Provider client={trpcClientInstance} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        <RevenueCatProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <RevenueCatProvider>
             <NotificationsProvider>
               <UserProvider>
                 <LootboxCollectionProvider>
@@ -87,8 +88,8 @@ export default function RootLayout() {
                 </LootboxCollectionProvider>
               </UserProvider>
             </NotificationsProvider>
-          </AuthProvider>
-        </RevenueCatProvider>
+          </RevenueCatProvider>
+        </AuthProvider>
       </QueryClientProvider>
     </trpc.Provider>
   );

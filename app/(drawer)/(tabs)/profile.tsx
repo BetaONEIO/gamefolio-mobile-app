@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Pressable } from 'react-native';
 import ScrollView from '@/components/ThemedScrollView';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -380,12 +380,12 @@ export default function ProfileScreen() {
         {profileData.banner ? (
           <>
             <Image source={{ uri: profileData.banner }} style={styles.banner} resizeMode="cover" />
-            <View style={[styles.bannerLine, { backgroundColor: user?.backgroundColor || '#0F1520' }]} />
+            <View style={styles.bannerLine} />
           </>
         ) : (
           <>
             <View style={[styles.banner, { backgroundColor: '#00B8A9' }]} />
-            <View style={[styles.bannerLine, { backgroundColor: user?.backgroundColor || '#0F1520' }]} />
+            <View style={styles.bannerLine} />
           </>
         )}
         
@@ -463,33 +463,67 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.infoSection}>
-          <View style={styles.statsRowCompact}>
-            <View style={styles.statColumn}>
-              <Text style={styles.statNumber}>{profileData.stats.uploads}</Text>
-              <Text style={styles.statLabel}>UPLOADS</Text>
+          <View style={styles.infoBorderContainer}>
+            {/* Top border with Collection button */}
+            <View style={styles.topBorderRow}>
+              <LinearGradient
+                colors={['#E879F9', '#A855F7', 'transparent']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.topBorderFadeLeft}
+              />
+              <TouchableOpacity 
+                style={styles.collectionButton}
+                onPress={() => router.push('/(drawer)/collections')}
+                activeOpacity={0.8}
+              >
+                <FolderHeart size={14} color="#FFF" />
+                <Text style={styles.collectionButtonText}>Collection</Text>
+              </TouchableOpacity>
+              <LinearGradient
+                colors={['transparent', '#A855F7', '#E879F9']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.topBorderFadeRight}
+              />
             </View>
-            <View style={styles.statColumn}>
-              <Text style={styles.statNumber}>{profileData.stats.followers}</Text>
-              <Text style={styles.statLabel}>FOLLOWERS</Text>
-            </View>
-            <View style={styles.statColumn}>
-              <Text style={styles.statNumber}>{profileData.stats.following}</Text>
-              <Text style={styles.statLabel}>FOLLOWING</Text>
-            </View>
-          </View>
-
-          <Text style={styles.memberSince}>MEMBER SINCE {profileData.joined.toUpperCase()}</Text>
-          <Text style={styles.bio}>{profileData.bio}</Text>
-
-          <View style={styles.platformsRow}>
-            {profileData.platforms.map((platform, index) => (
-              <View key={index} style={[styles.platformTag, { backgroundColor: platform.color }]}>
-                {platform.type === 'xbox' && <Gamepad2 size={12} color="#FFF" />}
-                {platform.type === 'ps' && <Gamepad2 size={12} color="#FFF" />}
-                {platform.type === 'pc' && <Monitor size={12} color="#FFF" />}
-                <Text style={styles.platformText}>{platform.name}</Text>
+            {/* Left border - fades from top to bottom with pink/purple gradient */}
+            <LinearGradient
+              colors={['#E879F9', '#A855F7', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={styles.leftBorderFade}
+            />
+            <View style={styles.infoBorderInner}>
+              <View style={styles.statsRowCompact}>
+                <View style={styles.statColumn}>
+                  <Text style={styles.statNumber}>{profileData.stats.uploads}</Text>
+                  <Text style={styles.statLabel}>UPLOADS</Text>
+                </View>
+                <View style={styles.statColumn}>
+                  <Text style={styles.statNumber}>{profileData.stats.followers}</Text>
+                  <Text style={styles.statLabel}>FOLLOWERS</Text>
+                </View>
+                <View style={styles.statColumn}>
+                  <Text style={styles.statNumber}>{profileData.stats.following}</Text>
+                  <Text style={styles.statLabel}>FOLLOWING</Text>
+                </View>
               </View>
-            ))}
+
+              <Text style={styles.memberSince}>MEMBER SINCE {profileData.joined.toUpperCase()}</Text>
+              <Text style={styles.bio}>{profileData.bio}</Text>
+
+              <View style={styles.platformsRow}>
+                {profileData.platforms.map((platform, index) => (
+                  <View key={index} style={[styles.platformTag, { backgroundColor: platform.color }]}>
+                    {platform.type === 'xbox' && <Gamepad2 size={12} color="#FFF" />}
+                    {platform.type === 'ps' && <Gamepad2 size={12} color="#FFF" />}
+                    {platform.type === 'pc' && <Monitor size={12} color="#FFF" />}
+                    <Text style={styles.platformText}>{platform.name}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
           </View>
         </View>
 
@@ -784,7 +818,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 2,
+    height: 6,
+    backgroundColor: '#1E1033',
   },
   content: {
     flex: 1,
@@ -878,6 +913,60 @@ const styles = StyleSheet.create({
     marginTop: 8,
     alignItems: 'flex-start',
   },
+  infoBorderContainer: {
+    width: '100%',
+    borderRadius: 16,
+    backgroundColor: 'transparent',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  topBorderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 28,
+    zIndex: 10,
+  },
+  topBorderFadeLeft: {
+    height: 2,
+    flex: 1,
+    marginTop: 13,
+  },
+  topBorderFadeRight: {
+    height: 2,
+    flex: 0.3,
+    marginTop: 13,
+  },
+  collectionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+    borderWidth: 2,
+    borderColor: '#E879F9',
+  },
+  collectionButtonText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  leftBorderFade: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 2,
+  },
+  infoBorderInner: {
+    padding: 16,
+    paddingTop: 36,
+  },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -917,6 +1006,9 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 32,
     marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(148, 163, 184, 0.2)',
   },
   statColumn: {
     flexDirection: 'column',
@@ -1030,7 +1122,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 24,
+    marginBottom: 0,
     marginTop: 8,
   },
   platformTag: {

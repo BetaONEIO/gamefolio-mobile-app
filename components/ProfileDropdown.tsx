@@ -1,8 +1,10 @@
 import React from 'react';
 import { useAuth } from '@/context/AuthContext';
+import { useRevenueCat } from '@/context/RevenueCatContext';
 import { Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
-import { Flame, User, Settings, Shield, LogOut, TrendingUp } from 'lucide-react-native';
+import { Flame, User, Settings, Shield, LogOut, TrendingUp, Crown } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import ProBadge from '@/components/ProBadge';
 
 
 interface ProfileDropdownProps {
@@ -15,6 +17,7 @@ interface ProfileDropdownProps {
 export default function ProfileDropdown({ visible, onClose, topOffset, onOpenLevelTracker }: ProfileDropdownProps) {
   const router = useRouter();
   const { user, logout } = useAuth();
+  const { isPro } = useRevenueCat();
   
 
   return (
@@ -33,9 +36,10 @@ export default function ProfileDropdown({ visible, onClose, topOffset, onOpenLev
                 <View style={styles.userInfo}>
                   <View style={styles.nameRow}>
                     <Text style={styles.userName}>{user?.displayName || user?.username || 'User'}</Text>
+                    {isPro && <ProBadge size="small" />}
                     <View style={styles.streakBadge}>
                       <Flame size={11} color="#FF5722" fill="#FF5722" />
-                      <Text style={styles.streakNumber}>2</Text>
+                      <Text style={styles.streakNumber}>{user?.currentStreak || 0}</Text>
                     </View>
                   </View>
                   <Text style={styles.userHandle}>@{user?.username || 'user'}</Text>
@@ -95,6 +99,20 @@ export default function ProfileDropdown({ visible, onClose, topOffset, onOpenLev
               </TouchableOpacity>
 
               <View style={styles.divider} />
+
+              {/* Go Pro / Pro Status */}
+              {!isPro && (
+                <TouchableOpacity 
+                  style={styles.proMenuItem}
+                  onPress={() => {
+                    onClose();
+                    router.push('/(drawer)/(tabs)/profile');
+                  }}
+                >
+                  <Crown size={20} color="#10B981" />
+                  <Text style={styles.proMenuText}>Upgrade to Pro</Text>
+                </TouchableOpacity>
+              )}
 
               {/* Admin Panel */}
               <TouchableOpacity style={styles.menuItem} onPress={onClose}>
@@ -212,5 +230,21 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     color: '#EF4444',
+  },
+  proMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    marginHorizontal: 8,
+    borderRadius: 8,
+    marginVertical: 4,
+  },
+  proMenuText: {
+    color: '#10B981',
+    fontSize: 15,
+    fontWeight: '600' as const,
   },
 });

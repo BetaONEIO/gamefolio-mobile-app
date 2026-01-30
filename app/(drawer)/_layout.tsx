@@ -39,7 +39,7 @@ export default function DrawerLayout() {
         }}
       />
       <Drawer.Screen
-        name="wallet"
+        name="crypto"
         options={{
           headerShown: false,
         }}

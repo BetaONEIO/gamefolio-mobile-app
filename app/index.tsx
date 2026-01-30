@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Image } from 'expo-image';
 import { 
   StyleSheet, 
@@ -23,37 +23,25 @@ import CustomAlert from '@/components/CustomAlert';
 import BirthdayModal from '@/components/BirthdayModal';
 import * as WebBrowser from 'expo-web-browser';
 import * as AuthSession from 'expo-auth-session';
+import * as Linking from 'expo-linking';
 import { Env } from '@/constants/Env';
 
 WebBrowser.maybeCompleteAuthSession();
 
-// OAuth is only supported on native platforms
 const IS_NATIVE = Platform.OS !== 'web';
 
-// Discord OAuth configuration
-const DISCORD_CLIENT_ID = IS_NATIVE ? (Env.DISCORD_MOBILE_CLIENT_ID || Env.DISCORD_CLIENT_ID || 'placeholder') : 'placeholder';
-const DISCORD_REDIRECT_URI = IS_NATIVE ? AuthSession.makeRedirectUri({
-  scheme: 'rork-app',
-  path: 'auth/discord/callback',
-}) : 'https://placeholder.com';
-
-// Google OAuth configuration
 const GOOGLE_CLIENT_ID = IS_NATIVE ? (Platform.select({
   ios: Env.GOOGLE_IOS_CLIENT_ID,
-  android: Env.GOOGLE_CLIENT_ID,
+  android: Env.GOOGLE_ANDROID_CLIENT_ID,
   default: Env.GOOGLE_CLIENT_ID,
 }) || 'placeholder') : 'placeholder';
 
 const GOOGLE_REDIRECT_URI = IS_NATIVE ? (Platform.OS === 'ios' 
   ? `com.googleusercontent.apps.203672150024-jiibs6emo1qkqmusjsfr8qnus8ut0raa:/oauth2redirect/google`
-  : AuthSession.makeRedirectUri({
-      scheme: 'rork-app',
-      path: 'auth/google/callback',
-    })) : 'https://placeholder.com';
+  : 'rork-app://auth/google/callback') : 'https://placeholder.com';
 
 if (IS_NATIVE) {
-  console.log('[OAuth] Discord Client ID:', DISCORD_CLIENT_ID);
-  console.log('[OAuth] Discord Redirect URI:', DISCORD_REDIRECT_URI);
+  console.log('[OAuth] Google Client ID:', GOOGLE_CLIENT_ID);
   console.log('[OAuth] Google Redirect URI:', GOOGLE_REDIRECT_URI);
 }
 
@@ -74,6 +62,8 @@ const GoogleIcon = () => (
     contentFit="contain"
   />
 );
+
+const AUTH_CALLBACK_URL = 'rork-app://auth/callback';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -108,13 +98,7 @@ export default function LoginScreen() {
   }>({ checking: false, available: null, message: '' });
   
   const debouncedUsername = useDebounce(username, 300);
-
-  // Discord OAuth discovery
-  const discordDiscovery = {
-    authorizationEndpoint: 'https://discord.com/api/oauth2/authorize',
-    tokenEndpoint: 'https://discord.com/api/oauth2/token',
-    revocationEndpoint: 'https://discord.com/api/oauth2/token/revoke',
-  };
+  const isProcessingOAuthRef = useRef(false);
 
   // Google OAuth discovery
   const googleDiscovery = {
@@ -122,17 +106,6 @@ export default function LoginScreen() {
     tokenEndpoint: 'https://oauth2.googleapis.com/token',
     revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
   };
-
-  // Discord auth request
-  const [discordRequest, discordResponse, promptDiscordAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: DISCORD_CLIENT_ID,
-      scopes: ['identify', 'email'],
-      redirectUri: DISCORD_REDIRECT_URI,
-      responseType: AuthSession.ResponseType.Token,
-    },
-    discordDiscovery
-  );
 
   // Google auth request
   const [googleRequest, googleResponse, promptGoogleAsync] = AuthSession.useAuthRequest(
@@ -145,66 +118,77 @@ export default function LoginScreen() {
     googleDiscovery
   );
 
-  // Handle Discord OAuth response
+  // Handle Discord OAuth callback from deep link
+  const handleDiscordCallback = useCallback(async (code: string) => {
+    if (isProcessingOAuthRef.current) {
+      console.log('[Discord OAuth] Already processing, skipping...');
+      return;
+    }
+    
+    isProcessingOAuthRef.current = true;
+    setIsDiscordLoading(true);
+    
+    try {
+      console.log('[Discord OAuth] Exchanging code for tokens...');
+      const data = await api.auth.mobileExchange(code);
+      
+      console.log('[Discord OAuth] Got user:', data.user.username);
+      await loginUser(data.user, data.accessToken, data.refreshToken, data.expiresIn || 7 * 24 * 60 * 60);
+      
+      const needsOnboarding = data.needsOnboarding || 
+        !data.user.userType || 
+        !data.user.ageRange || 
+        (data.user.username && data.user.username.startsWith('temp_'));
+      
+      if (needsOnboarding) {
+        console.log('[Discord OAuth] User needs onboarding, redirecting...');
+        router.replace('/onboarding');
+      } else {
+        console.log('[Discord OAuth] Login complete, redirecting to home...');
+        router.replace('/(drawer)/(tabs)/home');
+      }
+    } catch (error: any) {
+      console.error('[Discord OAuth] Error:', error);
+      showAlert('Discord Login Failed', error.message || 'Failed to authenticate with Discord');
+    } finally {
+      setIsDiscordLoading(false);
+      isProcessingOAuthRef.current = false;
+    }
+  }, [loginUser, router]);
+
+  // Listen for deep link callbacks
   useEffect(() => {
-    const handleDiscordAuth = async () => {
-      if (discordResponse?.type === 'success' && discordResponse.params.access_token) {
-        setIsDiscordLoading(true);
-        try {
-          console.log('[Discord OAuth] Got access token, fetching user info...');
-          
-          // Fetch Discord user info
-          const userResponse = await fetch('https://discord.com/api/users/@me', {
-            headers: {
-              Authorization: `Bearer ${discordResponse.params.access_token}`,
-            },
-          });
-
-          if (!userResponse.ok) {
-            throw new Error('Failed to fetch Discord user info');
-          }
-
-          const discordUser = await userResponse.json();
-          console.log('[Discord OAuth] Got user info:', discordUser.username);
-
-          // Send to backend
-          const data = await api.auth.discordLogin({
-            id: discordUser.id,
-            username: discordUser.username,
-            discriminator: discordUser.discriminator || '0',
-            email: discordUser.email || null,
-            avatar: discordUser.avatar || null,
-          });
-          
-          await loginUser(data.user, data.accessToken, data.refreshToken, data.expiresIn || 7 * 24 * 60 * 60);
-          
-          const needsOnboarding = data.needsOnboarding || 
-            !data.user.userType || 
-            !data.user.ageRange || 
-            (data.user.username && data.user.username.startsWith('temp_'));
-          
-          if (needsOnboarding) {
-            console.log('[Discord OAuth] User needs onboarding, redirecting...');
-            router.replace('/onboarding');
-          } else {
-            console.log('[Discord OAuth] Login complete, redirecting to home...');
-            router.replace('/(drawer)/(tabs)/home');
-          }
-        } catch (error: any) {
-          console.error('[Discord OAuth] Error:', error);
-          showAlert('Discord Login Failed', error.message || 'Failed to authenticate with Discord');
-        } finally {
-          setIsDiscordLoading(false);
+    const handleDeepLink = (event: { url: string }) => {
+      console.log('[Deep Link] Received URL:', event.url);
+      
+      try {
+        const url = new URL(event.url);
+        const code = url.searchParams.get('code');
+        
+        if (code && event.url.includes('auth/callback')) {
+          console.log('[Deep Link] Got OAuth code, processing...');
+          handleDiscordCallback(code);
         }
-      } else if (discordResponse?.type === 'error') {
-        console.error('[Discord OAuth] Error response:', discordResponse.error);
-        showAlert('Discord Login Failed', discordResponse.error?.message || 'Authentication was cancelled or failed');
+      } catch (e) {
+        console.error('[Deep Link] Error parsing URL:', e);
       }
     };
 
-    handleDiscordAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [discordResponse]);
+    // Check if app was opened via deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        console.log('[Deep Link] Initial URL:', url);
+        handleDeepLink({ url });
+      }
+    });
+
+    // Listen for deep links while app is open
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+    
+    return () => {
+      subscription.remove();
+    };
+  }, [handleDiscordCallback]);
 
   // Handle Google OAuth response
   useEffect(() => {
@@ -214,7 +198,6 @@ export default function LoginScreen() {
         try {
           console.log('[Google OAuth] Got access token, fetching user info...');
           
-          // Fetch Google user info
           const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
             headers: {
               Authorization: `Bearer ${googleResponse.params.access_token}`,
@@ -228,8 +211,8 @@ export default function LoginScreen() {
           const googleUser = await userResponse.json();
           console.log('[Google OAuth] Got user info:', googleUser.email);
 
-          // Send to backend
-          const data = await api.auth.googleLogin({
+          // Send to mobile backend endpoint
+          const data = await api.auth.googleMobileLogin({
             email: googleUser.email,
             displayName: googleUser.name || googleUser.email.split('@')[0],
             photoURL: googleUser.picture || null,
@@ -263,8 +246,53 @@ export default function LoginScreen() {
     };
 
     handleGoogleAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleResponse]);
+  }, [googleResponse, loginUser, router]);
+
+  // Discord OAuth - Backend initiated flow
+  const handleDiscordLogin = async () => {
+    if (!IS_NATIVE) {
+      showAlert('Mobile Only', 'Discord login is only available on the mobile app');
+      return;
+    }
+    
+    setIsDiscordLoading(true);
+    try {
+      console.log('[Discord OAuth] Getting auth URL from backend...');
+      const { authUrl } = await api.auth.discordMobileInit();
+      
+      console.log('[Discord OAuth] Opening browser with auth URL...');
+      console.log('[Discord OAuth] Auth URL:', authUrl);
+      
+      // Open browser for OAuth - it will redirect back to rork-app://auth/callback
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        AUTH_CALLBACK_URL,
+        { showInRecents: true }
+      );
+      
+      console.log('[Discord OAuth] Browser result:', result.type);
+      
+      if (result.type === 'success' && result.url) {
+        // Extract code from callback URL
+        const url = new URL(result.url);
+        const code = url.searchParams.get('code');
+        
+        if (code) {
+          await handleDiscordCallback(code);
+        } else {
+          console.error('[Discord OAuth] No code in callback URL');
+          showAlert('Discord Login Failed', 'No authorization code received');
+        }
+      } else if (result.type === 'cancel') {
+        console.log('[Discord OAuth] User cancelled');
+      }
+    } catch (error: any) {
+      console.error('[Discord OAuth] Error:', error);
+      showAlert('Discord Login Failed', error.message || 'Failed to start Discord login');
+    } finally {
+      setIsDiscordLoading(false);
+    }
+  };
 
   const showAlert = (title: string, message: string, type: 'error' | 'success' = 'error') => {
     setAlertConfig({ visible: true, title, message, type });
@@ -858,17 +886,10 @@ export default function LoginScreen() {
 
             {/* Discord Login Button */}
             <TouchableOpacity 
-              style={[styles.socialButton, styles.discordButton, (IS_NATIVE && (!discordRequest || isDiscordLoading)) && styles.mainButtonDisabled]}
-              onPress={() => {
-                if (!IS_NATIVE) {
-                  showAlert('Mobile Only', 'Discord login is only available on the mobile app');
-                  return;
-                }
-                console.log('[Discord OAuth] Starting auth flow...');
-                promptDiscordAsync();
-              }}
+              style={[styles.socialButton, styles.discordButton, isDiscordLoading && styles.mainButtonDisabled]}
+              onPress={handleDiscordLogin}
               activeOpacity={0.8}
-              disabled={IS_NATIVE && (!discordRequest || isDiscordLoading)}
+              disabled={isDiscordLoading}
             >
               {isDiscordLoading ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />

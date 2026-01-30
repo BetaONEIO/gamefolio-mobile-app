@@ -171,7 +171,7 @@ export default function LatestReelsPage() {
       .map(game => ({
         id: game.id,
         name: game.name,
-        imageUrl: game.icon || '',
+        imageUrl: game.boxArt?.replace('{width}', '285').replace('{height}', '380') || '',
       }));
   }, [topGamesData, uniqueGames]);
 
@@ -181,7 +181,7 @@ export default function LatestReelsPage() {
       return searchGamesQuery.data.games.map(game => ({
         id: game.id,
         name: game.name,
-        imageUrl: game.boxArt?.replace('{width}', '285').replace('{height}', '380') || '',
+        imageUrl: game.icon || '',
       }));
     }
     // Otherwise show all games

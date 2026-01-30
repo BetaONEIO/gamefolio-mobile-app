@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, ActivityIndicator, Dimensions, Modal, StatusBar, ViewToken, Keyboard, ImageBackground } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, Eye, Play, Settings, Camera, X } from 'lucide-react-native';
+import { Eye, Play, Settings, Camera, X } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -421,18 +421,6 @@ export default function GameDetailScreen() {
       <AppHeader />
 
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.back();
-          }}
-          activeOpacity={0.7}
-        >
-          <ChevronLeft size={20} color="#FFF" />
-          <Text style={styles.backButtonText}>Back to Explore</Text>
-        </TouchableOpacity>
-
         <View style={styles.gameHeaderRow}>
           {game?.boxArt && (
             <Image source={{ uri: game.boxArt }} style={styles.gameIcon} />
@@ -635,18 +623,6 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    marginBottom: 16,
-  },
-  backButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600' as const,
   },
   gameHeaderRow: {
     flexDirection: 'row',

@@ -11,15 +11,14 @@ import {
   Platform,
   RefreshControl,
   ScrollView,
-  Modal,
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Search, X, Play, Filter, User } from 'lucide-react-native';
+import { Search, X, Play, User } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api, TwitchGame } from '@/lib/api';
-import { trpc } from '@/lib/trpc';
+
 import { useAuth } from '@/context/AuthContext';
 import AppHeader from '@/components/AppHeader';
 import LevelDetailsModal from '@/components/LevelDetailsModal';
@@ -40,150 +39,6 @@ interface SearchUser {
 
 const { width } = Dimensions.get('window');
 const HORIZONTAL_PADDING = 16;
-
-interface GameFilterModalProps {
-  visible: boolean;
-  onClose: () => void;
-  onSelectGame: (game: TwitchGame | null) => void;
-  selectedGame: TwitchGame | null;
-}
-
-function GameFilterModal({ visible, onClose, onSelectGame, selectedGame }: GameFilterModalProps) {
-  const [search, setSearch] = useState('');
-
-  const topGamesQuery = trpc.twitch.getTopGames.useQuery(
-    { limit: 100 },
-    { enabled: visible && !search.trim() }
-  );
-
-  const searchGamesQuery = trpc.twitch.searchGames.useQuery(
-    { query: search.trim(), limit: 100 },
-    { enabled: visible && search.trim().length > 0 }
-  );
-
-  const games = React.useMemo(() => {
-    if (search.trim()) {
-      return (searchGamesQuery.data?.games || []).map(g => ({
-        id: g.id,
-        name: g.name,
-        boxArt: (g as any).icon?.replace?.('{width}', '{width}').replace?.('{height}', '{height}') || '',
-      }));
-    }
-    return (topGamesQuery.data?.games || []).map(g => ({
-      id: g.id,
-      name: g.name,
-      boxArt: g.boxArt,
-    }));
-  }, [search, topGamesQuery.data, searchGamesQuery.data]);
-
-  const loading = search.trim() ? searchGamesQuery.isLoading : topGamesQuery.isLoading;
-
-  const getImageUrl = (url: string) => {
-    if (!url) return '';
-    return url.replace('{width}', '300').replace('{height}', '400');
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={modalStyles.modalContainer}>
-        <View style={modalStyles.content}>
-          <View style={modalStyles.header}>
-            <View style={modalStyles.headerTitleRow}>
-              <View style={modalStyles.iconContainer}>
-                <Filter size={24} color="#4ADE80" />
-              </View>
-              <Text style={modalStyles.headerTitle}>Filter Games by Game</Text>
-            </View>
-            <TouchableOpacity onPress={onClose} style={modalStyles.closeButton}>
-              <X size={24} color="#94A3B8" />
-            </TouchableOpacity>
-          </View>
-
-          <View style={modalStyles.searchContainer}>
-            <Search size={20} color="#94A3B8" />
-            <TextInput
-              style={modalStyles.searchInput}
-              placeholder="Search for games..."
-              placeholderTextColor="#64748B"
-              value={search}
-              onChangeText={setSearch}
-            />
-          </View>
-
-          <View style={modalStyles.sectionHeader}>
-            <Text style={modalStyles.sectionTitle}>
-              {search.length > 0 ? 'Search Results' : 'All Games'}
-            </Text>
-            {selectedGame && (
-              <TouchableOpacity 
-                style={modalStyles.clearAllButton}
-                onPress={() => {
-                  onSelectGame(null);
-                  onClose();
-                }}
-              >
-                <Text style={modalStyles.clearAllText}>Clear Filter</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <ScrollView 
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={modalStyles.gamesGrid}
-          >
-            {loading && games.length === 0 ? (
-               <View style={modalStyles.loadingContainer}>
-                 <ActivityIndicator size="large" color="#4ADE80" />
-               </View>
-            ) : (
-              games.map((game) => {
-                const isSelected = selectedGame?.id === game.id;
-                return (
-                  <TouchableOpacity
-                    key={game.id}
-                    style={[
-                      modalStyles.gameCard,
-                      isSelected && modalStyles.gameCardSelected
-                    ]}
-                    onPress={() => {
-                      onSelectGame(isSelected ? null : game);
-                      onClose();
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Image
-                      source={{ uri: getImageUrl(game.boxArt) }}
-                      style={modalStyles.gameImage}
-                      resizeMode="cover"
-                    />
-                    
-                    {isSelected && (
-                       <View style={modalStyles.selectedOverlay}>
-                          <View style={modalStyles.checkmark} />
-                       </View>
-                    )}
-
-                    <View style={modalStyles.gameInfo}>
-                      <Text style={modalStyles.gameName} numberOfLines={2}>
-                        {game.name}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-            )}
-            <View style={{ height: 40 }} />
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
-}
 
 const FALLBACK_GAMES: TwitchGame[] = [
   { id: '21779', name: 'League of Legends', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/21779-{width}x{height}.jpg' },
@@ -308,8 +163,7 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLevelModalVisible, setIsLevelModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [isGameFilterModalVisible, setIsGameFilterModalVisible] = useState(false);
-  const [selectedGame, setSelectedGame] = useState<TwitchGame | null>(null);
+
 
   const searchInputRef = useRef<TextInput>(null);
   const { getAccessToken, user } = useAuth();
@@ -503,34 +357,10 @@ export default function ExploreScreen() {
       <AppHeader onOpenLevelTracker={() => setIsLevelModalVisible(true)} />
 
       <View style={styles.contentHeader}>
-        <View style={styles.titleRow}>
-          <View style={styles.titleContainer}>
-            <Text style={styles.title}>Explore Games</Text>
-            <Text style={styles.subtitle}>Browse games and discover amazing content from the community</Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.filterButton}
-            onPress={() => setIsGameFilterModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Filter size={20} color="#4ADE80" />
-          </TouchableOpacity>
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>Explore Games</Text>
+          <Text style={styles.subtitle}>Browse games and discover amazing content from the community</Text>
         </View>
-        
-        {selectedGame && (
-          <View style={styles.selectedGameContainer}>
-            <Text style={styles.selectedGameLabel}>Filtered by:</Text>
-            <View style={styles.selectedGameTag}>
-              <Text style={styles.selectedGameText}>{selectedGame.name}</Text>
-              <TouchableOpacity 
-                onPress={() => setSelectedGame(null)}
-                style={styles.clearFilterButton}
-              >
-                <X size={14} color="#FFF" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
         
         <View style={styles.searchContainer}>
           <View style={styles.searchInputWrapper}>
@@ -708,15 +538,6 @@ export default function ExploreScreen() {
         userId={user?.id?.toString()}
       />
 
-      <GameFilterModal
-        visible={isGameFilterModalVisible}
-        onClose={() => setIsGameFilterModalVisible(false)}
-        onSelectGame={(game) => {
-          setSelectedGame(game);
-          setIsGameFilterModalVisible(false);
-        }}
-        selectedGame={selectedGame}
-      />
     </View>
   );
 }
@@ -1020,25 +841,8 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
     color: '#64748B',
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
   titleContainer: {
-    flex: 1,
-  },
-  filterButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#1E293B',
-    borderWidth: 1,
-    borderColor: '#4ADE80',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12,
+    marginBottom: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -1085,175 +889,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#64748B',
   },
-  selectedGameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
-  },
-  selectedGameLabel: {
-    fontSize: 13,
-    color: '#94A3B8',
-    fontWeight: '600' as const,
-  },
-  selectedGameTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#4ADE80',
-    paddingVertical: 6,
-    paddingLeft: 12,
-    paddingRight: 8,
-    borderRadius: 8,
-    gap: 6,
-  },
-  selectedGameText: {
-    fontSize: 13,
-    color: '#0F1520',
-    fontWeight: '700' as const,
-  },
-  clearFilterButton: {
-    padding: 2,
-  },
 });
 
-const modalStyles = StyleSheet.create({
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    justifyContent: 'flex-end',
-  },
-  content: {
-    height: '90%',
-    backgroundColor: '#0F1520',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 20,
-    paddingTop: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  iconContainer: {},
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold' as const,
-    color: '#FFF',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  searchContainer: {
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    height: 50,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#4ADE80',
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 12,
-    color: '#FFFFFF',
-    fontSize: 16,
-    ...Platform.select({
-      web: {
-        outlineStyle: 'none' as const,
-      },
-    }),
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: '#FFF',
-  },
-  clearAllButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#EF4444',
-  },
-  clearAllText: {
-    color: '#EF4444',
-    fontWeight: '600' as const,
-    fontSize: 13,
-  },
-  gamesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    paddingBottom: 40,
-  },
-  loadingContainer: {
-    width: '100%',
-    height: 200,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gameCard: {
-    width: (width - 40 - 24) / 3,
-    aspectRatio: 0.75,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#1E293B',
-    position: 'relative',
-    marginBottom: 8,
-  },
-  gameCardSelected: {
-    borderWidth: 2,
-    borderColor: '#4ADE80',
-  },
-  gameImage: {
-    width: '100%',
-    height: '100%',
-  },
-  selectedOverlay: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    zIndex: 10,
-    backgroundColor: '#4ADE80',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkmark: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#0F1520',
-  },
-  gameInfo: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 8,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-  },
-  gameName: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: '600' as const,
-    textAlign: 'center',
-  },
-});
+

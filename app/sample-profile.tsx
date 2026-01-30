@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator, Animated, Modal, Pressable } from 'react-native';
 import ScrollView from '@/components/ThemedScrollView';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, MessageCircle, Play, Camera, ChevronDown, Zap, LayoutGrid } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, MessageCircle, Play, Camera, ChevronDown, Zap, LayoutGrid, FolderHeart } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -232,98 +232,146 @@ export default function SampleProfileScreen() {
           </View>
 
           <View style={styles.infoSection}>
-            <Text style={styles.memberSince}>Member since {displayProfile.joined}</Text>
-            <Text style={styles.bio}>{displayProfile.bio}</Text>
-
-            <View>
-              <View style={styles.statsRow}>
-                <Text style={styles.statText}><Text style={styles.statBold}>{displayProfile.stats.clips}</Text> Clips</Text>
-                <Text style={styles.statText}><Text style={styles.statBold}>{displayProfile.stats.followers}</Text> Followers</Text>
-                <Text style={styles.statText}><Text style={styles.statBold}>{displayProfile.stats.following}</Text> Following</Text>
+            <View style={styles.borderFrameContainer}>
+              {/* Collection button row */}
+              <View style={styles.collectionRow}>
                 <TouchableOpacity 
+                  style={[styles.collectionButton, { borderColor: accentColor }]}
                   onPress={() => {
-                    setIsEngagementExpanded(!isEngagementExpanded);
-                    Animated.timing(rotateAnim, {
-                      toValue: isEngagementExpanded ? 0 : 1,
-                      duration: 200,
-                      useNativeDriver: true,
-                    }).start();
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push('/collections');
                   }}
-                  style={styles.dropdownButton}
+                  activeOpacity={0.8}
                 >
-                  <Animated.View
-                    style={{
-                      transform: [
-                        {
-                          rotate: rotateAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ['0deg', '180deg'],
-                          }),
-                        },
-                      ],
-                    }}
-                  >
-                    <ChevronDown size={16} color="#94A3B8" />
-                  </Animated.View>
+                  <FolderHeart size={14} color={accentColor} />
+                  <Text style={[styles.collectionButtonText, { color: accentColor }]}>Collections</Text>
                 </TouchableOpacity>
+                <LinearGradient
+                  colors={[accentColor, 'transparent']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.topBorderRight}
+                />
               </View>
+              
+              {/* Border frame with curved corner */}
+              <View style={styles.borderFrame}>
+                {/* Curved corner piece */}
+                <View style={[styles.curvedCorner, { borderColor: accentColor }]} />
+                
+                {/* Top border extending from corner */}
+                <LinearGradient
+                  colors={[accentColor, 'transparent']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.topBorderFromCorner}
+                />
+                
+                {/* Left border extending from corner */}
+                <LinearGradient
+                  colors={[accentColor, 'transparent']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={styles.leftBorderFromCorner}
+                />
+              </View>
+              
+              {/* Content inside frame */}
+              <View style={styles.frameContent}>
+                <Text style={styles.memberSince}>Member since {displayProfile.joined}</Text>
+                <Text style={styles.bio}>{displayProfile.bio}</Text>
 
-              {isEngagementExpanded && (
-                <View style={styles.engagementContainer}>
-                  <LinearGradient
-                    colors={['rgba(34, 197, 94, 0.15)', 'rgba(34, 197, 94, 0.05)']}
-                    style={styles.engagementGradient}
-                  >
-                    <View style={styles.engagementRow}>
-                      <TouchableOpacity 
-                        style={styles.engagementItem}
-                        onPress={() => setTooltipVisible('likes')}
-                        activeOpacity={0.7}
+                <View>
+                  <View style={styles.statsRow}>
+                    <Text style={styles.statText}><Text style={styles.statBold}>{displayProfile.stats.clips}</Text> Clips</Text>
+                    <Text style={styles.statText}><Text style={styles.statBold}>{displayProfile.stats.followers}</Text> Followers</Text>
+                    <Text style={styles.statText}><Text style={styles.statBold}>{displayProfile.stats.following}</Text> Following</Text>
+                    <TouchableOpacity 
+                      onPress={() => {
+                        setIsEngagementExpanded(!isEngagementExpanded);
+                        Animated.timing(rotateAnim, {
+                          toValue: isEngagementExpanded ? 0 : 1,
+                          duration: 200,
+                          useNativeDriver: true,
+                        }).start();
+                      }}
+                      style={styles.dropdownButton}
+                    >
+                      <Animated.View
+                        style={{
+                          transform: [
+                            {
+                              rotate: rotateAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: ['0deg', '180deg'],
+                              }),
+                            },
+                          ],
+                        }}
                       >
-                        <View style={styles.engagementIconWrapper}>
-                          <Heart size={16} color="#F472B6" fill="#F472B6" />
-                        </View>
-                        <Text style={styles.engagementValue}>{displayProfile.engagement.likes}</Text>
-                        {tooltipVisible === 'likes' && (
-                          <View style={styles.tooltip}>
-                            <Text style={styles.tooltipText}>Likes</Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.engagementItem}
-                        onPress={() => setTooltipVisible('flame')}
-                        activeOpacity={0.7}
+                        <ChevronDown size={16} color="#94A3B8" />
+                      </Animated.View>
+                    </TouchableOpacity>
+                  </View>
+
+                  {isEngagementExpanded && (
+                    <View style={styles.engagementContainer}>
+                      <LinearGradient
+                        colors={['rgba(34, 197, 94, 0.15)', 'rgba(34, 197, 94, 0.05)']}
+                        style={styles.engagementGradient}
                       >
-                        <View style={styles.engagementIconWrapper}>
-                          <Flame size={16} color="#FB923C" fill="#FB923C" />
+                        <View style={styles.engagementRow}>
+                          <TouchableOpacity 
+                            style={styles.engagementItem}
+                            onPress={() => setTooltipVisible('likes')}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.engagementIconWrapper}>
+                              <Heart size={16} color="#F472B6" fill="#F472B6" />
+                            </View>
+                            <Text style={styles.engagementValue}>{displayProfile.engagement.likes}</Text>
+                            {tooltipVisible === 'likes' && (
+                              <View style={styles.tooltip}>
+                                <Text style={styles.tooltipText}>Likes</Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={styles.engagementItem}
+                            onPress={() => setTooltipVisible('flame')}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.engagementIconWrapper}>
+                              <Flame size={16} color="#FB923C" fill="#FB923C" />
+                            </View>
+                            <Text style={styles.engagementValue}>{displayProfile.engagement.fires}</Text>
+                            {tooltipVisible === 'flame' && (
+                              <View style={styles.tooltip}>
+                                <Text style={styles.tooltipText}>Flames</Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                          <TouchableOpacity 
+                            style={styles.engagementItem}
+                            onPress={() => setTooltipVisible('streak')}
+                            activeOpacity={0.7}
+                          >
+                            <View style={styles.engagementIconWrapper}>
+                              <Zap size={16} color="#FBBF24" fill="#FBBF24" />
+                            </View>
+                            <Text style={styles.engagementValue}>{displayProfile.engagement.streak} days</Text>
+                            {tooltipVisible === 'streak' && (
+                              <View style={styles.tooltip}>
+                                <Text style={styles.tooltipText}>Streak</Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
                         </View>
-                        <Text style={styles.engagementValue}>{displayProfile.engagement.fires}</Text>
-                        {tooltipVisible === 'flame' && (
-                          <View style={styles.tooltip}>
-                            <Text style={styles.tooltipText}>Flames</Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={styles.engagementItem}
-                        onPress={() => setTooltipVisible('streak')}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.engagementIconWrapper}>
-                          <Zap size={16} color="#FBBF24" fill="#FBBF24" />
-                        </View>
-                        <Text style={styles.engagementValue}>{displayProfile.engagement.streak} days</Text>
-                        {tooltipVisible === 'streak' && (
-                          <View style={styles.tooltip}>
-                            <Text style={styles.tooltipText}>Streak</Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
+                      </LinearGradient>
                     </View>
-                  </LinearGradient>
+                  )}
                 </View>
-              )}
+              </View>
             </View>
 
             <View style={styles.platformsRow}>
@@ -671,6 +719,70 @@ const styles = StyleSheet.create({
   },
   infoSection: {
     marginTop: 0,
+  },
+  borderFrameContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  collectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  topBorderRight: {
+    flex: 1,
+    height: 2,
+    marginLeft: 8,
+  },
+  collectionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 2,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  collectionButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  borderFrame: {
+    position: 'absolute',
+    left: 0,
+    top: 40,
+    width: 20,
+    height: 130,
+  },
+  curvedCorner: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    width: 16,
+    height: 16,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderTopLeftRadius: 16,
+    backgroundColor: 'transparent',
+  },
+  topBorderFromCorner: {
+    position: 'absolute',
+    left: 14,
+    top: 0,
+    width: 60,
+    height: 2,
+  },
+  leftBorderFromCorner: {
+    position: 'absolute',
+    left: 0,
+    top: 14,
+    width: 2,
+    height: 110,
+  },
+  frameContent: {
+    paddingLeft: 16,
+    paddingTop: 4,
   },
   name: {
     fontSize: 24,
