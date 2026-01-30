@@ -13,11 +13,10 @@ import ProfileBannerModal from '@/components/ProfileBannerModal';
 import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import LevelBadge from '@/components/LevelBadge';
 import StyledUsername from '@/components/StyledUsername';
-import { api, Clip, Screenshot } from '@/lib/api';
+import { Clip, Screenshot } from '@/lib/api';
 import ReportModal from '@/components/ReportModal';
 import ShareProfileModal from '@/components/ShareProfileModal';
 import { trpc } from '@/lib/trpc';
-import { useQuery } from '@tanstack/react-query';
 import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 import * as Haptics from 'expo-haptics';
 
@@ -34,44 +33,43 @@ export default function PublicProfileScreen() {
 
   const isMe = currentUser && (currentUser.username === username);
 
-  // Fetch Profile via REST API
-  const { data: profileData, isLoading: isProfileLoading } = useQuery({
-    queryKey: ['userProfile', username],
-    queryFn: () => api.users.getProfile(username || ''),
-    enabled: !!username,
-  });
+  // Fetch Profile via tRPC
+  const { data: profileData, isLoading: isProfileLoading } = trpc.users.getProfile.useQuery(
+    { username: username || '' },
+    { enabled: !!username }
+  );
 
-  const user = profileData?.user;
+  const user = profileData;
   const userId = user?.id;
 
   const bgColor = user?.backgroundColor || '#0F1520';
   const accentColor = user?.accentColor || '#4ADE80';
 
-  // Fetch clips (and reels) via REST API
-  const { data: allClips = [] } = useQuery({
-    queryKey: ['userClips', username],
-    queryFn: () => api.users.getUserClips(username || ''),
-    enabled: !!username,
-  });
+  // Fetch clips (and reels) via tRPC
+  const { data: clipsData } = trpc.clips.getUserClips.useQuery(
+    { userId: userId || 0 },
+    { enabled: !!userId }
+  );
+  const allClips = clipsData || [];
 
-  const clips = allClips.filter((c: Clip) => c.videoType !== 'reel' && c.userId === userId);
-  const reels = allClips.filter((c: Clip) => c.videoType === 'reel' && c.userId === userId);
+  const clips = allClips.filter((c: any) => c.videoType !== 'reel' && c.userId === userId);
+  const reels = allClips.filter((c: any) => c.videoType === 'reel' && c.userId === userId);
 
-  // Fetch screenshots via REST API
-  const { data: allScreenshots = [] } = useQuery({
-    queryKey: ['userScreenshots', userId],
-    queryFn: () => api.screenshots.getUserScreenshots(userId || 0),
-    enabled: !!userId,
-  });
+  // Fetch screenshots via tRPC
+  const { data: screenshotsData } = trpc.screenshots.getUserScreenshots.useQuery(
+    { userId: userId || 0 },
+    { enabled: !!userId }
+  );
+  const allScreenshots = screenshotsData || [];
 
-  const screenshots = allScreenshots.filter((s: Screenshot) => s.userId === userId);
+  const screenshots = allScreenshots.filter((s: any) => s.userId === userId);
 
-  // Fetch favorite games via REST API
-  const { data: favoriteGames = [] } = useQuery({
-    queryKey: ['userFavorites', username],
-    queryFn: () => api.users.getFavorites(username || ''),
-    enabled: !!username,
-  });
+  // Fetch favorite games via tRPC
+  const { data: favoritesData } = trpc.users.getFavorites.useQuery(
+    { username: username || '' },
+    { enabled: !!username }
+  );
+  const favoriteGames = favoritesData || [];
 
   const [isFollowing, setIsFollowing] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);

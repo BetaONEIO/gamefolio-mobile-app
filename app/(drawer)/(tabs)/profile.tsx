@@ -21,8 +21,9 @@ import StyledUsername from '@/components/StyledUsername';
 import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { api, Clip, Screenshot, Game } from '@/lib/api';
+import { trpc } from '@/lib/trpc';
 
 
 const { width } = Dimensions.get('window');
@@ -143,39 +144,24 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, getAccessToken } = useAuth();
   
-  // Fetch profile stats (clips count, followers, following) using REST API
-  const { data: profileStats } = useQuery({
-    queryKey: ['profileStats', user?.username],
-    queryFn: async () => {
-      if (!user?.username) return null;
-      const token = await getAccessToken();
-      console.log('[Profile] Fetching profile stats for:', user.username);
-      const result = await api.users.getProfile(user.username, token || undefined);
-      console.log('[Profile] Profile stats:', result.user._count);
-      return result.user;
-    },
-    enabled: !!user?.username,
-  });
+  // Fetch profile stats (clips count, followers, following) using tRPC
+  const { data: profileStats } = trpc.users.getProfile.useQuery(
+    { username: user?.username || '' },
+    { enabled: !!user?.username }
+  );
 
-  // Fetch user clips (and reels) using REST API - uses username
-  const { data: allClips = [], isLoading: clipsLoading, error: clipsError } = useQuery<Clip[]>({
-    queryKey: ['userClips', user?.username],
-    queryFn: async () => {
-      if (!user?.username) return [];
-      const token = await getAccessToken();
-      console.log('[Profile] Fetching clips for user:', user.username);
-      const clips = await api.users.getUserClips(user.username, token || undefined);
-      console.log('[Profile] Fetched clips:', clips.length);
-      return clips;
-    },
-    enabled: !!user?.username,
-  });
+  // Fetch user clips (and reels) using tRPC
+  const { data: clipsData, isLoading: clipsLoading, error: clipsError } = trpc.clips.getUserClips.useQuery(
+    { userId: user?.id || 0 },
+    { enabled: !!user?.id }
+  );
+  const allClips = (clipsData || []) as Clip[];
 
   console.log('[Profile] All clips query:', {
     length: allClips.length,
     loading: clipsLoading,
     error: clipsError?.message || null,
-    username: user?.username
+    userId: user?.id
   });
   
   if (clipsError) {
@@ -185,19 +171,12 @@ export default function ProfileScreen() {
   const reels = allClips.filter(c => c.videoType === 'reel');
   console.log('[Profile] Filtered - Clips:', clips.length, 'Reels:', reels.length);
 
-  // Fetch screenshots using REST API
-  const { data: allScreenshots = [], isLoading: screenshotsLoading, error: screenshotsError } = useQuery<Screenshot[]>({
-    queryKey: ['userScreenshots', user?.id],
-    queryFn: async () => {
-      if (!user?.id) return [];
-      const token = await getAccessToken();
-      console.log('[Profile] Fetching screenshots for user:', user.id);
-      const screenshots = await api.screenshots.getUserScreenshots(user.id, token || undefined);
-      console.log('[Profile] Fetched screenshots:', screenshots.length);
-      return screenshots;
-    },
-    enabled: !!user?.id,
-  });
+  // Fetch screenshots using tRPC
+  const { data: screenshotsData, isLoading: screenshotsLoading, error: screenshotsError } = trpc.screenshots.getUserScreenshots.useQuery(
+    { userId: user?.id || 0 },
+    { enabled: !!user?.id }
+  );
+  const allScreenshots = (screenshotsData || []) as Screenshot[];
 
   console.log('[Profile] All screenshots query:', {
     length: allScreenshots.length,
@@ -212,19 +191,12 @@ export default function ProfileScreen() {
   const screenshots = allScreenshots;
   console.log('[Profile] Filtered screenshots:', screenshots.length);
 
-  // Fetch favorite games using REST API
-  const { data: favoriteGames = [], isLoading: favoritesLoading, error: favoritesError } = useQuery<Game[]>({
-    queryKey: ['userFavorites', user?.username],
-    queryFn: async () => {
-      if (!user?.username) return [];
-      const token = await getAccessToken();
-      console.log('[Profile] Fetching favorite games for user:', user.username);
-      const games = await api.users.getFavorites(user.username, token || undefined);
-      console.log('[Profile] Fetched favorite games:', games);
-      return games;
-    },
-    enabled: !!user?.username,
-  });
+  // Fetch favorite games using tRPC
+  const { data: favoritesData, isLoading: favoritesLoading, error: favoritesError } = trpc.users.getFavorites.useQuery(
+    { username: user?.username || '' },
+    { enabled: !!user?.username }
+  );
+  const favoriteGames = (favoritesData || []) as Game[];
 
   console.log('[Profile] Favorite games:', {
     count: favoriteGames.length,
