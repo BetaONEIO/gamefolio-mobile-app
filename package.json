@@ -1,11 +1,10 @@
 {
-  "name": "expo-app",
-  "main": "expo-router/entry",
+  "name": "my-app",
+  "main": "client/index.js",
   "version": "1.0.0",
   "scripts": {
-    "start": "bunx rork start -p v3nuv0azmvy5z12hck4s4 --tunnel",
-    "start-web": "bunx rork start -p v3nuv0azmvy5z12hck4s4 --web --tunnel",
-    "start-web-dev": "DEBUG=expo* bunx rork start -p v3nuv0azmvy5z12hck4s4 --web --tunnel",
+    "expo:dev": "EXPO_PACKAGER_PROXY_URL=https://$REPLIT_DEV_DOMAIN REACT_NATIVE_PACKAGER_HOSTNAME=$REPLIT_DEV_DOMAIN EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN:5000 npx expo start --localhost",
+    "server:dev": "NODE_ENV=development tsx server/index.ts",
     "lint": "expo lint"
   },
   "dependencies": {
@@ -17,7 +16,6 @@
     "@react-native-community/slider": "5.0.1",
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-navigation/drawer": "^7.7.5",
-    "@rork-ai/toolkit-sdk": "*",
     "@stardazed/streams-text-encoding": "^1.0.2",
     "@supabase/supabase-js": "^2.86.0",
     "@tanstack/react-query": "^5.83.0",
@@ -43,7 +41,7 @@
     "expo-linear-gradient": "~15.0.7",
     "expo-linking": "~8.0.9",
     "expo-location": "~19.0.7",
-    "expo-notifications": "~0.32.16",
+    "expo-notifications": "^0.32.16",
     "expo-router": "~6.0.15",
     "expo-screen-orientation": "~9.0.8",
     "expo-secure-store": "~15.0.7",
