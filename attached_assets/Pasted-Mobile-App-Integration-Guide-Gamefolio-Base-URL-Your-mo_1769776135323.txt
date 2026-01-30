@@ -1,0 +1,74 @@
+Mobile App Integration Guide - Gamefolio
+Base URL
+Your mobile app should connect to: https://[your-replit-domain] (the same URL where this web app is hosted)
+
+Authentication
+The backend uses session-based authentication with cookies. For mobile, you'll need to:
+
+Include credentials: 'include' in fetch requests
+Store and send session cookies with each request
+Auth Endpoints:
+
+Endpoint	Method	Description
+/api/register	POST	Register new user (username, password, displayName)
+/api/login	POST	Login (username, password) - returns user or 2FA challenge
+/api/logout	POST	Logout
+/api/user	GET	Get current authenticated user
+/api/2fa/verify	POST	Verify 2FA code during login
+/api/auth/google	POST	Google OAuth login
+/api/auth/discord	POST	Discord OAuth login
+Required Secrets for Mobile App
+Copy these to your mobile project's secrets:
+
+JWT_SECRET - For token verification
+VITE_FIREBASE_API_KEY - For Google auth
+VITE_FIREBASE_APP_ID - For Google auth
+VITE_FIREBASE_PROJECT_ID - For Google auth
+VITE_DISCORD_CLIENT_ID - For Discord auth
+VITE_CROSSMINT_CLIENT_API_KEY - For wallet features
+VITE_REVENUECAT_API_KEY - For subscriptions
+VITE_SEQUENCE_PROJECT_ACCESS_KEY - For Web3 features
+Core API Endpoints
+Users:
+
+Endpoint	Method	Auth	Description
+/api/users/:username	GET	No	Get user profile
+/api/users/:username/clips	GET	No	Get user's clips
+/api/users/search	GET	Yes	Search users
+/api/users/featured	GET	No	Get featured users
+/api/users/blocked	GET	Yes	Get blocked users
+/api/users/block	POST	Yes	Block a user
+/api/users/unblock	POST	Yes	Unblock a user
+/api/users/:id	PATCH	Yes	Update user profile
+Clips & Reels:
+
+Endpoint	Method	Auth	Description
+/api/clips	GET	No	Get clips feed
+/api/clips/:id	GET	No	Get single clip
+/api/clips/trending	GET	No	Get trending clips
+/api/clips/feed	GET	No	Get personalized feed
+/api/reels/latest	GET	No	Get latest reels
+/api/reels/trending	GET	No	Get trending reels
+/api/clips/hashtag/:hashtag	GET	No	Get clips by hashtag
+Screenshots:
+
+Endpoint	Method	Auth	Description
+/api/screenshots	GET	No	Get screenshots
+/api/screenshots/:id	GET	No	Get single screenshot
+/api/trending/screenshots	GET	No	Get trending screenshots
+Games:
+
+Endpoint	Method	Auth	Description
+/api/games	GET	No	Get all games
+/api/games/:id	GET	No	Get game details
+/api/games/:id/clips	GET	No	Get clips for a game
+/api/games/trending	GET	No	Get trending games
+Leaderboard:
+
+Endpoint	Method	Description
+/api/leaderboard	GET	Get leaderboard
+/api/leaderboard/weekly/current	GET	Current week leaderboard
+/api/leaderboard/monthly/current	GET	Current month leaderboard
+/api/xp/leaderboard	GET	XP leaderboard
+Database
+The mobile app connects to the same Supabase PostgreSQL database. If your mobile app needs direct database access (not recommended), you'd need the DATABASE_URL secre

@@ -984,6 +984,12 @@ export const api = {
         method: 'DELETE',
         token,
       }),
+
+    getByHashtag: (hashtag: string, token?: string) =>
+      apiFetch<Clip[]>(`/api/clips/hashtag/${encodeURIComponent(hashtag)}`, {
+        method: 'GET',
+        token,
+      }),
   },
 
   reels: {
@@ -1239,6 +1245,22 @@ export const api = {
       });
     },
 
+    getFeatured: async (token?: string) => {
+      console.log('[Users API] 🔵 Fetching featured users...');
+      return apiFetch<{
+        id: number;
+        username: string;
+        displayName: string;
+        avatarUrl: string | null;
+        level?: number;
+        totalXP?: number;
+        bio?: string;
+      }[]>('/api/users/featured', {
+        method: 'GET',
+        token,
+      });
+    },
+
     getProfile: async (username: string, token?: string) => {
       interface ProfileAPIResponse {
         user?: User & {
@@ -1331,6 +1353,24 @@ export const api = {
   games: {
     getAll: (token?: string) =>
       apiFetch<Game[]>('/api/games', {
+        method: 'GET',
+        token,
+      }),
+
+    getGame: (id: number | string, token?: string) =>
+      apiFetch<Game>(`/api/games/${id}`, {
+        method: 'GET',
+        token,
+      }),
+
+    getGameClips: (id: number | string, token?: string) =>
+      apiFetch<Clip[]>(`/api/games/${id}/clips`, {
+        method: 'GET',
+        token,
+      }),
+
+    getTrending: (token?: string) =>
+      apiFetch<Game[]>('/api/games/trending', {
         method: 'GET',
         token,
       }),
@@ -1460,7 +1500,7 @@ export const api = {
   blocking: {
     block: async (userId: number, token: string) => {
       console.log(`[Blocking API] 🔵 Blocking user ${userId}...`);
-      return apiFetch<{ success: boolean }>(`/api/users/${userId}/block`, {
+      return apiFetch<{ success: boolean }>('/api/users/block', {
         method: 'POST',
         body: JSON.stringify({ userId }),
         token,
@@ -1469,7 +1509,7 @@ export const api = {
 
     unblock: async (userId: number, token: string) => {
       console.log(`[Blocking API] 🔵 Unblocking user ${userId}...`);
-      return apiFetch<{ success: boolean }>(`/api/users/${userId}/unblock`, {
+      return apiFetch<{ success: boolean }>('/api/users/unblock', {
         method: 'POST',
         body: JSON.stringify({ userId }),
         token,
@@ -1587,6 +1627,32 @@ export const api = {
         }));
       } catch (error) {
         console.log('[Leaderboard API] ⚠️ Leaderboard endpoint error:', error);
+        return [];
+      }
+    },
+
+    getXPLeaderboard: async (limit: number = 10, token?: string) => {
+      console.log('[Leaderboard API] 🔵 Fetching XP leaderboard...');
+      try {
+        interface XPLeaderboardResponse {
+          id: number;
+          username: string;
+          displayName: string;
+          avatarUrl: string | null;
+          totalXP: number;
+          level: number;
+          rank?: number;
+        }
+        
+        const response = await apiFetch<XPLeaderboardResponse[]>(`/api/xp/leaderboard?limit=${limit}`, {
+          method: 'GET',
+          token,
+        });
+        
+        console.log(`[Leaderboard API] ✅ Received ${response.length} XP leaderboard entries`);
+        return response;
+      } catch (error) {
+        console.log('[Leaderboard API] ⚠️ XP leaderboard endpoint error:', error);
         return [];
       }
     },
