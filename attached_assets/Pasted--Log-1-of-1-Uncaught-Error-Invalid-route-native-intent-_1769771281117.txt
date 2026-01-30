@@ -1,0 +1,128 @@
+!
+
+Log 1 of 1
+Uncaught Error
+Invalid route ./+native-intent 4.tsx. Route nodes cannot start with the '+' character. "Rename it to native-intent 4.tsx"
+Source
+ 
+ 504 |
+if
+ (
+!
+isApi 
+&&
+ filename
+.
+startsWith(
+'+'
+) 
+&&
+ filenameWithoutExtensions 
+!==
+ 
+'+not-found'
+) {
+ 
+ 505 |
+    
+const
+ renamedRoute 
+=
+ [
+...
+parts
+.
+slice(
+0
+,
+ 
+-
+1
+)
+,
+ filename
+.
+slice(
+1
+)]
+.
+join(
+'/'
+)
+;
+>
+ 506 |
+    
+throw
+ 
+new
+ 
+Error
+(
+`Invalid route ${originalKey}. Route nodes cannot start with the '+' character. "Rename it to ${renamedRoute}"`
+)
+;
+ 
+     |
+          
+^
+ 
+ 507 |
+}
+ 
+ 508 |
+let
+ specificity 
+=
+ 
+0
+;
+ 
+ 509 |
+const
+ hasPlatformExtension 
+=
+ validPlatforms
+.
+has(platformExtension)
+;
+Call Stack
+getFileMeta
+node_modules/expo-router/build/getRoutesCore.js:506:15
+getDirectoryTree
+node_modules/expo-router/build/getRoutesCore.js:215:22
+getRoutes
+node_modules/expo-router/build/getRoutesCore.js:23:27
+getRoutes
+node_modules/expo-router/build/getRoutes.js:20:41
+useStore
+node_modules/expo-router/build/global-state/router-store.js:141:48
+ContextNavigator
+node_modules/expo-router/build/ExpoRoot.js:128:46
+callComponent.reactStackBottomFrame
+node_modules/react-dom/cjs/react-dom-client.development.js:23863:20
+renderWithHooks
+node_modules/react-dom/cjs/react-dom-client.development.js:5529:22
+updateFunctionComponent
+node_modules/react-dom/cjs/react-dom-client.development.js:8897:19
+beginWork
+node_modules/react-dom/cjs/react-dom-client.development.js:10522:18
+Collapse all 10 frames
+Component Stack
+ContextNavigator
+node_modules/expo-router/build/ExpoRoot.js:95:29
+ExpoRoot
+node_modules/expo-router/build/ExpoRoot.js:68:30
+_HelmetProvider#constructor
+node_modules/expo-router/vendor/react-helmet-async/lib/index.js:483:5
+App
+<anonymous>:-1:0
+LogBoxStateSubscription#constructor
+node_modules/@expo/metro-runtime/src/error-overlay/Data/LogBoxData.tsx:365:7
+ErrorOverlay
+<anonymous>:-1:0
+withDevTools(ErrorOverlay)
+<anonymous>:-1:0
+AppContainer
+shim:react-native-web/dist/exports/AppRegistry/AppContainer.js
+Collapse all 8 frames
