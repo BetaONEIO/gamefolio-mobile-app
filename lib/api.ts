@@ -1261,6 +1261,22 @@ export const api = {
       });
     },
 
+    getLevelProgress: async (userId: number, token?: string) => {
+      console.log(`[Users API] 🔵 Fetching level progress for user ${userId}...`);
+      return apiFetch<{
+        level: number;
+        currentXP: number;
+        currentPoints: number;
+        pointsForCurrentLevel: number;
+        pointsForNextLevel: number;
+        pointsRemaining: number;
+        progressPercent: number;
+      }>(`/api/user/${userId}/level-progress`, {
+        method: 'GET',
+        token,
+      });
+    },
+
     getProfile: async (username: string, token?: string) => {
       interface ProfileAPIResponse {
         user?: User & {

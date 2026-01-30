@@ -3,8 +3,18 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, TextInput,
 import { X, Zap, UserPlus, MessageSquare, Video, Share2 } from 'lucide-react-native';
 import Svg, { Circle, G } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
+import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
-
+interface LevelProgressData {
+  level: number;
+  currentXP: number;
+  currentPoints: number;
+  pointsForCurrentLevel: number;
+  pointsForNextLevel: number;
+  pointsRemaining: number;
+  progressPercent: number;
+}
 
 interface LevelDetailsModalProps {
   visible: boolean;
@@ -58,8 +68,35 @@ const XP_TASKS: XPTask[] = [
 
 
 
-export default function LevelDetailsModal({ visible, onClose, level, currentXP, userId, onTaskStart }: LevelDetailsModalProps) {
+export default function LevelDetailsModal({ visible, onClose, level: propLevel, currentXP: propCurrentXP, userId, onTaskStart }: LevelDetailsModalProps) {
   const [activeTab, setActiveTab] = useState<'earn' | 'refer'>('earn');
+  const [levelProgress, setLevelProgress] = useState<LevelProgressData | null>(null);
+  const [isLoadingProgress, setIsLoadingProgress] = useState(false);
+  const { authTokens } = useAuth();
+
+  useEffect(() => {
+    const fetchLevelProgress = async () => {
+      if (!visible || !userId) return;
+      
+      setIsLoadingProgress(true);
+      try {
+        const numericUserId = parseInt(userId, 10);
+        if (!isNaN(numericUserId)) {
+          console.log('[LevelDetailsModal] Fetching level progress from server for user:', numericUserId);
+          const progress = await api.users.getLevelProgress(numericUserId, authTokens?.accessToken || undefined);
+          console.log('[LevelDetailsModal] Server level progress:', progress);
+          setLevelProgress(progress);
+        }
+      } catch (error) {
+        console.log('[LevelDetailsModal] Error fetching level progress, using local calculation:', error);
+        setLevelProgress(null);
+      } finally {
+        setIsLoadingProgress(false);
+      }
+    };
+
+    fetchLevelProgress();
+  }, [visible, userId, authTokens?.accessToken]);
 
   const handleTaskStart = (taskId: string) => {
     if (taskId === 'invite-friends') {
@@ -71,12 +108,26 @@ export default function LevelDetailsModal({ visible, onClose, level, currentXP, 
   };
 
   const referralLink = `https://gamefolio.app/ref/${userId || 'XXXXX'}`;
-  const xpForCurrentLevel = 1000 * level;
-  const xpStartOfLevel = 500 * level * (level - 1);
-  const xpInLevel = Math.max(0, currentXP - xpStartOfLevel);
-
-  const progress = Math.min(1, xpInLevel / xpForCurrentLevel);
-  const progressPercent = Math.round(progress * 100);
+  
+  const level = levelProgress?.level ?? propLevel;
+  const currentXP = levelProgress?.currentXP ?? propCurrentXP;
+  const pointsForNextLevel = levelProgress?.pointsForNextLevel ?? (1000 * level);
+  const pointsRemaining = levelProgress?.pointsRemaining ?? 0;
+  
+  const xpForCurrentLevel = levelProgress?.pointsForNextLevel 
+    ? (levelProgress.pointsForNextLevel - levelProgress.pointsForCurrentLevel) 
+    : (1000 * propLevel);
+  const xpStartOfLevel = levelProgress?.pointsForCurrentLevel ?? (500 * propLevel * (propLevel - 1));
+  const xpInLevel = levelProgress 
+    ? (levelProgress.currentXP - levelProgress.pointsForCurrentLevel) 
+    : Math.max(0, propCurrentXP - xpStartOfLevel);
+  
+  const progressPercent = levelProgress?.progressPercent ?? (() => {
+    const localProgress = Math.min(1, xpInLevel / xpForCurrentLevel);
+    return Math.round(localProgress * 100);
+  })();
+  
+  const progress = progressPercent / 100;
 
   const badgeSize = 160;
   const thickness = 8;
