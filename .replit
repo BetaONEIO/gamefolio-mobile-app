@@ -73,3 +73,7 @@ ensurePreviewReachable = "/status"
 
 [userenv.shared]
 EXPO_PUBLIC_BACKEND_URL = "https://app.gamefolio.com"
+SUPABASE_URL = "https://rupzmxqyhqktpifgfmzc.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1cHpteHF5aHFrdHBpZmdmbXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTMyNjksImV4cCI6MjA2ODI2OTI2OX0.azmpGPtYcXhq3RbCMA9rRgVbT_Ook8TDTwdLz9ADUDU"
+TWITCH_CLIENT_ID = "2xvtsvhbex42odv6r1cjosl0615dnq"
+TWITCH_CLIENT_SECRET = "kwj1vxzy9g2mrfxtvz3mxvqnmgm267"

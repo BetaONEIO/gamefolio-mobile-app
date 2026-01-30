@@ -1,0 +1,71 @@
+Environment Variables Required
+SUPABASE_URL=https://rupzmxqyhqktpifgfmzc.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1cHpteHF5aHFrdHBpZmdmbXpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2OTMyNjksImV4cCI6MjA2ODI2OTI2OX0.azmpGPtYcXhq3RbCMA9rRgVbT_Ook8TDTwdLz9ADUDU
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ1cHpteHF5aHFrdHBpZmdmbXpjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjY5MzI2OSwiZXhwIjoyMDY4MjY5MjY5fQ.Deza81HvmqT8Ms1ro__mfGmWlu7SgBP3Q3671_1g-4M
+JWT_SECRET=Jkdjsl$22Awj2@32kjlskjfads232s
+TWITCH_CLIENT_ID=2xvtsvhbex42odv6r1cjosl0615dnq
+TWITCH_CLIENT_SECRET=kwj1vxzy9g2mrfxtvz3mxvqnmgm267
+Backend Dependencies
+"@hono/trpc-server": "^0.4.0",
+"@supabase/supabase-js": "^2.86.0",
+"@trpc/server": "^11.7.2",
+"bcryptjs": "^3.0.3",
+"hono": "^4.10.7",
+"jsonwebtoken": "^9.0.2",
+"superjson": "^2.2.6",
+"zod": "^4.1.13"
+API Architecture
+tRPC mounted at: /api/trpctRPC Routes (from backend/trpc/app-router.ts):
+auth.* - register, login, tokenLogin, tokenRegister, tokenRefresh, getUser, logout
+user.* - updateProfile, updateOnlineStatus, addXP, claimDailyLootbox, getAvatarBorders, updateAvatarBorder, updateBirthday
+users.* - getFavorites, getProfile, getTrending, search, block, unblock, getBlocked, getAvatarBorder, getSampleProfile, getSampleFavorites
+clips.* - getUserClips, getClip, getComments, getFeed, getTrending, getLatest, getLatestUploads, like, fire, addComment, delete, getByShareCode, getSampleClips
+screenshots.* - getUserScreenshots, getTrending, getComments, like, fire, addComment, delete, getByShareCode, getSampleScreenshots
+reels.* - getLatest, getTrending
+messages.* - getConversations, getMessages, send, startConversation, deleteMessage, deleteConversation, markRead
+rewards.* - getAll, getUserRewards, add, redeemCode
+assetRewards.* - getActive, claim
+tags.*, search.*, twitch.*, reports.*, notifications.*
+REST Endpoints (in backend/hono.ts):
+POST /api/auth/token/login - JWT login
+POST /api/auth/token/register - JWT registration
+POST /api/auth/token/refresh - Token refresh
+GET /api/user - Get current user (requires Bearer token)
+PATCH /api/user - Update profile
+GET /api/clips - Clips feed with pagination
+GET /api/clips/latest - Latest clips
+GET /api/clips/trending - Trending clips (period: day/week/month/all)
+GET /api/reels/latest - Latest reels
+GET /api/reels/trending - Trending reels
+GET /api/recent-uploads - Recent uploads ticker
+GET /api/search - Search users, hashtags, games
+Authentication Flow
+Uses custom JWT (not Supabase Auth)
+Access tokens: 7 days expiry
+Refresh tokens: 30 days expiry (secret = JWT_SECRET + '-refresh')
+Passwords hashed with bcryptjs (10 rounds)
+Protected routes check Authorization: Bearer <token> header
+Database Tables (Supabase)
+Key tables referenced in code:
+users - id, username, display_name, email, password_hash, avatar_url, banner_url, bio, total_xp, level, current_streak, longest_streak, is_private, messaging_enabled, role, verified, gf_token_balance, accent_color, background_color, profile_border_id, is_pro, is_online, last_active, date_of_birth
+clips - id, user_id, game_id, title, description, video_url, thumbnail_url, video_type (clip/reel), duration, views, share_code, age_restricted
+screenshots - id, user_id, title, created_at
+games - id, name, image_url, twitch_id
+likes - clip_id
+comments - clip_id
+conversations, messages - messaging system
+Frontend tRPC Client
+The frontend connects via lib/trpc.ts:
+URL: ${BACKEND_URL}/api/trpc
+Uses httpBatchLink with SuperJSON transformer
+Auth token injected via setTRPCAuthToken() getter function
+Key Helper Functions
+generateSignedUrl() - Creates signed Supabase storage URLs (1hr expiry)
+awardXP() - Awards XP and recalculates level
+calculateLevel() - XP formula: each level needs 1000 * level XP
+getTwitchToken() - Cached Twitch API auth
+Deployment Notes
+The Hono app default export is mounted at /api
+tRPC is mounted at /trpc within Hono, so full path is /api/trpc
+CORS is enabled globally
+Supabase storage URLs need signed URLs for private buckets
