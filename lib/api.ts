@@ -4,8 +4,8 @@ import { signUrl } from '@/lib/image-utils';
 const API_BASE_URL = Env.BACKEND_URL;
 
 const SIGNABLE_FIELDS = new Set([
-  'avatarUrl', 'bannerUrl', 'videoUrl', 'thumbnailUrl', 'imageUrl',
-  'avatar_url', 'banner_url', 'video_url', 'thumbnail_url', 'image_url',
+  'avatarUrl', 'bannerUrl', 'videoUrl', 'thumbnailUrl', 'imageUrl', 'nftProfileImageUrl',
+  'avatar_url', 'banner_url', 'video_url', 'thumbnail_url', 'image_url', 'nft_profile_image_url',
 ]);
 
 async function signSupabaseUrls(data: any, depth = 0): Promise<any> {
@@ -337,11 +337,35 @@ export interface User {
   isPro?: boolean;
   birthday?: string | null;
   birthdayLastUpdated?: string | null;
+  createdAt?: string;
+  activeProfilePicType?: 'upload' | 'nft';
+  nftProfileImageUrl?: string | null;
+  steamUsername?: string | null;
+  xboxUsername?: string | null;
+  playstationUsername?: string | null;
+  discordUsername?: string | null;
+  epicUsername?: string | null;
+  nintendoUsername?: string | null;
+  twitterUsername?: string | null;
+  youtubeUsername?: string | null;
+  proSubscriptionType?: string | null;
+  proSubscriptionEndDate?: string | null;
+  profileFont?: string;
+  profileFontEffect?: string;
+  profileFontAnimation?: string;
   _count?: {
     followers: number;
     following: number;
     clips: number;
   };
+}
+
+export function getEffectiveAvatarUrl(user: User | null | undefined): string | null {
+  if (!user) return null;
+  if (user.activeProfilePicType === 'nft' && user.nftProfileImageUrl) {
+    return user.nftProfileImageUrl;
+  }
+  return user.avatarUrl;
 }
 
 export interface GamefolioTokens {
@@ -759,11 +783,19 @@ export const api = {
       return { success: true, message: data.message || 'New code sent' };
     },
 
-    getUser: (token: string) =>
-      apiFetch<{ user: User }>('/api/user', {
+    getUser: async (token: string) => {
+      const response = await apiFetch<{ user?: User } & Partial<User>>('/api/user', {
         method: 'GET',
         token,
-      }),
+      });
+      if (response.user) {
+        return { user: response.user };
+      }
+      if (response.id && response.username) {
+        return { user: response as unknown as User };
+      }
+      throw new APIError('Invalid response from /api/user: missing user data', 500);
+    },
 
     googleLogin: (data: {
       email: string;

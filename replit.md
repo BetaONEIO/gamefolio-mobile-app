@@ -33,11 +33,18 @@ Preferred communication style: Simple, everyday language.
 - **Media Storage**: Supabase for file storage (private buckets with signed URLs)
   - All media URLs are signed server-side via `generateSignedUrl()` before being sent to clients
   - Signing applied in both `backend/hono.ts` (REST API) and all `backend/trpc/routes/` (tRPC routes)
+  - Client-side signing via `signSupabaseUrls()` in `apiFetch` (lib/api.ts) as belt-and-suspenders
   - Signed URLs expire after 1 hour (3600 seconds)
   - Upload utility (`lib/supabase-upload.ts`) stores authenticated (non-public) path references
   - URL signing logic lives in `backend/lib/signed-urls.ts` (import as `@/backend/lib/signed-urls`)
   - Frontend cache key utility at `lib/image-utils.ts` strips token params for stable expo-image caching
   - Game `imageUrl` fields are Twitch CDN URLs and are NOT signed
+- **Profile Pictures**: Uses `activeProfilePicType` field to determine avatar source
+  - "upload" (default): uses `avatarUrl`
+  - "nft": uses `nftProfileImageUrl`
+  - Helper function `getEffectiveAvatarUrl(user)` in `lib/api.ts` handles this logic
+- **User Interface**: `User` type in `lib/api.ts` includes platform usernames, pro subscription details, profile font settings, and `createdAt`
+- **API Response Handling**: `auth.getUser()` handles both wrapped `{ user: {...} }` and flat response formats from the live backend
 - **Local Storage**: expo-secure-store for tokens, async-storage for preferences
 
 ### Authentication & Authorization

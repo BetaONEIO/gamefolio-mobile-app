@@ -11,6 +11,7 @@ import NotificationDropdown from '@/components/NotificationDropdown';
 import UploadDropdown from '@/components/UploadDropdown';
 import { Env } from '@/constants/Env';
 import { useAuth } from '@/context/AuthContext';
+import { getEffectiveAvatarUrl } from '@/lib/api';
 
 interface AppHeaderProps {
   showBackButton?: boolean;
@@ -373,7 +374,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
               activeOpacity={1}
             >
               <Image 
-                source={{ uri: user?.avatarUrl || 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=100&auto=format&fit=crop' }} 
+                source={{ uri: getEffectiveAvatarUrl(user) || 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=100&auto=format&fit=crop' }} 
                 style={styles.avatar} 
               />
             </TouchableOpacity>

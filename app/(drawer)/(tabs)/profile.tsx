@@ -22,7 +22,7 @@ import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 
 import { useQueryClient, useMutation } from '@tanstack/react-query';
-import { api, Clip, Screenshot, Game } from '@/lib/api';
+import { api, Clip, Screenshot, Game, getEffectiveAvatarUrl } from '@/lib/api';
 import { trpc } from '@/lib/trpc';
 
 
@@ -205,10 +205,26 @@ export default function ProfileScreen() {
     games: favoriteGames.slice(0, 3)
   });
   
+  const formatJoinDate = (dateStr?: string) => {
+    if (!dateStr) return 'Unknown';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const buildPlatforms = () => {
+    const platforms: { name: string; type: string; color: string }[] = [];
+    if (user?.xboxUsername) platforms.push({ name: user.xboxUsername, type: 'xbox', color: '#107C10' });
+    if (user?.playstationUsername) platforms.push({ name: user.playstationUsername, type: 'ps', color: '#00439C' });
+    if (user?.steamUsername) platforms.push({ name: user.steamUsername, type: 'pc', color: '#00A4EF' });
+    if (user?.nintendoUsername) platforms.push({ name: user.nintendoUsername, type: 'nintendo', color: '#E60012' });
+    if (user?.epicUsername) platforms.push({ name: user.epicUsername, type: 'epic', color: '#2F2D2E' });
+    return platforms;
+  };
+
   const profileData = {
     name: user?.displayName || user?.username || 'User',
     handle: user?.username ? `@${user.username}` : '@user',
-    avatar: user?.avatarUrl || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2670&auto=format&fit=crop',
+    avatar: getEffectiveAvatarUrl(user) || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2670&auto=format&fit=crop',
     banner: user?.bannerUrl || 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=2671&auto=format&fit=crop',
     level: user?.level || 1,
     totalXP: user?.totalXP || 0,
@@ -219,17 +235,13 @@ export default function ProfileScreen() {
       following: profileStats?._count?.following ?? user?._count?.following ?? 0
     },
     engagement: {
-      likes: 0, // Not in User object, maybe separate API
+      likes: 0,
       fires: 0,
       streak: user?.currentStreak || 0
     },
-    joined: 'August 2025', // Not in User object
+    joined: formatJoinDate(user?.createdAt),
     bio: user?.bio || 'Just joined Gamefolio!',
-    platforms: [
-        { name: user?.username || 'User', type: 'xbox' as const, color: '#107C10' },
-        { name: user?.username || 'User', type: 'ps' as const, color: '#00439C' },
-        { name: user?.username || 'User', type: 'pc' as const, color: '#00A4EF' }
-    ]
+    platforms: buildPlatforms()
   };
 
 

@@ -1,6 +1,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { useUser } from '@/context/UserContext';
 import { useRevenueCat } from '@/context/RevenueCatContext';
+import { getEffectiveAvatarUrl } from '@/lib/api';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter, usePathname } from 'expo-router';
 import { 
@@ -118,7 +119,7 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
         >
           <View style={styles.avatarContainer}>
             <Image 
-              source={{ uri: user?.avatarUrl || 'https://images.unsplash.com/photo-1642436855380-00dccba82294?w=400&auto=format&fit=crop&q=60' }}
+              source={{ uri: getEffectiveAvatarUrl(user) || 'https://images.unsplash.com/photo-1642436855380-00dccba82294?w=400&auto=format&fit=crop&q=60' }}
               style={styles.avatar}
             />
           </View>
