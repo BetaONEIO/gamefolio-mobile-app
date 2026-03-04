@@ -1,5 +1,6 @@
 import { publicProcedure } from '../../../create-context';
 import { supabaseAdmin } from '@/lib/supabase';
+import { generateSignedUrl } from '@/backend/lib/signed-urls';
 import jwt from 'jsonwebtoken';
 
 import { Env } from '@/constants/Env';
@@ -46,8 +47,8 @@ export default publicProcedure
         level: profileData.level ?? 1,
         currentStreak: profileData.current_streak ?? 0,
         longestStreak: profileData.longest_streak ?? 0,
-        avatarUrl: profileData.avatar_url,
-        bannerUrl: profileData.banner_url,
+        avatarUrl: await generateSignedUrl(profileData.avatar_url),
+        bannerUrl: await generateSignedUrl(profileData.banner_url),
         bio: profileData.bio,
         messagingEnabled: profileData.messaging_enabled,
         isPrivate: profileData.is_private,

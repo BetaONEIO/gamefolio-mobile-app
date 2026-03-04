@@ -2,6 +2,7 @@ import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
 import { TRPCError } from "@trpc/server";
 import { supabaseAdmin } from '@/lib/supabase';
+import { generateSignedUrl } from '@/backend/lib/signed-urls';
 
 const startConversationRoute = protectedProcedure
   .input(z.object({
@@ -61,7 +62,7 @@ const startConversationRoute = protectedProcedure
             id: user.id,
             username: user.username,
             displayName: user.display_name || user.username,
-            avatarUrl: user.avatar_url,
+            avatarUrl: await generateSignedUrl(user.avatar_url),
           },
           lastMessage: {
             id: message.id,

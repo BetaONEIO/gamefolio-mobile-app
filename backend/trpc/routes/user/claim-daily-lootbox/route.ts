@@ -1,5 +1,6 @@
 import { publicProcedure } from '../../../create-context';
 import { supabaseAdmin } from '@/lib/supabase';
+import { generateSignedUrl } from '@/backend/lib/signed-urls';
 import { TRPCError } from '@trpc/server';
 import jwt from 'jsonwebtoken';
 import { Env } from '@/constants/Env';
@@ -227,6 +228,7 @@ export default publicProcedure
 
         xpAmount = rarityXpBonus;
 
+        const signedAssetImageUrl = await generateSignedUrl(wonAssetReward.imageUrl);
         rewards = [
           {
             id: wonAssetReward.id,
@@ -234,7 +236,7 @@ export default publicProcedure
             amount: 1,
             name: wonAssetReward.name,
             rarity: wonAssetReward.rarity,
-            imageUrl: wonAssetReward.imageUrl,
+            imageUrl: signedAssetImageUrl,
           },
           {
             type: 'xp',
@@ -281,16 +283,21 @@ export default publicProcedure
     }
 
     console.log('[ClaimLootbox] Successfully claimed lootbox');
+    const signedAllAssetRewards = await Promise.all(formattedAssetRewards.map(async r => ({
+      ...r,
+      imageUrl: await generateSignedUrl(r.imageUrl),
+    })));
+
     return { 
       success: true,
       rewards,
       assetReward: wonAssetReward ? {
         id: wonAssetReward.id,
         name: wonAssetReward.name,
-        imageUrl: wonAssetReward.imageUrl,
+        imageUrl: await generateSignedUrl(wonAssetReward.imageUrl),
         rarity: wonAssetReward.rarity,
       } : null,
-      allAssetRewards: formattedAssetRewards,
+      allAssetRewards: signedAllAssetRewards,
       newXP: newTotalXP,
       newLevel,
       nextClaimTime: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),

@@ -1,5 +1,6 @@
 import { publicProcedure } from '../../../create-context';
 import { supabaseAdmin } from '@/lib/supabase';
+import { generateSignedUrl } from '@/backend/lib/signed-urls';
 
 export default publicProcedure
   .query(async () => {
@@ -19,14 +20,14 @@ export default publicProcedure
 
       console.log('[AssetRewards] Found', rewards?.length || 0, 'active rewards');
 
-      const formattedRewards = (rewards || []).map(reward => ({
+      const formattedRewards = await Promise.all((rewards || []).map(async reward => ({
         id: reward.id,
         name: reward.name,
-        imageUrl: reward.imageUrl,
+        imageUrl: await generateSignedUrl(reward.imageUrl),
         rarity: reward.rarity as 'common' | 'rare' | 'epic' | 'legendary',
         unlockChance: reward.unlockChance,
         timesRewarded: reward.timesRewarded,
-      }));
+      })));
 
       return { rewards: formattedRewards };
     } catch (error) {

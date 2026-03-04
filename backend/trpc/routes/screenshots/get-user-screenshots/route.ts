@@ -117,7 +117,7 @@ export default publicProcedure
           id: screenshot.user.id,
           username: screenshot.user.username,
           displayName: screenshot.user.display_name,
-          avatarUrl: screenshot.user.avatar_url,
+          avatarUrl: await generateSignedUrl(screenshot.user.avatar_url),
         },
         game: screenshot.game ? {
           id: screenshot.game.id,

@@ -66,7 +66,7 @@ export default publicProcedure
         id: clip.user.id,
         username: clip.user.username,
         displayName: clip.user.display_name,
-        avatarUrl: clip.user.avatar_url,
+        avatarUrl: await generateSignedUrl(clip.user.avatar_url),
       },
       game: clip.game ? {
         id: clip.game.id,

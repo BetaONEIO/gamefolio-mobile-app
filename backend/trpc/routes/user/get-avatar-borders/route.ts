@@ -1,5 +1,6 @@
 import { publicProcedure } from '../../../create-context';
 import { supabaseAdmin } from '@/lib/supabase';
+import { generateSignedUrl } from '@/backend/lib/signed-urls';
 import { TRPCError } from '@trpc/server';
 import jwt from 'jsonwebtoken';
 import { Env } from '@/constants/Env';
@@ -57,15 +58,15 @@ export default publicProcedure
         });
       }
 
-      const avatarBorders = (claims || [])
+      const avatarBorders = await Promise.all((claims || [])
         .filter((claim: any) => claim.asset_rewards?.asset_type === 'avatar_border')
-        .map((claim: any) => ({
+        .map(async (claim: any) => ({
           id: claim.asset_rewards.id,
           name: claim.asset_rewards.name,
-          imageUrl: claim.asset_rewards.image_url,
+          imageUrl: await generateSignedUrl(claim.asset_rewards.image_url),
           rarity: claim.asset_rewards.rarity as 'common' | 'rare' | 'epic' | 'legendary',
           claimedAt: claim.claimed_at,
-        }));
+        })));
 
       const { data: user, error: userError } = await supabaseAdmin
         .from('users')

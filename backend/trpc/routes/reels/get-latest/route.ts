@@ -60,7 +60,7 @@ export default publicProcedure
           id: reel.user.id,
           username: reel.user.username,
           displayName: reel.user.display_name,
-          avatarUrl: reel.user.avatar_url,
+          avatarUrl: await generateSignedUrl(reel.user.avatar_url),
         },
         game: reel.game ? {
           id: reel.game.id,

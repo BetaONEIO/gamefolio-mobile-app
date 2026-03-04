@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { publicProcedure } from '../../../create-context';
 import { supabaseAdmin } from '@/lib/supabase';
+import { generateSignedUrl } from '@/backend/lib/signed-urls';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -95,8 +96,8 @@ export default publicProcedure
             level: existingProfile.level ?? 1,
             currentStreak: existingProfile.current_streak ?? 0,
             longestStreak: existingProfile.longest_streak ?? 0,
-            avatarUrl: existingProfile.avatar_url,
-            bannerUrl: existingProfile.banner_url,
+            avatarUrl: await generateSignedUrl(existingProfile.avatar_url),
+            bannerUrl: await generateSignedUrl(existingProfile.banner_url),
             bio: existingProfile.bio,
             messagingEnabled: existingProfile.messaging_enabled,
             isPrivate: existingProfile.is_private,
@@ -156,8 +157,8 @@ export default publicProcedure
           level: newProfile.level ?? 1,
           currentStreak: newProfile.current_streak ?? 0,
           longestStreak: newProfile.longest_streak ?? 0,
-          avatarUrl: newProfile.avatar_url,
-          bannerUrl: newProfile.banner_url,
+          avatarUrl: await generateSignedUrl(newProfile.avatar_url),
+          bannerUrl: await generateSignedUrl(newProfile.banner_url),
           bio: newProfile.bio,
           messagingEnabled: newProfile.messaging_enabled,
           isPrivate: newProfile.is_private,
@@ -220,8 +221,8 @@ export default publicProcedure
         level: userData.level ?? 1,
         currentStreak: userData.current_streak ?? 0,
         longestStreak: userData.longest_streak ?? 0,
-        avatarUrl: userData.avatar_url,
-        bannerUrl: userData.banner_url,
+        avatarUrl: await generateSignedUrl(userData.avatar_url),
+        bannerUrl: await generateSignedUrl(userData.banner_url),
         bio: userData.bio,
         messagingEnabled: userData.messaging_enabled,
         isPrivate: userData.is_private,

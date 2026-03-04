@@ -1,5 +1,6 @@
 import { publicProcedure } from '../../../create-context';
 import { supabaseAdmin } from '@/lib/supabase';
+import { generateSignedUrl } from '@/backend/lib/signed-urls';
 import { z } from 'zod';
 
 export default publicProcedure
@@ -39,17 +40,17 @@ export default publicProcedure
 
       console.log('[Rewards] Found', rewards?.length || 0, 'rewards');
 
-      const formattedRewards = (rewards || []).map(reward => ({
+      const formattedRewards = await Promise.all((rewards || []).map(async reward => ({
         id: reward.id,
         name: reward.name,
         description: reward.description,
         type: reward.type,
         rarity: reward.rarity,
-        imageUrl: reward.image_url,
+        imageUrl: await generateSignedUrl(reward.image_url),
         value: reward.value,
         isActive: reward.is_active,
         createdAt: reward.created_at,
-      }));
+      })));
 
       return { rewards: formattedRewards };
     } catch (error) {

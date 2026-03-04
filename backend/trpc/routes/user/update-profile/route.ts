@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import jwt from 'jsonwebtoken';
 import { Env } from '@/constants/Env';
+import { generateSignedUrl } from '@/backend/lib/signed-urls';
 
 const JWT_SECRET = Env.JWT_SECRET;
 
@@ -91,8 +92,8 @@ export default publicProcedure
         level: updatedUser.level ?? 1,
         currentStreak: updatedUser.current_streak ?? 0,
         longestStreak: updatedUser.longest_streak ?? 0,
-        avatarUrl: updatedUser.avatar_url,
-        bannerUrl: updatedUser.banner_url,
+        avatarUrl: await generateSignedUrl(updatedUser.avatar_url),
+        bannerUrl: await generateSignedUrl(updatedUser.banner_url),
         bio: updatedUser.bio,
         messagingEnabled: updatedUser.messaging_enabled,
         isPrivate: updatedUser.is_private,

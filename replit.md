@@ -31,10 +31,13 @@ Preferred communication style: Simple, everyday language.
 - **Schema Location**: `shared/schema.ts`
 - **Migrations**: Drizzle Kit with migrations in `./migrations`
 - **Media Storage**: Supabase for file storage (private buckets with signed URLs)
-  - All media URLs are signed server-side via `generateSignedUrl()` in `backend/hono.ts` before being sent to clients
+  - All media URLs are signed server-side via `generateSignedUrl()` before being sent to clients
+  - Signing applied in both `backend/hono.ts` (REST API) and all `backend/trpc/routes/` (tRPC routes)
   - Signed URLs expire after 1 hour (3600 seconds)
   - Upload utility (`lib/supabase-upload.ts`) stores authenticated (non-public) path references
-  - URL signing logic lives in `backend/lib/signed-urls.ts` and is duplicated inline in `backend/hono.ts`
+  - URL signing logic lives in `backend/lib/signed-urls.ts` (import as `@/backend/lib/signed-urls`)
+  - Frontend cache key utility at `lib/image-utils.ts` strips token params for stable expo-image caching
+  - Game `imageUrl` fields are Twitch CDN URLs and are NOT signed
 - **Local Storage**: expo-secure-store for tokens, async-storage for preferences
 
 ### Authentication & Authorization

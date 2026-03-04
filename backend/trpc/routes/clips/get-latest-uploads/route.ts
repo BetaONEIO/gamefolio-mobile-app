@@ -1,6 +1,7 @@
 import { publicProcedure } from "../../../create-context";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
+import { generateSignedUrl } from "@/backend/lib/signed-urls";
 
 export default publicProcedure
   .input(
@@ -53,7 +54,7 @@ export default publicProcedure
       console.error('[tRPC] Error fetching latest screenshots:', screenshotsError);
     }
 
-    const formattedClips = (clips || []).map(clip => ({
+    const formattedClips = await Promise.all((clips || []).map(async clip => ({
       id: clip.id,
       title: clip.title,
       contentType: (clip as any).video_type === 'reel' ? 'reel' as const : 'clip' as const,
@@ -62,11 +63,11 @@ export default publicProcedure
         id: (clip.user as any).id,
         username: (clip.user as any).username,
         displayName: (clip.user as any).display_name,
-        avatarUrl: (clip.user as any).avatar_url,
+        avatarUrl: await generateSignedUrl((clip.user as any).avatar_url),
       } : null,
-    }));
+    })));
 
-    const formattedScreenshots = (screenshots || []).map(screenshot => ({
+    const formattedScreenshots = await Promise.all((screenshots || []).map(async screenshot => ({
       id: screenshot.id,
       title: screenshot.title,
       contentType: 'screenshot' as const,
@@ -75,9 +76,9 @@ export default publicProcedure
         id: (screenshot.user as any).id,
         username: (screenshot.user as any).username,
         displayName: (screenshot.user as any).display_name,
-        avatarUrl: (screenshot.user as any).avatar_url,
+        avatarUrl: await generateSignedUrl((screenshot.user as any).avatar_url),
       } : null,
-    }));
+    })));
 
     const allUploads = [...formattedClips, ...formattedScreenshots]
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())

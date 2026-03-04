@@ -1,5 +1,6 @@
 import { publicProcedure } from '../../../create-context';
 import { supabaseAdmin } from '@/lib/supabase';
+import { generateSignedUrl } from '@/backend/lib/signed-urls';
 import { z } from 'zod';
 
 export default publicProcedure
@@ -38,7 +39,7 @@ export default publicProcedure
         border: {
           id: border.id,
           name: border.name,
-          imageUrl: border.imageUrl,
+          imageUrl: await generateSignedUrl(border.imageUrl),
           rarity: border.rarity as 'common' | 'rare' | 'epic' | 'legendary',
         },
       };

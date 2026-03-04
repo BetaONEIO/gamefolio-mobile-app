@@ -1,6 +1,7 @@
 import { publicProcedure } from "../../../create-context";
 import { z } from "zod";
 import { supabaseAdmin } from "@/lib/supabase";
+import { generateSignedUrl } from "@/backend/lib/signed-urls";
 
 export default publicProcedure
   .input(
@@ -27,7 +28,7 @@ export default publicProcedure
 
     console.log('[tRPC] Found comments:', comments?.length || 0);
 
-    const formattedComments = comments?.map((comment: any) => ({
+    const formattedComments = await Promise.all((comments || []).map(async (comment: any) => ({
       id: comment.id,
       clipId: comment.clip_id,
       userId: comment.user_id,
@@ -37,9 +38,9 @@ export default publicProcedure
         id: comment.user.id,
         username: comment.user.username,
         displayName: comment.user.display_name,
-        avatarUrl: comment.user.avatar_url,
+        avatarUrl: await generateSignedUrl(comment.user.avatar_url),
       }
-    })) || [];
+    })));
 
     return formattedComments;
   });

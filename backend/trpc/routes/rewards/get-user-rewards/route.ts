@@ -1,5 +1,6 @@
 import { publicProcedure } from '../../../create-context';
 import { supabaseAdmin } from '@/lib/supabase';
+import { generateSignedUrl } from '@/backend/lib/signed-urls';
 import { TRPCError } from '@trpc/server';
 import jwt from 'jsonwebtoken';
 import { Env } from '@/constants/Env';
@@ -82,7 +83,7 @@ export default publicProcedure
         filteredRewards = filteredRewards.filter((ur: any) => ur.reward?.type === input.type);
       }
 
-      const formattedRewards = filteredRewards.map((ur: any) => ({
+      const formattedRewards = await Promise.all(filteredRewards.map(async (ur: any) => ({
         id: ur.id,
         claimedAt: ur.claimed_at,
         quantity: ur.quantity || 1,
@@ -92,10 +93,10 @@ export default publicProcedure
           description: ur.reward.description,
           type: ur.reward.type,
           rarity: ur.reward.rarity,
-          imageUrl: ur.reward.image_url,
+          imageUrl: await generateSignedUrl(ur.reward.image_url),
           value: ur.reward.value,
         } : null,
-      }));
+      })));
 
       const { data: statsData } = await supabaseAdmin
         .from('user_rewards')

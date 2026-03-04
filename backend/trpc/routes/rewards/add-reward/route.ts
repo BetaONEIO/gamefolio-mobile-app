@@ -1,5 +1,6 @@
 import { publicProcedure } from '../../../create-context';
 import { supabaseAdmin } from '@/lib/supabase';
+import { generateSignedUrl } from '@/backend/lib/signed-urls';
 import { TRPCError } from '@trpc/server';
 import jwt from 'jsonwebtoken';
 import { Env } from '@/constants/Env';
@@ -80,7 +81,7 @@ export default publicProcedure
           description: reward.description,
           type: reward.type,
           rarity: reward.rarity,
-          imageUrl: reward.image_url,
+          imageUrl: await generateSignedUrl(reward.image_url),
           value: reward.value,
           isActive: reward.is_active,
           createdAt: reward.created_at,
