@@ -30,7 +30,11 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL with Drizzle ORM
 - **Schema Location**: `shared/schema.ts`
 - **Migrations**: Drizzle Kit with migrations in `./migrations`
-- **Media Storage**: Supabase for file storage and real-time features
+- **Media Storage**: Supabase for file storage (private buckets with signed URLs)
+  - All media URLs are signed server-side via `generateSignedUrl()` in `backend/hono.ts` before being sent to clients
+  - Signed URLs expire after 1 hour (3600 seconds)
+  - Upload utility (`lib/supabase-upload.ts`) stores authenticated (non-public) path references
+  - URL signing logic lives in `backend/lib/signed-urls.ts` and is duplicated inline in `backend/hono.ts`
 - **Local Storage**: expo-secure-store for tokens, async-storage for preferences
 
 ### Authentication & Authorization

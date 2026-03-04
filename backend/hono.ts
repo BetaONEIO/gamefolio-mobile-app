@@ -255,8 +255,8 @@ app.post("/api/auth/token/login", async (c) => {
         level: userData.level ?? 1,
         currentStreak: userData.current_streak ?? 0,
         longestStreak: userData.longest_streak ?? 0,
-        avatarUrl: userData.avatar_url,
-        bannerUrl: userData.banner_url,
+        avatarUrl: await generateSignedUrl(userData.avatar_url),
+        bannerUrl: await generateSignedUrl(userData.banner_url),
         bio: userData.bio,
         messagingEnabled: userData.messaging_enabled,
         isPrivate: userData.is_private,
@@ -345,8 +345,8 @@ app.post("/api/auth/token/register", async (c) => {
         level: profileData.level ?? 1,
         currentStreak: profileData.current_streak ?? 0,
         longestStreak: profileData.longest_streak ?? 0,
-        avatarUrl: profileData.avatar_url,
-        bannerUrl: profileData.banner_url,
+        avatarUrl: await generateSignedUrl(profileData.avatar_url),
+        bannerUrl: await generateSignedUrl(profileData.banner_url),
         bio: profileData.bio,
         messagingEnabled: profileData.messaging_enabled,
         isPrivate: profileData.is_private,
@@ -421,8 +421,8 @@ app.post("/api/auth/token/refresh", async (c) => {
         level: profileData.level ?? 1,
         currentStreak: profileData.current_streak ?? 0,
         longestStreak: profileData.longest_streak ?? 0,
-        avatarUrl: profileData.avatar_url,
-        bannerUrl: profileData.banner_url,
+        avatarUrl: await generateSignedUrl(profileData.avatar_url),
+        bannerUrl: await generateSignedUrl(profileData.banner_url),
         bio: profileData.bio,
         messagingEnabled: profileData.messaging_enabled,
         isPrivate: profileData.is_private,
@@ -477,8 +477,8 @@ app.get("/api/user", async (c) => {
         level: userData.level ?? 1,
         currentStreak: userData.current_streak ?? 0,
         longestStreak: userData.longest_streak ?? 0,
-        avatarUrl: userData.avatar_url,
-        bannerUrl: userData.banner_url,
+        avatarUrl: await generateSignedUrl(userData.avatar_url),
+        bannerUrl: await generateSignedUrl(userData.banner_url),
         bio: userData.bio,
         messagingEnabled: userData.messaging_enabled,
         isPrivate: userData.is_private,
@@ -557,8 +557,8 @@ app.patch("/api/user", async (c) => {
         level: updatedUser.level ?? 1,
         currentStreak: updatedUser.current_streak ?? 0,
         longestStreak: updatedUser.longest_streak ?? 0,
-        avatarUrl: updatedUser.avatar_url,
-        bannerUrl: updatedUser.banner_url,
+        avatarUrl: await generateSignedUrl(updatedUser.avatar_url),
+        bannerUrl: await generateSignedUrl(updatedUser.banner_url),
         bio: updatedUser.bio,
         messagingEnabled: updatedUser.messaging_enabled,
         isPrivate: updatedUser.is_private,
@@ -654,7 +654,7 @@ app.get("/api/recent-uploads", async (c) => {
     }> = [];
 
     // Add clips
-    (clips || []).forEach((clip: any) => {
+    for (const clip of (clips || [])) {
       allUploads.push({
         id: clip.id,
         title: clip.title || 'Untitled Clip',
@@ -664,13 +664,13 @@ app.get("/api/recent-uploads", async (c) => {
           id: clip.user.id,
           username: clip.user.username,
           displayName: clip.user.display_name || clip.user.username,
-          avatarUrl: clip.user.avatar_url,
+          avatarUrl: await generateSignedUrl(clip.user.avatar_url),
         } : null,
       });
-    });
+    }
 
     // Add reels
-    (reels || []).forEach((reel: any) => {
+    for (const reel of (reels || [])) {
       allUploads.push({
         id: reel.id,
         title: reel.title || 'Untitled Reel',
@@ -680,13 +680,13 @@ app.get("/api/recent-uploads", async (c) => {
           id: reel.user.id,
           username: reel.user.username,
           displayName: reel.user.display_name || reel.user.username,
-          avatarUrl: reel.user.avatar_url,
+          avatarUrl: await generateSignedUrl(reel.user.avatar_url),
         } : null,
       });
-    });
+    }
 
     // Add screenshots
-    (screenshots || []).forEach((ss: any) => {
+    for (const ss of (screenshots || [])) {
       allUploads.push({
         id: ss.id,
         title: ss.title || 'Untitled Screenshot',
@@ -696,10 +696,10 @@ app.get("/api/recent-uploads", async (c) => {
           id: ss.user.id,
           username: ss.user.username,
           displayName: ss.user.display_name || ss.user.username,
-          avatarUrl: ss.user.avatar_url,
+          avatarUrl: await generateSignedUrl(ss.user.avatar_url),
         } : null,
       });
-    });
+    }
 
     // Sort by createdAt descending and take top results
     allUploads.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -1408,7 +1408,7 @@ app.get("/api/messages/conversations", async (c) => {
             id: otherUser.id,
             username: otherUser.username,
             displayName: otherUser.display_name || otherUser.username,
-            avatarUrl: otherUser.avatar_url,
+            avatarUrl: await generateSignedUrl(otherUser.avatar_url),
           },
           lastMessage: {
             id: msg.id,
@@ -1617,7 +1617,7 @@ app.post("/api/messages/start", async (c) => {
         id: recipient.id,
         username: recipient.username,
         displayName: recipient.display_name || recipient.username,
-        avatarUrl: recipient.avatar_url,
+        avatarUrl: await generateSignedUrl(recipient.avatar_url),
       },
       lastMessage: {
         id: message.id,
@@ -1824,14 +1824,14 @@ app.get("/api/users/search", async (c) => {
       return c.json({ users: [], error: error.message }, 500);
     }
 
-    const formattedUsers = (users || []).map(u => ({
+    const formattedUsers = await Promise.all((users || []).map(async u => ({
       id: u.id,
       username: u.username,
       displayName: u.display_name || u.username,
-      avatarUrl: u.avatar_url,
+      avatarUrl: await generateSignedUrl(u.avatar_url),
       level: u.level ?? 1,
       totalXP: u.total_xp ?? 0,
-    }));
+    })));
 
     console.log('[Users REST] Found', formattedUsers.length, 'real users from database');
     return c.json({ users: formattedUsers });
@@ -2119,23 +2119,23 @@ app.get("/api/search/screenshots", async (c) => {
       return c.json([]);
     }
 
-    const formattedScreenshots = (screenshots || []).map((ss: any) => ({
+    const formattedScreenshots = await Promise.all((screenshots || []).map(async (ss: any) => ({
       id: ss.id,
       userId: ss.user_id,
       title: ss.title,
-      imageUrl: ss.image_url,
+      imageUrl: await generateSignedUrl(ss.image_url),
       createdAt: ss.created_at,
       user: {
         id: ss.user.id,
         username: ss.user.username,
         displayName: ss.user.display_name,
-        avatarUrl: ss.user.avatar_url,
+        avatarUrl: await generateSignedUrl(ss.user.avatar_url),
       },
       game: ss.game ? {
         id: ss.game.id,
         name: ss.game.name,
       } : null,
-    }));
+    })));
 
     console.log('[Search REST] Found', formattedScreenshots.length, 'screenshots');
     return c.json(formattedScreenshots);
@@ -2203,8 +2203,8 @@ app.get("/api/trending/clips/likes", async (c) => {
         id: clip.id,
         userId: clip.user_id,
         title: clip.title,
-        videoUrl: clip.video_url,
-        thumbnailUrl: clip.thumbnail_url,
+        videoUrl: await generateSignedUrl(clip.video_url),
+        thumbnailUrl: await generateSignedUrl(clip.thumbnail_url),
         duration: clip.duration || 0,
         views: clip.views || 0,
         createdAt: clip.created_at,
@@ -2212,7 +2212,7 @@ app.get("/api/trending/clips/likes", async (c) => {
           id: clip.user.id,
           username: clip.user.username,
           displayName: clip.user.display_name,
-          avatarUrl: clip.user.avatar_url,
+          avatarUrl: await generateSignedUrl(clip.user.avatar_url),
         },
         game: clip.game ? {
           id: clip.game.id,
@@ -2293,8 +2293,8 @@ app.get("/api/trending/clips/comments", async (c) => {
         id: clip.id,
         userId: clip.user_id,
         title: clip.title,
-        videoUrl: clip.video_url,
-        thumbnailUrl: clip.thumbnail_url,
+        videoUrl: await generateSignedUrl(clip.video_url),
+        thumbnailUrl: await generateSignedUrl(clip.thumbnail_url),
         duration: clip.duration || 0,
         views: clip.views || 0,
         createdAt: clip.created_at,
@@ -2302,7 +2302,7 @@ app.get("/api/trending/clips/comments", async (c) => {
           id: clip.user.id,
           username: clip.user.username,
           displayName: clip.user.display_name,
-          avatarUrl: clip.user.avatar_url,
+          avatarUrl: await generateSignedUrl(clip.user.avatar_url),
         },
         game: clip.game ? {
           id: clip.game.id,
@@ -2371,12 +2371,12 @@ app.get("/api/trending/reels/likes", async (c) => {
       return c.json([]);
     }
 
-    const formattedReels = (reels || []).map((reel: any) => ({
+    const formattedReels = await Promise.all((reels || []).map(async (reel: any) => ({
       id: reel.id,
       userId: reel.user_id,
       title: reel.title,
-      videoUrl: reel.video_url,
-      thumbnailUrl: reel.thumbnail_url,
+      videoUrl: await generateSignedUrl(reel.video_url),
+      thumbnailUrl: await generateSignedUrl(reel.thumbnail_url),
       duration: reel.duration || 0,
       views: reel.views || 0,
       createdAt: reel.created_at,
@@ -2384,12 +2384,12 @@ app.get("/api/trending/reels/likes", async (c) => {
         id: reel.user.id,
         username: reel.user.username,
         displayName: reel.user.display_name,
-        avatarUrl: reel.user.avatar_url,
+        avatarUrl: await generateSignedUrl(reel.user.avatar_url),
       },
       _count: {
         likes: reelLikeCounts.get(reel.id) || 0,
       }
-    }));
+    })));
 
     formattedReels.sort((a, b) => b._count.likes - a._count.likes);
 
@@ -2564,8 +2564,8 @@ app.get("/api/games/:id/clips", async (c) => {
         id: clip.id,
         userId: clip.user_id,
         title: clip.title,
-        videoUrl: clip.video_url,
-        thumbnailUrl: clip.thumbnail_url,
+        videoUrl: await generateSignedUrl(clip.video_url),
+        thumbnailUrl: await generateSignedUrl(clip.thumbnail_url),
         duration: clip.duration || 0,
         views: clip.views || 0,
         createdAt: clip.created_at,
@@ -2573,7 +2573,7 @@ app.get("/api/games/:id/clips", async (c) => {
           id: clip.user.id,
           username: clip.user.username,
           displayName: clip.user.display_name,
-          avatarUrl: clip.user.avatar_url,
+          avatarUrl: await generateSignedUrl(clip.user.avatar_url),
         },
         _count: {
           likes: likesCount || 0,
@@ -2614,19 +2614,19 @@ app.get("/api/games/:gameId/screenshots", async (c) => {
       return c.json([]);
     }
 
-    const formattedScreenshots = (screenshots || []).map((ss: any) => ({
+    const formattedScreenshots = await Promise.all((screenshots || []).map(async (ss: any) => ({
       id: ss.id,
       userId: ss.user_id,
       title: ss.title,
-      imageUrl: ss.image_url,
+      imageUrl: await generateSignedUrl(ss.image_url),
       createdAt: ss.created_at,
       user: {
         id: ss.user.id,
         username: ss.user.username,
         displayName: ss.user.display_name,
-        avatarUrl: ss.user.avatar_url,
+        avatarUrl: await generateSignedUrl(ss.user.avatar_url),
       },
-    }));
+    })));
 
     return c.json(formattedScreenshots);
   } catch (error) {
@@ -2675,8 +2675,8 @@ app.get("/api/clips/hashtag/:hashtag", async (c) => {
         id: clip.id,
         userId: clip.user_id,
         title: clip.title,
-        videoUrl: clip.video_url,
-        thumbnailUrl: clip.thumbnail_url,
+        videoUrl: await generateSignedUrl(clip.video_url),
+        thumbnailUrl: await generateSignedUrl(clip.thumbnail_url),
         duration: clip.duration || 0,
         views: clip.views || 0,
         tags: clip.tags,
@@ -2685,7 +2685,7 @@ app.get("/api/clips/hashtag/:hashtag", async (c) => {
           id: clip.user.id,
           username: clip.user.username,
           displayName: clip.user.display_name,
-          avatarUrl: clip.user.avatar_url,
+          avatarUrl: await generateSignedUrl(clip.user.avatar_url),
         },
         game: clip.game ? {
           id: clip.game.id,
@@ -2741,8 +2741,8 @@ app.get("/api/clips/:id", async (c) => {
       userId: clip.user_id,
       title: clip.title,
       description: clip.description,
-      videoUrl: clip.video_url,
-      thumbnailUrl: clip.thumbnail_url,
+      videoUrl: await generateSignedUrl(clip.video_url),
+      thumbnailUrl: await generateSignedUrl(clip.thumbnail_url),
       duration: clip.duration || 0,
       views: clip.views || 0,
       tags: clip.tags,
@@ -2752,7 +2752,7 @@ app.get("/api/clips/:id", async (c) => {
         id: clip.user.id,
         username: clip.user.username,
         displayName: clip.user.display_name,
-        avatarUrl: clip.user.avatar_url,
+        avatarUrl: await generateSignedUrl(clip.user.avatar_url),
       },
       game: clip.game ? {
         id: clip.game.id,
@@ -3034,7 +3034,7 @@ app.get("/api/clips/:id/comments", async (c) => {
       return c.json([]);
     }
 
-    const formattedComments = (comments || []).map((comment: any) => ({
+    const formattedComments = await Promise.all((comments || []).map(async (comment: any) => ({
       id: comment.id,
       content: comment.content,
       createdAt: comment.created_at,
@@ -3042,9 +3042,9 @@ app.get("/api/clips/:id/comments", async (c) => {
         id: comment.user.id,
         username: comment.user.username,
         displayName: comment.user.display_name,
-        avatarUrl: comment.user.avatar_url,
+        avatarUrl: await generateSignedUrl(comment.user.avatar_url),
       },
-    }));
+    })));
 
     return c.json(formattedComments);
   } catch {
@@ -3109,7 +3109,7 @@ app.post("/api/clips/:id/comments", async (c) => {
         id: comment.user.id,
         username: comment.user.username,
         displayName: comment.user.display_name,
-        avatarUrl: comment.user.avatar_url,
+        avatarUrl: await generateSignedUrl(comment.user.avatar_url),
       },
     });
   } catch (error) {
@@ -3137,16 +3137,16 @@ app.get("/api/users/featured", async (c) => {
       return c.json([]);
     }
 
-    const formattedUsers = (users || []).map((u: any) => ({
+    const formattedUsers = await Promise.all((users || []).map(async (u: any) => ({
       id: u.id,
       username: u.username,
       displayName: u.display_name || u.username,
-      avatarUrl: u.avatar_url,
+      avatarUrl: await generateSignedUrl(u.avatar_url),
       level: u.level ?? 1,
       totalXP: u.total_xp ?? 0,
       currentStreak: u.current_streak ?? 0,
       userType: u.user_type,
-    }));
+    })));
 
     console.log('[Users REST] Found', formattedUsers.length, 'featured users');
     return c.json(formattedUsers);
@@ -3177,8 +3177,8 @@ app.get("/api/users/:username", async (c) => {
       id: user.id,
       username: user.username,
       displayName: user.display_name,
-      avatarUrl: user.avatar_url,
-      bannerUrl: user.banner_url,
+      avatarUrl: await generateSignedUrl(user.avatar_url),
+      bannerUrl: await generateSignedUrl(user.banner_url),
       bio: user.bio,
       level: user.level ?? 1,
       totalXP: user.total_xp ?? 0,
@@ -3241,8 +3241,8 @@ app.get("/api/users/:username/clips", async (c) => {
       return {
         id: clip.id,
         title: clip.title,
-        videoUrl: clip.video_url,
-        thumbnailUrl: clip.thumbnail_url,
+        videoUrl: await generateSignedUrl(clip.video_url),
+        thumbnailUrl: await generateSignedUrl(clip.thumbnail_url),
         duration: clip.duration || 0,
         views: clip.views || 0,
         videoType: clip.video_type,
@@ -3337,17 +3337,17 @@ app.get("/api/users/trending", async (c) => {
 
     console.log('[Users REST] Found trending users:', users?.length);
 
-    const formattedUsers = (users || []).map(user => ({
+    const formattedUsers = await Promise.all((users || []).map(async user => ({
       id: user.id,
       username: user.username,
       displayName: user.display_name,
-      avatarUrl: user.avatar_url,
-      bannerUrl: user.banner_url,
+      avatarUrl: await generateSignedUrl(user.avatar_url),
+      bannerUrl: await generateSignedUrl(user.banner_url),
       totalXP: user.total_xp || 0,
       level: user.level || 1,
       currentStreak: user.current_streak || 0,
       accentColor: user.accent_color,
-    }));
+    })));
 
     return c.json({ users: formattedUsers });
   } catch (error) {
@@ -3405,12 +3405,12 @@ app.get("/api/users/blocked", async (c) => {
       return c.json({ blockedUsers: [] });
     }
 
-    const blockedUsers = (users || []).map(u => ({
+    const blockedUsers = await Promise.all((users || []).map(async u => ({
       id: u.id,
       username: u.username,
       displayName: u.display_name || u.username,
-      avatarUrl: u.avatar_url,
-    }));
+      avatarUrl: await generateSignedUrl(u.avatar_url),
+    })));
 
     console.log('[Users REST] Returning', blockedUsers.length, 'blocked users');
     return c.json({ blockedUsers });
@@ -3579,8 +3579,8 @@ app.get("/api/oauth/discord/callback", async (c) => {
       level: user.level ?? 1,
       currentStreak: user.current_streak ?? 0,
       longestStreak: user.longest_streak ?? 0,
-      avatarUrl: user.avatar_url,
-      bannerUrl: user.banner_url,
+      avatarUrl: await generateSignedUrl(user.avatar_url),
+      bannerUrl: await generateSignedUrl(user.banner_url),
       bio: user.bio,
       messagingEnabled: user.messaging_enabled,
       isPrivate: user.is_private,
@@ -3750,8 +3750,8 @@ app.post("/api/oauth/discord/callback", async (c) => {
         level: user.level ?? 1,
         currentStreak: user.current_streak ?? 0,
         longestStreak: user.longest_streak ?? 0,
-        avatarUrl: user.avatar_url,
-        bannerUrl: user.banner_url,
+        avatarUrl: await generateSignedUrl(user.avatar_url),
+        bannerUrl: await generateSignedUrl(user.banner_url),
         bio: user.bio,
         messagingEnabled: user.messaging_enabled,
         isPrivate: user.is_private,
@@ -3944,8 +3944,8 @@ app.get("/api/oauth/google/callback", async (c) => {
       level: user.level ?? 1,
       currentStreak: user.current_streak ?? 0,
       longestStreak: user.longest_streak ?? 0,
-      avatarUrl: user.avatar_url,
-      bannerUrl: user.banner_url,
+      avatarUrl: await generateSignedUrl(user.avatar_url),
+      bannerUrl: await generateSignedUrl(user.banner_url),
       bio: user.bio,
       messagingEnabled: user.messaging_enabled,
       isPrivate: user.is_private,
@@ -4133,8 +4133,8 @@ app.post("/api/oauth/google/callback", async (c) => {
         level: user.level ?? 1,
         currentStreak: user.current_streak ?? 0,
         longestStreak: user.longest_streak ?? 0,
-        avatarUrl: user.avatar_url,
-        bannerUrl: user.banner_url,
+        avatarUrl: await generateSignedUrl(user.avatar_url),
+        bannerUrl: await generateSignedUrl(user.banner_url),
         bio: user.bio,
         messagingEnabled: user.messaging_enabled,
         isPrivate: user.is_private,
@@ -4318,17 +4318,17 @@ app.get("/api/rewards", async (c) => {
       return c.json({ rewards: [] });
     }
 
-    const formattedRewards = (rewards || []).map((reward: any) => ({
+    const formattedRewards = await Promise.all((rewards || []).map(async (reward: any) => ({
       id: reward.id,
       name: reward.name,
       description: reward.description,
       type: reward.type,
       rarity: reward.rarity,
-      imageUrl: reward.image_url,
+      imageUrl: await generateSignedUrl(reward.image_url),
       value: reward.value,
       isActive: reward.is_active,
       createdAt: reward.created_at,
-    }));
+    })));
 
     console.log('[Rewards REST] Found', formattedRewards.length, 'rewards');
     return c.json({ rewards: formattedRewards });
@@ -4385,7 +4385,7 @@ app.get("/api/user/rewards", async (c) => {
       return c.json({ rewards: [], stats: null });
     }
 
-    const formattedRewards = (userRewards || []).map((ur: any) => ({
+    const formattedRewards = await Promise.all((userRewards || []).map(async (ur: any) => ({
       id: ur.id,
       claimedAt: ur.claimed_at,
       quantity: ur.quantity || 1,
@@ -4395,10 +4395,10 @@ app.get("/api/user/rewards", async (c) => {
         description: ur.reward.description,
         type: ur.reward.type,
         rarity: ur.reward.rarity,
-        imageUrl: ur.reward.image_url,
+        imageUrl: await generateSignedUrl(ur.reward.image_url),
         value: ur.reward.value,
       } : null,
-    }));
+    })));
 
     const stats = {
       totalItems: userRewards?.length || 0,
@@ -4472,7 +4472,7 @@ app.post("/api/rewards", async (c) => {
         description: reward.description,
         type: reward.type,
         rarity: reward.rarity,
-        imageUrl: reward.image_url,
+        imageUrl: await generateSignedUrl(reward.image_url),
         value: reward.value,
         isActive: reward.is_active,
         createdAt: reward.created_at,

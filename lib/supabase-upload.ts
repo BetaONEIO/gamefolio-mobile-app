@@ -49,10 +49,10 @@ export async function uploadToSupabase(
     const responseData = await uploadResponse.json();
     console.log('[Supabase Upload] Success:', responseData);
 
-    const publicUrl = `${Env.SUPABASE_URL}/storage/v1/object/public/${BUCKET_NAME}/${uploadPath}`;
+    const authenticatedUrl = `${Env.SUPABASE_URL}/storage/v1/object/${BUCKET_NAME}/${uploadPath}`;
 
     return {
-      url: publicUrl,
+      url: authenticatedUrl,
       path: uploadPath,
     };
   } catch (error) {
