@@ -1,6 +1,37 @@
 import { Env } from '@/constants/Env';
+import { signUrl } from '@/lib/image-utils';
 
 const API_BASE_URL = Env.BACKEND_URL;
+
+const SIGNABLE_FIELDS = new Set([
+  'avatarUrl', 'bannerUrl', 'videoUrl', 'thumbnailUrl', 'imageUrl',
+  'avatar_url', 'banner_url', 'video_url', 'thumbnail_url', 'image_url',
+]);
+
+async function signSupabaseUrls(data: any, depth = 0): Promise<any> {
+  if (depth > 5 || data === null || data === undefined) return data;
+
+  if (Array.isArray(data)) {
+    return Promise.all(data.map(item => signSupabaseUrls(item, depth + 1)));
+  }
+
+  if (typeof data === 'object') {
+    const entries = Object.entries(data);
+    const result: any = {};
+    await Promise.all(entries.map(async ([key, value]) => {
+      if (SIGNABLE_FIELDS.has(key) && typeof value === 'string' && value.includes('supabase.co/storage')) {
+        result[key] = await signUrl(value);
+      } else if (typeof value === 'object' && value !== null) {
+        result[key] = await signSupabaseUrls(value, depth + 1);
+      } else {
+        result[key] = value;
+      }
+    }));
+    return result;
+  }
+
+  return data;
+}
 
 export class APIError extends Error {
   constructor(
@@ -194,7 +225,8 @@ async function apiFetch<T>(
     }
 
     const data = await response.json();
-    return data as T;
+    const signedData = await signSupabaseUrls(data);
+    return signedData as T;
   } catch (error: any) {
     if (error instanceof APIError) {
       throw error;
@@ -549,7 +581,8 @@ export const api = {
 
       let responseData;
       try {
-        responseData = await response.json();
+        const rawData = await response.json();
+        responseData = await signSupabaseUrls(rawData);
       } catch (parseError) {
         console.error('[API] ❌ Failed to parse response as JSON:', parseError);
         throw new APIError('Invalid response from server - not valid JSON', response.status);
