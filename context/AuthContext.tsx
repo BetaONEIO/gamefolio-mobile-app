@@ -256,8 +256,22 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             }
           } else {
             if (mountedRef.current) {
+              const cachedUser = JSON.parse(userData);
               setAuthTokens(tokens);
-              setUser(JSON.parse(userData));
+              setUser(cachedUser);
+
+              // Fetch fresh user data from backend to keep level/XP/etc current
+              try {
+                const freshData = await api.auth.getUser(tokens.accessToken);
+                if (!cancelled && mountedRef.current && freshData.user) {
+                  console.log('[Auth] Refreshed user data from backend - Level:', freshData.user.level, 'XP:', freshData.user.totalXP);
+                  setUser(freshData.user);
+                  await secureStorage.setItem(USER_DATA_KEY, JSON.stringify(freshData.user));
+                }
+              } catch (e) {
+                console.log('[Auth] Could not refresh user data, using cached:', e);
+              }
+
               // Load and sync tokens for uploads - use stored Gamefolio tokens or fall back to main tokens
               const [gfAccessToken, gfRefreshToken, gfExpiresIn, gfIssuedAt] = await Promise.all([
                 secureStorage.getItem(GAMEFOLIO_ACCESS_TOKEN_KEY),
