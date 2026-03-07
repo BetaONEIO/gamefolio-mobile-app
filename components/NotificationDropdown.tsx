@@ -1,10 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import { 
   StyleSheet, 
   Text, 
   View, 
   Modal, 
-  TouchableWithoutFeedback, 
+  Pressable, 
   TouchableOpacity, 
   FlatList, 
   Animated,
@@ -12,81 +12,10 @@ import {
   Image
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { UserPlus, X, Heart, Flame, MessagesSquare, MessageSquare } from 'lucide-react-native';
+import { UserPlus, X, Heart, Flame, MessagesSquare, MessageSquare, AtSign } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-
-interface Notification {
-  id: string;
-  type: 'message' | 'follower' | 'like' | 'flame' | 'comment';
-  user: {
-    id?: string;
-    name: string;
-    avatar?: string;
-    initial?: string;
-  };
-  title: string;
-  description: string;
-  time: string;
-  isRead: boolean;
-  contentId?: string;
-  contentType?: 'clip' | 'screenshot';
-  conversationId?: string;
-}
-
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: '1',
-    type: 'message',
-    user: { id: 'user1', name: 'names21080', initial: 'N', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop' },
-    title: 'New Message',
-    description: 'names21080 sent you a message: "Never mind I..."',
-    time: '4d ago',
-    isRead: false,
-    conversationId: 'conv1',
-  },
-  {
-    id: '2',
-    type: 'flame',
-    user: { id: 'user1', name: 'names21080', initial: 'N', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop' },
-    title: 'New Flame',
-    description: 'names21080 reacted with a flame to your post',
-    time: '4d ago',
-    isRead: false,
-    contentId: 'clip1',
-    contentType: 'clip',
-  },
-  {
-    id: '3',
-    type: 'follower',
-    user: { id: 'user1', name: 'names21080', initial: 'N', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop' },
-    title: 'New Follower',
-    description: 'names21080 started following you',
-    time: '4d ago',
-    isRead: false,
-  },
-  {
-    id: '4',
-    type: 'like',
-    user: { id: 'user2', name: 'user123', initial: 'U', avatar: 'https://images.unsplash.com/photo-1599566150163-29194dcabd36?w=100&h=100&fit=crop' },
-    title: 'New Like',
-    description: 'user123 liked your post',
-    time: '5d ago',
-    isRead: true,
-    contentId: 'clip2',
-    contentType: 'clip',
-  },
-  {
-    id: '5',
-    type: 'comment',
-    user: { id: 'user3', name: 'admin', initial: 'A', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop' },
-    title: 'New Comment',
-    description: 'admin commented on your post: "Great work!"',
-    time: '1w ago',
-    isRead: true,
-    contentId: 'clip3',
-    contentType: 'clip',
-  },
-];
+import { useNotifications } from '@/context/NotificationsContext';
+import { Notification } from '@/lib/api';
 
 interface NotificationDropdownProps {
   visible: boolean;
@@ -95,8 +24,53 @@ interface NotificationDropdownProps {
   onOpen?: () => void;
 }
 
+function getTimeAgo(dateStr: string): string {
+  const now = Date.now();
+  const date = new Date(dateStr).getTime();
+  const diff = now - date;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
+
+function getNotificationTitle(type: Notification['type']): string {
+  switch (type) {
+    case 'like': return 'New Like';
+    case 'flame':
+    case 'fire': return 'New Flame';
+    case 'comment': return 'New Comment';
+    case 'follow':
+    case 'follower': return 'New Follower';
+    case 'message': return 'New Message';
+    case 'mention': return 'Mention';
+    default: return 'Notification';
+  }
+}
+
+function getNotificationIcon(type: Notification['type']) {
+  switch (type) {
+    case 'message': return <MessagesSquare size={20} color="#4ADE80" />;
+    case 'follow':
+    case 'follower': return <UserPlus size={20} color="#4ADE80" />;
+    case 'like': return <Heart size={20} color="#EF4444" />;
+    case 'flame':
+    case 'fire': return <Flame size={20} color="#F97316" />;
+    case 'comment': return <MessageSquare size={20} color="#4ADE80" />;
+    case 'mention': return <AtSign size={20} color="#818CF8" />;
+    default: return <Heart size={20} color="#4ADE80" />;
+  }
+}
+
 export default function NotificationDropdown({ visible, onClose, topOffset, onOpen }: NotificationDropdownProps) {
-  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
+  const { notifications, markAllRead, clearAll, removeNotification, markRead } = useNotifications();
   const router = useRouter();
 
   React.useEffect(() => {
@@ -105,9 +79,8 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
     }
   }, [visible, onOpen]);
   
-  // Custom scrollbar state
-  const [contentHeight, setContentHeight] = useState(1);
-  const [visibleHeight, setVisibleHeight] = useState(0);
+  const [contentHeight, setContentHeight] = React.useState(1);
+  const [visibleHeight, setVisibleHeight] = React.useState(0);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   const indicatorSize = visibleHeight > 0 && contentHeight > 0 
@@ -120,25 +93,9 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
     extrapolate: 'clamp',
   });
 
-  const markAllRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
-  };
-
-  const clearAll = () => {
-    setNotifications([]);
-  };
-
-  const removeNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
   const handleNotificationPress = (notification: Notification) => {
-    console.log('Notification clicked:', notification);
-    
-    if (!notification.isRead) {
-      setNotifications(prev => 
-        prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n)
-      );
+    if (!notification.read) {
+      markRead(notification.id);
     }
 
     onClose();
@@ -152,22 +109,22 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
         }
         break;
 
+      case 'follow':
       case 'follower':
-        if (notification.user.id) {
-          router.push(`/user/${notification.user.id}`);
+        if (notification.relatedUser?.id) {
+          router.push(`/user/${notification.relatedUser.id}`);
         }
         break;
 
       case 'like':
       case 'flame':
+      case 'fire':
       case 'comment':
+      case 'mention':
         if (notification.contentId && notification.contentType === 'clip') {
           router.push(`/clip/${notification.contentId}`);
         }
         break;
-
-      default:
-        console.log('Unknown notification type:', notification.type);
     }
   };
 
@@ -178,30 +135,28 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
       activeOpacity={0.7}
     >
       <View style={styles.iconColumn}>
-        {item.type === 'message' && <MessagesSquare size={20} color="#4ADE80" />}
-        {item.type === 'follower' && <UserPlus size={20} color="#4ADE80" />}
-        {item.type === 'like' && <Heart size={20} color="#EF4444" />}
-        {item.type === 'flame' && <Flame size={20} color="#F97316" />}
-        {item.type === 'comment' && <MessageSquare size={20} color="#4ADE80" />}
+        {getNotificationIcon(item.type)}
       </View>
       
       <View style={styles.contentColumn}>
         <View style={styles.headerRow}>
           <View style={styles.userRow}>
             <View style={styles.avatar}>
-              {item.user.avatar ? (
+              {item.relatedUser?.avatarUrl ? (
                 <Image 
-                  source={{ uri: item.user.avatar }} 
+                  source={{ uri: item.relatedUser.avatarUrl }} 
                   style={styles.avatarImage} 
                 />
               ) : (
-                <Text style={styles.avatarText}>{item.user.initial}</Text>
+                <Text style={styles.avatarText}>
+                  {(item.relatedUser?.username || '?')[0].toUpperCase()}
+                </Text>
               )}
             </View>
-            <Text style={styles.title}>{item.title}</Text>
+            <Text style={styles.title}>{getNotificationTitle(item.type)}</Text>
           </View>
           <View style={styles.actionsRow}>
-            {!item.isRead && <View style={styles.unreadDot} />}
+            {!item.read ? <View style={styles.unreadDot} /> : null}
             <TouchableOpacity 
               onPress={(e) => {
                 e.stopPropagation();
@@ -214,9 +169,9 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
         </View>
         
         <Text style={styles.description} numberOfLines={2}>
-          {item.description}
+          {item.message}
         </Text>
-        <Text style={styles.time}>{item.time}</Text>
+        <Text style={styles.time}>{getTimeAgo(item.createdAt)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -228,76 +183,70 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
       animationType="fade"
       onRequestClose={onClose}
     >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
-          {Platform.OS !== 'web' ? (
-            <BlurView 
-              intensity={80} 
-              tint="dark" 
-              style={StyleSheet.absoluteFill}
-            >
-              <View style={styles.darkOverlay} />
-            </BlurView>
-          ) : (
-            <View style={styles.webBlurFallback} />
-          )}
-          
-          <TouchableWithoutFeedback>
-            <View style={[styles.dropdown, { top: topOffset }]}>
-              {/* Header */}
-              <View style={styles.header}>
-                <Text style={styles.headerTitle}>Notifications</Text>
-                <View style={styles.headerActions}>
-                  <TouchableOpacity onPress={markAllRead}>
-                    <Text style={styles.actionTextGreen}>Mark Read</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={clearAll}>
-                    <Text style={styles.actionTextRed}>Clear All</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.contentContainer}>
-                <View style={{ flex: 1 }}>
-                  <FlatList
-                    data={notifications}
-                    renderItem={renderItem}
-                    keyExtractor={item => item.id}
-                    showsVerticalScrollIndicator={false}
-                    onScroll={Animated.event(
-                      [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                      { useNativeDriver: false }
-                    )}
-                    onContentSizeChange={(_, height) => setContentHeight(height)}
-                    onLayout={(e) => setVisibleHeight(e.nativeEvent.layout.height)}
-                    contentContainerStyle={styles.listContent}
-                    ListEmptyComponent={
-                      <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyText}>No notifications</Text>
-                      </View>
-                    }
-                  />
-                </View>
-                
-                {/* Custom Scrollbar */}
-                {notifications.length > 0 && contentHeight > visibleHeight && (
-                  <View style={styles.scrollbarTrack}>
-                    <Animated.View 
-                      style={[
-                        styles.scrollbarThumb,
-                        {
-                          height: indicatorSize,
-                          transform: [{ translateY: indicatorPosition }]
-                        }
-                      ]} 
-                    />
-                  </View>
-                )}
-              </View>
+      <Pressable style={styles.overlay} onPress={onClose}>
+        {Platform.OS !== 'web' ? (
+          <BlurView 
+            intensity={80} 
+            tint="dark" 
+            style={StyleSheet.absoluteFill}
+          >
+            <View style={styles.darkOverlay} />
+          </BlurView>
+        ) : (
+          <View style={styles.webBlurFallback} />
+        )}
+        
+        <Pressable style={[styles.dropdown, { top: topOffset }]} onPress={(e) => e.stopPropagation()}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Notifications</Text>
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={markAllRead}>
+                <Text style={styles.actionTextGreen}>Mark Read</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={clearAll}>
+                <Text style={styles.actionTextRed}>Clear All</Text>
+              </TouchableOpacity>
             </View>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+          </View>
+
+          <View style={styles.contentContainer}>
+            <View style={{ flex: 1 }}>
+              <FlatList
+                data={notifications}
+                renderItem={renderItem}
+                keyExtractor={item => item.id.toString()}
+                showsVerticalScrollIndicator={false}
+                onScroll={Animated.event(
+                  [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                  { useNativeDriver: false }
+                )}
+                onContentSizeChange={(_, height) => setContentHeight(height)}
+                onLayout={(e) => setVisibleHeight(e.nativeEvent.layout.height)}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>No notifications</Text>
+                  </View>
+                }
+              />
+            </View>
+            
+            {notifications.length > 0 && contentHeight > visibleHeight ? (
+              <View style={styles.scrollbarTrack}>
+                <Animated.View 
+                  style={[
+                    styles.scrollbarThumb,
+                    {
+                      height: indicatorSize,
+                      transform: [{ translateY: indicatorPosition }]
+                    }
+                  ]} 
+                />
+              </View>
+            ) : null}
+          </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
@@ -324,7 +273,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#1E293B',
-    // Shadow
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -364,7 +312,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   contentContainer: {
-    height: 300, // Fixed height for scrolling
+    height: 300,
     flexDirection: 'row',
   },
   listContent: {

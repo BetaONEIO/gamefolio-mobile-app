@@ -54,6 +54,13 @@ Preferred communication style: Simple, everyday language.
 - OAuth integration (Google, Discord) for mobile platforms
 - Role-based user types with visibility controls
 
+### Notifications
+- `NotificationsContext.tsx` provides global notification state: `notifications`, `unreadCount`, `markAllRead()`, `clearAll()`, `removeNotification(id)`, `markRead(id)`
+- Fetches from `GET /api/notifications` and `GET /api/notifications/unread-count` on auth (gracefully handles 404 if endpoints don't exist on live backend)
+- Incoming push notifications are added to the local list in real-time
+- `NotificationDropdown.tsx` and `AppHeader.tsx` bell badge consume context data (no mock data)
+- API functions in `api.notifications.*` (`list`, `unreadCount`, `markAllRead`, `markRead`, `delete`, `clearAll`) all fail gracefully
+
 ### Key Features
 - User profiles with customizable themes, avatars, and banners
 - Gaming platform account linking (Steam, Xbox, PSN, Epic, Nintendo, Discord)

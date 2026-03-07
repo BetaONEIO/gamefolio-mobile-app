@@ -1,13 +1,14 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import * as ExpoNotifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { useAuth } from './AuthContext';
 import { trpc } from '@/lib/trpc';
+import { api, Notification } from '@/lib/api';
 
-Notifications.setNotificationHandler({
+ExpoNotifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
@@ -34,12 +35,12 @@ async function registerForPushNotificationsAsync(): Promise<PushTokens> {
   }
 
   try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus } = await ExpoNotifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
       console.log('[Notifications] Requesting permission...');
-      const { status } = await Notifications.requestPermissionsAsync();
+      const { status } = await ExpoNotifications.requestPermissionsAsync();
       finalStatus = status;
     }
 
@@ -54,20 +55,18 @@ async function registerForPushNotificationsAsync(): Promise<PushTokens> {
       console.log('[Notifications] No project ID found, using default');
     }
 
-    // Get Expo push token (for Expo push service)
-    const expoTokenData = await Notifications.getExpoPushTokenAsync({
+    const expoTokenData = await ExpoNotifications.getExpoPushTokenAsync({
       projectId: projectId || process.env.EXPO_PUBLIC_PROJECT_ID,
     });
     console.log('[Notifications] Expo push token:', expoTokenData.data);
 
-    // Get native device token (for Firebase Console)
-    const deviceTokenData = await Notifications.getDevicePushTokenAsync();
+    const deviceTokenData = await ExpoNotifications.getDevicePushTokenAsync();
     console.log('[Notifications] Native device token (use this in Firebase):', deviceTokenData.data);
 
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
+      await ExpoNotifications.setNotificationChannelAsync('default', {
         name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
+        importance: ExpoNotifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF6B35',
       });
@@ -83,26 +82,62 @@ async function registerForPushNotificationsAsync(): Promise<PushTokens> {
   }
 }
 
+let nextLocalId = -1;
+
+function pushDataToNotification(data: Record<string, any>, title?: string, body?: string): Notification {
+  const id = nextLocalId--;
+  return {
+    id,
+    userId: 0,
+    type: data?.type || 'like',
+    message: body || title || '',
+    read: false,
+    createdAt: new Date().toISOString(),
+    relatedUser: data?.userId ? {
+      id: Number(data.userId),
+      username: data?.username || '',
+      avatarUrl: data?.avatarUrl || '',
+    } : undefined,
+    contentId: data?.clipId ? Number(data.clipId) : data?.screenshotId ? Number(data.screenshotId) : undefined,
+    contentType: data?.clipId ? 'clip' : data?.screenshotId ? 'screenshot' : undefined,
+    conversationId: data?.conversationId ? Number(data.conversationId) : undefined,
+  };
+}
+
 export const [NotificationsProvider, useNotifications] = createContextHook(() => {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
   const [devicePushToken, setDevicePushToken] = useState<string | null>(null);
-  const [notification, setNotification] = useState<Notifications.Notification | null>(null);
+  const [lastPushNotification, setLastPushNotification] = useState<ExpoNotifications.Notification | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<string>('undetermined');
-  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
-  const responseListener = useRef<Notifications.EventSubscription | null>(null);
-  const { isAuthenticated, user } = useAuth();
+  const notificationListener = useRef<ExpoNotifications.EventSubscription | null>(null);
+  const responseListener = useRef<ExpoNotifications.EventSubscription | null>(null);
+  const { isAuthenticated, user, authTokens } = useAuth();
+
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const registerTokenMutation = trpc.notifications.registerToken.useMutation();
+  const registerTokenRef = useRef(registerTokenMutation);
+  registerTokenRef.current = registerTokenMutation;
+
+  const authTokenRef = useRef(authTokens?.accessToken);
+  authTokenRef.current = authTokens?.accessToken;
+
+  const isAuthenticatedRef = useRef(isAuthenticated);
+  isAuthenticatedRef.current = isAuthenticated;
+
+  const userRef = useRef(user);
+  userRef.current = user;
 
   const registerToken = useCallback(async (token: string) => {
-    if (!isAuthenticated || !user) {
+    if (!isAuthenticatedRef.current || !userRef.current) {
       console.log('[Notifications] Not authenticated, skipping token registration');
       return;
     }
 
     try {
       console.log('[Notifications] Registering push token with backend...');
-      await registerTokenMutation.mutateAsync({
+      await registerTokenRef.current.mutateAsync({
         token,
         platform: Platform.OS as 'ios' | 'android' | 'web',
       });
@@ -110,9 +145,72 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
     } catch (error) {
       console.error('[Notifications] Failed to register push token:', error);
     }
-  }, [isAuthenticated, user, registerTokenMutation]);
+  }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    const token = authTokenRef.current;
+    if (!token) return;
+    try {
+      const [list, count] = await Promise.all([
+        api.notifications.list(token),
+        api.notifications.unreadCount(token),
+      ]);
+      setNotifications(list);
+      setUnreadCount(count > 0 ? count : list.filter(n => !n.read).length);
+    } catch {
+      console.log('[Notifications] Failed to fetch notifications from API');
+    }
+  }, []);
+
+  const markAllRead = useCallback(async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
+    const token = authTokenRef.current;
+    if (token) {
+      api.notifications.markAllRead(token);
+    }
+  }, []);
+
+  const clearAll = useCallback(async () => {
+    setNotifications([]);
+    setUnreadCount(0);
+    const token = authTokenRef.current;
+    if (token) {
+      api.notifications.clearAll(token);
+    }
+  }, []);
+
+  const removeNotification = useCallback(async (id: number) => {
+    setNotifications(prev => {
+      const removed = prev.find(n => n.id === id);
+      const updated = prev.filter(n => n.id !== id);
+      if (removed && !removed.read) {
+        setUnreadCount(c => Math.max(0, c - 1));
+      }
+      return updated;
+    });
+    const token = authTokenRef.current;
+    if (token && id > 0) {
+      api.notifications.delete(id, token);
+    }
+  }, []);
+
+  const markRead = useCallback(async (id: number) => {
+    setNotifications(prev =>
+      prev.map(n => n.id === id ? { ...n, read: true } : n)
+    );
+    setUnreadCount(c => Math.max(0, c - 1));
+    const token = authTokenRef.current;
+    if (token && id > 0) {
+      api.notifications.markRead(id, token);
+    }
+  }, []);
+
+  const initializedRef = useRef(false);
 
   const initialize = useCallback(async () => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
     console.log('[Notifications] Initializing...');
 
     const tokens = await registerForPushNotificationsAsync();
@@ -128,18 +226,27 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
       console.log('[Notifications] ========================================');
     }
 
-    const permResult = await Notifications.getPermissionsAsync();
+    const permResult = await ExpoNotifications.getPermissionsAsync();
     setPermissionStatus(permResult.status);
 
-    notificationListener.current = Notifications.addNotificationReceivedListener(
-      (receivedNotification: Notifications.Notification) => {
+    notificationListener.current = ExpoNotifications.addNotificationReceivedListener(
+      (receivedNotification: ExpoNotifications.Notification) => {
         console.log('[Notifications] Received:', receivedNotification);
-        setNotification(receivedNotification);
+        setLastPushNotification(receivedNotification);
+        
+        const data = receivedNotification.request.content.data;
+        const title = receivedNotification.request.content.title ?? undefined;
+        const body = receivedNotification.request.content.body ?? undefined;
+        if (data) {
+          const newNotif = pushDataToNotification(data, title, body);
+          setNotifications(prev => [newNotif, ...prev]);
+          setUnreadCount(c => c + 1);
+        }
       }
     );
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (receivedResponse: Notifications.NotificationResponse) => {
+    responseListener.current = ExpoNotifications.addNotificationResponseReceivedListener(
+      (receivedResponse: ExpoNotifications.NotificationResponse) => {
         console.log('[Notifications] User interacted with notification:', receivedResponse);
         const data = receivedResponse.notification.request.content.data;
         
@@ -153,6 +260,11 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
   useEffect(() => {
     if (isAuthenticated) {
       initialize();
+      fetchNotifications();
+    } else {
+      initializedRef.current = false;
+      setNotifications([]);
+      setUnreadCount(0);
     }
 
     return () => {
@@ -163,7 +275,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
         responseListener.current.remove();
       }
     };
-  }, [isAuthenticated, initialize]);
+  }, [isAuthenticated, initialize, fetchNotifications]);
 
   useEffect(() => {
     if (isAuthenticated && expoPushToken) {
@@ -180,21 +292,28 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
     if (tokens.deviceToken) {
       setDevicePushToken(tokens.deviceToken);
     }
-    const permResult = await Notifications.getPermissionsAsync();
+    const permResult = await ExpoNotifications.getPermissionsAsync();
     setPermissionStatus(permResult.status);
     return permResult.status === 'granted';
   }, [registerToken]);
 
   const clearBadge = useCallback(async () => {
-    await Notifications.setBadgeCountAsync(0);
+    await ExpoNotifications.setBadgeCountAsync(0);
   }, []);
 
   return {
     expoPushToken,
     devicePushToken,
-    notification,
+    notification: lastPushNotification,
     permissionStatus,
     requestPermission,
     clearBadge,
+    notifications,
+    unreadCount,
+    markAllRead,
+    clearAll,
+    removeNotification,
+    markRead,
+    fetchNotifications,
   };
 });

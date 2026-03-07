@@ -11,6 +11,7 @@ import NotificationDropdown from '@/components/NotificationDropdown';
 import UploadDropdown from '@/components/UploadDropdown';
 import { Env } from '@/constants/Env';
 import { useAuth } from '@/context/AuthContext';
+import { useNotifications } from '@/context/NotificationsContext';
 import { getEffectiveAvatarUrl } from '@/lib/api';
 
 interface AppHeaderProps {
@@ -205,13 +206,13 @@ function formatNumber(num: number): string {
 export default function AppHeader({ showBackButton = false, onOpenLevelTracker, hideProfile = false, hideUpload = false }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { unreadCount, markAllRead } = useNotifications();
   const [isProfileDropdownVisible, setIsProfileDropdownVisible] = useState(false);
   const [isNotificationDropdownVisible, setIsNotificationDropdownVisible] = useState(false);
   const [isUploadDropdownVisible, setIsUploadDropdownVisible] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [unreadNotificationCount, setUnreadNotificationCount] = useState(3);
   const searchAnimation = useRef(new Animated.Value(0)).current;
   const searchInputRef = useRef<TextInput>(null);
   const navigation = useNavigation();
@@ -350,11 +351,11 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
             style={styles.iconButton}
             onPress={() => setIsNotificationDropdownVisible(true)}
           >
-            {unreadNotificationCount > 0 && (
+            {unreadCount > 0 ? (
               <View style={styles.notificationBadge}>
-                <Text style={styles.notificationText}>{unreadNotificationCount}</Text>
+                <Text style={styles.notificationText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
               </View>
-            )}
+            ) : null}
             <Bell size={24} color="#FFF" />
           </TouchableOpacity>
 
@@ -598,7 +599,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
         visible={isNotificationDropdownVisible}
         onClose={() => setIsNotificationDropdownVisible(false)}
         topOffset={insets.top + 60}
-        onOpen={() => setUnreadNotificationCount(0)}
+        onOpen={() => markAllRead()}
       />
 
       <UploadDropdown 

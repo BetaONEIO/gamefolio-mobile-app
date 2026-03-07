@@ -509,15 +509,18 @@ export interface Screenshot {
 export interface Notification {
   id: number;
   userId: number;
-  type: "like" | "comment" | "follow" | "mention";
+  type: "like" | "comment" | "follow" | "mention" | "flame" | "fire" | "message" | "follower";
   message: string;
   read: boolean;
   createdAt: string;
-  relatedUser: {
+  relatedUser?: {
     id: number;
     username: string;
     avatarUrl: string;
   };
+  contentId?: number;
+  contentType?: "clip" | "screenshot" | "reel";
+  conversationId?: number;
 }
 
 export interface Message {
@@ -1921,6 +1924,85 @@ export const api = {
         method: 'GET',
         token,
       });
+    },
+  },
+
+  notifications: {
+    list: async (token: string): Promise<Notification[]> => {
+      try {
+        const data = await apiFetch<Notification[] | { notifications: Notification[] }>('/api/notifications', {
+          method: 'GET',
+          token,
+        });
+        if (Array.isArray(data)) return data;
+        if (data && 'notifications' in data) return data.notifications;
+        return [];
+      } catch (err: any) {
+        if (err?.status === 404 || err?.status === 401) {
+          console.log('[Notifications API] Endpoint not available:', err.status);
+          return [];
+        }
+        console.error('[Notifications API] Failed to fetch notifications:', err);
+        return [];
+      }
+    },
+
+    unreadCount: async (token: string): Promise<number> => {
+      try {
+        const data = await apiFetch<{ count: number } | { unreadCount: number }>('/api/notifications/unread-count', {
+          method: 'GET',
+          token,
+        });
+        if ('count' in data) return data.count;
+        if ('unreadCount' in data) return data.unreadCount;
+        return 0;
+      } catch {
+        return 0;
+      }
+    },
+
+    markAllRead: async (token: string): Promise<void> => {
+      try {
+        await apiFetch('/api/notifications/read', {
+          method: 'POST',
+          token,
+        });
+      } catch {
+        console.log('[Notifications API] Mark all read endpoint not available');
+      }
+    },
+
+    markRead: async (notificationId: number, token: string): Promise<void> => {
+      try {
+        await apiFetch(`/api/notifications/${notificationId}/read`, {
+          method: 'POST',
+          token,
+        });
+      } catch {
+        console.log('[Notifications API] Mark read endpoint not available');
+      }
+    },
+
+    delete: async (notificationId: number, token: string): Promise<void> => {
+      try {
+        await apiFetch(`/api/notifications/${notificationId}`, {
+          method: 'DELETE',
+          token,
+        });
+      } catch {
+        console.log('[Notifications API] Delete endpoint not available');
+      }
+    },
+
+    clearAll: async (token: string): Promise<void> => {
+      try {
+        await apiFetch('/api/notifications', {
+          method: 'DELETE',
+          token,
+        });
+      } catch {
+        console.log('[Notifications API] Clear all endpoint not available');
+      }
     },
   },
 };
