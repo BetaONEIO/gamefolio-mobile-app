@@ -46,11 +46,15 @@ function getNotificationTitle(type: Notification['type']): string {
     case 'like': return 'New Like';
     case 'flame':
     case 'fire': return 'New Flame';
-    case 'comment': return 'New Comment';
+    case 'comment':
+    case 'reply': return 'New Comment';
     case 'follow':
     case 'follower': return 'New Follower';
     case 'message': return 'New Message';
-    case 'mention': return 'Mention';
+    case 'mention':
+    case 'clip_mention':
+    case 'comment_mention': return 'Mention';
+    case 'upload': return 'New Upload';
     default: return 'Notification';
   }
 }
@@ -63,8 +67,12 @@ function getNotificationIcon(type: Notification['type']) {
     case 'like': return <Heart size={20} color="#EF4444" />;
     case 'flame':
     case 'fire': return <Flame size={20} color="#F97316" />;
-    case 'comment': return <MessageSquare size={20} color="#4ADE80" />;
-    case 'mention': return <AtSign size={20} color="#818CF8" />;
+    case 'comment':
+    case 'reply': return <MessageSquare size={20} color="#4ADE80" />;
+    case 'mention':
+    case 'clip_mention':
+    case 'comment_mention': return <AtSign size={20} color="#818CF8" />;
+    case 'upload': return <Heart size={20} color="#4ADE80" />;
     default: return <Heart size={20} color="#4ADE80" />;
   }
 }
@@ -94,25 +102,26 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
   });
 
   const handleNotificationPress = (notification: Notification) => {
-    if (!notification.read) {
+    if (!notification.isRead) {
       markRead(notification.id);
     }
 
     onClose();
 
+    if (notification.actionUrl) {
+      router.push(notification.actionUrl as any);
+      return;
+    }
+
     switch (notification.type) {
       case 'message':
-        if (notification.conversationId) {
-          router.push(`/conversation/${notification.conversationId}`);
-        } else {
-          router.push('/(drawer)/messages');
-        }
+        router.push('/(drawer)/messages');
         break;
 
       case 'follow':
       case 'follower':
-        if (notification.relatedUser?.id) {
-          router.push(`/user/${notification.relatedUser.id}`);
+        if (notification.fromUser?.id || notification.fromUserId) {
+          router.push(`/user/${notification.fromUser?.id || notification.fromUserId}`);
         }
         break;
 
@@ -120,9 +129,20 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
       case 'flame':
       case 'fire':
       case 'comment':
+      case 'reply':
       case 'mention':
-        if (notification.contentId && notification.contentType === 'clip') {
-          router.push(`/clip/${notification.contentId}`);
+      case 'clip_mention':
+      case 'comment_mention':
+        if (notification.clipId) {
+          router.push(`/clip/${notification.clipId}`);
+        } else if (notification.screenshotId) {
+          router.push(`/screenshot/${notification.screenshotId}`);
+        }
+        break;
+
+      case 'upload':
+        if (notification.fromUser?.id || notification.fromUserId) {
+          router.push(`/user/${notification.fromUser?.id || notification.fromUserId}`);
         }
         break;
     }
@@ -142,21 +162,21 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
         <View style={styles.headerRow}>
           <View style={styles.userRow}>
             <View style={styles.avatar}>
-              {item.relatedUser?.avatarUrl ? (
+              {item.fromUser?.avatarUrl ? (
                 <Image 
-                  source={{ uri: item.relatedUser.avatarUrl }} 
+                  source={{ uri: item.fromUser.avatarUrl }} 
                   style={styles.avatarImage} 
                 />
               ) : (
                 <Text style={styles.avatarText}>
-                  {(item.relatedUser?.username || '?')[0].toUpperCase()}
+                  {(item.fromUser?.username || '?')[0].toUpperCase()}
                 </Text>
               )}
             </View>
-            <Text style={styles.title}>{getNotificationTitle(item.type)}</Text>
+            <Text style={styles.title}>{item.title || getNotificationTitle(item.type)}</Text>
           </View>
           <View style={styles.actionsRow}>
-            {!item.read ? <View style={styles.unreadDot} /> : null}
+            {!item.isRead ? <View style={styles.unreadDot} /> : null}
             <TouchableOpacity 
               onPress={(e) => {
                 e.stopPropagation();

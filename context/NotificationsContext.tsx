@@ -90,17 +90,20 @@ function pushDataToNotification(data: Record<string, any>, title?: string, body?
     id,
     userId: 0,
     type: data?.type || 'like',
+    title: title || '',
     message: body || title || '',
-    read: false,
+    isRead: false,
     createdAt: new Date().toISOString(),
-    relatedUser: data?.userId ? {
-      id: Number(data.userId),
+    fromUserId: data?.fromUserId ? Number(data.fromUserId) : undefined,
+    clipId: data?.clipId ? Number(data.clipId) : undefined,
+    screenshotId: data?.screenshotId ? Number(data.screenshotId) : undefined,
+    commentId: data?.commentId ? Number(data.commentId) : undefined,
+    actionUrl: data?.actionUrl,
+    fromUser: data?.fromUserId ? {
+      id: Number(data.fromUserId),
       username: data?.username || '',
       avatarUrl: data?.avatarUrl || '',
     } : undefined,
-    contentId: data?.clipId ? Number(data.clipId) : data?.screenshotId ? Number(data.screenshotId) : undefined,
-    contentType: data?.clipId ? 'clip' : data?.screenshotId ? 'screenshot' : undefined,
-    conversationId: data?.conversationId ? Number(data.conversationId) : undefined,
   };
 }
 
@@ -156,14 +159,14 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
         api.notifications.unreadCount(token),
       ]);
       setNotifications(list);
-      setUnreadCount(count > 0 ? count : list.filter(n => !n.read).length);
+      setUnreadCount(count > 0 ? count : list.filter(n => !n.isRead).length);
     } catch {
       console.log('[Notifications] Failed to fetch notifications from API');
     }
   }, []);
 
   const markAllRead = useCallback(async () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
     setUnreadCount(0);
     const token = authTokenRef.current;
     if (token) {
@@ -184,7 +187,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
     setNotifications(prev => {
       const removed = prev.find(n => n.id === id);
       const updated = prev.filter(n => n.id !== id);
-      if (removed && !removed.read) {
+      if (removed && !removed.isRead) {
         setUnreadCount(c => Math.max(0, c - 1));
       }
       return updated;
@@ -197,7 +200,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
 
   const markRead = useCallback(async (id: number) => {
     setNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
+      prev.map(n => n.id === id ? { ...n, isRead: true } : n)
     );
     setUnreadCount(c => Math.max(0, c - 1));
     const token = authTokenRef.current;

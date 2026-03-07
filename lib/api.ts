@@ -509,18 +509,23 @@ export interface Screenshot {
 export interface Notification {
   id: number;
   userId: number;
-  type: "like" | "comment" | "follow" | "mention" | "flame" | "fire" | "message" | "follower";
+  type: "like" | "comment" | "follow" | "upload" | "reply" | "clip_mention" | "comment_mention" | "flame" | "fire" | "message" | "follower" | "mention";
+  title: string;
   message: string;
-  read: boolean;
+  isRead: boolean;
+  fromUserId?: number;
+  clipId?: number;
+  screenshotId?: number;
+  commentId?: number;
+  metadata?: Record<string, any>;
+  actionUrl?: string;
   createdAt: string;
-  relatedUser?: {
+  fromUser?: {
     id: number;
     username: string;
-    avatarUrl: string;
+    displayName?: string;
+    avatarUrl?: string;
   };
-  contentId?: number;
-  contentType?: "clip" | "screenshot" | "reel";
-  conversationId?: number;
 }
 
 export interface Message {
