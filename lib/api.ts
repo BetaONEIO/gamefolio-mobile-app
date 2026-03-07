@@ -556,14 +556,72 @@ export interface Conversation {
   updatedAt: string;
 }
 
+function mapRawUser(raw: any): User {
+  return {
+    id: raw.id,
+    username: raw.username,
+    displayName: raw.displayName || raw.display_name || raw.username,
+    email: raw.email || null,
+    emailVerified: raw.emailVerified ?? raw.email_verified ?? false,
+    role: raw.role || 'user',
+    totalXP: raw.totalXP ?? raw.total_xp ?? 0,
+    level: raw.level || 1,
+    currentStreak: raw.currentStreak ?? raw.current_streak ?? 0,
+    longestStreak: raw.longestStreak ?? raw.longest_streak ?? 0,
+    avatarUrl: raw.avatarUrl || raw.avatar_url || null,
+    bannerUrl: raw.bannerUrl || raw.banner_url || null,
+    bio: raw.bio || null,
+    messagingEnabled: raw.messagingEnabled ?? raw.messaging_enabled ?? true,
+    isPrivate: raw.isPrivate ?? raw.is_private ?? false,
+    userType: raw.userType || raw.user_type,
+    showUserType: raw.showUserType ?? raw.show_user_type,
+    gfTokenBalance: raw.gfTokenBalance ?? raw.gf_token_balance ?? 0,
+    accentColor: raw.accentColor || raw.accent_color,
+    backgroundColor: raw.backgroundColor || raw.background_color,
+    displayNameColor: raw.displayNameColor || raw.display_name_color,
+    isOnline: raw.isOnline ?? raw.is_online,
+    lastActive: raw.lastActive || raw.last_active || null,
+    isPro: raw.isPro ?? raw.is_pro,
+    birthday: raw.birthday || null,
+    birthdayLastUpdated: raw.birthdayLastUpdated || raw.birthday_last_updated || null,
+    createdAt: raw.createdAt || raw.created_at,
+    activeProfilePicType: raw.activeProfilePicType || raw.active_profile_pic_type,
+    nftProfileImageUrl: raw.nftProfileImageUrl || raw.nft_profile_image_url || null,
+    steamUsername: raw.steamUsername || raw.steam_username || null,
+    xboxUsername: raw.xboxUsername || raw.xbox_username || null,
+    playstationUsername: raw.playstationUsername || raw.playstation_username || null,
+    discordUsername: raw.discordUsername || raw.discord_username || null,
+    epicUsername: raw.epicUsername || raw.epic_username || null,
+    nintendoUsername: raw.nintendoUsername || raw.nintendo_username || null,
+    ageRange: raw.ageRange || raw.age_range,
+  };
+}
+
+function mapAuthResponse(response: any): AuthResponse & { needsOnboarding?: boolean } {
+  const rawUser = response.user || response;
+  const user = (rawUser?.id && rawUser?.username) ? mapRawUser(rawUser) : rawUser;
+  console.log('[API] auth mapped - level:', user?.level, 'totalXP:', user?.totalXP);
+  return {
+    user,
+    accessToken: response.accessToken || response.access_token || response.token || '',
+    refreshToken: response.refreshToken || response.refresh_token || '',
+    expiresIn: response.expiresIn || response.expires_in || 3600,
+    streakInfo: response.streakInfo || response.streak_info,
+    gamefolioTokens: response.gamefolioTokens || response.gamefolio_tokens,
+    needsOnboarding: response.needsOnboarding ?? response.needs_onboarding,
+  };
+}
+
 export const api = {
   auth: {
-    login: (data: LoginRequest) =>
-      apiFetch<AuthResponse>('/api/auth/token/login', {
+    login: async (data: LoginRequest) => {
+      const response = await apiFetch<any>('/api/auth/token/login', {
         method: 'POST',
         body: JSON.stringify(data),
         useCookieAuth: true,
-      }),
+      });
+      return mapAuthResponse(response);
+    },
 
     register: async (data: RegisterRequest) => {
       const baseUrl = API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
@@ -631,30 +689,9 @@ export const api = {
         let refreshToken: string;
         let expiresIn: number;
         
-        // Check if user is nested or at root level
-        if (responseData.user) {
-          user = responseData.user;
-        } else if (responseData.id && responseData.username) {
-          // User data is at root level
-          user = {
-            id: responseData.id,
-            username: responseData.username,
-            displayName: responseData.displayName || responseData.display_name || responseData.username,
-            email: responseData.email || null,
-            emailVerified: responseData.emailVerified || responseData.email_verified || false,
-            role: responseData.role || 'user',
-            totalXP: responseData.totalXP || responseData.total_xp || 0,
-            level: responseData.level || 1,
-            currentStreak: responseData.currentStreak || responseData.current_streak || 0,
-            longestStreak: responseData.longestStreak || responseData.longest_streak || 0,
-            avatarUrl: responseData.avatarUrl || responseData.avatar_url || null,
-            bannerUrl: responseData.bannerUrl || responseData.banner_url || null,
-            bio: responseData.bio || null,
-            messagingEnabled: responseData.messagingEnabled ?? responseData.messaging_enabled ?? true,
-            isPrivate: responseData.isPrivate ?? responseData.is_private ?? false,
-            userType: responseData.userType || responseData.user_type,
-            gfTokenBalance: responseData.gfTokenBalance || responseData.gf_token_balance || 0,
-          };
+        const rawUser = responseData.user || responseData;
+        if (rawUser?.id && rawUser?.username) {
+          user = mapRawUser(rawUser);
         } else {
           console.error('[API] ❌ Invalid register response structure:', responseData);
           throw new APIError('Invalid response from server: missing user data', response.status, responseData);
@@ -792,41 +829,45 @@ export const api = {
     },
 
     getUser: async (token: string) => {
-      const response = await apiFetch<{ user?: User } & Partial<User>>('/api/user', {
+      const response = await apiFetch<any>('/api/user', {
         method: 'GET',
         token,
       });
-      if (response.user) {
-        return { user: response.user };
+      const raw = response.user || response;
+      if (!raw?.id || !raw?.username) {
+        throw new APIError('Invalid response from /api/user: missing user data', 500);
       }
-      if (response.id && response.username) {
-        return { user: response as unknown as User };
-      }
-      throw new APIError('Invalid response from /api/user: missing user data', 500);
+      const user = mapRawUser(raw);
+      console.log('[API] getUser mapped - level:', user.level, 'totalXP:', user.totalXP);
+      return { user };
     },
 
-    googleLogin: (data: {
+    googleLogin: async (data: {
       email: string;
       displayName: string;
       photoURL: string | null;
       uid: string;
-    }) =>
-      apiFetch<AuthResponse & { needsOnboarding?: boolean }>('/api/auth/token/google', {
+    }) => {
+      const response = await apiFetch<any>('/api/auth/token/google', {
         method: 'POST',
         body: JSON.stringify(data),
-      }),
+      });
+      return mapAuthResponse(response);
+    },
 
-    discordLogin: (data: {
+    discordLogin: async (data: {
       id: string;
       username: string;
       discriminator: string;
       email: string | null;
       avatar: string | null;
-    }) =>
-      apiFetch<AuthResponse & { needsOnboarding?: boolean }>('/api/auth/token/discord', {
+    }) => {
+      const response = await apiFetch<any>('/api/auth/token/discord', {
         method: 'POST',
         body: JSON.stringify(data),
-      }),
+      });
+      return mapAuthResponse(response);
+    },
 
     // Mobile OAuth flow - Discord
     discordMobileInit: async () => {
