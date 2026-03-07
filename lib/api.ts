@@ -556,7 +556,7 @@ export interface Conversation {
   updatedAt: string;
 }
 
-function mapRawUser(raw: any): User {
+export function mapRawUser(raw: any): User {
   return {
     id: raw.id,
     username: raw.username,

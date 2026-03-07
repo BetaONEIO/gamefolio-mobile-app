@@ -2,7 +2,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import React, { useState, useEffect, useCallback } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
-import { api, setAuthCallbacks, User, GamefolioTokens } from '@/lib/api';
+import { api, setAuthCallbacks, User, GamefolioTokens, mapRawUser } from '@/lib/api';
 import { setTRPCAuthToken } from '@/lib/trpc';
 import { setGamefolioTokens, clearGamefolioTokens } from '@/lib/gamefolio-api';
 
@@ -178,8 +178,9 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       ]);
       
       if (data.user && mountedRef.current) {
-        setUser(data.user);
-        await secureStorage.setItem(USER_DATA_KEY, JSON.stringify(data.user));
+        const mappedUser = mapRawUser(data.user);
+        setUser(mappedUser);
+        await secureStorage.setItem(USER_DATA_KEY, JSON.stringify(mappedUser));
       }
 
       console.log('[Auth] Token refreshed successfully');
@@ -236,10 +237,14 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
                 setGamefolioTokens(newTokens.accessToken, newTokens.refreshToken, newTokens.expiresIn, Date.now());
               
                 if (data.user) {
-                  setUser(data.user);
-                  await secureStorage.setItem(USER_DATA_KEY, JSON.stringify(data.user));
+                  const mappedUser = mapRawUser(data.user);
+                  console.log('[Auth] Token refresh user mapped - Level:', mappedUser.level, 'XP:', mappedUser.totalXP);
+                  setUser(mappedUser);
+                  await secureStorage.setItem(USER_DATA_KEY, JSON.stringify(mappedUser));
                 } else {
-                  setUser(JSON.parse(userData));
+                  const cachedUser = JSON.parse(userData);
+                  const mappedCached = mapRawUser(cachedUser);
+                  setUser(mappedCached);
                 }
               }
             } catch {
@@ -256,7 +261,8 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             }
           } else {
             if (mountedRef.current) {
-              const cachedUser = JSON.parse(userData);
+              const cachedUser = mapRawUser(JSON.parse(userData));
+              console.log('[Auth] Cached user mapped - Level:', cachedUser.level, 'XP:', cachedUser.totalXP);
               setAuthTokens(tokens);
               setUser(cachedUser);
 
