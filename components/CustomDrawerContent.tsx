@@ -133,20 +133,34 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
         </TouchableOpacity>
 
         {/* Level Progress Bar */}
-        <View style={styles.levelContainer}>
-          <View style={styles.levelHeader}>
-            <Text style={styles.levelText}>Level {user?.level || 1}</Text>
-            <Text style={styles.xpText}>{user?.totalXP || 0} / {((user?.level || 1) * 100)} XP</Text>
-          </View>
-          <View style={styles.levelBarBackground}>
-            <View 
-              style={[
-                styles.levelBarFill, 
-                { width: `${Math.min(((user?.totalXP || 0) / ((user?.level || 1) * 100)) * 100, 100)}%` }
-              ]} 
-            />
-          </View>
-        </View>
+        {(() => {
+          const level = user?.level || 1;
+          const totalXP = user?.totalXP || 0;
+          let xpAtCurrentLevel = 0;
+          for (let i = 1; i < level; i++) {
+            xpAtCurrentLevel += 1000 * i;
+          }
+          const xpForNextLevel = 1000 * level;
+          const xpInLevel = Math.max(0, totalXP - xpAtCurrentLevel);
+          const progressPercent = Math.min((xpInLevel / xpForNextLevel) * 100, 100);
+
+          return (
+            <View style={styles.levelContainer}>
+              <View style={styles.levelHeader}>
+                <Text style={styles.levelText}>Level {level}</Text>
+                <Text style={styles.xpText}>{Math.round(xpInLevel)} / {Math.round(xpForNextLevel)} XP</Text>
+              </View>
+              <View style={styles.levelBarBackground}>
+                <View 
+                  style={[
+                    styles.levelBarFill, 
+                    { width: `${progressPercent}%` }
+                  ]} 
+                />
+              </View>
+            </View>
+          );
+        })()}
 
         {/* Pro Button or Pro Status */}
         {isPro ? (
