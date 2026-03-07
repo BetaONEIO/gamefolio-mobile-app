@@ -1,86 +1,103 @@
-import express from "express";
-import type { Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import * as fs from "fs";
-import * as path from "path";
+import express, { type Request, Response, NextFunction } from "express";
+import { eq } from 'drizzle-orm';
+import { db } from './db';
+import { users } from '../shared/schema';
+import { setupVite, serveStatic, log } from './vite';
+import { registerRoutes } from './routes';
+import { runMigration } from './migrate-to-supabase';
+import authRoutes from './routes/auth-routes';
+import adminRoutes from './routes/admin';
+import uploadRoutes from './routes/upload';
+import twitchGamesRoutes from './routes/twitch-games';
+import gfCheckoutRoutes from './routes/gf-checkout';
+import proSubscriptionRoutes from './routes/pro-subscription';
+import gfWebhookRoutes from './routes/gf-webhook';
+import gfStakingRoutes from './routes/gf-staking';
+import storeRoutes from './routes/store';
+import { createOGMetaMiddleware } from './og-meta';
+import { storage } from './storage';
+import { LeaderboardService, loadXpSettingsFromDB } from './leaderboard-service';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
-const log = console.log;
 
-declare module "http" {
-  interface IncomingMessage {
-    rawBody: unknown;
+// Trust proxy for production deployment
+if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
+// CORS configuration for production and mobile apps
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const allowedOrigins = [
+    '.replit.app',
+    '.repl.co',  
+    'localhost',
+    'localhost:8081',   // Expo local development
+    'localhost:19006',  // Expo web development
+    '.gamefolio.com',
+    'gamefolio.com',
+    '.exp.direct',      // Expo development
+    'exp.direct',       // Expo development
+    '.expo.dev',        // Expo development
+    'expo.dev',         // Expo development
+  ];
+  
+  const isAllowed = origin && allowedOrigins.some(allowed => origin.includes(allowed));
+  
+  if (isAllowed) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
   }
-}
+  
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, Origin, X-Requested-With, Upload-Type, Upload-Length, Upload-Offset, Upload-Metadata, Tus-Resumable, Upload-Defer-Length, Upload-Checksum');
+  res.setHeader('Access-Control-Expose-Headers', 'Upload-Offset, Upload-Length, Tus-Resumable, Upload-Metadata, Upload-Result');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Max-Age', '86400');
 
-function setupCors(app: express.Application) {
-  app.use((req, res, next) => {
-    const origins = new Set<string>();
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+    return;
+  }
 
-    if (process.env.REPLIT_DEV_DOMAIN) {
-      origins.add(`https://${process.env.REPLIT_DEV_DOMAIN}`);
-    }
+  next();
+});
 
-    if (process.env.REPLIT_DOMAINS) {
-      process.env.REPLIT_DOMAINS.split(",").forEach((d) => {
-        origins.add(`https://${d.trim()}`);
-      });
-    }
+// IMPORTANT: Register webhook routes BEFORE express.json() middleware
+// Webhooks need raw body for signature verification
+app.use(gfWebhookRoutes);
 
-    const origin = req.header("origin");
+// Configure body parser with larger limits to support file uploads
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ extended: false, limit: '500mb' }));
 
-    // Allow localhost origins for Expo web development (any port)
-    const isLocalhost =
-      origin?.startsWith("http://localhost:") ||
-      origin?.startsWith("http://127.0.0.1:");
+// Serve attached assets (including videos) as static files
+app.use('/attached_assets', express.static('attached_assets'));
 
-    if (origin && (origins.has(origin) || isLocalhost)) {
-      res.header("Access-Control-Allow-Origin", origin);
-      res.header(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS",
-      );
-      res.header("Access-Control-Allow-Headers", "Content-Type");
-      res.header("Access-Control-Allow-Credentials", "true");
-    }
+app.use((req, res, next) => {
+  const start = Date.now();
+  const path = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
-    if (req.method === "OPTIONS") {
-      return res.sendStatus(200);
-    }
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
 
-    next();
-  });
-}
-
-function setupBodyParsing(app: express.Application) {
-  app.use(
-    express.json({
-      verify: (req, _res, buf) => {
-        req.rawBody = buf;
-      },
-    }),
-  );
-
-  app.use(express.urlencoded({ extended: false }));
-}
-
-function setupRequestLogging(app: express.Application) {
-  app.use((req, res, next) => {
-    const start = Date.now();
-    const path = req.path;
-    let capturedJsonResponse: Record<string, unknown> | undefined = undefined;
-
-    const originalResJson = res.json;
-    res.json = function (bodyJson, ...args) {
-      capturedJsonResponse = bodyJson;
-      return originalResJson.apply(res, [bodyJson, ...args]);
-    };
-
-    res.on("finish", () => {
-      if (!path.startsWith("/api")) return;
-
-      const duration = Date.now() - start;
-
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
@@ -91,160 +108,169 @@ function setupRequestLogging(app: express.Application) {
       }
 
       log(logLine);
-    });
-
-    next();
-  });
-}
-
-function getAppName(): string {
-  try {
-    const appJsonPath = path.resolve(process.cwd(), "app.json");
-    const appJsonContent = fs.readFileSync(appJsonPath, "utf-8");
-    const appJson = JSON.parse(appJsonContent);
-    return appJson.expo?.name || "App Landing Page";
-  } catch {
-    return "App Landing Page";
-  }
-}
-
-function serveExpoManifest(platform: string, res: Response) {
-  const manifestPath = path.resolve(
-    process.cwd(),
-    "static-build",
-    platform,
-    "manifest.json",
-  );
-
-  if (!fs.existsSync(manifestPath)) {
-    return res
-      .status(404)
-      .json({ error: `Manifest not found for platform: ${platform}` });
-  }
-
-  res.setHeader("expo-protocol-version", "1");
-  res.setHeader("expo-sfv-version", "0");
-  res.setHeader("content-type", "application/json");
-
-  const manifest = fs.readFileSync(manifestPath, "utf-8");
-  res.send(manifest);
-}
-
-function serveLandingPage({
-  req,
-  res,
-  landingPageTemplate,
-  appName,
-}: {
-  req: Request;
-  res: Response;
-  landingPageTemplate: string;
-  appName: string;
-}) {
-  const forwardedProto = req.header("x-forwarded-proto");
-  const protocol = forwardedProto || req.protocol || "https";
-  const forwardedHost = req.header("x-forwarded-host");
-  const host = forwardedHost || req.get("host");
-  const baseUrl = `${protocol}://${host}`;
-  const expsUrl = `${host}`;
-
-  log(`baseUrl`, baseUrl);
-  log(`expsUrl`, expsUrl);
-
-  const html = landingPageTemplate
-    .replace(/BASE_URL_PLACEHOLDER/g, baseUrl)
-    .replace(/EXPS_URL_PLACEHOLDER/g, expsUrl)
-    .replace(/APP_NAME_PLACEHOLDER/g, appName);
-
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  res.status(200).send(html);
-}
-
-function configureExpoAndLanding(app: express.Application) {
-  const templatePath = path.resolve(
-    process.cwd(),
-    "server",
-    "templates",
-    "landing-page.html",
-  );
-  const landingPageTemplate = fs.readFileSync(templatePath, "utf-8");
-  const appName = getAppName();
-
-  log("Serving static Expo files with dynamic manifest routing");
-
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith("/api")) {
-      return next();
     }
-
-    if (req.path !== "/" && req.path !== "/manifest") {
-      return next();
-    }
-
-    const platform = req.header("expo-platform");
-    if (platform && (platform === "ios" || platform === "android")) {
-      return serveExpoManifest(platform, res);
-    }
-
-    if (req.path === "/") {
-      return serveLandingPage({
-        req,
-        res,
-        landingPageTemplate,
-        appName,
-      });
-    }
-
-    next();
   });
 
-  app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
-  app.use(express.static(path.resolve(process.cwd(), "static-build")));
-
-  log("Expo routing: Checking expo-platform header on / and /manifest");
-}
-
-function setupErrorHandler(app: express.Application) {
-  app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
-    const error = err as {
-      status?: number;
-      statusCode?: number;
-      message?: string;
-    };
-
-    const status = error.status || error.statusCode || 500;
-    const message = error.message || "Internal Server Error";
-
-    console.error("Internal Server Error:", err);
-
-    if (res.headersSent) {
-      return next(err);
-    }
-
-    return res.status(status).json({ message });
-  });
-}
+  next();
+});
 
 (async () => {
-  setupCors(app);
-  setupBodyParsing(app);
-  setupRequestLogging(app);
+  try {
+    const server = await registerRoutes(app);
 
-  configureExpoAndLanding(app);
+    // Load XP settings from DB and sync into POINT_VALUES
+    await loadXpSettingsFromDB();
 
-  const server = await registerRoutes(app);
+    // Serve static email assets
+    app.use('/static/email-assets', express.static(path.join(__dirname, 'static/email-assets')));
 
-  setupErrorHandler(app);
+    app.use('/api', authRoutes);
+    app.use('/api/admin', adminRoutes);
+    app.use('/api', uploadRoutes);
+    app.use('/api/twitch', twitchGamesRoutes);
+    app.use(gfCheckoutRoutes);
+    app.use(proSubscriptionRoutes);
+    app.use(gfStakingRoutes);
+    app.use(storeRoutes);
 
-  const port = parseInt(process.env.PORT || "5000", 10);
-  server.listen(
-    {
+    // Social media preview route - must be before Vite middleware
+    app.get('/profile/:username', async (req, res, next) => {
+      const userAgent = req.headers['user-agent'] || '';
+      
+      // Detect social media crawlers
+      const isSocialBot = /facebookexternalhit|twitterbot|LinkedInBot|WhatsApp|TelegramBot|discordbot|Slackbot|redditbot|SkypeUriPreview|GoogleBot|bingbot/i.test(userAgent);
+      
+      if (!isSocialBot) {
+        // Not a social media bot, continue to regular SPA routing
+        return next();
+      }
+
+      try {
+        const { username } = req.params;
+        
+        // Fetch user data
+        const user = await db.select().from(users).where(eq(users.username, username)).limit(1);
+        
+        if (!user.length) {
+          return res.status(404).send('<html><head><title>Profile Not Found</title></head><body>Profile not found</body></html>');
+        }
+
+        const profile = user[0];
+        
+        // Generate preview image URL - handle both local dev and production
+        const getBaseUrl = () => {
+          // In production/Replit, always use HTTPS
+          if (process.env.REPLIT_DEPLOYMENT || process.env.REPL_OWNER) {
+            const host = req.get('host');
+            return `https://${host}`;
+          }
+          // Local development
+          return `${req.protocol}://${req.get('host')}`;
+        };
+        
+        const baseUrl = getBaseUrl();
+        const previewImageUrl = `${baseUrl}/api/social-preview/${username}`;
+        const profileUrl = `${baseUrl}/profile/${username}`;
+        
+        // Create HTML with Open Graph meta tags
+        const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${profile.displayName || profile.username} - Gamefolio</title>
+    
+    <!-- Open Graph meta tags for social media -->
+    <meta property="og:type" content="profile">
+    <meta property="og:title" content="${profile.displayName || profile.username} - Gamefolio">
+    <meta property="og:description" content="${profile.bio || `Check out ${profile.displayName || profile.username}'s gaming portfolio on Gamefolio!`}">
+    <meta property="og:url" content="${profileUrl}">
+    <meta property="og:image" content="${previewImageUrl}">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="Gamefolio">
+    
+    <!-- Twitter Card meta tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="${profile.displayName || profile.username} - Gamefolio">
+    <meta name="twitter:description" content="${profile.bio || `Check out ${profile.displayName || profile.username}'s gaming portfolio on Gamefolio!`}">
+    <meta name="twitter:image" content="${previewImageUrl}">
+    
+    <!-- LinkedIn meta tags -->
+    <meta property="linkedin:title" content="${profile.displayName || profile.username} - Gamefolio">
+    <meta property="linkedin:description" content="${profile.bio || `Check out ${profile.displayName || profile.username}'s gaming portfolio on Gamefolio!`}">
+    <meta property="linkedin:image" content="${previewImageUrl}">
+    
+    <!-- Redirect to the actual app after a moment -->
+    <meta http-equiv="refresh" content="0;url=${profileUrl}">
+    <script>
+      // Immediate redirect for users (not bots)
+      if (!/bot|crawler|spider/i.test(navigator.userAgent)) {
+        window.location.href = '${profileUrl}';
+      }
+    </script>
+</head>
+<body>
+    <h1>${profile.displayName || profile.username}'s Gamefolio</h1>
+    <p>${profile.bio || 'Gaming portfolio on Gamefolio'}</p>
+    <p><a href="${profileUrl}">View Profile</a></p>
+</body>
+</html>`;
+
+        res.setHeader('Content-Type', 'text/html');
+        res.send(html);
+        
+      } catch (error) {
+        console.error('Error generating social preview:', error);
+        return next();
+      }
+    });
+
+    // Open Graph meta tags middleware for clips, reels, and screenshots
+    // In development, only serves OG meta HTML to social bots
+    // Regular users get the normal Vite-served app
+    app.use(createOGMetaMiddleware(storage));
+
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+
+      console.error("Server error:", err);
+      res.status(status).json({ message });
+    });
+
+    // importantly only setup vite in development and after
+    // setting up all the other routes so the catch-all route
+    // doesn't interfere with the other routes
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
+
+    // ALWAYS serve the app on port 5000
+    // this serves both the API and the client.
+    // It is the only port that is not firewalled.
+    const port = 5000;
+    server.listen({
       port,
       host: "0.0.0.0",
       reusePort: true,
-    },
-    () => {
-      log(`express server serving on port ${port}`);
-    },
-  );
+    }, () => {
+      log(`serving on port ${port}`);
+
+      LeaderboardService.processPeriodicLeaderboardClosures()
+        .then(() => log('Leaderboard periodic closures check completed'))
+        .catch((err) => console.error('Leaderboard closures check failed:', err));
+
+      setInterval(() => {
+        LeaderboardService.processPeriodicLeaderboardClosures()
+          .catch((err) => console.error('Leaderboard closures check failed:', err));
+      }, 6 * 60 * 60 * 1000);
+    });
+  } catch (error) {
+    console.error("Fatal server error:", error);
+    process.exit(1);
+  }
 })();

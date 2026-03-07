@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Gamefolio</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #000000;
+        color: #ffffff;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .header {
+        text-align: center;
+      }
+      .header img {
+        width: 100%;
+        display: block;
+      }
+      .header-fallback {
+        display: none;
+        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 50%, #06B6D4 100%);
+        padding: 40px 20px;
+        text-align: center;
+        color: #ffffff;
+      }
+      .header-fallback h1 {
+        font-size: 36px;
+        font-weight: bold;
+        margin: 0;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      }
+      .content {
+        text-align: center;
+        padding: 12px 20px 24px;
+      }
+      .content h1 {
+        margin: 8px 0 10px;
+        font-size: 28px;
+        font-weight: 800;
+        color: #ffffff;
+      }
+      .content p {
+        margin: 0 0 18px;
+        font-size: 16px;
+        line-height: 1.5;
+        color: #d6d6d6;
+      }
+      .button {
+        display: inline-block;
+        background-color: #00FF66;
+        color: #ffffff !important;
+        padding: 14px 28px;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: bold;
+        font-size: 16px;
+        margin: 15px 0 20px;
+      }
+      .footer-note {
+        margin: 22px 0 0;
+        font-size: 12px;
+        line-height: 1.6;
+        color: #8a8a8a;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Primary image with fallback -->
+      <div class="header">
+        <img src="https://i.imgur.com/j713xSq.png" alt="Welcome to Gamefolio" 
+             onerror="this.style.display='none'; document.querySelector('.header-fallback').style.display='block';">
+        <div class="header-fallback">
+          <h1>Welcome to Gamefolio</h1>
+        </div>
+      </div>
+
+      <div class="content">
+        <h1>Welcome to Gamefolio</h1>
+        <p>Thanks for joining our gaming community. We're excited to have you on board and can't wait to see what amazing gaming content you'll share!</p>
+
+        <a href="{{siteUrl}}/explore" class="button">Explore Gamefolio</a>
+
+        <p>Start your gaming journey by:</p>
+        <ul style="text-align:left; display:inline-block; margin:0 auto; padding-left:20px; color:#d6d6d6;">
+          <li>Uploading your first gaming clip or screenshot</li>
+          <li>Following other gamers in the community</li>
+          <li>Exploring trending content and games</li>
+          <li>Customizing your gaming profile</li>
+        </ul>
+
+        <p class="footer-note">If you didn't create this account, you can safely ignore this email.</p>
+      </div>
+    </div>
+  </body>
+</html>

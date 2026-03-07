@@ -1,0 +1,1852 @@
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { db } from "./db";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import session from "express-session";
+import { 
+  insertUserSchema, 
+  insertGameSchema, 
+  insertClipSchema, 
+  insertCommentSchema,
+  insertLikeSchema,
+  insertFollowSchema,
+  insertUserGameFavoriteSchema,
+  profileBanners
+} from "@shared/schema";
+import { ZodError } from "zod";
+import { fromZodError } from "zod-validation-error";
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
+import { rawgService } from "./services/rawg-service";
+import axios from "axios";
+import platformAuthRouter from "./services/platform-auth";
+import ffmpeg from "fluent-ffmpeg";
+import ffmpegStatic from "ffmpeg-static";
+import { getDemoUser, getDemoUserWithStats, getDemoClips, getDemoFavoriteGames } from "./demo-user";
+
+// Promisify scrypt
+const scryptAsync = promisify(scrypt);
+
+// Create upload directory if it doesn't exist
+const uploadDir = path.resolve(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Configure ffmpeg with the static binary
+if (ffmpegStatic) {
+  ffmpeg.setFfmpegPath(ffmpegStatic);
+}
+
+// Function to generate a thumbnail from a video file
+const generateThumbnail = (videoPath: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    // Create thumbnails directory if it doesn't exist
+    const thumbnailDir = path.join(process.cwd(), 'uploads/thumbnails');
+    if (!fs.existsSync(thumbnailDir)) {
+      fs.mkdirSync(thumbnailDir, { recursive: true });
+    }
+    
+    // Create thumbnail filename using the same pattern as the video
+    const thumbnailFilename = path.basename(videoPath, path.extname(videoPath)) + '_thumbnail.jpg';
+    const thumbnailPath = path.join(thumbnailDir, thumbnailFilename);
+    
+    console.log('Generating thumbnail from video:', videoPath);
+    console.log('Thumbnail will be saved to:', thumbnailPath);
+    
+    // Always generate thumbnail from the 1-second mark
+    ffmpeg(videoPath)
+      .on('error', (err: any) => {
+        console.error('Error generating thumbnail:', err);
+        reject(err);
+      })
+      .on('end', () => {
+        console.log('Thumbnail generation successful');
+        resolve(`/uploads/thumbnails/${thumbnailFilename}`);
+      })
+      .screenshots({
+        // Use the 1-second mark for consistency
+        timestamps: ['00:00:01'],
+        filename: thumbnailFilename,
+        folder: thumbnailDir,
+        size: '640x360',
+        // Increase quality for better thumbnails
+        quality: 100
+      });
+  });
+};
+
+// Set up multer for file uploads
+const storage_upload = multer.diskStorage({
+  destination: function (_req, _file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (_req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+// Setup avatar upload storage
+const avatarStorage = multer.diskStorage({
+  destination: function (_req, _file, cb) {
+    const avatarDir = path.join(uploadDir, 'avatars');
+    
+    // Create avatars directory if it doesn't exist
+    if (!fs.existsSync(avatarDir)) {
+      fs.mkdirSync(avatarDir, { recursive: true });
+    }
+    
+    cb(null, avatarDir);
+  },
+  filename: function (req, file, cb) {
+    const userId = req.user?.id || 'unknown';
+    const timestamp = Date.now();
+    cb(null, `user_${userId}_${timestamp}${path.extname(file.originalname)}`);
+  }
+});
+
+// Video upload middleware
+const upload = multer({ 
+  storage: storage_upload,
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB limit
+  fileFilter: (_req, file, cb) => {
+    // Only accept video files
+    if (file.mimetype.startsWith("video/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Only video files are allowed"));
+    }
+  }
+});
+
+// Avatar upload middleware (stricter limits, image only)
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (_req, file, cb) => {
+    // Accept only image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
+// Password hashing functions
+async function hashPassword(password: string) {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
+
+async function comparePasswords(supplied: string, stored: string) {
+  const [hashed, salt] = stored.split(".");
+  const hashedBuf = Buffer.from(hashed, "hex");
+  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  return timingSafeEqual(hashedBuf, suppliedBuf);
+}
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve static files from the uploads directory
+  app.use('/uploads', express.static('uploads'));
+  
+  // Serve static files from the attached_assets directory
+  app.use('/attached_assets', express.static('attached_assets'));
+  const httpServer = createServer(app);
+
+  // Set up session
+  app.use(
+    session({
+      secret: "gamefolio-session-secret", // In production, use process.env.SESSION_SECRET
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
+        secure: process.env.NODE_ENV === "production",
+      },
+    })
+  );
+  
+  // Mount platform authentication routes
+  app.use("/api/auth", platformAuthRouter);
+  
+  // Avatar upload endpoint
+  app.post("/api/upload/avatar", avatarUpload.single('avatar'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // For demo user or logged in user
+      const userId = req.headers["x-user-id"] ? Number(req.headers["x-user-id"]) : 999;
+      
+      const file = req.file;
+      const avatarUrl = `/uploads/avatars/${file.filename}`;
+      
+      console.log(`Avatar uploaded for user ${userId}: ${avatarUrl}`);
+      
+      // Update the user profile with the new avatar URL
+      await storage.updateUser(userId, { avatarUrl });
+      
+      res.status(200).json({ 
+        avatarUrl,
+        message: "Avatar uploaded successfully" 
+      });
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      res.status(500).json({ message: "Failed to upload avatar" });
+    }
+  });
+
+  // Helper for handling validation errors
+  const handleValidationError = (err: unknown, res: Response) => {
+    if (err instanceof ZodError) {
+      const validationError = fromZodError(err);
+      return res.status(400).json({ message: validationError.message });
+    }
+    console.error("Unexpected error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  };
+
+  // Auth middleware for protected routes
+  const authMiddleware = async (req: Request, res: Response, next: Function) => {
+    // For backwards compatibility, check header first
+    const userId = req.headers["x-user-id"];
+    
+    if (userId) {
+      try {
+        const user = await storage.getUser(Number(userId));
+        if (!user) {
+          return res.status(401).json({ message: "User not found" });
+        }
+        
+        // Add user to request object
+        (req as any).user = user;
+        return next();
+      } catch (error) {
+        return res.status(401).json({ message: "Invalid user" });
+      }
+    }
+    
+    // If no header, check session
+    if ((req as any).session?.userId) {
+      try {
+        const user = await storage.getUser(Number((req as any).session.userId));
+        if (!user) {
+          return res.status(401).json({ message: "User not found" });
+        }
+        
+        // Add user to request object
+        (req as any).user = user;
+        return next();
+      } catch (error) {
+        return res.status(401).json({ message: "Invalid user" });
+      }
+    }
+    
+    return res.status(401).json({ message: "Unauthorized" });
+  };
+  
+  // Auth routes
+  app.post("/api/register", async (req, res) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      const existingUser = await storage.getUserByUsername(userData.username);
+      
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+      
+      // Hash password
+      const hashedPassword = await hashPassword(userData.password);
+      
+      // Create user with hashed password
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword,
+      });
+      
+      // Remove password from response
+      const { password, ...userWithoutPassword } = user;
+      
+      // Set session
+      (req as any).session.userId = user.id;
+      
+      res.status(201).json(userWithoutPassword);
+    } catch (err) {
+      handleValidationError(err, res);
+    }
+  });
+  
+  app.post("/api/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ message: "Username and password are required" });
+      }
+      
+      // For demo purposes, allow a standard test account login that always works
+      // This ensures users can log in even if there are database issues
+      if (username === "demo" && password === "password") {
+        const demoUser = {
+          id: 999,
+          username: "demo",
+          displayName: "Demo User",
+          email: "demo@example.com",
+          emailVerified: true,
+          bio: "This is a demo account for testing purposes",
+          avatarUrl: null,
+          bannerUrl: null,
+          accentColor: "#4C8",
+          primaryColor: "#02172C",
+          layoutStyle: "grid",
+          steamUsername: null,
+          xboxUsername: null,
+          playstationUsername: null,
+          twitterUsername: null,
+          youtubeUsername: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        // Set session
+        (req as any).session.userId = demoUser.id;
+        
+        return res.status(200).json(demoUser);
+      }
+      
+      // Try to get the user from storage
+      try {
+        const user = await storage.getUserByUsername(username);
+        
+        if (!user) {
+          return res.status(401).json({ message: "Invalid username or password" });
+        }
+        
+        const isPasswordValid = await comparePasswords(password, user.password);
+        
+        if (!isPasswordValid) {
+          return res.status(401).json({ message: "Invalid username or password" });
+        }
+        
+        // Remove password from response
+        const { password: _, ...userWithoutPassword } = user;
+        
+        // Set session
+        (req as any).session.userId = user.id;
+        
+        res.status(200).json(userWithoutPassword);
+      } catch (storageError) {
+        console.error("Storage error during login:", storageError);
+        
+        // If there's a storage error, notify the user but don't expose the error details
+        return res.status(500).json({ message: "Login service temporarily unavailable. Please try again later or use the demo account with username 'demo' and password 'password'." });
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  app.post("/api/logout", (req, res) => {
+    // Clear session
+    (req as any).session.destroy((err: any) => {
+      if (err) {
+        return res.status(500).json({ message: "Failed to logout" });
+      }
+      
+      res.status(200).json({ message: "Logged out successfully" });
+    });
+  });
+  
+  // Change password endpoint
+  app.post("/api/users/change-password", authMiddleware, async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const user = (req as any).user;
+      
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+      }
+      
+      // Verify current password
+      const passwordMatches = await comparePasswords(currentPassword, user.password);
+      if (!passwordMatches) {
+        return res.status(401).json({ message: "Current password is incorrect" });
+      }
+      
+      // Hash the new password
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update the user's password
+      await storage.updateUser(user.id, { password: hashedPassword });
+      
+      res.status(200).json({ message: "Password changed successfully" });
+    } catch (err) {
+      console.error("Change password error:", err);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+  
+  app.get("/api/user", async (req, res) => {
+    // Check for session-based authentication first
+    const sessionUserId = (req as any).session?.userId;
+    
+    // Also check for header-based authentication (for API requests)
+    const headerUserId = req.headers["x-user-id"] 
+      ? parseInt(req.headers["x-user-id"] as string)
+      : null;
+    
+    // Use either session or header user ID
+    const userId = sessionUserId || headerUserId;
+    
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      // Special case for demo user (ID 999)
+      if (userId === 999) {
+        const demoUser = getDemoUser();
+        // Remove password from response
+        const { password, ...demoUserWithoutPassword } = demoUser;
+        return res.status(200).json(demoUserWithoutPassword);
+      }
+      
+      const user = await storage.getUser(Number(userId));
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Remove password from response
+      const { password, ...userWithoutPassword } = user;
+      
+      res.status(200).json(userWithoutPassword);
+    } catch (err) {
+      console.error("Get user error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // User routes
+  app.post("/api/users", async (req, res) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      const existingUser = await storage.getUserByUsername(userData.username);
+      
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+      
+      const user = await storage.createUser(userData);
+      res.status(201).json(user);
+    } catch (err) {
+      handleValidationError(err, res);
+    }
+  });
+
+  app.get("/api/users/:username", async (req, res) => {
+    try {
+      const username = req.params.username;
+      
+      // Special handling for demo user
+      if (username === "demo") {
+        console.log("Serving demo user profile");
+        return res.json(getDemoUserWithStats());
+      }
+      
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const userWithStats = await storage.getUserWithStats(user.id);
+      res.json(userWithStats);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/users/:id", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      
+      // Special case for demo user - allow updates without authentication
+      if (userId === 999) {
+        console.log("Updating demo user profile:", req.body);
+        
+        try {
+          // Get a fresh copy of the demo user
+          const demoUser = getDemoUser();
+          
+          // Create a mock updated user by merging the demo user with the request body
+          const updatedDemoUser = {
+            ...demoUser,
+            ...req.body,
+            id: 999, // Ensure ID stays the same
+          };
+          
+          // For demo user, make sure we keep the session active
+          (req as any).session.userId = 999;
+          
+          // Return success response with the updated user data
+          return res.status(200).json(updatedDemoUser);
+        } catch (error) {
+          console.error("Error updating demo user:", error);
+          return res.status(500).json({ message: "Failed to update demo user" });
+        }
+      }
+      
+      // For regular users, require authentication
+      const currentUser = (req as any).user;
+      
+      if (!currentUser) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      
+      // Users can only update their own profile
+      if (userId !== currentUser.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const user = await storage.updateUser(userId, req.body);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json(user);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/search/users", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      
+      if (!query) {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+      
+      const users = await storage.searchUsers(query);
+      res.json(users);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Game routes
+  app.get("/api/games", async (_req, res) => {
+    try {
+      const games = await storage.getAllGames();
+      res.json(games);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/games/trending", async (req, res) => {
+    try {
+      if (!process.env.RAWG_API_KEY) {
+        return res.status(500).json({ message: "RAWG API key not configured" });
+      }
+      
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const timeRange = req.query.timeRange || "year"; // Default to past year
+      
+      // Calculate date range based on timeRange parameter
+      const now = new Date();
+      let fromDate = new Date();
+      
+      if (timeRange === "month") {
+        fromDate.setMonth(now.getMonth() - 1);
+      } else if (timeRange === "year") {
+        fromDate.setFullYear(now.getFullYear() - 1);
+      } else if (timeRange === "all") {
+        fromDate = new Date(2000, 0, 1); // From year 2000
+      } else {
+        fromDate.setFullYear(now.getFullYear() - 3); // Default: 3 years
+      }
+      
+      const fromDateStr = fromDate.toISOString().split('T')[0];
+      const toDateStr = now.toISOString().split('T')[0];
+      
+      const response = await axios.get(`https://api.rawg.io/api/games`, {
+        params: {
+          key: process.env.RAWG_API_KEY,
+          ordering: '-added', // Order by popularity (most added to collections)
+          page_size: limit,
+          dates: `${fromDateStr},${toDateStr}`,
+          metacritic: "75,100" // Only highly-rated games
+        }
+      });
+      
+      // Extract and enhance data from the RAWG response
+      const games = response.data.results.map((game: any) => ({
+        id: game.id,
+        name: game.name,
+        imageUrl: game.background_image,
+        createdAt: new Date(), // Required by our schema
+        releaseDate: game.released,
+        rating: game.rating,
+        ratingCount: game.ratings_count,
+        genres: game.genres?.map((genre: any) => genre.name).join(", "),
+        platforms: game.parent_platforms?.map((p: any) => p.platform.name).join(", "),
+        slug: game.slug
+      }));
+      
+      // Cache headers for better performance
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+      res.json(games);
+    } catch (err) {
+      console.error("Error fetching RAWG trending games:", err);
+      
+      // Fallback to local storage if the API fails
+      try {
+        const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+        const games = await storage.getTrendingGames(limit);
+        res.json(games);
+      } catch (fallbackErr) {
+        console.error("Fallback also failed:", fallbackErr);
+        res.status(500).json({ message: "Failed to fetch trending games" });
+      }
+    }
+  });
+  
+  // Enhanced endpoint specifically for RAWG trending games
+  app.get("/api/rawg/trending", async (req, res) => {
+    try {
+      if (!process.env.RAWG_API_KEY) {
+        return res.status(500).json({ message: "RAWG API key not configured" });
+      }
+      
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      const timeRange = req.query.timeRange || "year"; // Default to past year
+      
+      // Calculate date range based on timeRange parameter
+      const now = new Date();
+      let fromDate = new Date();
+      
+      if (timeRange === "month") {
+        fromDate.setMonth(now.getMonth() - 1);
+      } else if (timeRange === "year") {
+        fromDate.setFullYear(now.getFullYear() - 1);
+      } else if (timeRange === "all") {
+        fromDate = new Date(2000, 0, 1); // From year 2000
+      } else {
+        fromDate.setFullYear(now.getFullYear() - 3); // Default: 3 years
+      }
+      
+      const fromDateStr = fromDate.toISOString().split('T')[0];
+      const toDateStr = now.toISOString().split('T')[0];
+      
+      const response = await axios.get(`https://api.rawg.io/api/games`, {
+        params: {
+          key: process.env.RAWG_API_KEY,
+          ordering: '-added', // Order by popularity (most added to collections)
+          page_size: limit,
+          dates: `${fromDateStr},${toDateStr}`,
+          metacritic: "75,100" // Only highly-rated games
+        }
+      });
+      
+      // Extract and enhance data from the RAWG response
+      const games = response.data.results.map((game: any) => ({
+        id: game.id,
+        name: game.name,
+        imageUrl: game.background_image,
+        releaseDate: game.released,
+        rating: game.rating,
+        ratingCount: game.ratings_count,
+        genres: game.genres?.map((genre: any) => genre.name).join(", "),
+        platforms: game.parent_platforms?.map((p: any) => p.platform.name).join(", "),
+        slug: game.slug
+      }));
+      
+      // Cache headers for better performance
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+      res.json(games);
+    } catch (err) {
+      console.error("Error fetching RAWG trending games:", err);
+      res.status(500).json({ message: "Failed to fetch trending games from RAWG" });
+    }
+  });
+  
+  // New endpoint to generate and serve clip thumbnails
+  app.get("/api/clips/:id/thumbnail", async (req, res) => {
+    try {
+      const clipId = parseInt(req.params.id);
+      
+      // Special handling for uploaded videos (IDs 10000+)
+      if (clipId >= 10000) {
+        console.log("Getting thumbnail for uploaded clip:", clipId);
+        
+        // Get the video file based on ID (10000 = first file in the uploads directory)
+        const uploadDir = path.resolve(process.cwd(), "uploads");
+        const files = fs.readdirSync(uploadDir)
+          .filter(file => file.endsWith('.mp4'))
+          .sort((a, b) => {
+            // Sort newest first
+            const timestampA = parseInt(a.split('-')[0]);
+            const timestampB = parseInt(b.split('-')[0]);
+            return timestampB - timestampA;
+          });
+        
+        // Find the correct file based on the ID
+        const fileIndex = clipId - 10000;
+        if (fileIndex >= 0 && fileIndex < files.length) {
+          const fileName = files[fileIndex];
+          const fileNameWithoutExt = fileName.split('.')[0];
+          const videoPath = path.join(process.cwd(), "uploads", fileName);
+          const thumbnailPath = path.join(process.cwd(), "uploads", "thumbnails", `${fileNameWithoutExt}_thumbnail.jpg`);
+          
+          console.log(`Looking for thumbnail at: ${thumbnailPath}`);
+          
+          // Check if thumbnail exists
+          if (fs.existsSync(thumbnailPath)) {
+            console.log("Found thumbnail, sending file");
+            return res.sendFile(thumbnailPath);
+          } else {
+            console.log("Thumbnail not found, generating now...");
+            
+            // Create thumbnails directory if it doesn't exist
+            const thumbnailFolder = path.join(process.cwd(), 'uploads/thumbnails');
+            if (!fs.existsSync(thumbnailFolder)) {
+              fs.mkdirSync(thumbnailFolder, { recursive: true });
+            }
+            
+            // Generate a thumbnail at the 1 second mark
+            const thumbnailFilename = `${fileNameWithoutExt}_thumbnail.jpg`;
+            
+            // Set path to ffmpeg binary
+            ffmpeg.setFfmpegPath(ffmpegStatic as string);
+            
+            ffmpeg(videoPath)
+              .screenshots({
+                timestamps: [1], // Take snapshot at 1 second
+                filename: thumbnailFilename,
+                folder: thumbnailFolder,
+                size: '640x360'
+              })
+              .on('end', () => {
+                console.log(`Thumbnail generated at ${thumbnailPath}`);
+                // Send the thumbnail
+                res.sendFile(thumbnailPath);
+              })
+              .on('error', (error: any) => {
+                console.error('Error generating thumbnail:', error);
+                // Send fallback image
+                return res.sendFile(path.join(process.cwd(), 'attached_assets/game-controller-5619105_1920.jpg'));
+              });
+            return; // End execution here since we're handling the response in the callbacks
+          }
+        }
+      }
+      
+      // Special handling for demo clips (IDs 100+)
+      if (clipId >= 100 && clipId < 10000) {
+        console.log("Getting demo clip thumbnail for clip ID:", clipId);
+        
+        // For the Gears of War clip (ID 101), use the actual frame from the video
+        if (clipId === 101) {
+          console.log("Using actual frame from the Gears of War video clip");
+          return res.sendFile(path.join(process.cwd(), 'uploads/thumbnails/gears_thumbnail.jpg'));
+        }
+        
+        // Return a blank image for removed demo clips
+        return res.sendFile(path.join(process.cwd(), 'attached_assets/game-controller-5619105_1920.jpg'));
+      }
+      
+      // Get the clip to find its video path
+      const clip = await storage.getClip(clipId);
+      
+      if (!clip) {
+        return res.status(404).json({ message: "Clip not found" });
+      }
+      
+      // Resolve the full video path
+      const videoPath = path.join(process.cwd(), clip.videoUrl);
+      
+      // Check if video file exists
+      if (!fs.existsSync(videoPath)) {
+        console.log(`Video file not found: ${videoPath}`);
+        return res.sendFile(path.join(process.cwd(), 'attached_assets/game-controller-5619105_1920.jpg'));
+      }
+      
+      // If the clip already has a thumbnail, redirect to it
+      if (clip.thumbnailUrl && clip.thumbnailUrl.length > 0) {
+        return res.redirect(clip.thumbnailUrl);
+      }
+      
+      // Set content type
+      res.set('Content-Type', 'image/jpeg');
+      
+      // Extract a thumbnail from the first few frames
+      const thumbnailFolder = path.join(process.cwd(), 'uploads/thumbnails');
+      // Create thumbnails directory if it doesn't exist
+      if (!fs.existsSync(thumbnailFolder)) {
+        fs.mkdirSync(thumbnailFolder, { recursive: true });
+      }
+      
+      // Ensure filename is unique for this clip
+      const thumbnailFilename = `clip-${clipId}-thumbnail.jpg`;
+      const thumbnailPath = path.join(thumbnailFolder, thumbnailFilename);
+      
+      // Check if we already have a thumbnail for this clip
+      if (fs.existsSync(thumbnailPath)) {
+        console.log(`Using cached thumbnail for clip ${clipId}`);
+        return res.sendFile(thumbnailPath);
+      }
+      
+      console.log(`Generating thumbnail for clip ${clipId} from ${videoPath}`);
+      
+      // Extract time - use 25% of the video duration or 3 seconds, whichever is less
+      const duration = clip.duration || 10; // Default to 10 seconds if duration is null
+      const extractTime = Math.min(duration * 0.25, 3);
+      
+      // Set path to ffmpeg binary
+      ffmpeg.setFfmpegPath(ffmpegStatic as string);
+      
+      ffmpeg(videoPath)
+        .screenshots({
+          timestamps: [extractTime],
+          filename: thumbnailFilename,
+          folder: thumbnailFolder,
+          size: '640x360'
+        })
+        .on('end', () => {
+          console.log(`Thumbnail generated at ${thumbnailPath}`);
+          
+          // Update the clip with the thumbnail URL
+          const thumbnailUrl = `/uploads/thumbnails/${thumbnailFilename}`;
+          storage.updateClip(clipId, { thumbnailUrl });
+          
+          // Send the generated thumbnail
+          res.sendFile(thumbnailPath);
+        })
+        .on('error', (error: any) => {
+          console.error('Error generating thumbnail:', error);
+          // Send fallback image
+          res.sendFile(path.join(process.cwd(), 'attached_assets/game-controller-5619105_1920.jpg'));
+        });
+    } catch (err) {
+      console.error('Error in thumbnail generation:', err);
+      // Send fallback image
+      res.sendFile(path.join(process.cwd(), 'attached_assets/game-controller-5619105_1920.jpg'));
+    }
+  });
+  
+  // Search for games via RAWG API
+  app.get("/api/games/search", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      
+      if (!query || query.length < 2) {
+        return res.status(400).json({ message: "Search query must be at least 2 characters" });
+      }
+      
+      // First try to find games in our database with a name containing the query
+      const localGames = await storage.searchGames(query);
+      
+      // If we have results in our database, return them
+      if (localGames.length > 0) {
+        return res.json(localGames);
+      }
+      
+      // Otherwise, search using RAWG API
+      const rawgGames = await rawgService.searchGames(query);
+      res.json(rawgGames);
+    } catch (err) {
+      console.error("Game search error:", err);
+      res.status(500).json({ message: "Failed to search for games" });
+    }
+  });
+
+  app.post("/api/games", authMiddleware, async (req, res) => {
+    try {
+      const gameData = insertGameSchema.parse(req.body);
+      const existingGame = await storage.getGameByName(gameData.name);
+      
+      if (existingGame) {
+        return res.status(409).json({ message: "Game already exists" });
+      }
+      
+      const game = await storage.createGame(gameData);
+      res.status(201).json(game);
+    } catch (err) {
+      handleValidationError(err, res);
+    }
+  });
+
+  app.get("/api/search/games", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      
+      if (!query) {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+      
+      const games = await storage.searchGames(query);
+      res.json(games);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Clip routes
+  app.get("/api/clips", async (req, res) => {
+    try {
+      const period = req.query.period as string || 'day';
+      const type = req.query.type as string || 'feed';
+      const gameId = req.query.gameId ? parseInt(req.query.gameId as string) : null;
+      const gameSlug = req.query.gameSlug as string || null;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      
+      let clips;
+      
+      // Filter by game if gameId or gameSlug is provided
+      if (gameId || gameSlug) {
+        console.log("Filtering clips by game:", gameId || gameSlug);
+        let gameClips = [];
+        
+        // If we have a gameId, use it directly
+        if (gameId) {
+          gameClips = await storage.getClipsByGameId(gameId, 50);
+        } 
+        // If we have a gameSlug, we need to find the game first
+        else if (gameSlug) {
+          // Look for games by matching name or slug
+          console.log("Searching for game with slug:", gameSlug);
+          const games = await storage.searchGames(gameSlug);
+          console.log("Found games:", games);
+          
+          // Try to find games by multiple matching strategies
+          let matchingGame = games.find(g => {
+            const gameNameSlug = g.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+            const requestSlug = gameSlug.toLowerCase();
+            
+            return gameNameSlug === requestSlug || 
+                   g.name.toLowerCase() === requestSlug ||
+                   gameNameSlug.includes(requestSlug) ||
+                   requestSlug.includes(gameNameSlug);
+          });
+          
+          if (matchingGame) {
+            gameClips = await storage.getClipsByGameId(matchingGame.id, 50);
+          }
+        }
+        
+        // Apply sorting based on type
+        if (type === 'latest' && gameClips.length > 0) {
+          clips = gameClips.sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        } else if (type === 'popular' && gameClips.length > 0) {
+          clips = gameClips.sort((a, b) => (b.views || 0) - (a.views || 0));
+        } else {
+          clips = gameClips;
+        }
+        
+        // Apply limit
+        if (clips && clips.length > 0) {
+          clips = clips.slice(0, limit);
+        }
+      }
+      // Get different types of clips based on the requested type
+      else if (type === 'latest') {
+        console.log("Fetching latest clips, limit:", limit);
+        clips = await storage.getFeedClips('day', limit);
+        // Sort by newest first
+        clips.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      } 
+      else if (type === 'popular') {
+        console.log("Fetching popular clips, limit:", limit);
+        // Get a larger set of clips to work with
+        const allClips = await storage.getFeedClips('month', 50);
+        
+        // Sort by views (and eventually likes for a better popularity metric)
+        clips = allClips
+          .sort((a, b) => (b.views || 0) - (a.views || 0))
+          .slice(0, limit);
+      }
+      else {
+        // Default feed behavior - get clips by time period
+        console.log("Fetching feed clips, period:", period, "limit:", limit);
+        clips = await storage.getFeedClips(period, limit);
+      }
+      
+      // If no clips were found, create some sample clips
+      if (!clips || clips.length === 0) {
+        console.log("No clips found, creating sample clips");
+        // First, we'll force creation of sample data
+        const user = await storage.getUserByUsername("DavidvGoliath") || await storage.getUser(1);
+        const games = await storage.getAllGames();
+        
+        if (user && games.length > 0) {
+          // Create sample clips
+          const clip1 = await storage.createClip({
+            userId: user.id,
+            gameId: games[0].id,
+            title: "Bloody kill streak in COD",
+            description: "Dominated this lobby with a 15 kill streak!",
+            videoUrl: "/attached_assets/game-controller-5619105_1920.jpg", // Placeholder
+            duration: 60,
+            trimStart: 0,
+            trimEnd: 60
+          });
+          
+          // Add some views to make it popular
+          for (let i = 0; i < 5; i++) {
+            await storage.incrementClipViews(clip1.id);
+          }
+          
+          // Get the updated clips
+          clips = await storage.getFeedClips(period, limit);
+        }
+      }
+      
+      res.json(clips);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/clips/:id", async (req, res) => {
+    try {
+      const clipId = parseInt(req.params.id);
+      
+      // Special handling for uploaded clips (IDs 10000+)
+      if (clipId >= 10000) {
+        console.log("Getting uploaded clip:", clipId);
+        // Get clip data from the uploads
+        const uploadDir = path.resolve(process.cwd(), "uploads");
+        const files = fs.readdirSync(uploadDir)
+          .filter(file => file.endsWith('.mp4'));
+          
+        // Get the file index from the ID (ID 10000 = first file)
+        const fileIndex = clipId - 10000;
+        if (fileIndex >= 0 && fileIndex < files.length) {
+          const fileName = files[fileIndex];
+          const fileNameWithoutExt = fileName.split('.')[0];
+          const videoUrl = `/uploads/${fileName}`;
+          const thumbnailPath = `/uploads/thumbnails/${fileNameWithoutExt}_thumbnail.jpg`;
+          
+          const demoUser = getDemoUser();
+          const clip = {
+            id: clipId,
+            userId: demoUser.id,
+            title: `Gameplay Clip ${fileIndex + 1}`,
+            description: "Your uploaded gameplay clip",
+            videoUrl: videoUrl,
+            thumbnailUrl: thumbnailPath,
+            duration: 15,
+            views: Math.floor(Math.random() * 1000),
+            likes: Math.floor(Math.random() * 100),
+            gameId: 6252,
+            createdAt: new Date(parseInt(fileNameWithoutExt.split('-')[0])),
+            updatedAt: new Date(),
+            trimStart: null,
+            trimEnd: null,
+            tags: ["gameplay"],
+            filter: "none",
+            user: demoUser,
+            game: {
+              id: 6252,
+              name: "Gears of War",
+              imageUrl: "/attached_assets/game-controller-5619105_1920.jpg",
+              createdAt: new Date(2022, 0, 1)
+            }
+          };
+          
+          return res.json(clip);
+        }
+      } 
+      
+      // Special handling for demo user clips (IDs 100+)
+      if (clipId >= 100 && clipId < 1000) {
+        console.log("Getting demo clip:", clipId);
+        // Get demo clip data
+        const demoClips = getDemoClips();
+        const demoClip = demoClips.find(c => c.id === clipId);
+        
+        if (demoClip) {
+          // Return demo clip
+          return res.json(demoClip);
+        }
+      }
+      
+      // Regular clip handling
+      const clip = await storage.getClipWithUser(clipId);
+      
+      if (!clip) {
+        return res.status(404).json({ message: "Clip not found" });
+      }
+      
+      // Increment views
+      await storage.incrementClipViews(clipId);
+      
+      res.json(clip);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/clips", upload.single("video"), async (req, res) => {
+    try {
+      let user = (req as any).user;
+      
+      // Special handling for demo user
+      const userId = req.headers["x-user-id"];
+      if (userId === "999") {
+        // Use the demo user for uploads
+        user = getDemoUser();
+        console.log("Using demo user for clip upload");
+        // Make sure userId is 999 for the demo user
+        req.body.userId = 999;
+      } else if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "Video file is required" });
+      }
+      
+      // Get full path to the uploaded video file
+      const videoPath = req.file.path;
+      const videoUrl = `/uploads/${req.file.filename}`;
+      
+      // Generate a thumbnail for the uploaded video
+      let thumbnailUrl = '';
+      try {
+        thumbnailUrl = await generateThumbnail(videoPath);
+        console.log(`Generated thumbnail: ${thumbnailUrl}`);
+      } catch (error) {
+        console.error('Failed to generate thumbnail:', error);
+        // Continue with upload even if thumbnail generation fails
+      }
+      
+      // Parse tags if provided
+      let tags = [];
+      if (req.body.tags) {
+        try {
+          // If tags are sent as a JSON string, parse them
+          tags = typeof req.body.tags === 'string' ? JSON.parse(req.body.tags) : req.body.tags;
+          console.log("Parsed tags:", tags);
+        } catch (e) {
+          console.error("Error parsing tags:", e);
+        }
+      }
+      
+      // Merge form data with file information
+      const clipData = {
+        ...req.body,
+        userId: req.body.userId || user.id, // Use the explicitly set userId for demo user
+        videoUrl,
+        thumbnailUrl, // Add the thumbnail URL
+        gameId: req.body.gameId ? parseInt(req.body.gameId) : null,
+        duration: req.body.duration ? parseInt(req.body.duration) : 0,
+        trimStart: req.body.trimStart ? parseInt(req.body.trimStart) : 0,
+        trimEnd: req.body.trimEnd ? parseInt(req.body.trimEnd) : 0,
+        tags: tags
+      };
+      
+      console.log(`Creating clip for user ID: ${clipData.userId} (demo user? ${clipData.userId === 999})`);
+      
+      console.log("Creating clip with data:", {
+        ...clipData,
+        // Don't log the whole file content
+        video: req.file ? `${req.file.originalname} (${req.file.size} bytes)` : null
+      });
+      
+      const parsedData = insertClipSchema.parse(clipData);
+      const clip = await storage.createClip(parsedData);
+      
+      // For uploaded clips, save metadata alongside the video file to remember the game selection
+      if (req.file) {
+        const metadataPath = path.join(
+          uploadDir,
+          path.basename(req.file.path, path.extname(req.file.path)) + '_metadata.json'
+        );
+        
+        try {
+          // Save metadata including game selection
+          const metadata = {
+            clipId: clip.id,
+            userId: clip.userId,
+            title: clip.title,
+            gameId: clip.gameId,
+            uploadDate: new Date().toISOString()
+          };
+          
+          fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
+          console.log(`Saved clip metadata to ${metadataPath}`);
+        } catch (error) {
+          console.error('Error saving clip metadata:', error);
+          // Continue even if metadata saving fails
+        }
+      }
+      
+      res.status(201).json(clip);
+    } catch (err) {
+      // If validation fails, delete the uploaded file and its thumbnail
+      if (req.file) {
+        try {
+          fs.unlinkSync(req.file.path);
+          // Try to delete thumbnail if it exists
+          const thumbnailPath = path.join(
+            uploadDir, 
+            path.basename(req.file.path, path.extname(req.file.path)) + '_thumbnail.jpg'
+          );
+          if (fs.existsSync(thumbnailPath)) {
+            fs.unlinkSync(thumbnailPath);
+          }
+        } catch (e) {
+          console.error('Error cleaning up files:', e);
+        }
+      }
+      handleValidationError(err, res);
+    }
+  });
+
+  app.delete("/api/clips/:id", authMiddleware, async (req, res) => {
+    try {
+      const clipId = parseInt(req.params.id);
+      const user = (req as any).user;
+      
+      const clip = await storage.getClip(clipId);
+      
+      if (!clip) {
+        return res.status(404).json({ message: "Clip not found" });
+      }
+      
+      // Only allow users to delete their own clips
+      if (clip.userId !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const result = await storage.deleteClip(clipId);
+      
+      if (!result) {
+        return res.status(500).json({ message: "Failed to delete clip" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Clip editing endpoint (filters, trimming)
+  app.post("/api/clips/:id/edit", authMiddleware, async (req, res) => {
+    try {
+      const clipId = parseInt(req.params.id);
+      const user = (req as any).user;
+      
+      const clip = await storage.getClip(clipId);
+      
+      if (!clip) {
+        return res.status(404).json({ message: "Clip not found" });
+      }
+      
+      // Only allow users to edit their own clips
+      if (clip.userId !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      // Update clip with filter and trim data
+      const updateData = {
+        filter: req.body.filter,
+        trimStart: req.body.trimStart,
+        trimEnd: req.body.trimEnd
+      };
+      
+      const updatedClip = await storage.updateClip(clipId, updateData);
+      
+      if (!updatedClip) {
+        return res.status(500).json({ message: "Failed to update clip" });
+      }
+      
+      res.status(200).json(updatedClip);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Create a test clip for the demo user if none exist
+  app.post("/api/demo/create-test-clip", async (req, res) => {
+    try {
+      // Create a test clip for the demo user
+      const demoClip = await storage.createClip({
+        userId: 999, // Demo user ID
+        title: "Gears of War Epic Moment",
+        description: "Amazing gameplay from Gears of War with a perfect execution!",
+        gameId: 3, // Gears of War
+        videoUrl: "/uploads/test-clip.mp4", // You'll need to manually copy a file here
+        thumbnailUrl: "/attached_assets/game-controller-5619105_1920.jpg",
+        duration: 30,
+        tags: ["gameplay", "gears", "epic"],
+        filter: "none",
+        trimStart: 0,
+        trimEnd: 30
+      });
+      
+      console.log("Created test clip for demo user:", demoClip);
+      res.json(demoClip);
+    } catch (err) {
+      console.error("Error creating test clip:", err);
+      res.status(500).json({ message: "Failed to create test clip" });
+    }
+  });
+
+  app.get("/api/users/:username/clips", async (req, res) => {
+    try {
+      const username = req.params.username;
+      
+      // Special handling for demo user - get real clips instead of placeholders
+      if (username === "demo") {
+        console.log("Getting clips for demo user");
+        
+        // Get all uploaded videos directly from the uploads folder
+        const uploadDir = path.resolve(process.cwd(), "uploads");
+        const files = fs.readdirSync(uploadDir)
+          .filter(file => file.endsWith('.mp4'))
+          .sort((a, b) => {
+            // Sort newest first
+            const timestampA = parseInt(a.split('-')[0]);
+            const timestampB = parseInt(b.split('-')[0]);
+            return timestampB - timestampA;
+          });
+        
+        console.log(`Found ${files.length} real uploaded videos`);
+        
+        // Create clip objects for each actual file
+        const demoUser = getDemoUser();
+        
+        // Load game info from metadata files if they exist
+        const games = await storage.getAllGames();
+        // For clips without a specific game selected, use Gears of War as default
+        const defaultGame = {
+          id: 6252,
+          name: "Gears of War",
+          imageUrl: "/attached_assets/game-controller-5619105_1920.jpg",
+          createdAt: new Date(2022, 0, 1)
+        };
+        
+        // Create clip objects for each file - using synchronous code
+        const clips = files.map((fileName, index) => {
+          const fileNameWithoutExt = fileName.split('.')[0];
+          const videoUrl = `/uploads/${fileName}`;
+          const thumbnailPath = `/uploads/thumbnails/${fileNameWithoutExt}_thumbnail.jpg`;
+          
+          // Check if there's a metadata file with game info
+          const metadataPath = path.join(uploadDir, `${fileNameWithoutExt}_metadata.json`);
+          let gameData = defaultGame;
+          
+          try {
+            if (fs.existsSync(metadataPath)) {
+              const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+              console.log(`Reading metadata for ${fileName}:`, metadata);
+              
+              if (metadata.gameId) {
+                // For RAWG API games (larger IDs) and local database games
+                // Just set the game ID and name based on metadata
+                gameData = {
+                  id: parseInt(metadata.gameId),
+                  name: metadata.gameId > 1000 ? `Game #${metadata.gameId}` : "Gears of War",
+                  imageUrl: defaultGame.imageUrl,
+                  createdAt: new Date()
+                };
+                
+                // Try to find this game in our local database first
+                const matchingGame = games.find(g => g.id === parseInt(metadata.gameId));
+                if (matchingGame) {
+                  gameData = {
+                    id: matchingGame.id,
+                    name: matchingGame.name,
+                    imageUrl: matchingGame.imageUrl || defaultGame.imageUrl,
+                    createdAt: matchingGame.createdAt
+                  };
+                  console.log(`Using database game for clip ${fileName}:`, gameData.name);
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error reading metadata for ${fileName}:`, error);
+          }
+                        id: matchingGame.id,
+                        name: matchingGame.name,
+                        imageUrl: matchingGame.imageUrl || defaultGame.imageUrl,
+                        createdAt: matchingGame.createdAt
+                      };
+                      console.log(`Using matching database game:`, gameData.name);
+                    } else {
+                      // If no matching game, set a better default using ID from metadata
+                      gameData = {
+                        id: parseInt(metadata.gameId),
+                        name: `Game #${metadata.gameId}`,
+                        imageUrl: defaultGame.imageUrl,
+                        createdAt: new Date()
+                      };
+                      console.log(`Using generic game name for ID ${metadata.gameId}`);
+                    }
+                  }
+                } else {
+                  // For our database games (smaller IDs)
+                  const gameId = parseInt(metadata.gameId);
+                  const game = games.find(g => g.id === gameId);
+                  if (game) {
+                    // Ensure imageUrl is never null to satisfy type constraints
+                    gameData = {
+                      id: game.id,
+                      name: game.name,
+                      imageUrl: game.imageUrl || defaultGame.imageUrl,
+                      createdAt: game.createdAt
+                    };
+                    console.log(`Using database game:`, gameData.name);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error(`Error reading metadata for ${fileName}:`, error);
+          }
+          
+          return {
+            id: 10000 + index, // Large ID range to avoid conflicts 
+            userId: demoUser.id,
+            title: `Gameplay Clip ${index + 1}`,
+            description: "Your gameplay",
+            videoUrl: videoUrl,
+            thumbnailUrl: thumbnailPath,
+            duration: 15,
+            views: Math.floor(Math.random() * 1000),
+            likes: Math.floor(Math.random() * 100),
+            gameId: gameData.id,
+            createdAt: new Date(parseInt(fileNameWithoutExt.split('-')[0])),
+            updatedAt: new Date(),
+            trimStart: null,
+            trimEnd: null,
+            tags: ["gameplay"],
+            filter: "none",
+            user: demoUser,
+            game: gameData
+          };
+        });
+        
+        console.log(`Returning ${clips.length} real uploaded clips for demo user`);
+        return res.json(clips);
+      }
+      
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const clips = await storage.getClipsByUserId(user.id);
+      res.json(clips);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Get clips by game ID
+  app.get("/api/games/:gameId/clips", async (req, res) => {
+    try {
+      const gameId = parseInt(req.params.gameId);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 4;
+      
+      if (isNaN(gameId)) {
+        return res.status(400).json({ message: "Invalid game ID" });
+      }
+      
+      const game = await storage.getGame(gameId);
+      if (!game) {
+        return res.status(404).json({ message: "Game not found" });
+      }
+      
+      const clips = await storage.getClipsByGameId(gameId, limit);
+      res.json(clips);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/search/clips", async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      
+      if (!query) {
+        return res.status(400).json({ message: "Search query is required" });
+      }
+      
+      const clips = await storage.searchClips(query);
+      res.json(clips);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Like routes
+  app.post("/api/clips/:id/likes", authMiddleware, async (req, res) => {
+    try {
+      const clipId = parseInt(req.params.id);
+      const user = (req as any).user;
+      
+      const clip = await storage.getClip(clipId);
+      
+      if (!clip) {
+        return res.status(404).json({ message: "Clip not found" });
+      }
+      
+      const likeData = insertLikeSchema.parse({
+        userId: user.id,
+        clipId: clipId
+      });
+      
+      try {
+        const like = await storage.createLike(likeData);
+        res.status(201).json(like);
+      } catch (error) {
+        // User already liked this clip
+        res.status(409).json({ message: "Already liked" });
+      }
+    } catch (err) {
+      handleValidationError(err, res);
+    }
+  });
+
+  app.delete("/api/clips/:id/likes", authMiddleware, async (req, res) => {
+    try {
+      const clipId = parseInt(req.params.id);
+      const user = (req as any).user;
+      
+      const result = await storage.deleteLike(user.id, clipId);
+      
+      if (!result) {
+        return res.status(404).json({ message: "Like not found" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/clips/:id/likes", async (req, res) => {
+    try {
+      const clipId = parseInt(req.params.id);
+      const likes = await storage.getLikesByClipId(clipId);
+      res.json(likes);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Comment routes
+  app.post("/api/clips/:id/comments", authMiddleware, async (req, res) => {
+    try {
+      const clipId = parseInt(req.params.id);
+      const user = (req as any).user;
+      
+      const clip = await storage.getClip(clipId);
+      
+      if (!clip) {
+        return res.status(404).json({ message: "Clip not found" });
+      }
+      
+      const commentData = insertCommentSchema.parse({
+        userId: user.id,
+        clipId: clipId,
+        content: req.body.content
+      });
+      
+      const comment = await storage.createComment(commentData);
+      res.status(201).json(comment);
+    } catch (err) {
+      handleValidationError(err, res);
+    }
+  });
+
+  app.get("/api/clips/:id/comments", async (req, res) => {
+    try {
+      const clipId = parseInt(req.params.id);
+      const comments = await storage.getCommentsByClipId(clipId);
+      res.json(comments);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/comments/:id", authMiddleware, async (req, res) => {
+    try {
+      const commentId = parseInt(req.params.id);
+      const user = (req as any).user;
+      
+      const comment = await storage.getComment(commentId);
+      
+      if (!comment) {
+        return res.status(404).json({ message: "Comment not found" });
+      }
+      
+      // Only allow users to delete their own comments
+      if (comment.userId !== user.id) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const result = await storage.deleteComment(commentId);
+      
+      if (!result) {
+        return res.status(500).json({ message: "Failed to delete comment" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Follow routes
+  app.post("/api/users/:username/follow", authMiddleware, async (req, res) => {
+    try {
+      const username = req.params.username;
+      const user = (req as any).user;
+      
+      const userToFollow = await storage.getUserByUsername(username);
+      
+      if (!userToFollow) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Cannot follow yourself
+      if (user.id === userToFollow.id) {
+        return res.status(400).json({ message: "Cannot follow yourself" });
+      }
+      
+      const followData = insertFollowSchema.parse({
+        followerId: user.id,
+        followingId: userToFollow.id
+      });
+      
+      try {
+        const follow = await storage.createFollow(followData);
+        res.status(201).json(follow);
+      } catch (error) {
+        // Already following
+        res.status(409).json({ message: "Already following" });
+      }
+    } catch (err) {
+      handleValidationError(err, res);
+    }
+  });
+
+  app.delete("/api/users/:username/follow", authMiddleware, async (req, res) => {
+    try {
+      const username = req.params.username;
+      const user = (req as any).user;
+      
+      const userToUnfollow = await storage.getUserByUsername(username);
+      
+      if (!userToUnfollow) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const result = await storage.deleteFollow(user.id, userToUnfollow.id);
+      
+      if (!result) {
+        return res.status(404).json({ message: "Not following" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/users/:username/followers", async (req, res) => {
+    try {
+      const username = req.params.username;
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const followers = await storage.getFollowersByUserId(user.id);
+      res.json(followers);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/users/:username/following", async (req, res) => {
+    try {
+      const username = req.params.username;
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const following = await storage.getFollowingByUserId(user.id);
+      res.json(following);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // User game favorites routes
+  app.post("/api/users/games/favorites", authMiddleware, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const gameId = parseInt(req.body.gameId);
+      
+      const game = await storage.getGame(gameId);
+      
+      if (!game) {
+        return res.status(404).json({ message: "Game not found" });
+      }
+      
+      const favoriteData = insertUserGameFavoriteSchema.parse({
+        userId: user.id,
+        gameId: gameId
+      });
+      
+      try {
+        const favorite = await storage.addUserGameFavorite(favoriteData);
+        res.status(201).json(favorite);
+      } catch (error) {
+        // Already favorited
+        res.status(409).json({ message: "Game already in favorites" });
+      }
+    } catch (err) {
+      handleValidationError(err, res);
+    }
+  });
+
+  app.delete("/api/users/games/favorites/:gameId", authMiddleware, async (req, res) => {
+    try {
+      const user = (req as any).user;
+      const gameId = parseInt(req.params.gameId);
+      
+      const result = await storage.removeUserGameFavorite(user.id, gameId);
+      
+      if (!result) {
+        return res.status(404).json({ message: "Game not in favorites" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/users/:username/games/favorites", async (req, res) => {
+    try {
+      const username = req.params.username;
+      
+      // Special handling for demo user
+      if (username === "demo") {
+        console.log("Serving demo user favorites");
+        return res.json(getDemoFavoriteGames());
+      }
+      
+      const user = await storage.getUserByUsername(username);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const favorites = await storage.getUserGameFavorites(user.id);
+      res.json(favorites);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Profile banners routes
+  app.get("/api/profile-banners", async (req, res) => {
+    try {
+      const banners = await storage.getAllProfileBanners();
+      res.json(banners);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+  
+  // Reset banners (development only)
+  if (process.env.NODE_ENV === "development") {
+    app.post("/api/reset-banners", async (req, res) => {
+      try {
+        // Create gaming banners data 
+        const bannerData = [
+          { name: 'Gaming Controller', imageUrl: '/uploads/banners/gaming-controller.jpg', category: 'gaming' },
+          { name: 'Esports Arena', imageUrl: '/uploads/banners/esports-arena.png', category: 'gaming' },
+          { name: 'Gaming Keyboard', imageUrl: '/uploads/banners/gaming-keyboard.png', category: 'gaming' },
+          { name: 'Gaming Setup', imageUrl: '/uploads/banners/gaming-setup.png', category: 'gaming' },
+          { name: 'Gaming Console', imageUrl: '/uploads/banners/gaming-console.png', category: 'gaming' },
+          { name: 'Cyberpunk City', imageUrl: '/uploads/banners/cyberpunk-city.png', category: 'gaming' },
+          { name: 'Space Battle', imageUrl: '/uploads/banners/space-battle.png', category: 'gaming' },
+          { name: 'Neon Arcade', imageUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1200&h=300', category: 'abstract' },
+          { name: 'Abstract Neon', imageUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1200&h=300', category: 'abstract' },
+        ];
+        
+        // Delete existing banners
+        await db.delete(profileBanners);
+        
+        // Insert new banners
+        const result = await db.insert(profileBanners).values(bannerData).returning();
+        
+        res.json({ message: `Reset ${result.length} profile banners.` });
+      } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+  }
+
+  app.get("/api/profile-banners/categories/:category", async (req, res) => {
+    try {
+      const category = req.params.category;
+      const banners = await storage.getProfileBannersByCategory(category);
+      res.json(banners);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Return the server
+  return httpServer;
+}
