@@ -1,0 +1,94 @@
+Core API Endpoints
+All prefixed with /api:
+
+User / Auth
+
+GET /user — current authenticated user
+GET /users/:username — user profile with stats
+PATCH /user — update current user profile
+POST /register — create account
+POST /login — session login (use token login instead for mobile)
+POST /logout
+Clips
+
+GET /clips — paginated clip feed (query: ?period=day|week|month&gameId=&videoType=clip|reel&page=)
+GET /clips/:id — single clip
+GET /clips/share/:shareCode — clip by share code
+GET /reels — paginated reels feed
+GET /reels/:id — single reel
+POST /clips — upload clip (multipart form)
+DELETE /clips/:id — delete clip
+POST /clips/:id/like — like a clip
+DELETE /clips/:id/like — unlike a clip
+GET /clips/:id/likes — like count and status
+POST /clips/:id/view — record a view
+POST /clips/:id/reactions — add emoji reaction
+Screenshots
+
+GET /screenshots — paginated screenshots
+GET /screenshots/:id — single screenshot
+POST /screenshots — upload screenshot
+DELETE /screenshots/:id
+POST /screenshots/:id/like
+DELETE /screenshots/:id/like
+Comments
+
+GET /clips/:id/comments — get comments
+POST /clips/:id/comments — post comment
+DELETE /comments/:id
+POST /comments/:id/like — like a comment
+Follows
+
+POST /follows — follow a user { followingId }
+DELETE /follows/:userId — unfollow
+GET /users/:username/followers
+GET /users/:username/following
+GET /users/:userId/follow-status — check if you follow them
+POST /follow-requests — send follow request (private accounts)
+POST /follow-requests/:id/approve
+POST /follow-requests/:id/reject
+GET /follow-requests/pending — incoming requests
+Messages
+
+GET /messages — list conversations
+GET /messages/:userId — message thread with a user
+POST /messages/:userId — send message
+POST /messages/:userId/read — mark as read
+Notifications
+
+GET /notifications — all notifications
+POST /notifications/:id/read — mark read
+POST /notifications/read-all
+GET /notifications/unread-count
+Games
+
+GET /games — all games
+GET /games/search?q= — search games
+GET /games/:id — game with clips
+GET /user-game-favorites — current user's favourite games
+POST /user-game-favorites — add favourite
+DELETE /user-game-favorites/:gameId — remove favourite
+Gamification
+
+GET /user/streak — current streak info
+GET /leaderboard — weekly leaderboard
+GET /leaderboard/monthly
+POST /user/daily-lootbox — open daily loot box
+GET /user/daily-lootbox/status — check if can open today
+Store / Wallet
+
+GET /store/items — store items
+GET /user/wallet — wallet balance
+GET /user/gf-tokens — GF token balance
+Profile Customisation
+
+GET /profile-borders — available borders
+GET /name-tags — available name tags
+GET /verification-badges
+PATCH /user/selected-border
+PATCH /user/selected-name-tag
+Trending / Explore
+
+GET /trending — trending clips
+GET /explore — explore feed
+GET /hero-slides — homepage banner slides
