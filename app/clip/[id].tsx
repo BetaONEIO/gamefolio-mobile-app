@@ -10,7 +10,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { api, Clip, TaggedUser, APIError } from '@/lib/api';
-import { trpc } from '@/lib/trpc';
 import { getGamefolioToken, forceRefreshGamefolioToken } from '@/lib/gamefolio-api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';

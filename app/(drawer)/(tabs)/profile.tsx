@@ -21,9 +21,8 @@ import StyledUsername from '@/components/StyledUsername';
 import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { api, Clip, Screenshot, Game, getEffectiveAvatarUrl } from '@/lib/api';
-import { trpc } from '@/lib/trpc';
 
 
 const { width } = Dimensions.get('window');
@@ -144,17 +143,28 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, getAccessToken } = useAuth();
   
-  // Fetch profile stats (clips count, followers, following) using tRPC
-  const { data: profileStats } = trpc.users.getProfile.useQuery(
-    { username: user?.username || '' },
-    { enabled: !!user?.username }
-  );
+  // Fetch profile stats (clips count, followers, following) using REST
+  const { data: profileStats } = useQuery({
+    queryKey: ['/api/users', user?.username, 'profile'],
+    queryFn: async () => {
+      if (!user?.username) return null;
+      const token = await getAccessToken();
+      const result = await api.users.getProfile(user.username, token ?? undefined);
+      return result?.user ?? null;
+    },
+    enabled: !!user?.username,
+  });
 
-  // Fetch user clips (and reels) using tRPC
-  const { data: clipsData, isLoading: clipsLoading, error: clipsError } = trpc.clips.getUserClips.useQuery(
-    { userId: user?.id || 0 },
-    { enabled: !!user?.id }
-  );
+  // Fetch user clips (and reels) using REST
+  const { data: clipsData, isLoading: clipsLoading, error: clipsError } = useQuery({
+    queryKey: ['/api/users', user?.username, 'clips'],
+    queryFn: async () => {
+      if (!user?.username) return [];
+      const token = await getAccessToken();
+      return api.users.getUserClips(user.username, token ?? undefined);
+    },
+    enabled: !!user?.username,
+  });
   const allClips = (clipsData || []) as Clip[];
 
   console.log('[Profile] All clips query:', {
@@ -171,11 +181,16 @@ export default function ProfileScreen() {
   const reels = allClips.filter(c => c.videoType === 'reel');
   console.log('[Profile] Filtered - Clips:', clips.length, 'Reels:', reels.length);
 
-  // Fetch screenshots using tRPC
-  const { data: screenshotsData, isLoading: screenshotsLoading, error: screenshotsError } = trpc.screenshots.getUserScreenshots.useQuery(
-    { userId: user?.id || 0 },
-    { enabled: !!user?.id }
-  );
+  // Fetch screenshots using REST
+  const { data: screenshotsData, isLoading: screenshotsLoading, error: screenshotsError } = useQuery({
+    queryKey: ['/api/users', user?.id, 'screenshots'],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const token = await getAccessToken();
+      return api.screenshots.getUserScreenshots(user.id, token ?? undefined);
+    },
+    enabled: !!user?.id,
+  });
   const allScreenshots = (screenshotsData || []) as Screenshot[];
 
   console.log('[Profile] All screenshots query:', {
@@ -191,11 +206,16 @@ export default function ProfileScreen() {
   const screenshots = allScreenshots;
   console.log('[Profile] Filtered screenshots:', screenshots.length);
 
-  // Fetch favorite games using tRPC
-  const { data: favoritesData, isLoading: favoritesLoading, error: favoritesError } = trpc.users.getFavorites.useQuery(
-    { username: user?.username || '' },
-    { enabled: !!user?.username }
-  );
+  // Fetch favorite games using REST
+  const { data: favoritesData, isLoading: favoritesLoading, error: favoritesError } = useQuery({
+    queryKey: ['/api/users', user?.username, 'favorites'],
+    queryFn: async () => {
+      if (!user?.username) return [];
+      const token = await getAccessToken();
+      return api.users.getFavorites(user.username, token ?? undefined);
+    },
+    enabled: !!user?.username,
+  });
   const favoriteGames = (favoritesData || []) as Game[];
 
   console.log('[Profile] Favorite games:', {

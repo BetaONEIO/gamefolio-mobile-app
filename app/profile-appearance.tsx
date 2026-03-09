@@ -8,13 +8,13 @@ import { User as UserIcon, Palette, Image as ImageIcon, Camera, Save, Check } fr
 import AppHeader from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
+import { useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 
 import ConfirmationModal from '@/components/ConfirmationModal';
 import ImageEditorModal from '@/components/ImageEditorModal';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
 import ProfileBorderModal, { AvatarBorder } from '@/components/ProfileBorderModal';
-import { trpc } from '@/lib/trpc';
 import CustomAlert from '@/components/CustomAlert';
 import AppearanceStudioModal from '@/components/AppearanceStudioModal';
 
@@ -114,7 +114,13 @@ export default function ProfileAppearance() {
     currentTheme.backgroundColor !== (user.backgroundColor || QUICK_THEMES[0].backgroundColor)
   );
 
-  const { data: avatarBordersData } = trpc.user.getAvatarBorders.useQuery();
+  const { data: avatarBordersData } = useQuery({
+    queryKey: ['/api/profile-borders'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      return api.profileBorders.getAll(token ?? undefined);
+    },
+  });
   const currentUserBorderId = avatarBordersData?.selectedBorderId || null;
   const isBorderDirty = selectedBorder?.id !== currentUserBorderId;
 

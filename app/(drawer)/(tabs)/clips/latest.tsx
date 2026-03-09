@@ -20,7 +20,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
-import { trpc } from '@/lib/trpc';
 import AppHeader from '@/components/AppHeader';
 import * as Haptics from 'expo-haptics';
 import ReelViewer from '@/components/ReelViewer';
@@ -154,7 +153,13 @@ export default function LatestClipsPage() {
     ? allClips.filter(clip => clip.game?.id === parseInt(selectedGame))
     : allClips;
 
-  const { data: topGamesData } = trpc.twitch.getTopGames.useQuery({ limit: 25 });
+  const { data: topGamesData } = useQuery({
+    queryKey: ['/api/twitch/games/top', 25],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      return api.games.getTopGames(25, token ?? undefined);
+    },
+  });
 
   const uniqueGames = React.useMemo(() => {
     const games = new Map<string, Game>();

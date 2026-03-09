@@ -8,7 +8,6 @@ import AppHeader from '@/components/AppHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, Clip, TaggedUser } from '@/lib/api';
 import { shortenGameName, truncateTitle } from '@/constants/formatters';
-import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/context/AuthContext';
 import { useUser } from '@/context/UserContext';
 import ReelViewer from '@/components/ReelViewer';

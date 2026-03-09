@@ -5,7 +5,6 @@ import * as ExpoNotifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { useAuth } from './AuthContext';
-import { trpc } from '@/lib/trpc';
 import { api, Notification } from '@/lib/api';
 
 ExpoNotifications.setNotificationHandler({
@@ -119,10 +118,6 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const registerTokenMutation = trpc.notifications.registerToken.useMutation();
-  const registerTokenRef = useRef(registerTokenMutation);
-  registerTokenRef.current = registerTokenMutation;
-
   const authTokenRef = useRef(authTokens?.accessToken);
   authTokenRef.current = authTokens?.accessToken;
 
@@ -140,10 +135,15 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
 
     try {
       console.log('[Notifications] Registering push token with backend...');
-      await registerTokenRef.current.mutateAsync({
-        token,
-        platform: Platform.OS as 'ios' | 'android' | 'web',
-      });
+      const authToken = authTokenRef.current;
+      if (!authToken) {
+        console.log('[Notifications] No auth token, skipping token registration');
+        return;
+      }
+      await api.pushTokens.register(
+        { token, platform: Platform.OS as 'ios' | 'android' | 'web' },
+        authToken
+      );
       console.log('[Notifications] Push token registered successfully');
     } catch (error) {
       console.error('[Notifications] Failed to register push token:', error);

@@ -1,8 +1,10 @@
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView, Image, ActivityIndicator, Animated } from 'react-native';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Check, Trash2, Lock, ShoppingBag } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { trpc } from '@/lib/trpc';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 export interface AvatarBorder {
   id: number;
@@ -32,6 +34,7 @@ export default function ProfileBorderModal({
 }: ProfileBorderModalProps) {
   const [selectedBorderId, setSelectedBorderId] = useState<number | null>(currentBorderId);
   const [activeTab, setActiveTab] = useState<'owned' | 'store'>('owned');
+  const { getAccessToken } = useAuth();
 
   const starAnimations = useRef(
     Array.from({ length: 20 }).map(() => ({
@@ -40,11 +43,22 @@ export default function ProfileBorderModal({
     }))
   ).current;
 
-  const { data, isLoading, refetch } = trpc.user.getAvatarBorders.useQuery(undefined, {
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['/api/profile-borders'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      return api.profileBorders.getAll(token);
+    },
     enabled: visible,
   });
 
-  const updateBorderMutation = trpc.user.updateAvatarBorder.useMutation({
+  const updateBorderMutation = useMutation({
+    mutationFn: async (borderId: number | null) => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      return api.profileBorders.updateSelected(borderId, token);
+    },
     onSuccess: (result) => {
       console.log('[ProfileBorderModal] Border updated successfully:', result);
       const selectedBorder = data?.borders.find(b => b.id === result.selectedBorderId);
@@ -106,7 +120,7 @@ export default function ProfileBorderModal({
 
   const handleConfirm = () => {
     console.log('[ProfileBorderModal] Confirming border selection:', selectedBorderId);
-    updateBorderMutation.mutate({ avatarBorderId: selectedBorderId });
+    updateBorderMutation.mutate(selectedBorderId);
   };
 
   const handleRemoveBorder = () => {

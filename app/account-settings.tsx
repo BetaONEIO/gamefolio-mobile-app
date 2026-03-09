@@ -7,7 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Shield, Gamepad2, Check, User, Ticket } from 'lucide-react-native';
 import AppHeader from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
-import { trpc } from '@/lib/trpc';
+import { api } from '@/lib/api';
+import { useMutation } from '@tanstack/react-query';
 import UserTypeBadge, { USER_TYPES } from '@/components/UserTypeBadge';
 import RedeemCodeModal from '@/components/RedeemCodeModal';
 
@@ -16,12 +17,18 @@ type TabType = 'platforms' | 'security' | 'profile';
 export default function AccountSettings() {
   const { tab } = useLocalSearchParams<{ tab: string }>();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, getAccessToken } = useAuth();
   const [showUserType, setShowUserType] = useState(user?.showUserType !== false);
   const [isSaving, setIsSaving] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
 
-  const updateProfileMutation = trpc.user.updateProfile.useMutation();
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: Record<string, unknown>) => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      return api.users.updateProfile(user?.id ?? 0, data, token);
+    },
+  });
 
   useEffect(() => {
     if (tab && ['platforms', 'security', 'profile'].includes(tab)) {
@@ -76,7 +83,7 @@ export default function AccountSettings() {
     setShowUserType(newValue);
     setIsSaving(true);
     try {
-      await updateProfileMutation.mutateAsync({ showUserType: newValue });
+      await updateProfileMutation.mutateAsync({ showUserType: newValue } as Record<string, unknown>);
       if (updateUser) {
         await updateUser({ showUserType: newValue });
       }

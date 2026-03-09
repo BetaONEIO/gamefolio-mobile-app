@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Modal, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { X, Gift, CheckCircle } from 'lucide-react-native';
-import { trpc } from '@/lib/trpc';
+import { useMutation } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 interface RedeemCodeModalProps {
   visible: boolean;
@@ -12,8 +14,14 @@ export default function RedeemCodeModal({ visible, onClose }: RedeemCodeModalPro
   const [code, setCode] = useState('');
   const [redeemStatus, setRedeemStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [rewardMessage, setRewardMessage] = useState('');
+  const { getAccessToken } = useAuth();
 
-  const redeemMutation = trpc.rewards.redeemCode.useMutation({
+  const redeemMutation = useMutation({
+    mutationFn: async (codeValue: string) => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      return api.redeemCode.redeem(codeValue, token);
+    },
     onSuccess: (data) => {
       console.log('[RedeemCode] Success:', data);
       setRedeemStatus('success');
@@ -25,7 +33,7 @@ export default function RedeemCodeModal({ visible, onClose }: RedeemCodeModalPro
         onClose();
       }, 2500);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('[RedeemCode] Error:', error);
       setRedeemStatus('error');
       setRewardMessage(error.message || 'Invalid or expired code');
@@ -41,7 +49,7 @@ export default function RedeemCodeModal({ visible, onClose }: RedeemCodeModalPro
       Alert.alert('Error', 'Please enter a code');
       return;
     }
-    redeemMutation.mutate({ code: code.trim().toUpperCase() });
+    redeemMutation.mutate(code.trim().toUpperCase());
   };
 
   const handleClose = () => {

@@ -24,7 +24,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { shortenGameName } from '@/constants/formatters';
 import { useAuth } from '@/context/AuthContext';
-import { trpc } from '@/lib/trpc';
 import ReelViewer from '@/components/ReelViewer';
 import type { ReelData, Comment } from '@/components/ReelViewer';
 import AppHeader from '@/components/AppHeader';
@@ -130,24 +129,27 @@ export default function LatestReelsPage() {
 
   const [gameSearchQuery, setGameSearchQuery] = useState('');
 
-  const topGamesQuery = trpc.twitch.getTopGames.useInfiniteQuery(
-    { limit: 30 },
-    {
-      getNextPageParam: (lastPage) => lastPage.nextCursor,
-    }
-  );
+  const topGamesQuery = useQuery({
+    queryKey: ['/api/twitch/games/top', 30],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      return api.games.getTopGames(30, token ?? undefined);
+    },
+  });
 
   const topGamesData = React.useMemo(() => {
-    if (!topGamesQuery.data?.pages) return { games: [] };
-    return {
-      games: topGamesQuery.data.pages.flatMap(page => page.games),
-    };
-  }, [topGamesQuery.data?.pages]);
+    if (!topGamesQuery.data?.games) return { games: [] };
+    return { games: topGamesQuery.data.games };
+  }, [topGamesQuery.data]);
 
-  const searchGamesQuery = trpc.twitch.searchGames.useQuery(
-    { query: gameSearchQuery.trim(), limit: 50 },
-    { enabled: gameSearchQuery.trim().length > 0 }
-  );
+  const searchGamesQuery = useQuery({
+    queryKey: ['/api/twitch/games/search', gameSearchQuery.trim()],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      return api.games.searchGames(gameSearchQuery.trim(), 50, token ?? undefined);
+    },
+    enabled: gameSearchQuery.trim().length > 0,
+  });
 
   const uniqueGames = React.useMemo(() => {
     const games = new Map<string, Game>();

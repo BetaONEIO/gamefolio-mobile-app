@@ -506,6 +506,15 @@ export interface Screenshot {
   isFired?: boolean;
 }
 
+export interface AvatarBorder {
+  id: number;
+  name: string;
+  imageUrl: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  claimedAt?: string;
+  unlocked?: boolean;
+}
+
 export interface Notification {
   id: number;
   userId: number;
@@ -1919,6 +1928,56 @@ export const api = {
         token,
         acceptHtml: true,
         htmlFallback: null,
+      });
+    },
+  },
+
+  profileBorders: {
+    getAll: async (token: string) => {
+      return apiFetch<{
+        borders: AvatarBorder[];
+        selectedBorderId: number | null;
+      }>('/api/profile-borders', {
+        method: 'GET',
+        token,
+      });
+    },
+
+    updateSelected: async (borderId: number | null, token: string) => {
+      return apiFetch<{ selectedBorderId: number | null }>('/api/user/selected-border', {
+        method: 'PATCH',
+        body: JSON.stringify({ borderId }),
+        token,
+      });
+    },
+  },
+
+  pushTokens: {
+    register: async (data: { token: string; platform: 'ios' | 'android' | 'web' }, authToken: string) => {
+      return apiFetch<{ success: boolean }>('/api/notifications/push-token', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        token: authToken,
+      });
+    },
+  },
+
+  redeemCode: {
+    redeem: async (code: string, token: string) => {
+      return apiFetch<{ success: boolean; message: string; reward?: unknown }>('/api/rewards/redeem', {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+        token,
+      });
+    },
+  },
+
+  reports: {
+    submit: async (data: { targetId: number; targetType: string; reason: string }, token: string) => {
+      return apiFetch<{ success: boolean; message: string }>('/api/reports', {
+        method: 'POST',
+        body: JSON.stringify(data),
+        token,
       });
     },
   },

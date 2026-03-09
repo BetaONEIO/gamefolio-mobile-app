@@ -13,10 +13,10 @@ import ProfileBannerModal from '@/components/ProfileBannerModal';
 import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import LevelBadge from '@/components/LevelBadge';
 import StyledUsername from '@/components/StyledUsername';
-import { Clip, Screenshot, getEffectiveAvatarUrl } from '@/lib/api';
+import { Clip, Screenshot, getEffectiveAvatarUrl, api } from '@/lib/api';
 import ReportModal from '@/components/ReportModal';
 import ShareProfileModal from '@/components/ShareProfileModal';
-import { trpc } from '@/lib/trpc';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 import * as Haptics from 'expo-haptics';
 
@@ -29,15 +29,21 @@ export default function PublicProfileScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
   const username = Array.isArray(id) ? id[0] : id;
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, getAccessToken } = useAuth();
 
   const isMe = currentUser && (currentUser.username === username);
 
-  // Fetch Profile via tRPC
-  const { data: profileData, isLoading: isProfileLoading } = trpc.users.getProfile.useQuery(
-    { username: username || '' },
-    { enabled: !!username }
-  );
+  // Fetch Profile via REST
+  const { data: profileData, isLoading: isProfileLoading } = useQuery({
+    queryKey: ['/api/users', username, 'profile'],
+    queryFn: async () => {
+      if (!username) return null;
+      const token = await getAccessToken();
+      const result = await api.users.getProfile(username, token ?? undefined);
+      return result?.user ?? null;
+    },
+    enabled: !!username,
+  });
 
   const user = profileData;
   const userId = user?.id;
@@ -45,30 +51,45 @@ export default function PublicProfileScreen() {
   const bgColor = user?.backgroundColor || '#0F1520';
   const accentColor = user?.accentColor || '#4ADE80';
 
-  // Fetch clips (and reels) via tRPC
-  const { data: clipsData } = trpc.clips.getUserClips.useQuery(
-    { userId: userId || 0 },
-    { enabled: !!userId }
-  );
+  // Fetch clips (and reels) via REST
+  const { data: clipsData } = useQuery({
+    queryKey: ['/api/users', username, 'clips'],
+    queryFn: async () => {
+      if (!username) return [];
+      const token = await getAccessToken();
+      return api.users.getUserClips(username, token ?? undefined);
+    },
+    enabled: !!username,
+  });
   const allClips = clipsData || [];
 
   const clips = allClips.filter((c: any) => c.videoType !== 'reel' && c.userId === userId);
   const reels = allClips.filter((c: any) => c.videoType === 'reel' && c.userId === userId);
 
-  // Fetch screenshots via tRPC
-  const { data: screenshotsData } = trpc.screenshots.getUserScreenshots.useQuery(
-    { userId: userId || 0 },
-    { enabled: !!userId }
-  );
+  // Fetch screenshots via REST
+  const { data: screenshotsData } = useQuery({
+    queryKey: ['/api/users', userId, 'screenshots'],
+    queryFn: async () => {
+      if (!userId) return [];
+      const token = await getAccessToken();
+      return api.screenshots.getUserScreenshots(userId, token ?? undefined);
+    },
+    enabled: !!userId,
+  });
   const allScreenshots = screenshotsData || [];
 
   const screenshots = allScreenshots.filter((s: any) => s.userId === userId);
 
-  // Fetch favorite games via tRPC
-  const { data: favoritesData } = trpc.users.getFavorites.useQuery(
-    { username: username || '' },
-    { enabled: !!username }
-  );
+  // Fetch favorite games via REST
+  const { data: favoritesData } = useQuery({
+    queryKey: ['/api/users', username, 'favorites'],
+    queryFn: async () => {
+      if (!username) return [];
+      const token = await getAccessToken();
+      return api.users.getFavorites(username, token ?? undefined);
+    },
+    enabled: !!username,
+  });
   const favoriteGames = favoritesData || [];
 
   const [isFollowing, setIsFollowing] = useState(false);
@@ -81,7 +102,12 @@ export default function PublicProfileScreen() {
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const [onlineTooltipVisible, setOnlineTooltipVisible] = useState(false);
 
-  const submitReportMutation = trpc.reports.submit.useMutation({
+  const submitReportMutation = useMutation({
+    mutationFn: async (reportData: Record<string, unknown>) => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      return api.reports.submit(reportData as any, token);
+    },
     onSuccess: () => {
       console.log('[UserProfile] Report submitted successfully');
     },

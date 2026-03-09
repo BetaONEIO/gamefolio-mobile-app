@@ -1,8 +1,7 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User } from '@/lib/api';
-import { trpc } from '@/lib/trpc';
+import { User, api } from '@/lib/api';
 
 export interface TwitchGame {
   id: string;
@@ -21,7 +20,6 @@ export const [UserProvider, useUser] = createContextHook(() => {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const updateProfileMutation = trpc.user.updateProfile.useMutation();
 
   useEffect(() => {
     const loadData = async () => {
@@ -116,24 +114,27 @@ export const [UserProvider, useUser] = createContextHook(() => {
     try {
       await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(updatedUser));
       
-      const response = await updateProfileMutation.mutateAsync({
-        displayName: updates.displayName,
-        bio: updates.bio || undefined,
-        avatarUrl: updates.avatarUrl || undefined,
-        bannerUrl: updates.bannerUrl || undefined,
-        accentColor: updates.accentColor || undefined,
-        backgroundColor: updates.backgroundColor || undefined,
-      });
+      const token = authToken;
+      if (token) {
+        const response = await api.users.updateProfile(user.id, {
+          displayName: updates.displayName,
+          bio: updates.bio || undefined,
+          avatarUrl: updates.avatarUrl || undefined,
+          bannerUrl: updates.bannerUrl || undefined,
+          accentColor: updates.accentColor || undefined,
+          backgroundColor: updates.backgroundColor || undefined,
+        }, token);
 
-      if (response.user) {
-        setUser(response.user as User);
-        await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(response.user));
+        if (response.user) {
+          setUser(response.user as User);
+          await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(response.user));
+        }
       }
     } catch (error) {
       console.error('Failed to update user profile:', error);
       throw error;
     }
-  }, [user, updateProfileMutation]);
+  }, [user, authToken]);
 
   return {
     user,

@@ -21,10 +21,11 @@ Preferred communication style: Simple, everyday language.
 - **UI Components**: Custom component library with modals, cards, and animated elements using expo-linear-gradient and expo-blur
 
 ### Backend Architecture
-- **API Framework**: Hono web framework running on the server
-- **RPC Layer**: tRPC for type-safe API communication between client and server
+- **API Framework**: Express.js REST API server (`server/`) on port 5000
+- **Client Layer**: All data fetching uses TanStack Query (`useQuery`/`useMutation`) calling `lib/api.ts` REST methods
 - **Authentication**: Custom JWT-based auth with access and refresh tokens, bcrypt for password hashing
 - **OAuth Support**: Google and Discord OAuth for social login (native platforms only)
+- **Note**: The `backend/` directory contains a legacy tRPC/Hono server that is no longer used by the app. All API calls go through `server/` REST endpoints via `lib/api.ts`.
 
 ### Data Storage
 - **Database**: PostgreSQL with Drizzle ORM

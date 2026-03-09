@@ -2,14 +2,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { UserProvider } from "@/context/UserContext";
 import { LootboxCollectionProvider } from "@/context/LootboxCollectionContext";
 import { RevenueCatProvider } from "@/context/RevenueCatContext";
 import { NotificationsProvider } from "@/context/NotificationsContext";
-import { trpc, createTRPCClientForReact } from "@/lib/trpc";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -55,8 +54,6 @@ function AppContent() {
 }
 
 export default function RootLayout() {
-  const trpcClientInstance = useMemo(() => createTRPCClientForReact(), []);
-
   useEffect(() => {
     console.log("RootLayout mounted");
     // Hide the native splash screen immediately as we have our own splash/onboarding screen
@@ -77,20 +74,18 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <trpc.Provider client={trpcClientInstance} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <RevenueCatProvider>
-            <NotificationsProvider>
-              <UserProvider>
-                <LootboxCollectionProvider>
-                  <AppContent />
-                </LootboxCollectionProvider>
-              </UserProvider>
-            </NotificationsProvider>
-          </RevenueCatProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </trpc.Provider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RevenueCatProvider>
+          <NotificationsProvider>
+            <UserProvider>
+              <LootboxCollectionProvider>
+                <AppContent />
+              </LootboxCollectionProvider>
+            </UserProvider>
+          </NotificationsProvider>
+        </RevenueCatProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

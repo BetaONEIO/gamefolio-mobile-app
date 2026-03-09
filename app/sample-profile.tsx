@@ -10,7 +10,9 @@ import AppHeader from '@/components/AppHeader';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
 import ProfileBannerModal from '@/components/ProfileBannerModal';
 import LevelBadge from '@/components/LevelBadge';
-import { trpc } from '@/lib/trpc';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
@@ -20,11 +22,48 @@ const TABS = ['Clips', 'Reels', 'Screenshots', 'Favorites'];
 export default function SampleProfileScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState('Clips');
+  const { user: currentUser, getAccessToken } = useAuth();
 
-  const { data: profileData, isLoading: isProfileLoading, error: profileError } = trpc.users.getSampleProfile.useQuery();
-  const { data: allClips = [] } = trpc.clips.getSampleClips.useQuery();
-  const { data: allScreenshots = [] } = trpc.screenshots.getSampleScreenshots.useQuery();
-  const { data: favoriteGames = [] } = trpc.users.getSampleFavorites.useQuery();
+  const { data: profileData, isLoading: isProfileLoading, error: profileError } = useQuery({
+    queryKey: ['/api/users', currentUser?.username, 'sample-profile'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      if (!currentUser?.username) return null;
+      const result = await api.users.getProfile(currentUser.username, token ?? undefined);
+      return result;
+    },
+    enabled: !!currentUser?.username,
+  });
+
+  const { data: allClips = [] } = useQuery({
+    queryKey: ['/api/users', currentUser?.username, 'clips'],
+    queryFn: async () => {
+      if (!currentUser?.username) return [];
+      const token = await getAccessToken();
+      return api.users.getUserClips(currentUser.username, token ?? undefined);
+    },
+    enabled: !!currentUser?.username,
+  });
+
+  const { data: allScreenshots = [] } = useQuery({
+    queryKey: ['/api/users', currentUser?.id, 'screenshots'],
+    queryFn: async () => {
+      if (!currentUser?.id) return [];
+      const token = await getAccessToken();
+      return api.screenshots.getUserScreenshots(currentUser.id, token ?? undefined);
+    },
+    enabled: !!currentUser?.id,
+  });
+
+  const { data: favoriteGames = [] } = useQuery({
+    queryKey: ['/api/users', currentUser?.username, 'favorites'],
+    queryFn: async () => {
+      if (!currentUser?.username) return [];
+      const token = await getAccessToken();
+      return api.users.getFavorites(currentUser.username, token ?? undefined);
+    },
+    enabled: !!currentUser?.username,
+  });
 
   const user = profileData?.user;
   const bgColor = user?.backgroundColor || '#0F1520';

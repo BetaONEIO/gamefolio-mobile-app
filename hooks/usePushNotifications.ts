@@ -3,7 +3,8 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
-import { trpc } from '@/lib/trpc';
+import { api } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -32,14 +33,7 @@ export function usePushNotifications(isAuthenticated: boolean) {
   const responseListener = useRef<Notifications.Subscription | null>(null);
   const hasRegisteredRef = useRef<boolean>(false);
 
-  const registerTokenMutation = trpc.notifications.registerToken.useMutation({
-    onSuccess: () => {
-      console.log('[PushNotifications] Token registered with backend');
-    },
-    onError: (err) => {
-      console.error('[PushNotifications] Failed to register token with backend:', err);
-    },
-  });
+  const { getAccessToken } = useAuth();
 
   const registerForPushNotifications = useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -119,15 +113,21 @@ export function usePushNotifications(isAuthenticated: boolean) {
     console.log('[PushNotifications] Registering token with backend, platform:', platform);
     
     try {
-      await registerTokenMutation.mutateAsync({
-        token,
-        platform: platform as 'ios' | 'android' | 'web',
-      });
+      const authToken = await getAccessToken();
+      if (!authToken) {
+        console.log('[PushNotifications] No auth token available');
+        return;
+      }
+      await api.pushTokens.register(
+        { token, platform: platform as 'ios' | 'android' | 'web' },
+        authToken
+      );
       hasRegisteredRef.current = true;
+      console.log('[PushNotifications] Token registered with backend');
     } catch (err) {
-      console.error('[PushNotifications] Backend registration failed:', err);
+      console.error('[PushNotifications] Failed to register token with backend:', err);
     }
-  }, [registerTokenMutation]);
+  }, [getAccessToken]);
 
   useEffect(() => {
     if (!isAuthenticated) {

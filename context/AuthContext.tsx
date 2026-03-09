@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { api, setAuthCallbacks, User, GamefolioTokens, mapRawUser } from '@/lib/api';
-import { setTRPCAuthToken } from '@/lib/trpc';
 import { setGamefolioTokens, clearGamefolioTokens } from '@/lib/gamefolio-api';
 
 export interface StreakInfo {
@@ -489,9 +488,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       }
     );
     
-    setTRPCAuthToken(async () => {
-      return await getAccessToken();
-    });
   }, [authTokens, refreshAccessToken, logout, getAccessToken]);
 
   return {

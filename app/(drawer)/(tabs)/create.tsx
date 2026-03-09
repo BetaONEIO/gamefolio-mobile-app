@@ -38,8 +38,9 @@ import * as VideoThumbnails from 'expo-video-thumbnails';
 
 import { TwitchGame } from '@/context/UserContext';
 import GameSelectorModal from '@/components/GameSelectorModal';
-import { trpc } from '@/lib/trpc';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 
 import { gamefolioUpload, UploadLimitError, getGamefolioToken } from '@/lib/gamefolio-api';
 import { useAuth } from '@/context/AuthContext';
@@ -48,7 +49,7 @@ export default function CreateScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { type } = params;
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, getAccessToken } = useAuth();
   
   const [isUploading, setIsUploading] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -228,17 +229,33 @@ export default function CreateScreen() {
   const debouncedMentionQuery = useDebounce(mentionQuery, 300);
   const debouncedTagUserQuery = useDebounce(tagUserQuery, 300);
   
-  const { data: mentionSuggestions } = trpc.users.search.useQuery(
-    { query: debouncedMentionQuery },
-    { enabled: showMentionDropdown && debouncedMentionQuery.length > 0 }
-  );
+  const { data: mentionSuggestions } = useQuery({
+    queryKey: ['/api/users/search', debouncedMentionQuery],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const result = await api.users.search(debouncedMentionQuery, token ?? undefined);
+      return result.users ?? [];
+    },
+    enabled: showMentionDropdown && debouncedMentionQuery.length > 0,
+  });
   
-  const { data: tagUserSuggestions } = trpc.users.search.useQuery(
-    { query: debouncedTagUserQuery },
-    { enabled: showTagUserDropdown && debouncedTagUserQuery.length > 0 }
-  );
+  const { data: tagUserSuggestions } = useQuery({
+    queryKey: ['/api/users/search', debouncedTagUserQuery],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const result = await api.users.search(debouncedTagUserQuery, token ?? undefined);
+      return result.users ?? [];
+    },
+    enabled: showTagUserDropdown && debouncedTagUserQuery.length > 0,
+  });
   
-  const { data: trendingTags } = trpc.tags.getTrending.useQuery();
+  const { data: trendingTags } = useQuery({
+    queryKey: ['/api/tags/trending'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      return api.tags.getTrending(token ?? undefined);
+    },
+  });
 
   const handleUpload = async () => {
     if (!selectedFile) {

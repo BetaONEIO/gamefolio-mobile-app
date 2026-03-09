@@ -45,7 +45,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
-import { trpc } from '@/lib/trpc';
+import { useQuery } from '@tanstack/react-query';
 import {
   TetrisTheme,
   PacmanTheme,
@@ -278,7 +278,13 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
   const [alertMessage, setAlertMessage] = useState('');
   const [alertType, setAlertType] = useState<'error' | 'success' | 'info'>('error');
 
-  const { data: avatarBordersData, error: avatarBordersError } = trpc.user.getAvatarBorders.useQuery(undefined, {
+  const { data: avatarBordersData, error: avatarBordersError } = useQuery({
+    queryKey: ['/api/profile-borders'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      return api.profileBorders.getAll(token);
+    },
     retry: false,
     refetchOnWindowFocus: false,
   });

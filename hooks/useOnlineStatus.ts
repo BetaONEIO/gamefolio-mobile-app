@@ -1,18 +1,21 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/context/AuthContext';
+import { api } from '@/lib/api';
 
 export function useOnlineStatus() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, getAccessToken } = useAuth();
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
-  
-  const updateOnlineStatusMutation = trpc.user.updateOnlineStatus.useMutation();
-  const { mutate: updateStatusMutation } = updateOnlineStatusMutation;
 
-  const updateStatus = useCallback((isOnline: boolean) => {
-    updateStatusMutation({ isOnline });
-  }, [updateStatusMutation]);
+  const updateStatus = useCallback(async (isOnline: boolean) => {
+    try {
+      const token = await getAccessToken();
+      if (!token) return;
+      await api.users.updateProfile(0, { isOnline }, token);
+    } catch (err) {
+      console.error('[OnlineStatus] Failed to update status:', err);
+    }
+  }, [getAccessToken]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
