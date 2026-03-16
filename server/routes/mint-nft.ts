@@ -388,10 +388,10 @@ function ipfsToProxyUrl(ipfsUri: string): string {
   return `/api/nft/image/${path}`;
 }
 
-router.get('/api/nft/image/:cid/*', async (req: Request, res: Response) => {
+router.get('/api/nft/image/:cid/*path', async (req: Request, res: Response) => {
   try {
     const cid = req.params.cid;
-    const rest = req.params[0] || '';
+    const rest = (req.params as any).path || '';
     const ipfsPath = rest ? `${cid}/${rest}` : cid;
 
     for (let i = 0; i < IPFS_GATEWAYS.length; i++) {
@@ -422,10 +422,10 @@ router.get('/api/nft/image/:cid/*', async (req: Request, res: Response) => {
 const nftThumbnailCache = new Map<string, { buffer: Buffer; timestamp: number }>();
 const NFT_THUMB_CACHE_TTL = 3600000;
 
-router.get('/api/nft/thumb/:cid/*', async (req: Request, res: Response) => {
+router.get('/api/nft/thumb/:cid/*path', async (req: Request, res: Response) => {
   try {
     const cid = req.params.cid;
-    const rest = req.params[0] || '';
+    const rest = (req.params as any).path || '';
     const ipfsPath = rest ? `${cid}/${rest}` : cid;
     const size = parseInt(req.query.s as string) || 128;
     const clampedSize = Math.min(Math.max(size, 32), 512);

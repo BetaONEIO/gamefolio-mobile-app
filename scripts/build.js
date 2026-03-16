@@ -118,7 +118,7 @@ async function startMetro(expoPublicDomain) {
     ...process.env,
     EXPO_PUBLIC_DOMAIN: expoPublicDomain,
   };
-  metroProcess = spawn("npm", ["run", "expo:start:static:build"], {
+  metroProcess = spawn("npx", ["expo", "start", "--localhost"], {
     stdio: ["ignore", "pipe", "pipe"],
     detached: false,
     env,

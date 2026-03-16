@@ -305,7 +305,7 @@ router.post('/upload/supabase-creds', fullAccessMiddleware, async (req, res) => 
 });
 
 // TUS endpoints (keep for future use)
-router.all('/tus/*', fullAccessMiddleware, (req, res) => {
+router.all('/tus/*path', fullAccessMiddleware, (req, res) => {
   return tusServer.handle(req, res);
 });
 

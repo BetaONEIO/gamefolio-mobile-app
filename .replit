@@ -5,9 +5,9 @@ modules = ["nodejs-22"]
 channel = "stable-24_05"
 
 [deployment]
-deploymentTarget = "cloudrun"
-build = ["sh", "-c", "npm run expo:static:build && npm run server:build"]
-run = ["npm", "run", "server:prod"]
+deploymentTarget = "autoscale"
+build = ["sh", "-c", "node scripts/build.js"]
+run = ["sh", "-c", "NODE_ENV=production tsx server/index.ts"]
 
 [[ports]]
 localPort = 5000

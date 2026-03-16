@@ -1,4 +1,4 @@
-import * as brevo from '@getbrevo/brevo';
+import * as brevo from 'sib-api-v3-sdk';
 import { nanoid } from 'nanoid';
 import * as fs from 'fs/promises';
 import * as path from 'path';

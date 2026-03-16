@@ -89,7 +89,14 @@ Preferred communication style: Simple, everyday language.
 ### Development Tools
 - **Drizzle Kit**: Database migrations and schema management
 - **ESLint**: Expo-flavored linting configuration
-- **TypeScript**: Strict mode enabled with path aliases (@/*)
+- **TypeScript**: Strict mode enabled with path aliases (`@/*` and `@shared/*`)
+
+### Deployment Architecture
+- **Deployment**: Autoscale (Replit Cloud Run) via `node scripts/build.js` + `NODE_ENV=production tsx server/index.ts`
+- **Build Process**: `scripts/build.js` starts Metro, downloads iOS/Android bundles, creates `static-build/` with manifests
+- **Static Serving**: `server/static.ts` serves Expo manifests at `/ios` and `/android`, bundle files from `static-build/`
+- **No Vite**: The server does not use Vite (this is an Expo app). `server/static.ts` handles production static serving
+- **Path Aliases**: `tsconfig.json` maps `@shared/*` → `./shared/*` and `@/*` → `./*` with `baseUrl: "."`
 
 ### Environment Variables Required
 - `DATABASE_URL`: PostgreSQL connection string
