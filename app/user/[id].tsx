@@ -184,6 +184,43 @@ export default function PublicProfileScreen() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
 
+        {/* Banner with Avatar — HERO at the very top */}
+        <View style={styles.bannerSection}>
+          <TouchableOpacity style={styles.bannerContainer} onPress={() => setIsBannerModalVisible(true)} activeOpacity={0.9}>
+            <Image source={{ uri: bannerUrl }} style={styles.bannerImage} resizeMode="cover" />
+            <LinearGradient
+              colors={['rgba(2,11,18,0.6)', 'transparent', 'rgba(2,11,18,0.5)']}
+              style={styles.bannerTopGradient}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.avatarContainer} onPress={() => setIsProfileModalVisible(true)}>
+            <View style={styles.avatarBorder}>
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            </View>
+            <View style={styles.levelBadge}>
+              <LevelBadge level={user.level || 1} size={28} thickness={2} />
+            </View>
+            {user.isOnline && !isMe && (
+              <TouchableOpacity
+                style={styles.onlineIndicator}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setOnlineTooltipVisible(true);
+                  setTimeout(() => setOnlineTooltipVisible(false), 2000);
+                }}
+              >
+                <View style={styles.onlineDotLg} />
+                {onlineTooltipVisible && (
+                  <View style={styles.onlineTooltip}>
+                    <Text style={styles.onlineTooltipText}>{handle} is online</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+          </TouchableOpacity>
+        </View>
+
         {isBirthdayToday(user?.birthday) && (
           <BirthdayBanner
             displayName={displayName}
@@ -333,7 +370,7 @@ export default function PublicProfileScreen() {
           </LinearGradient>
         </View>
 
-        {/* Featured Clip Banner */}
+        {/* Featured Clip */}
         {featuredClip && (
           <View style={styles.featuredSection}>
             <TouchableOpacity
@@ -359,43 +396,6 @@ export default function PublicProfileScreen() {
             </TouchableOpacity>
           </View>
         )}
-
-        {/* Banner with Avatar */}
-        <View style={styles.bannerSection}>
-          <TouchableOpacity style={styles.bannerContainer} onPress={() => setIsBannerModalVisible(true)} activeOpacity={0.9}>
-            <Image source={{ uri: bannerUrl }} style={styles.bannerImage} resizeMode="cover" />
-            <LinearGradient
-              colors={['#020b12', 'transparent']}
-              style={styles.bannerTopGradient}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.avatarContainer} onPress={() => setIsProfileModalVisible(true)}>
-            <View style={styles.avatarBorder}>
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-            </View>
-            <View style={styles.levelBadge}>
-              <LevelBadge level={user.level || 1} size={28} thickness={2} />
-            </View>
-            {user.isOnline && !isMe && (
-              <TouchableOpacity
-                style={styles.onlineIndicator}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setOnlineTooltipVisible(true);
-                  setTimeout(() => setOnlineTooltipVisible(false), 2000);
-                }}
-              >
-                <View style={styles.onlineDotLg} />
-                {onlineTooltipVisible && (
-                  <View style={styles.onlineTooltip}>
-                    <Text style={styles.onlineTooltipText}>{handle} is online</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            )}
-          </TouchableOpacity>
-        </View>
 
         {/* Content Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
   /* Identity section */
   identitySection: {
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 16,
     paddingBottom: 4,
   },
   nameRow: {
@@ -1042,12 +1042,11 @@ const styles = StyleSheet.create({
 
   /* Banner + Avatar */
   bannerSection: {
-    marginTop: 12,
     position: 'relative',
-    marginBottom: 16,
+    marginBottom: 60,
   },
   bannerContainer: {
-    height: 140,
+    height: 160,
     width: '100%',
     overflow: 'hidden',
   },
@@ -1060,11 +1059,11 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 60,
+    bottom: 0,
   },
   avatarContainer: {
     position: 'absolute',
-    bottom: -20,
+    bottom: -48,
     left: 20,
   },
   avatarBorder: {
