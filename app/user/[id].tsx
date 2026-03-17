@@ -370,11 +370,9 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     memberSince: {
       color: theme.memberSinceColor,
-      fontSize: 9,
-      fontWeight: '900',
-      letterSpacing: 0.9,
-      textTransform: 'uppercase',
-      marginBottom: 6,
+      fontSize: 13,
+      fontWeight: '600',
+      marginBottom: 8,
     },
     bioContainer: {
       borderLeftWidth: 2,
@@ -1202,7 +1200,7 @@ export default function PublicProfileScreen() {
         {/* Profile Info */}
         <View style={styles.profileInfoSection}>
           {!theme.statsCardIncludesBio && user.createdAt ? (
-            <Text style={styles.memberSince}>{formatJoinDate(user.createdAt).toUpperCase()}</Text>
+            <Text style={styles.memberSince}>Member since {formatJoinDate(user.createdAt)}</Text>
           ) : null}
           {!theme.statsCardIncludesBio && user.bio ? (
             <View style={styles.bioContainer}>

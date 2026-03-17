@@ -196,7 +196,7 @@ const PINK_THEME: ProfileThemeTokens = {
   statsTopGradient: ['#ff637e', '#f6339a'],
   statLabels: ['Uploads', 'Followers', 'Following'],
   hasStatsGradientBar: false,
-  statsCardIncludesBio: true,
+  statsCardIncludesBio: false,
   statAlign: 'flex-start',
   statNumberFontSize: 18,
   textPrimary: '#1d293d',

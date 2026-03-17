@@ -514,8 +514,8 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.infoBorderInner, { paddingTop: 8 }]}>
-              <View style={styles.statsRowCompact}>
+            <View style={[styles.infoBorderInner, { paddingTop: 8, paddingBottom: 16 }]}>
+              <View style={[styles.statsRowCompact, { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 }]}>
                 <View style={styles.statColumn}>
                   <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.uploads}</Text>
                   <Text style={[styles.statLabel, { color: h.statLabelColor }]}>UPLOADS</Text>
@@ -529,21 +529,23 @@ export default function ProfileScreen() {
                   <Text style={[styles.statLabel, { color: h.statLabelColor }]}>FOLLOWING</Text>
                 </View>
               </View>
-
-              <Text style={[styles.memberSince, { color: h.memberSinceColor }]}>MEMBER SINCE {profileData.joined.toUpperCase()}</Text>
-              <Text style={[styles.bio, { color: h.bioColor }]}>{profileData.bio}</Text>
-
-              <View style={styles.platformsRow}>
-                {profileData.platforms.map((platform, index) => (
-                  <View key={index} style={[styles.platformTag, { backgroundColor: platform.color }]}>
-                    {platform.type === 'xbox' && <Gamepad2 size={12} color="#FFF" />}
-                    {platform.type === 'ps' && <Gamepad2 size={12} color="#FFF" />}
-                    {platform.type === 'pc' && <Monitor size={12} color="#FFF" />}
-                    <Text style={styles.platformText}>{platform.name}</Text>
-                  </View>
-                ))}
-              </View>
             </View>
+          </View>
+        </View>
+
+        {/* Member since + bio below the card */}
+        <View style={{ marginTop: 16, paddingHorizontal: 4 }}>
+          <Text style={[styles.memberSince, { color: h.memberSinceColor }]}>Member since {profileData.joined}</Text>
+          <Text style={[styles.bio, { color: h.bioColor }]}>{profileData.bio}</Text>
+          <View style={styles.platformsRow}>
+            {profileData.platforms.map((platform, index) => (
+              <View key={index} style={[styles.platformTag, { backgroundColor: platform.color }]}>
+                {platform.type === 'xbox' && <Gamepad2 size={12} color="#FFF" />}
+                {platform.type === 'ps' && <Gamepad2 size={12} color="#FFF" />}
+                {platform.type === 'pc' && <Monitor size={12} color="#FFF" />}
+                <Text style={styles.platformText}>{platform.name}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
@@ -1126,16 +1128,15 @@ const styles = StyleSheet.create({
   },
   memberSince: {
     color: '#A855F7',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: 8,
     textAlign: 'left',
-    letterSpacing: 0.5,
   },
   bio: {
     color: '#E2E8F0',
     fontSize: 14,
-    marginBottom: 16,
+    marginBottom: 12,
     textAlign: 'left',
   },
   platformsRow: {
