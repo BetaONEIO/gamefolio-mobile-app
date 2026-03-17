@@ -262,5 +262,5 @@ export const SELECTABLE_PROFILE_THEMES: {
 export function getProfileTheme(themeName?: string | null): ProfileThemeTokens {
   if (themeName === 'zombie') return ZOMBIE_THEME;
   if (themeName === 'pink') return PINK_THEME;
-  return DEFAULT_THEME;
+  return PINK_THEME;
 }

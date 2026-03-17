@@ -4,8 +4,9 @@ import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Sta
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
+import { getProfileTheme, ProfileThemeTokens } from '@/constants/themes';
 import { useAuth } from '@/context/AuthContext';
 import AppHeader from '@/components/AppHeader';
 import AddGamesModal from '@/components/AddGamesModal';
@@ -137,11 +138,40 @@ const ScreenshotItem = ({ screenshot, onPress, onDelete, handle }: { screenshot:
   );
 };
 
+function createHeaderStyles(theme: ProfileThemeTokens) {
+  return {
+    containerBg: theme.bg,
+    avatarBorderColor: theme.avatarBorderColor,
+    namePrimary: theme.textPrimary,
+    handleColor: theme.textHandle,
+    statNumberColor: theme.statNumberColor,
+    statLabelColor: theme.muted,
+    memberSinceColor: theme.memberSinceColor,
+    bioColor: theme.bioTextColor,
+    verifiedBg: theme.verifiedBg,
+    verifiedBorder: theme.verifiedBorderColor,
+    cardBg: theme.cardBg,
+    cardBorder: theme.cardBorder,
+    cardBorderRadius: theme.cardBorderRadius,
+    statNumberSize: theme.statNumberFontSize,
+    tabActiveBorder: theme.tabActiveBorder,
+    tabActiveText: theme.tabActiveText,
+    tabBg: theme.tabInactiveBg,
+    tabBorderColor: theme.tabInactiveBorder,
+    gradientColors: theme.nametagGradient as [string, string, ...string[]],
+    accentMuted: theme.accentMuted,
+    dividerColor: theme.dividerColor,
+    isLight: theme.isLight,
+  };
+}
+
 export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState('Clips');
   const [isAddGamesModalVisible, setIsAddGamesModalVisible] = useState(false);
   const router = useRouter();
   const { user, getAccessToken } = useAuth();
+  const theme = useMemo(() => getProfileTheme((user as any)?.profileTheme), [user]);
+  const h = useMemo(() => createHeaderStyles(theme), [theme]);
   
   // Fetch profile stats (clips count, followers, following) using REST
   const { data: profileStats } = useQuery({
@@ -366,7 +396,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={[styles.container, user?.backgroundColor ? { backgroundColor: user.backgroundColor } : undefined]}>
+    <View style={[styles.container, { backgroundColor: h.containerBg }]}>
       <AppHeader onOpenLevelTracker={() => setIsLevelModalVisible(true)} />
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {isBirthdayToday(user?.birthday) && (
@@ -384,12 +414,12 @@ export default function ProfileScreen() {
         {profileData.banner ? (
           <>
             <Image source={{ uri: profileData.banner }} style={styles.banner} resizeMode="cover" />
-            <View style={styles.bannerLine} />
+            <View style={[styles.bannerLine, { backgroundColor: h.containerBg }]} />
           </>
         ) : (
           <>
-            <View style={[styles.banner, { backgroundColor: '#00B8A9' }]} />
-            <View style={styles.bannerLine} />
+            <View style={[styles.banner, { backgroundColor: h.accentMuted }]} />
+            <View style={[styles.bannerLine, { backgroundColor: h.containerBg }]} />
           </>
         )}
         
@@ -412,12 +442,9 @@ export default function ProfileScreen() {
             <TouchableOpacity onPress={() => setIsProfileModalVisible(true)}>
                 <Image 
                   source={{ uri: profileData.avatar }} 
-                  style={[
-                    styles.avatar, 
-                    { borderColor: user?.backgroundColor || '#0F1520' }
-                  ]} 
+                  style={[styles.avatar, { borderColor: h.avatarBorderColor }]} 
                 />
-                <View style={styles.onlineIndicator} />
+                <View style={[styles.onlineIndicator, { borderColor: h.containerBg }]} />
             </TouchableOpacity>
             <View style={styles.badgesContainer}>
               <TouchableOpacity 
@@ -429,24 +456,22 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
-
-
         </View>
 
         {/* Profile Header */}
         <View style={styles.header}>
-
           <View style={styles.userInfoSection}>
             <View style={styles.nameRow}>
               <View style={styles.nameRowLeft}>
                 <StyledUsername 
                   username={profileData.name} 
                   textStyleId={(user as any)?.textStyleId || 'default'}
-                  fontSize={26}
+                  fontSize={h.isLight ? 22 : 26}
+                  style={{ color: h.namePrimary }}
                 />
                 {profileData.verified && (
-                  <View style={styles.verifiedBadge}>
-                    <Check size={10} color="#FFF" strokeWidth={4} />
+                  <View style={[styles.verifiedBadge, { backgroundColor: h.verifiedBg, borderWidth: 1, borderColor: h.verifiedBorder }]}>
+                    <Check size={10} color={h.isLight ? '#ff2056' : '#FFF'} strokeWidth={4} />
                   </View>
                 )}
               </View>
@@ -458,7 +483,7 @@ export default function ProfileScreen() {
                 />
               </View>
             </View>
-            <Text style={styles.handle}>{profileData.handle}</Text>
+            <Text style={[styles.handle, { color: h.handleColor }]}>{profileData.handle}</Text>
             <UserTypeBadge 
               userType={user?.userType} 
               showUserType={user?.showUserType !== false} 
@@ -467,55 +492,46 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.infoSection}>
-          <View style={styles.infoBorderContainer}>
-            {/* Top border with Collection button */}
-            <View style={styles.topBorderRow}>
-              <LinearGradient
-                colors={['#E879F9', '#A855F7', 'transparent']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.topBorderFadeLeft}
-              />
+          <View style={[
+            styles.infoBorderContainer,
+            {
+              backgroundColor: h.cardBg,
+              borderRadius: h.cardBorderRadius,
+              borderWidth: 0.5,
+              borderColor: h.cardBorder,
+              overflow: 'hidden',
+            }
+          ]}>
+            {/* Top row with Collection button */}
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingTop: 12, marginBottom: 4 }}>
               <TouchableOpacity 
-                style={styles.collectionButton}
+                style={[styles.collectionButton, { backgroundColor: theme.accent, borderColor: theme.accentMuted }]}
                 onPress={() => router.push('/(drawer)/collections')}
                 activeOpacity={0.8}
               >
                 <FolderHeart size={14} color="#FFF" />
                 <Text style={styles.collectionButtonText}>Collection</Text>
               </TouchableOpacity>
-              <LinearGradient
-                colors={['transparent', '#A855F7', '#E879F9']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.topBorderFadeRight}
-              />
             </View>
-            {/* Left border - fades from top to bottom with pink/purple gradient */}
-            <LinearGradient
-              colors={['#E879F9', '#A855F7', 'transparent']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={styles.leftBorderFade}
-            />
-            <View style={styles.infoBorderInner}>
+
+            <View style={[styles.infoBorderInner, { paddingTop: 8 }]}>
               <View style={styles.statsRowCompact}>
                 <View style={styles.statColumn}>
-                  <Text style={styles.statNumber}>{profileData.stats.uploads}</Text>
-                  <Text style={styles.statLabel}>UPLOADS</Text>
+                  <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.uploads}</Text>
+                  <Text style={[styles.statLabel, { color: h.statLabelColor }]}>UPLOADS</Text>
                 </View>
                 <View style={styles.statColumn}>
-                  <Text style={styles.statNumber}>{profileData.stats.followers}</Text>
-                  <Text style={styles.statLabel}>FOLLOWERS</Text>
+                  <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.followers}</Text>
+                  <Text style={[styles.statLabel, { color: h.statLabelColor }]}>FOLLOWERS</Text>
                 </View>
                 <View style={styles.statColumn}>
-                  <Text style={styles.statNumber}>{profileData.stats.following}</Text>
-                  <Text style={styles.statLabel}>FOLLOWING</Text>
+                  <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.following}</Text>
+                  <Text style={[styles.statLabel, { color: h.statLabelColor }]}>FOLLOWING</Text>
                 </View>
               </View>
 
-              <Text style={styles.memberSince}>MEMBER SINCE {profileData.joined.toUpperCase()}</Text>
-              <Text style={styles.bio}>{profileData.bio}</Text>
+              <Text style={[styles.memberSince, { color: h.memberSinceColor }]}>MEMBER SINCE {profileData.joined.toUpperCase()}</Text>
+              <Text style={[styles.bio, { color: h.bioColor }]}>{profileData.bio}</Text>
 
               <View style={styles.platformsRow}>
                 {profileData.platforms.map((platform, index) => (
@@ -532,14 +548,14 @@ export default function ProfileScreen() {
         </View>
 
         {/* Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsContainer} contentContainerStyle={styles.tabsContent}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor }]} contentContainerStyle={styles.tabsContent}>
           {TABS.map((tab) => (
             <TouchableOpacity 
               key={tab} 
-              style={[styles.tab, activeTab === tab && styles.activeTab]}
+              style={[styles.tab, activeTab === tab && { borderBottomColor: h.tabActiveBorder }]}
               onPress={() => setActiveTab(tab)}
             >
-              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>{tab}</Text>
+              <Text style={[styles.tabText, { color: h.statLabelColor }, activeTab === tab && { color: h.tabActiveText }]}>{tab}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
