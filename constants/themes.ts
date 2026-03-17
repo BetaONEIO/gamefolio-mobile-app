@@ -19,6 +19,10 @@ export interface ProfileThemeTokens {
 
   statsTopGradient: readonly [string, string, ...string[]];
   statLabels: [string, string, string];
+  hasStatsGradientBar: boolean;
+  statsCardIncludesBio: boolean;
+  statAlign: 'center' | 'flex-start';
+  statNumberFontSize: number;
 
   textPrimary: string;
   textHandle: string;
@@ -81,6 +85,10 @@ const DEFAULT_THEME: ProfileThemeTokens = {
   cardBorderRadius: 16,
   statsTopGradient: ['#00bba7', '#000'],
   statLabels: ['Uploads', 'Followers', 'Following'],
+  hasStatsGradientBar: true,
+  statsCardIncludesBio: false,
+  statAlign: 'center',
+  statNumberFontSize: 20,
   textPrimary: '#FFFFFF',
   textHandle: '#62748e',
   statNumberColor: '#FFFFFF',
@@ -132,6 +140,10 @@ const ZOMBIE_THEME: ProfileThemeTokens = {
   cardBorderRadius: 16,
   statsTopGradient: ['#84cc16', '#000'],
   statLabels: ['Bio-Data', 'Survivors', 'Tracking'],
+  hasStatsGradientBar: true,
+  statsCardIncludesBio: false,
+  statAlign: 'center',
+  statNumberFontSize: 20,
   textPrimary: '#FFFFFF',
   textHandle: '#62748e',
   statNumberColor: '#9ae600',
@@ -183,6 +195,10 @@ const PINK_THEME: ProfileThemeTokens = {
   cardBorderRadius: 24,
   statsTopGradient: ['#ff637e', '#f6339a'],
   statLabels: ['Uploads', 'Followers', 'Following'],
+  hasStatsGradientBar: false,
+  statsCardIncludesBio: true,
+  statAlign: 'flex-start',
+  statNumberFontSize: 18,
   textPrimary: '#1d293d',
   textHandle: '#62748e',
   statNumberColor: '#1d293d',

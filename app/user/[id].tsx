@@ -170,9 +170,9 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     verifiedBadgeText: {
       color: theme.verifiedText,
-      fontSize: 8,
+      fontSize: theme.isLight ? 10 : 8,
       fontWeight: '900',
-      letterSpacing: 0.8,
+      letterSpacing: theme.isLight ? -0.5 : 0.8,
       textTransform: 'uppercase',
     },
     handle: {
@@ -283,7 +283,7 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     statCol: {
       flex: 1,
-      alignItems: 'center',
+      alignItems: theme.statAlign,
     },
     statDivider: {
       width: 0.5,
@@ -292,7 +292,7 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     statNumber: {
       color: theme.statNumberColor,
-      fontSize: 20,
+      fontSize: theme.statNumberFontSize,
       fontWeight: '900',
       letterSpacing: -0.5,
       marginBottom: 2,
@@ -302,11 +302,52 @@ function createStyles(theme: ProfileThemeTokens) {
       fontSize: 8,
       fontWeight: '900',
       textTransform: 'uppercase',
-      letterSpacing: 1.5,
+      letterSpacing: theme.isLight ? 0.8 : 1.5,
       backgroundColor: theme.isLight ? 'transparent' : (theme.accent + 'e6'),
       paddingHorizontal: theme.isLight ? 0 : 6,
       paddingVertical: theme.isLight ? 0 : 2,
       borderRadius: 4,
+    },
+    statsCardBioSection: {
+      borderTopWidth: 0.5,
+      borderTopColor: theme.dividerColor,
+      paddingHorizontal: 16,
+      paddingTop: 10,
+      paddingBottom: 12,
+      gap: 6,
+    },
+    statsCardMemberSince: {
+      color: theme.memberSinceColor + 'cc',
+      fontSize: 9,
+      fontWeight: '900',
+      letterSpacing: 0.9,
+      textTransform: 'uppercase',
+    },
+    statsCardBio: {
+      color: theme.bioTextColor,
+      fontSize: 11,
+      fontWeight: '700',
+      lineHeight: 17,
+      letterSpacing: -0.275,
+      textTransform: 'uppercase',
+    },
+    statsCardCollectionBtn: {
+      borderRadius: 100,
+      paddingVertical: 5,
+      paddingHorizontal: 14,
+      alignSelf: 'flex-start',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    statsCardCollectionText: {
+      color: '#fff',
+      fontSize: 9,
+      fontWeight: '900',
+      letterSpacing: 0.9,
+      textTransform: 'uppercase',
     },
     followingBar: {
       borderTopWidth: 0.5,
@@ -1028,7 +1069,8 @@ export default function PublicProfileScreen() {
         <View style={styles.identitySection}>
           <View style={styles.nameRow}>
             <Text style={styles.displayName}>{displayName}</Text>
-            {user.emailVerified && (
+            {/* Badge inline with name only for dark themes */}
+            {!theme.isLight && user.emailVerified && (
               theme.verifiedLabel.length > 0 ? (
                 <View style={styles.verifiedBadge}>
                   <Text style={styles.verifiedBadgeText}>{theme.verifiedLabel}</Text>
@@ -1041,6 +1083,14 @@ export default function PublicProfileScreen() {
             )}
           </View>
           <Text style={styles.handle}>{handle}</Text>
+
+          {/* Pill badge below handle for light/pink theme */}
+          {theme.isLight && user.emailVerified && theme.verifiedLabel.length > 0 && (
+            <View style={[styles.verifiedBadge, { marginBottom: 8, alignSelf: 'flex-start' }]}>
+              <Check size={9} color={theme.verifiedText} strokeWidth={4} />
+              <Text style={styles.verifiedBadgeText}>{theme.verifiedLabel}</Text>
+            </View>
+          )}
 
           <View style={styles.badgesRow}>
             {user.isPro && (
@@ -1056,8 +1106,8 @@ export default function PublicProfileScreen() {
             )}
           </View>
 
-          {/* Current Game Nametag */}
-          {currentGame && (
+          {/* Current Game Nametag — shown here for dark themes */}
+          {currentGame && !theme.statsCardIncludesBio && (
             <View style={styles.nametagSection}>
               <Text style={styles.nametagLabel}>NAMETAG</Text>
               <LinearGradient
@@ -1079,23 +1129,25 @@ export default function PublicProfileScreen() {
 
         {/* Stats Card */}
         <View style={styles.statsCard}>
-          <LinearGradient
-            colors={theme.statsTopGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.statsGradientBar}
-          />
-          <View style={styles.statsRow}>
+          {theme.hasStatsGradientBar && (
+            <LinearGradient
+              colors={theme.statsTopGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.statsGradientBar}
+            />
+          )}
+          <View style={[styles.statsRow, theme.statsCardIncludesBio && { paddingHorizontal: 16 }]}>
             <View style={styles.statCol}>
               <Text style={styles.statNumber}>{clips.length + reels.length + screenshots.length}</Text>
               <Text style={styles.statLabel}>{statUploads}</Text>
             </View>
-            <View style={styles.statDivider} />
+            {!theme.statsCardIncludesBio && <View style={styles.statDivider} />}
             <View style={styles.statCol}>
               <Text style={styles.statNumber}>{user._count?.followers || 0}</Text>
               <Text style={styles.statLabel}>{statFollowers}</Text>
             </View>
-            <View style={styles.statDivider} />
+            {!theme.statsCardIncludesBio && <View style={styles.statDivider} />}
             <View style={styles.statCol}>
               <Text style={styles.statNumber}>{user._count?.following || 0}</Text>
               <Text style={styles.statLabel}>{statFollowing}</Text>
@@ -1106,14 +1158,53 @@ export default function PublicProfileScreen() {
               <Text style={styles.followingLabel}>FOLLOWING</Text>
             </View>
           )}
+          {/* Bio/member since inside card for pink theme */}
+          {theme.statsCardIncludesBio && (
+            <View style={styles.statsCardBioSection}>
+              {user.createdAt ? (
+                <Text style={styles.statsCardMemberSince}>{formatJoinDate(user.createdAt).toUpperCase()}</Text>
+              ) : null}
+              {user.bio ? (
+                <Text style={styles.statsCardBio}>{user.bio}</Text>
+              ) : null}
+              <LinearGradient
+                colors={theme.collectionGradient}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={styles.statsCardCollectionBtn}
+              >
+                <Text style={styles.statsCardCollectionText}>Collection</Text>
+              </LinearGradient>
+            </View>
+          )}
         </View>
+
+        {/* Nametag below stats card — pink theme */}
+        {currentGame && theme.statsCardIncludesBio && (
+          <View style={[styles.nametagSection, { alignItems: 'center', marginHorizontal: 16, marginBottom: 8 }]}>
+            <Text style={[styles.nametagLabel, { textAlign: 'center', letterSpacing: 2.1 }]}>NAMETAG</Text>
+            <LinearGradient
+              colors={theme.nametagGradient}
+              start={{ x: 1, y: 0.5 }}
+              end={{ x: 0, y: 0.5 }}
+              style={styles.nametagCard}
+            >
+              {currentGame.imageUrl ? (
+                <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagGameImg} />
+              ) : (
+                <Gamepad2 size={20} color="#fff" />
+              )}
+              <Text style={styles.nametagGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
+            </LinearGradient>
+          </View>
+        )}
 
         {/* Profile Info */}
         <View style={styles.profileInfoSection}>
-          {user.createdAt ? (
+          {!theme.statsCardIncludesBio && user.createdAt ? (
             <Text style={styles.memberSince}>{formatJoinDate(user.createdAt).toUpperCase()}</Text>
           ) : null}
-          {user.bio ? (
+          {!theme.statsCardIncludesBio && user.bio ? (
             <View style={styles.bioContainer}>
               <Text style={styles.bio}>{user.bio}</Text>
             </View>
@@ -1169,15 +1260,17 @@ export default function PublicProfileScreen() {
             </View>
           )}
 
-          {/* Collection button */}
-          <LinearGradient
-            colors={theme.collectionGradient}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.collectionBtn}
-          >
-            <Text style={styles.collectionBtnText}>COLLECTION</Text>
-          </LinearGradient>
+          {/* Collection button — only shown outside the stats card for default/zombie themes */}
+          {!theme.statsCardIncludesBio && (
+            <LinearGradient
+              colors={theme.collectionGradient}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.collectionBtn}
+            >
+              <Text style={styles.collectionBtnText}>COLLECTION</Text>
+            </LinearGradient>
+          )}
         </View>
 
         {/* Featured Clip */}
