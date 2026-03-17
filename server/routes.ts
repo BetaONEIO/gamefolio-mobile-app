@@ -1693,6 +1693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           profileFont: userWithoutPassword.profileFont || 'default',
           profileFontEffect: userWithoutPassword.profileFontEffect || 'none',
           profileFontAnimation: userWithoutPassword.profileFontAnimation || 'none',
+          profileTheme: userWithoutPassword.profileTheme || 'default',
           canMintNfts: userWithoutPassword.canMintNfts || false,
           canSellNfts: userWithoutPassword.canSellNfts || false,
         });
@@ -3269,7 +3270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "profileBackgroundType", "profileBackgroundTheme", "profileBackgroundAnimation", "profileBackgroundImageUrl",
         "profileBackgroundPositionX", "profileBackgroundPositionY",
         "profileBackgroundZoom", "profileBackgroundDesktopX", "profileBackgroundDesktopY", "profileBackgroundDesktopZoom",
-        "hideBanner",
+        "hideBanner", "profileTheme",
         "steamUsername", "xboxUsername", "playstationUsername",
         "discordUsername", "epicUsername", "twitchUsername", "youtubeUsername",
         "twitterUsername", "instagramUsername", "facebookUsername", "nintendoUsername",

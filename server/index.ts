@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { eq } from 'drizzle-orm';
-import { db } from './db';
+import { eq, sql } from 'drizzle-orm';
+import { db, pool } from './db';
 import { users } from '../shared/schema';
 import { serveStatic, log } from './static';
 import { registerRoutes } from './routes';
@@ -116,6 +116,14 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
+    // Run schema migrations to ensure new columns exist
+    try {
+      await pool`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_theme text DEFAULT 'default'`;
+      console.log('✅ Schema migration: profile_theme column ready');
+    } catch (migrationErr: any) {
+      console.warn('⚠️ Schema migration warning:', migrationErr?.message);
+    }
+
     const server = await registerRoutes(app);
 
     // Load XP settings from DB and sync into POINT_VALUES

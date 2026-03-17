@@ -70,13 +70,15 @@ function createStyles(theme: ProfileThemeTokens) {
       justifyContent: 'center',
     },
     navUsername: {
-      color: '#FFF',
+      color: theme.textPrimary,
       fontSize: 16,
       fontWeight: '800',
       letterSpacing: -0.5,
     },
     navVerified: {
-      backgroundColor: '#3B82F6',
+      backgroundColor: theme.verifiedBg,
+      borderWidth: 0.5,
+      borderColor: theme.verifiedBorderColor,
       width: 14,
       height: 14,
       borderRadius: 7,
@@ -101,8 +103,8 @@ function createStyles(theme: ProfileThemeTokens) {
       height: 36,
       borderRadius: 10,
       borderWidth: 1.5,
-      borderColor: theme.accent + '80',
-      backgroundColor: '#1d293d',
+      borderColor: theme.isLight ? theme.verifiedBorderColor : (theme.accent + '80'),
+      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.8)' : '#1d293d',
       overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
@@ -140,19 +142,23 @@ function createStyles(theme: ProfileThemeTokens) {
       marginBottom: 2,
     },
     displayName: {
-      color: theme.accent,
-      fontSize: 22,
+      color: theme.textPrimary,
+      fontSize: theme.displayNameSize,
       fontWeight: '900',
       letterSpacing: -0.8,
-      textTransform: 'uppercase',
+      textTransform: theme.displayNameUppercase ? 'uppercase' : 'none',
     },
     verifiedBadge: {
       backgroundColor: theme.verifiedBg,
-      borderRadius: 8,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+      borderRadius: 100,
+      borderWidth: 0.5,
+      borderColor: theme.verifiedBorderColor,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
       alignItems: 'center',
       justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 5,
     },
     verifiedBadgeIcon: {
       backgroundColor: '#3B82F6',
@@ -166,11 +172,11 @@ function createStyles(theme: ProfileThemeTokens) {
       color: theme.verifiedText,
       fontSize: 8,
       fontWeight: '900',
-      letterSpacing: 1.5,
+      letterSpacing: 0.8,
       textTransform: 'uppercase',
     },
     handle: {
-      color: '#62748e',
+      color: theme.textHandle,
       fontSize: 13,
       fontWeight: '700',
       marginBottom: 10,
@@ -184,9 +190,9 @@ function createStyles(theme: ProfileThemeTokens) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 5,
-      backgroundColor: '#00bba71a',
+      backgroundColor: theme.tabActiveBg,
       borderWidth: 0.5,
-      borderColor: '#00bba766',
+      borderColor: theme.tabActiveBorder,
       borderRadius: 100,
       paddingVertical: 4,
       paddingHorizontal: 12,
@@ -196,7 +202,7 @@ function createStyles(theme: ProfileThemeTokens) {
       borderColor: '#22c55e66',
     },
     streamerText: {
-      color: '#00d5be',
+      color: theme.tabActiveText,
       fontSize: 10,
       fontWeight: '900',
       letterSpacing: 0.8,
@@ -213,7 +219,7 @@ function createStyles(theme: ProfileThemeTokens) {
       marginBottom: 4,
     },
     nametagLabel: {
-      color: '#62748e',
+      color: theme.muted,
       fontSize: 7,
       fontWeight: '900',
       letterSpacing: 2,
@@ -224,17 +230,18 @@ function createStyles(theme: ProfileThemeTokens) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
-      borderRadius: 10,
+      borderRadius: 12,
       borderWidth: 0.5,
-      borderColor: '#ff69004d',
+      borderColor: theme.isLight ? 'rgba(255,255,255,0.5)' : '#ff69004d',
       paddingVertical: 8,
       paddingHorizontal: 10,
       alignSelf: 'flex-start',
-      shadowColor: '#ff6900',
+      shadowColor: theme.isLight ? theme.shadowColor : '#ff6900',
       shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
+      shadowOpacity: 0.2,
       shadowRadius: 8,
       elevation: 2,
+      overflow: 'hidden',
     },
     nametagGameImg: {
       width: 24,
@@ -242,7 +249,7 @@ function createStyles(theme: ProfileThemeTokens) {
       borderRadius: 4,
     },
     nametagGameName: {
-      color: '#ff8904',
+      color: theme.isLight ? '#fff' : '#ff8904',
       fontSize: 9,
       fontWeight: '900',
       letterSpacing: -0.4,
@@ -257,7 +264,7 @@ function createStyles(theme: ProfileThemeTokens) {
       backgroundColor: theme.cardBg,
       borderWidth: 0.5,
       borderColor: theme.cardBorder,
-      borderRadius: 16,
+      borderRadius: theme.cardBorderRadius,
       overflow: 'hidden',
       shadowColor: theme.shadowColor,
       shadowOffset: { width: 0, height: 0 },
@@ -284,21 +291,21 @@ function createStyles(theme: ProfileThemeTokens) {
       backgroundColor: theme.dividerColor,
     },
     statNumber: {
-      color: theme.accent,
+      color: theme.statNumberColor,
       fontSize: 20,
       fontWeight: '900',
       letterSpacing: -0.5,
       marginBottom: 2,
     },
     statLabel: {
-      color: theme.accentDark === '#022c22' ? '#62748e' : theme.accentDark,
+      color: theme.isLight ? theme.followingLabelColor : (theme.accentDark === '#022c22' ? '#62748e' : theme.accentDark),
       fontSize: 8,
       fontWeight: '900',
       textTransform: 'uppercase',
       letterSpacing: 1.5,
-      backgroundColor: theme.accent + 'e6',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
+      backgroundColor: theme.isLight ? 'transparent' : (theme.accent + 'e6'),
+      paddingHorizontal: theme.isLight ? 0 : 6,
+      paddingVertical: theme.isLight ? 0 : 2,
       borderRadius: 4,
     },
     followingBar: {
@@ -339,12 +346,12 @@ function createStyles(theme: ProfileThemeTokens) {
       marginBottom: 14,
     },
     bio: {
-      color: theme.accent + 'cc',
+      color: theme.isLight ? theme.bioTextColor : (theme.accent + 'cc'),
       fontSize: 10,
       fontWeight: '700',
       lineHeight: 16,
-      letterSpacing: 0.5,
-      textTransform: 'uppercase',
+      letterSpacing: theme.isLight ? -0.2 : 0.5,
+      textTransform: theme.isLight ? 'none' : 'uppercase',
     },
     platformsRow: {
       flexDirection: 'row',
@@ -430,7 +437,7 @@ function createStyles(theme: ProfileThemeTokens) {
       elevation: 2,
     },
     collectionBtnText: {
-      color: '#0f172b',
+      color: theme.isLight ? '#fff' : '#0f172b',
       fontSize: 9,
       fontWeight: '900',
       letterSpacing: 0.9,
@@ -473,7 +480,7 @@ function createStyles(theme: ProfileThemeTokens) {
       borderColor: theme.cardBorder,
       overflow: 'hidden',
       height: 190,
-      backgroundColor: '#0a1628',
+      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.15)' : '#0a1628',
       shadowColor: theme.shadowColor,
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.15,
@@ -565,15 +572,15 @@ function createStyles(theme: ProfileThemeTokens) {
       width: 96,
       height: 96,
       borderRadius: 18,
-      borderWidth: 2.5,
+      borderWidth: theme.avatarBorderWidth,
       borderColor: theme.avatarBorderColor,
-      backgroundColor: '#0a0c0a',
+      backgroundColor: theme.isLight ? '#fdf2f8' : '#0a0c0a',
       overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
       shadowColor: theme.shadowColor,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.3,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: theme.isLight ? 0.2 : 0.3,
       shadowRadius: 10,
       elevation: 6,
     },
@@ -639,9 +646,9 @@ function createStyles(theme: ProfileThemeTokens) {
       paddingVertical: 7,
       paddingHorizontal: 16,
       borderRadius: 100,
-      backgroundColor: '#0f1a2b',
+      backgroundColor: theme.tabInactiveBg,
       borderWidth: 0.5,
-      borderColor: '#1d293d',
+      borderColor: theme.tabInactiveBorder,
       marginRight: 4,
     },
     tabPillActive: {
@@ -649,7 +656,7 @@ function createStyles(theme: ProfileThemeTokens) {
       borderColor: theme.tabActiveBorder,
     },
     tabPillText: {
-      color: '#62748e',
+      color: theme.textHandle,
       fontSize: 13,
       fontWeight: '700',
     },
@@ -753,7 +760,7 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     screenshotCard: {
       flexDirection: 'row',
-      backgroundColor: '#0a1628',
+      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.5)' : '#0a1628',
       borderRadius: 14,
       borderWidth: 0.5,
       borderColor: theme.cardBorder,
@@ -770,7 +777,7 @@ function createStyles(theme: ProfileThemeTokens) {
       gap: 4,
     },
     screenshotTitle: {
-      color: '#FFF',
+      color: theme.isLight ? theme.textPrimary : '#FFF',
       fontSize: 13,
       fontWeight: '700',
     },
@@ -794,7 +801,7 @@ function createStyles(theme: ProfileThemeTokens) {
       gap: 10,
     },
     emptyTitle: {
-      color: '#334155',
+      color: theme.textHandle,
       fontSize: 15,
       fontWeight: '700',
     },
@@ -805,8 +812,9 @@ export default function PublicProfileScreen() {
   const [activeTab, setActiveTab] = useState('Clips');
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { id } = useLocalSearchParams();
+  const { id, previewTheme } = useLocalSearchParams();
   const username = Array.isArray(id) ? id[0] : id;
+  const themePreview = Array.isArray(previewTheme) ? previewTheme[0] : previewTheme;
   const { user: currentUser, getAccessToken } = useAuth();
 
   const isMe = currentUser && (currentUser.username === username);
@@ -825,8 +833,8 @@ export default function PublicProfileScreen() {
   const user = profileData;
   const userId = user?.id;
 
-  const theme = getProfileTheme(user?.profileTheme);
-  const styles = useMemo(() => createStyles(theme), [user?.profileTheme]);
+  const theme = getProfileTheme(themePreview ?? user?.profileTheme);
+  const styles = useMemo(() => createStyles(theme), [themePreview, user?.profileTheme]);
   const accentColor = theme.accent;
 
   const { data: clipsData } = useQuery({
@@ -933,7 +941,7 @@ export default function PublicProfileScreen() {
       <View style={[styles.navBar, { paddingTop: insets.top + 8 }]}>
         <View style={styles.navLeft}>
           <TouchableOpacity style={styles.navIconBtn} onPress={() => router.back()}>
-            <ChevronLeft size={22} color="#FFF" />
+            <ChevronLeft size={22} color={theme.textPrimary} />
           </TouchableOpacity>
         </View>
 
@@ -941,7 +949,7 @@ export default function PublicProfileScreen() {
           <Text style={styles.navUsername} numberOfLines={1}>{displayName}</Text>
           {user.emailVerified && (
             <View style={styles.navVerified}>
-              <Check size={8} color="#FFF" strokeWidth={4} />
+              <Check size={8} color={theme.verifiedText} strokeWidth={4} />
             </View>
           )}
           {theme.statusText.length > 0 && (
@@ -953,7 +961,7 @@ export default function PublicProfileScreen() {
 
         <View style={styles.navRight}>
           <TouchableOpacity style={styles.navIconBtn} onPress={() => setIsShareModalVisible(true)}>
-            <Share2 size={18} color="#FFF" />
+            <Share2 size={18} color={theme.textPrimary} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.navGreenBtn}
@@ -1053,7 +1061,7 @@ export default function PublicProfileScreen() {
             <View style={styles.nametagSection}>
               <Text style={styles.nametagLabel}>NAMETAG</Text>
               <LinearGradient
-                colors={['#0f172b', '#441306', '#0f172b']}
+                colors={theme.nametagGradient}
                 start={{ x: 0, y: 0.5 }}
                 end={{ x: 1, y: 0.5 }}
                 style={styles.nametagCard}
@@ -1061,7 +1069,7 @@ export default function PublicProfileScreen() {
                 {currentGame.imageUrl ? (
                   <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagGameImg} />
                 ) : (
-                  <Gamepad2 size={20} color="#ff8904" />
+                  <Gamepad2 size={20} color={theme.isLight ? '#fff' : '#ff8904'} />
                 )}
                 <Text style={styles.nametagGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
               </LinearGradient>
@@ -1163,7 +1171,7 @@ export default function PublicProfileScreen() {
 
           {/* Collection button */}
           <LinearGradient
-            colors={['#5ee9b5', '#fff085', '#ffb86a']}
+            colors={theme.collectionGradient}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
             style={styles.collectionBtn}

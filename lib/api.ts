@@ -353,6 +353,7 @@ export interface User {
   profileFont?: string;
   profileFontEffect?: string;
   profileFontAnimation?: string;
+  profileTheme?: string | null;
   _count?: {
     followers: number;
     following: number;
@@ -603,6 +604,7 @@ export function mapRawUser(raw: any): User {
     epicUsername: raw.epicUsername || raw.epic_username || null,
     nintendoUsername: raw.nintendoUsername || raw.nintendo_username || null,
     ageRange: raw.ageRange || raw.age_range,
+    profileTheme: raw.profileTheme || raw.profile_theme || null,
   };
 }
 

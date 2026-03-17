@@ -62,6 +62,15 @@ Preferred communication style: Simple, everyday language.
 - `NotificationDropdown.tsx` and `AppHeader.tsx` bell badge consume context data (no mock data)
 - API functions in `api.notifications.*` (`list`, `unreadCount`, `markAllRead`, `markRead`, `delete`, `clearAll`) all fail gracefully
 
+### Profile Theme System
+- **Themes**: Three themes supported: `default` (dark blue), `zombie` (green/dark), and `pink` (light rose)
+- **Definition**: `constants/themes.ts` exports `ProfileThemeTokens` interface with 20+ tokens, `PROFILE_THEMES` map, and `getProfileTheme(name)` helper
+- **Key Tokens**: `bg`, `accent`, `secondary`, `textPrimary`, `textHandle`, `statNumberColor`, `bioTextColor`, `nametagGradient`, `collectionGradient`, `cardBorderRadius`, `avatarBg`, `isLight`, etc.
+- **Profile Page**: `app/user/[id].tsx` uses `getProfileTheme(user?.profileTheme)` and passes tokens to `createStyles()`. Supports `?previewTheme=pink` URL param for previewing without DB change.
+- **DB Column**: `profile_theme text DEFAULT 'default'` in `users` table. Auto-added via startup migration in `server/index.ts`.
+- **API**: `profileTheme` included in `User` interface (`lib/api.ts`) and mapped in `mapRawUser()`. Added to `ALLOWED_PROFILE_FIELDS` in `PATCH /api/users/:id` so users can set their theme.
+- **Activation**: Set `profile_theme = 'pink'` for a user via `PATCH /api/users/:id` with `{ profileTheme: 'pink' }`.
+
 ### Key Features
 - User profiles with customizable themes, avatars, and banners
 - Gaming platform account linking (Steam, Xbox, PSN, Epic, Nintendo, Discord)
