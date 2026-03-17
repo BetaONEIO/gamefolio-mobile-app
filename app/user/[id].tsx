@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
+import { useMemo } from 'react';
 import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, Mail, Play, Camera, Flag, ChevronLeft, Bell, Upload } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
@@ -17,10 +18,788 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { getProfileTheme, ProfileThemeTokens } from '@/constants/themes';
 
 const { width } = Dimensions.get('window');
 
 const TABS = ['Clips', 'Reels', 'Screenshots', 'Favorites'];
+
+function createStyles(theme: ProfileThemeTokens) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.bg,
+    },
+    scrollView: {
+      flex: 1,
+    },
+
+    navBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingBottom: 10,
+      backgroundColor: theme.navBg,
+      borderBottomWidth: 0.5,
+      borderBottomColor: theme.navBorderColor,
+    },
+    navLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      width: 72,
+    },
+    navCenter: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+    },
+    navRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      width: 120,
+      justifyContent: 'flex-end',
+    },
+    navIconBtn: {
+      width: 32,
+      height: 32,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    navUsername: {
+      color: '#FFF',
+      fontSize: 16,
+      fontWeight: '800',
+      letterSpacing: -0.5,
+    },
+    navVerified: {
+      backgroundColor: '#3B82F6',
+      width: 14,
+      height: 14,
+      borderRadius: 7,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    navGreenBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 10,
+      backgroundColor: theme.accent,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: theme.accent,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    navAvatarChip: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: theme.accent + '80',
+      backgroundColor: '#1d293d',
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    navAvatar: {
+      width: 34,
+      height: 34,
+    },
+    navStatusBadge: {
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 4,
+      backgroundColor: theme.accentFaint,
+      borderWidth: 0.5,
+      borderColor: theme.accentMuted,
+      marginLeft: 4,
+    },
+    navStatusText: {
+      color: theme.accent,
+      fontSize: 8,
+      fontWeight: '900',
+      letterSpacing: 0.9,
+      textTransform: 'uppercase',
+    },
+
+    identitySection: {
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 4,
+    },
+    nameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      marginBottom: 2,
+    },
+    displayName: {
+      color: theme.accent,
+      fontSize: 22,
+      fontWeight: '900',
+      letterSpacing: -0.8,
+      textTransform: 'uppercase',
+    },
+    verifiedBadge: {
+      backgroundColor: theme.verifiedBg,
+      borderRadius: 8,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    verifiedBadgeIcon: {
+      backgroundColor: '#3B82F6',
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    verifiedBadgeText: {
+      color: theme.verifiedText,
+      fontSize: 8,
+      fontWeight: '900',
+      letterSpacing: 1.5,
+      textTransform: 'uppercase',
+    },
+    handle: {
+      color: '#62748e',
+      fontSize: 13,
+      fontWeight: '700',
+      marginBottom: 10,
+    },
+    badgesRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 12,
+    },
+    streamerBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      backgroundColor: '#00bba71a',
+      borderWidth: 0.5,
+      borderColor: '#00bba766',
+      borderRadius: 100,
+      paddingVertical: 4,
+      paddingHorizontal: 12,
+    },
+    onlineBadge: {
+      backgroundColor: '#22c55e1a',
+      borderColor: '#22c55e66',
+    },
+    streamerText: {
+      color: '#00d5be',
+      fontSize: 10,
+      fontWeight: '900',
+      letterSpacing: 0.8,
+      textTransform: 'uppercase',
+    },
+    onlineDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: '#22c55e',
+    },
+
+    nametagSection: {
+      marginBottom: 4,
+    },
+    nametagLabel: {
+      color: '#62748e',
+      fontSize: 7,
+      fontWeight: '900',
+      letterSpacing: 2,
+      textTransform: 'uppercase',
+      marginBottom: 4,
+    },
+    nametagCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      borderRadius: 10,
+      borderWidth: 0.5,
+      borderColor: '#ff69004d',
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      alignSelf: 'flex-start',
+      shadowColor: '#ff6900',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      elevation: 2,
+    },
+    nametagGameImg: {
+      width: 24,
+      height: 24,
+      borderRadius: 4,
+    },
+    nametagGameName: {
+      color: '#ff8904',
+      fontSize: 9,
+      fontWeight: '900',
+      letterSpacing: -0.4,
+      textTransform: 'uppercase',
+      maxWidth: 120,
+    },
+
+    statsCard: {
+      marginHorizontal: 16,
+      marginTop: 14,
+      marginBottom: 4,
+      backgroundColor: theme.cardBg,
+      borderWidth: 0.5,
+      borderColor: theme.cardBorder,
+      borderRadius: 16,
+      overflow: 'hidden',
+      shadowColor: theme.shadowColor,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.15,
+      shadowRadius: 12,
+      elevation: 3,
+    },
+    statsGradientBar: {
+      height: 3,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 16,
+      paddingHorizontal: 8,
+    },
+    statCol: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    statDivider: {
+      width: 0.5,
+      height: 36,
+      backgroundColor: theme.dividerColor,
+    },
+    statNumber: {
+      color: theme.accent,
+      fontSize: 20,
+      fontWeight: '900',
+      letterSpacing: -0.5,
+      marginBottom: 2,
+    },
+    statLabel: {
+      color: theme.accentDark === '#022c22' ? '#62748e' : theme.accentDark,
+      fontSize: 8,
+      fontWeight: '900',
+      textTransform: 'uppercase',
+      letterSpacing: 1.5,
+      backgroundColor: theme.accent + 'e6',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    followingBar: {
+      borderTopWidth: 0.5,
+      borderTopColor: theme.followingBarBorder,
+      paddingVertical: 6,
+      alignItems: 'center',
+    },
+    followingLabel: {
+      color: theme.followingLabelColor,
+      fontSize: 8,
+      fontWeight: '900',
+      letterSpacing: 0.8,
+      textTransform: 'uppercase',
+    },
+
+    profileInfoSection: {
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 8,
+    },
+    memberSince: {
+      color: theme.memberSinceColor,
+      fontSize: 9,
+      fontWeight: '900',
+      letterSpacing: 0.9,
+      textTransform: 'uppercase',
+      marginBottom: 6,
+    },
+    bioContainer: {
+      borderLeftWidth: 2,
+      borderLeftColor: theme.bioBorderColor,
+      backgroundColor: theme.bioBg,
+      paddingLeft: 12,
+      paddingVertical: 10,
+      paddingRight: 10,
+      borderRadius: 4,
+      marginBottom: 14,
+    },
+    bio: {
+      color: theme.accent + 'cc',
+      fontSize: 10,
+      fontWeight: '700',
+      lineHeight: 16,
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    platformsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginBottom: 14,
+    },
+    platformChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      borderRadius: 6,
+      paddingVertical: 4,
+      paddingHorizontal: 8,
+    },
+    platformText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    actionsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 14,
+    },
+    followBtn: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.followBtnBg,
+      paddingVertical: 10,
+      borderRadius: 10,
+      gap: 6,
+      shadowColor: theme.followBtnBg,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+      elevation: 3,
+    },
+    followingBtn: {
+      backgroundColor: '#1d293d',
+    },
+    followBtnText: {
+      color: theme.followBtnTextColor,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    followBtnTextActive: {
+      color: '#FFF',
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    iconActionBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: theme.iconBtnBg,
+      borderWidth: 0.5,
+      borderColor: theme.iconBtnBorder,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    reportBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: 'rgba(239,68,68,0.1)',
+      borderWidth: 0.5,
+      borderColor: 'rgba(239,68,68,0.3)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    collectionBtn: {
+      borderRadius: 100,
+      paddingVertical: 9,
+      paddingHorizontal: 24,
+      alignSelf: 'flex-start',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    collectionBtnText: {
+      color: '#0f172b',
+      fontSize: 9,
+      fontWeight: '900',
+      letterSpacing: 0.9,
+      textTransform: 'uppercase',
+    },
+
+    featuredSection: {
+      paddingHorizontal: 16,
+      paddingTop: 16,
+      paddingBottom: 4,
+    },
+    featuredLabel: {
+      color: theme.accent,
+      fontSize: 9,
+      fontWeight: '900',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+      marginBottom: 8,
+    },
+    featuredMeta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    featuredMetaDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: theme.accent,
+    },
+    featuredMetaText: {
+      color: theme.accent + '99',
+      fontSize: 8,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+    },
+    featuredCard: {
+      borderRadius: 16,
+      borderWidth: 0.5,
+      borderColor: theme.cardBorder,
+      overflow: 'hidden',
+      height: 190,
+      backgroundColor: '#0a1628',
+      shadowColor: theme.shadowColor,
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.15,
+      shadowRadius: 10,
+      elevation: 4,
+    },
+    featuredImage: {
+      width: '100%',
+      height: '100%',
+    },
+    featuredGradient: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: '60%',
+    },
+    featuredInfo: {
+      position: 'absolute',
+      top: 12,
+      left: 12,
+    },
+    featuredPlayBtn: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    featuredPlayCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: theme.playCircleBg,
+      borderWidth: 0.5,
+      borderColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingLeft: 3,
+    },
+    featuredOnline: {
+      position: 'absolute',
+      top: 12,
+      right: 12,
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    featuredOnlineDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: '#22c55e',
+    },
+
+    bannerSection: {
+      position: 'relative',
+      marginBottom: 60,
+    },
+    bannerContainer: {
+      height: 160,
+      width: '100%',
+      overflow: 'hidden',
+      borderBottomWidth: 1.5,
+      borderBottomColor: theme.accentMuted,
+    },
+    bannerImage: {
+      width: '100%',
+      height: '100%',
+    },
+    bannerTopGradient: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    },
+    avatarContainer: {
+      position: 'absolute',
+      bottom: -48,
+      left: 20,
+    },
+    avatarBorder: {
+      width: 96,
+      height: 96,
+      borderRadius: 18,
+      borderWidth: 2.5,
+      borderColor: theme.avatarBorderColor,
+      backgroundColor: '#0a0c0a',
+      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: theme.shadowColor,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.3,
+      shadowRadius: 10,
+      elevation: 6,
+    },
+    avatar: {
+      width: 92,
+      height: 92,
+      borderRadius: 16,
+    },
+    levelBadge: {
+      position: 'absolute',
+      bottom: -10,
+      right: -10,
+    },
+    onlineIndicator: {
+      position: 'absolute',
+      top: 6,
+      right: 6,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: theme.bg,
+      borderWidth: 2,
+      borderColor: theme.bg,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    onlineDotLg: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: '#22c55e',
+    },
+    onlineTooltip: {
+      position: 'absolute',
+      bottom: 24,
+      left: '50%',
+      transform: [{ translateX: -60 }],
+      backgroundColor: 'rgba(0,0,0,0.9)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+      zIndex: 1000,
+      minWidth: 120,
+    },
+    onlineTooltipText: {
+      color: '#22c55e',
+      fontSize: 11,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+
+    tabsScroll: {
+      marginTop: 24,
+      paddingHorizontal: 16,
+    },
+    tabsContent: {
+      paddingHorizontal: 16,
+      gap: 8,
+      flexDirection: 'row',
+      paddingBottom: 4,
+    },
+    tabPill: {
+      paddingVertical: 7,
+      paddingHorizontal: 16,
+      borderRadius: 100,
+      backgroundColor: '#0f1a2b',
+      borderWidth: 0.5,
+      borderColor: '#1d293d',
+      marginRight: 4,
+    },
+    tabPillActive: {
+      backgroundColor: theme.tabActiveBg,
+      borderColor: theme.tabActiveBorder,
+    },
+    tabPillText: {
+      color: '#62748e',
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    tabPillTextActive: {
+      color: theme.tabActiveText,
+    },
+
+    tabContent: {
+      paddingHorizontal: 16,
+      paddingTop: 16,
+    },
+    grid: {
+      gap: 12,
+      paddingBottom: 20,
+    },
+    reelsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      paddingBottom: 20,
+    },
+    clipCard: {
+      width: '100%',
+      aspectRatio: 16 / 9,
+      borderRadius: 14,
+      overflow: 'hidden',
+      backgroundColor: '#0a1628',
+      position: 'relative',
+    },
+    clipImage: {
+      width: '100%',
+      height: '100%',
+    },
+    clipGradient: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: '65%',
+    },
+    clipBadges: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      flexDirection: 'row',
+      gap: 4,
+    },
+    metaBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 3,
+      backgroundColor: 'rgba(0,0,0,0.75)',
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 6,
+    },
+    metaBadgeText: {
+      color: '#FFF',
+      fontSize: 9,
+      fontWeight: '700',
+    },
+    clipInfo: {
+      position: 'absolute',
+      bottom: 8,
+      left: 10,
+      right: 10,
+    },
+    clipTitle: {
+      color: '#FFF',
+      fontSize: 13,
+      fontWeight: '800',
+      marginBottom: 4,
+    },
+    gameChip: {
+      borderRadius: 6,
+      paddingVertical: 3,
+      paddingHorizontal: 8,
+      alignSelf: 'flex-start',
+    },
+    gameChipText: {
+      fontSize: 10,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.3,
+    },
+    reelCard: {
+      width: (width - 32 - 10) / 2,
+      aspectRatio: 9 / 16,
+      borderRadius: 14,
+      overflow: 'hidden',
+      backgroundColor: '#0a1628',
+      position: 'relative',
+    },
+    reelImage: {
+      width: '100%',
+      height: '100%',
+    },
+    screenshotsList: {
+      gap: 10,
+      paddingBottom: 20,
+    },
+    screenshotCard: {
+      flexDirection: 'row',
+      backgroundColor: '#0a1628',
+      borderRadius: 14,
+      borderWidth: 0.5,
+      borderColor: theme.cardBorder,
+      overflow: 'hidden',
+    },
+    screenshotImage: {
+      width: 100,
+      height: 80,
+    },
+    screenshotInfo: {
+      flex: 1,
+      padding: 10,
+      justifyContent: 'center',
+      gap: 4,
+    },
+    screenshotTitle: {
+      color: '#FFF',
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    screenshotStats: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 4,
+    },
+    statItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    statVal: {
+      color: '#62748e',
+      fontSize: 11,
+    },
+    emptyState: {
+      paddingVertical: 48,
+      alignItems: 'center',
+      gap: 10,
+    },
+    emptyTitle: {
+      color: '#334155',
+      fontSize: 15,
+      fontWeight: '700',
+    },
+  });
+}
 
 export default function PublicProfileScreen() {
   const [activeTab, setActiveTab] = useState('Clips');
@@ -46,7 +825,9 @@ export default function PublicProfileScreen() {
   const user = profileData;
   const userId = user?.id;
 
-  const accentColor = user?.accentColor || '#4ADE80';
+  const theme = getProfileTheme(user?.profileTheme);
+  const styles = useMemo(() => createStyles(theme), [user?.profileTheme]);
+  const accentColor = theme.accent;
 
   const { data: clipsData } = useQuery({
     queryKey: ['/api/users', username, 'clips'],
@@ -144,6 +925,8 @@ export default function PublicProfileScreen() {
   };
   const platforms = buildPlatforms();
 
+  const [statUploads, statFollowers, statFollowing] = theme.statLabels;
+
   return (
     <View style={styles.container}>
       {/* Top Nav */}
@@ -161,6 +944,11 @@ export default function PublicProfileScreen() {
               <Check size={8} color="#FFF" strokeWidth={4} />
             </View>
           )}
+          {theme.statusText.length > 0 && (
+            <View style={styles.navStatusBadge}>
+              <Text style={styles.navStatusText}>{theme.statusText}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.navRight}>
@@ -171,7 +959,7 @@ export default function PublicProfileScreen() {
             style={styles.navGreenBtn}
             onPress={() => router.push('/(drawer)/(tabs)/create')}
           >
-            <Upload size={16} color="#022c22" />
+            <Upload size={16} color={theme.followBtnTextColor} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.navAvatarChip}
@@ -184,12 +972,12 @@ export default function PublicProfileScreen() {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
 
-        {/* Banner with Avatar — HERO at the very top */}
+        {/* Banner with Avatar */}
         <View style={styles.bannerSection}>
           <TouchableOpacity style={styles.bannerContainer} onPress={() => setIsBannerModalVisible(true)} activeOpacity={0.9}>
             <Image source={{ uri: bannerUrl }} style={styles.bannerImage} resizeMode="cover" />
             <LinearGradient
-              colors={['rgba(2,11,18,0.6)', 'transparent', 'rgba(2,11,18,0.5)']}
+              colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.5)']}
               style={styles.bannerTopGradient}
             />
           </TouchableOpacity>
@@ -233,9 +1021,15 @@ export default function PublicProfileScreen() {
           <View style={styles.nameRow}>
             <Text style={styles.displayName}>{displayName}</Text>
             {user.emailVerified && (
-              <View style={styles.verifiedBadge}>
-                <Check size={9} color="#FFF" strokeWidth={4} />
-              </View>
+              theme.verifiedLabel.length > 0 ? (
+                <View style={styles.verifiedBadge}>
+                  <Text style={styles.verifiedBadgeText}>{theme.verifiedLabel}</Text>
+                </View>
+              ) : (
+                <View style={styles.verifiedBadgeIcon}>
+                  <Check size={9} color="#FFF" strokeWidth={4} />
+                </View>
+              )
             )}
           </View>
           <Text style={styles.handle}>{handle}</Text>
@@ -277,20 +1071,26 @@ export default function PublicProfileScreen() {
 
         {/* Stats Card */}
         <View style={styles.statsCard}>
+          <LinearGradient
+            colors={theme.statsTopGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.statsGradientBar}
+          />
           <View style={styles.statsRow}>
             <View style={styles.statCol}>
               <Text style={styles.statNumber}>{clips.length + reels.length + screenshots.length}</Text>
-              <Text style={styles.statLabel}>Uploads</Text>
+              <Text style={styles.statLabel}>{statUploads}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCol}>
               <Text style={styles.statNumber}>{user._count?.followers || 0}</Text>
-              <Text style={styles.statLabel}>Followers</Text>
+              <Text style={styles.statLabel}>{statFollowers}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statCol}>
               <Text style={styles.statNumber}>{user._count?.following || 0}</Text>
-              <Text style={styles.statLabel}>Following</Text>
+              <Text style={styles.statLabel}>{statFollowing}</Text>
             </View>
           </View>
           {isFollowing && (
@@ -306,7 +1106,9 @@ export default function PublicProfileScreen() {
             <Text style={styles.memberSince}>{formatJoinDate(user.createdAt).toUpperCase()}</Text>
           ) : null}
           {user.bio ? (
-            <Text style={styles.bio}>{user.bio}</Text>
+            <View style={styles.bioContainer}>
+              <Text style={styles.bio}>{user.bio}</Text>
+            </View>
           ) : null}
 
           {/* Platform chips */}
@@ -339,7 +1141,7 @@ export default function PublicProfileScreen() {
                   <Text style={styles.followBtnTextActive}>Following</Text>
                 ) : (
                   <>
-                    <UserPlus size={14} color="#022c22" />
+                    <UserPlus size={14} color={theme.followBtnTextColor} />
                     <Text style={styles.followBtnText}>Follow</Text>
                   </>
                 )}
@@ -348,7 +1150,7 @@ export default function PublicProfileScreen() {
                 style={styles.iconActionBtn}
                 onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
               >
-                <Mail size={16} color="#00d5be" />
+                <Mail size={16} color={theme.memberSinceColor} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.reportBtn}
@@ -380,9 +1182,20 @@ export default function PublicProfileScreen() {
             >
               <Image source={{ uri: getClipThumbnail(featuredClip) }} style={styles.featuredImage} resizeMode="cover" />
               <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.8)']}
+                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)']}
                 style={styles.featuredGradient}
               />
+              <View style={styles.featuredInfo}>
+                <Text style={styles.featuredLabel}>
+                  {theme.verifiedLabel.length > 0 ? `Extract Mission #${featuredClip.id}` : featuredClip.title}
+                </Text>
+                {theme.verifiedLabel.length > 0 && (
+                  <View style={styles.featuredMeta}>
+                    <View style={styles.featuredMetaDot} />
+                    <Text style={styles.featuredMetaText}>Confidential Archive</Text>
+                  </View>
+                )}
+              </View>
               <View style={styles.featuredPlayBtn}>
                 <View style={styles.featuredPlayCircle}>
                   <Play size={16} color="#FFF" fill="#FFF" />
@@ -611,693 +1424,3 @@ export default function PublicProfileScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#020b12',
-  },
-  scrollView: {
-    flex: 1,
-  },
-
-  /* Nav */
-  navBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    backgroundColor: '#020b12',
-  },
-  navLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    width: 72,
-  },
-  navCenter: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  navRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    width: 120,
-    justifyContent: 'flex-end',
-  },
-  navIconBtn: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navUsername: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
-  navVerified: {
-    backgroundColor: '#3B82F6',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navGreenBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: '#4ADE80',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#4ADE80',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  navAvatarChip: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#4ADE8080',
-    backgroundColor: '#1d293d',
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navAvatar: {
-    width: 34,
-    height: 34,
-  },
-
-  /* Identity section */
-  identitySection: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 4,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  displayName: {
-    color: '#FFF',
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: -0.8,
-  },
-  verifiedBadge: {
-    backgroundColor: '#3B82F6',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  handle: {
-    color: '#62748e',
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 10,
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  streamerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#00bba71a',
-    borderWidth: 0.5,
-    borderColor: '#00bba766',
-    borderRadius: 100,
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-  },
-  onlineBadge: {
-    backgroundColor: '#22c55e1a',
-    borderColor: '#22c55e66',
-  },
-  streamerText: {
-    color: '#00d5be',
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  onlineDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#22c55e',
-  },
-
-  /* Nametag */
-  nametagSection: {
-    marginBottom: 4,
-  },
-  nametagLabel: {
-    color: '#62748e',
-    fontSize: 7,
-    fontWeight: '900',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    marginBottom: 4,
-  },
-  nametagCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: 10,
-    borderWidth: 0.5,
-    borderColor: '#ff69004d',
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    alignSelf: 'flex-start',
-    shadowColor: '#ff6900',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  nametagGameImg: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
-  },
-  nametagGameName: {
-    color: '#ff8904',
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: -0.4,
-    textTransform: 'uppercase',
-    maxWidth: 120,
-  },
-
-  /* Stats Card */
-  statsCard: {
-    marginHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 4,
-    backgroundColor: '#022f2e0d',
-    borderWidth: 0.5,
-    borderColor: '#00bba733',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-  },
-  statCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 0.5,
-    height: 36,
-    backgroundColor: '#00bba733',
-  },
-  statNumber: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-    marginBottom: 2,
-  },
-  statLabel: {
-    color: '#62748e',
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  followingBar: {
-    borderTopWidth: 0.5,
-    borderTopColor: '#00bba733',
-    paddingVertical: 6,
-    alignItems: 'center',
-  },
-  followingLabel: {
-    color: '#00d5be',
-    fontSize: 8,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-
-  /* Profile Info */
-  profileInfoSection: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  memberSince: {
-    color: '#00d5be',
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.9,
-    textTransform: 'uppercase',
-    marginBottom: 6,
-  },
-  bio: {
-    color: '#cad5e2',
-    fontSize: 12,
-    fontWeight: '700',
-    lineHeight: 18,
-    marginBottom: 14,
-  },
-  platformsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 14,
-  },
-  platformChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderRadius: 6,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-  },
-  platformText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 14,
-  },
-  followBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#4ADE80',
-    paddingVertical: 10,
-    borderRadius: 10,
-    gap: 6,
-    shadowColor: '#4ADE80',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  followingBtn: {
-    backgroundColor: '#1d293d',
-  },
-  followBtnText: {
-    color: '#022c22',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  followBtnTextActive: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  iconActionBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: '#00bba71a',
-    borderWidth: 0.5,
-    borderColor: '#00bba766',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reportBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(239,68,68,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  collectionBtn: {
-    borderRadius: 100,
-    paddingVertical: 9,
-    paddingHorizontal: 24,
-    alignSelf: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  collectionBtnText: {
-    color: '#0f172b',
-    fontSize: 9,
-    fontWeight: '900',
-    letterSpacing: 0.9,
-    textTransform: 'uppercase',
-  },
-
-  /* Featured clip */
-  featuredSection: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 4,
-  },
-  featuredCard: {
-    borderRadius: 16,
-    borderWidth: 0.5,
-    borderColor: '#1d293d',
-    overflow: 'hidden',
-    height: 190,
-    backgroundColor: '#0a1628',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
-  },
-  featuredImage: {
-    width: '100%',
-    height: '100%',
-  },
-  featuredGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '60%',
-  },
-  featuredPlayBtn: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featuredPlayCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#00bc7d',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingLeft: 3,
-  },
-  featuredOnline: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featuredOnlineDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#22c55e',
-  },
-
-  /* Banner + Avatar */
-  bannerSection: {
-    position: 'relative',
-    marginBottom: 60,
-  },
-  bannerContainer: {
-    height: 160,
-    width: '100%',
-    overflow: 'hidden',
-  },
-  bannerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  bannerTopGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  avatarContainer: {
-    position: 'absolute',
-    bottom: -48,
-    left: 20,
-  },
-  avatarBorder: {
-    width: 96,
-    height: 96,
-    borderRadius: 18,
-    borderWidth: 2.5,
-    borderColor: '#4ADE80',
-    backgroundColor: '#1d293d',
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatar: {
-    width: 92,
-    height: 92,
-    borderRadius: 16,
-  },
-  levelBadge: {
-    position: 'absolute',
-    bottom: -10,
-    right: -10,
-  },
-  onlineIndicator: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#020b12',
-    borderWidth: 2,
-    borderColor: '#020b12',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  onlineDotLg: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#22c55e',
-  },
-  onlineTooltip: {
-    position: 'absolute',
-    bottom: 24,
-    left: '50%',
-    transform: [{ translateX: -60 }],
-    backgroundColor: 'rgba(0,0,0,0.9)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    zIndex: 1000,
-    minWidth: 120,
-  },
-  onlineTooltipText: {
-    color: '#22c55e',
-    fontSize: 11,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-
-  /* Tabs */
-  tabsScroll: {
-    marginTop: 24,
-    paddingHorizontal: 16,
-  },
-  tabsContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-    flexDirection: 'row',
-    paddingBottom: 4,
-  },
-  tabPill: {
-    paddingVertical: 7,
-    paddingHorizontal: 16,
-    borderRadius: 100,
-    backgroundColor: '#0f1a2b',
-    borderWidth: 0.5,
-    borderColor: '#1d293d',
-    marginRight: 4,
-  },
-  tabPillActive: {
-    backgroundColor: '#4ADE8020',
-    borderColor: '#4ADE8060',
-  },
-  tabPillText: {
-    color: '#62748e',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  tabPillTextActive: {
-    color: '#4ADE80',
-  },
-
-  /* Content */
-  tabContent: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  grid: {
-    gap: 12,
-    paddingBottom: 20,
-  },
-  reelsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    paddingBottom: 20,
-  },
-  clipCard: {
-    width: '100%',
-    aspectRatio: 16 / 9,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: '#0a1628',
-    position: 'relative',
-  },
-  clipImage: {
-    width: '100%',
-    height: '100%',
-  },
-  clipGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '65%',
-  },
-  clipBadges: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    flexDirection: 'row',
-    gap: 4,
-  },
-  metaBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  metaBadgeText: {
-    color: '#FFF',
-    fontSize: 9,
-    fontWeight: '700',
-  },
-  clipInfo: {
-    position: 'absolute',
-    bottom: 8,
-    left: 10,
-    right: 10,
-  },
-  clipTitle: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  gameChip: {
-    borderRadius: 6,
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    alignSelf: 'flex-start',
-  },
-  gameChipText: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  reelCard: {
-    width: (width - 32 - 10) / 2,
-    aspectRatio: 9 / 16,
-    borderRadius: 14,
-    overflow: 'hidden',
-    backgroundColor: '#0a1628',
-    position: 'relative',
-  },
-  reelImage: {
-    width: '100%',
-    height: '100%',
-  },
-  screenshotsList: {
-    gap: 10,
-    paddingBottom: 20,
-  },
-  screenshotCard: {
-    flexDirection: 'row',
-    backgroundColor: '#0a1628',
-    borderRadius: 14,
-    borderWidth: 0.5,
-    borderColor: '#1d293d',
-    overflow: 'hidden',
-  },
-  screenshotImage: {
-    width: 100,
-    height: 80,
-  },
-  screenshotInfo: {
-    flex: 1,
-    padding: 10,
-    justifyContent: 'center',
-    gap: 4,
-  },
-  screenshotTitle: {
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  screenshotStats: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statVal: {
-    color: '#62748e',
-    fontSize: 11,
-  },
-  emptyState: {
-    paddingVertical: 48,
-    alignItems: 'center',
-    gap: 10,
-  },
-  emptyTitle: {
-    color: '#334155',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-});

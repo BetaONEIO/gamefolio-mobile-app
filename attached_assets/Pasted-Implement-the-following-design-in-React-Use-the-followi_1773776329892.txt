@@ -1,0 +1,883 @@
+Implement the following design in React. Use the following files generated from a Figma design as a specification and guide:
+
+```src/styles/ZombieBiohazardGamefolio.module.css
+@import "https://fonts.googleapis.com/css?family=Plus+Jakarta+Sans:0,900;0,700&display=swap";
+.ZombieBiohazardGamefolio_238_1006 {
+  background: #fff;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  overflow: hidden;
+}
+.Container_238_1007 {
+  background: #0a0c0a;
+  flex: 1 0 0;
+  width: 100%;
+}
+.Container_238_1008 {
+  backdrop-filter: blur(6px);
+  box-sizing: border-box;
+  background: #0006;
+  border-bottom: 0.556px solid #35530e4d;
+  flex-flow: row;
+  flex-grow: 1;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 173.269px;
+  padding: 23.993px 16.733px 17.007px 15.998px;
+  display: flex;
+}
+.Container_238_1009 {
+  flex-flow: row;
+  justify-content: center;
+  align-items: center;
+  gap: 15.9913px;
+  width: 72px;
+  height: 32px;
+  padding-right: 0.009px;
+  display: flex;
+}
+.Button_238_1010 {
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  width: 24px;
+  height: 24px;
+  display: flex;
+}
+.Container_238_1011 {
+  flex: 1 0 0;
+  height: 24px;
+  overflow: hidden;
+}
+.Container_238_1013 {
+  flex: 1 0 0;
+  justify-content: center;
+  align-items: center;
+  height: 32px;
+  display: flex;
+}
+.Container_238_1014 {
+  flex: 1 0 0;
+  height: 32px;
+  overflow: hidden;
+}
+.Container_238_1016 {
+  flex-flow: row;
+  justify-content: center;
+  align-items: center;
+  gap: 11.7361px;
+  width: 153px;
+  height: 36px;
+  padding-right: 0.264px;
+  display: flex;
+}
+.Container_238_1017 {
+  box-sizing: border-box;
+  background: #7ccf000d;
+  border: 0.556px solid #7ccf004d;
+  border-radius: 4px;
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  width: 105px;
+  height: 19px;
+  padding: 3.108px 5.95px 3.892px 6.05px;
+  display: flex;
+}
+.SystemOnline_238_1018 {
+  color: #9ae600;
+  font-feature-settings: "dlig" on;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  width: 93px;
+  height: 12px;
+  font-family: Plus Jakarta Sans;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 13.5px;
+  display: inline-block;
+}
+.Container_238_1019 {
+  box-sizing: border-box;
+  background: #7ccf001a;
+  border: 0.556px solid #7ccf004d;
+  border-radius: 4px;
+  flex: 1 0 0;
+  justify-content: center;
+  align-items: center;
+  height: 36px;
+  padding: 0.556px 0.444px 0.444px 0.556px;
+  display: flex;
+  overflow: hidden;
+}
+.Image_238_1020 {
+  aspect-ratio: 1;
+  background: #d3d3d3 url(<path-to-image>) 50% / cover no-repeat;
+  width: 35px;
+  height: 35px;
+}
+.Container_238_1021 {
+  width: 431px;
+  height: 856px;
+}
+.Container_238_1022 {
+  flex-flow: column;
+  flex-grow: 1;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 6.33334px;
+  width: 431px;
+  padding: 0 24.007px 0 23.993px;
+  display: flex;
+}
+.Container_238_1023 {
+  flex-flow: row;
+  flex-grow: 1;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 7.54341px;
+  height: 32px;
+  padding-right: 200.457px;
+  display: flex;
+}
+.Container_238_1024 {
+  flex: 1 0 0;
+  justify-content: center;
+  align-items: center;
+  height: 32px;
+  padding: 0.556px 0 0.444px;
+  display: flex;
+}
+.DeadZoneX_238_1025 {
+  color: #9ae600;
+  font-feature-settings: "dlig" on;
+  letter-spacing: -1.2px;
+  text-transform: uppercase;
+  width: 160px;
+  height: 31px;
+  font-family: Plus Jakarta Sans;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 32px;
+  display: inline-block;
+}
+.Container_238_1026 {
+  width: 20px;
+  height: 20px;
+  overflow: hidden;
+}
+.Container_238_1028 {
+  background: #7ccf00;
+  border-radius: 8px;
+  justify-content: center;
+  align-items: center;
+  width: 191px;
+  height: 18px;
+  padding: 2.552px 5.505px 3.448px 5.495px;
+  display: flex;
+}
+.BioSignatureVerified_238_1029 {
+  color: #3c6300;
+  font-feature-settings: "dlig" on;
+  letter-spacing: 2.7px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  width: 180px;
+  height: 12px;
+  font-family: Plus Jakarta Sans;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 13.5px;
+  display: inline-block;
+}
+.Container_238_1030 {
+  justify-content: center;
+  align-items: center;
+  width: 431px;
+  height: 96px;
+  padding: 0 16.002px 0 15.998px;
+  display: flex;
+}
+.Container_238_1031 {
+  box-sizing: border-box;
+  background: #1a1d1a;
+  border: 1.667px solid #7ccf004d;
+  border-radius: 12px;
+  flex-flow: row;
+  flex: 1 0 0;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0;
+  height: 96px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 0 20px #84cc1626;
+}
+.Container_238_1032 {
+  width: 395px;
+  height: 92px;
+}
+.Container_238_1033 {
+  background: linear-gradient(
+    315deg,
+    #84cc16 14.64% 38.21%,
+    #000 61.79% 85.36%
+  );
+  width: 395px;
+  height: 4px;
+}
+.Container_238_1034 {
+  flex-flow: row;
+  flex-grow: 1;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 76.1077px;
+  display: flex;
+}
+.Container_238_1035 {
+  flex-flow: column;
+  flex: 1 0 0;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 6.99652px;
+  height: 45px;
+  padding-bottom: 0.003px;
+  display: flex;
+}
+.Container_238_1036 {
+  flex-flow: row;
+  flex-grow: 1;
+  flex-shrink: 0;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0;
+  height: 25px;
+  display: flex;
+}
+.Container_238_1037 {
+  justify-content: center;
+  align-items: center;
+  width: 29px;
+  display: flex;
+}
+.generated_37_238_1038 {
+  color: #9ae600;
+  font-feature-settings: "dlig" on;
+  flex-shrink: 0;
+  width: 34px;
+  height: 31px;
+  font-family: Plus Jakarta Sans;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 24px;
+  display: inline-block;
+}
+.Container_238_1039 {
+  width: 12px;
+  height: 12px;
+  overflow: hidden;
+}
+.Container_238_1041 {
+  background: #9ae600e6;
+  border-radius: 4px;
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  height: 13px;
+  padding: 0.556px 1.507px 2.444px 1.493px;
+  display: flex;
+}
+.BioData_238_1042 {
+  color: #3c6300;
+  font-feature-settings: "dlig" on;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  width: 59px;
+  height: 10px;
+  font-family: Plus Jakarta Sans;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 12px;
+  display: inline-block;
+}
+.Container_238_1043 {
+  flex-flow: column;
+  flex: 1 0 0;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 6.99652px;
+  height: 45px;
+  padding-bottom: 0.003px;
+  display: flex;
+}
+.Container_238_1044 {
+  flex-shrink: 0;
+  align-items: center;
+  height: 25px;
+  padding-right: 54px;
+  display: flex;
+}
+.Container_238_1045 {
+  flex-direction: column;
+  flex: 1 0 0;
+  justify-content: flex-end;
+  align-items: center;
+  height: 25px;
+  display: flex;
+}
+.generated_8_238_1046 {
+  color: #9ae600;
+  font-feature-settings: "dlig" on;
+  flex-shrink: 0;
+  width: 21px;
+  height: 31px;
+  font-family: Plus Jakarta Sans;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 24px;
+  display: inline-block;
+}
+.Container_238_1047 {
+  background: #9ae600e6;
+  border-radius: 4px;
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  height: 13px;
+  padding: 0.556px 1.507px 2.444px 1.493px;
+  display: flex;
+}
+.Survivors_238_1048 {
+  color: #3c6300;
+  font-feature-settings: "dlig" on;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  width: 67px;
+  height: 10px;
+  font-family: Plus Jakarta Sans;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 12px;
+  display: inline-block;
+}
+.Container_238_1049 {
+  flex-flow: column;
+  flex: 1 0 0;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 6.99652px;
+  height: 45px;
+  padding-bottom: 0.003px;
+  display: flex;
+}
+.Container_238_1050 {
+  flex-shrink: 0;
+  align-items: center;
+  height: 25px;
+  padding-right: 48px;
+  display: flex;
+}
+.Container_238_1051 {
+  flex-direction: column;
+  flex: 1 0 0;
+  justify-content: flex-end;
+  align-items: center;
+  height: 25px;
+  display: flex;
+}
+.generated_9_238_1052 {
+  color: #9ae600;
+  font-feature-settings: "dlig" on;
+  flex-shrink: 0;
+  width: 20px;
+  height: 31px;
+  font-family: Plus Jakarta Sans;
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 24px;
+  display: inline-block;
+}
+.Container_238_1053 {
+  background: #9ae600e6;
+  border-radius: 4px;
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  height: 13px;
+  padding: 0.556px 1.507px 2.444px 1.493px;
+  display: flex;
+}
+.Tracking_238_1054 {
+  color: #3c6300;
+  font-feature-settings: "dlig" on;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  width: 60px;
+  height: 10px;
+  font-family: Plus Jakarta Sans;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 12px;
+  display: inline-block;
+}
+.Container_238_1055 {
+  justify-content: center;
+  align-items: center;
+  width: 431px;
+  height: 81px;
+  padding: 0 24.007px 0 23.993px;
+  display: flex;
+}
+.Container_238_1056 {
+  box-sizing: border-box;
+  background: #7ccf000d;
+  border-left: 1.667px solid #7ccf00;
+  flex: 1 0 0;
+  justify-content: center;
+  align-items: center;
+  height: 81px;
+  padding: 15.998px 16.335px 16.002px 17.665px;
+  display: flex;
+}
+.Container_238_1057 {
+  align-items: center;
+  width: 349px;
+  height: 49px;
+  padding: 1.667px 17.5px 1.333px 0;
+  display: flex;
+}
+.LastTransmissionDetectedDay_442StillHuntingNoMercyForTheInfectedJoinTheSquadForDailyExtracts_238_1058 {
+  color: #7ccf00cc;
+  font-feature-settings: "dlig" on;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  width: 333px;
+  height: 46px;
+  font-family: Plus Jakarta Sans;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 16.25px;
+  display: inline-block;
+}
+.Container_238_1059 {
+  justify-content: center;
+  align-items: center;
+  width: 431px;
+  padding: 0 16.002px 128px 15.998px;
+  display: flex;
+}
+.Container_238_1060 {
+  box-sizing: border-box;
+  background: #ffffff03;
+  border: 0.556px solid #7ccf0033;
+  border-radius: 12px;
+  flex-flow: row;
+  flex-shrink: 0;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0;
+  width: 399px;
+  height: 160px;
+  display: flex;
+  overflow: hidden;
+  box-shadow:
+    0 4px 6px -4px #35530e33,
+    0 10px 15px -3px #35530e33;
+}
+.Image_238_1061 {
+  aspect-ratio: 397/159;
+  background: #d3d3d3 url(<path-to-image>) 50% / cover no-repeat;
+  width: 397px;
+  height: 159px;
+}
+.Container_238_1062 {
+  background: linear-gradient(#000 0%, #0000 50% 100%);
+  width: 397px;
+  height: 159px;
+}
+.Container_238_1063 {
+  flex-flow: column;
+  flex-grow: 1;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2.99304px;
+  width: 139px;
+  display: flex;
+}
+.Container_238_1064 {
+  justify-content: center;
+  align-items: center;
+  height: 16px;
+  padding: 1.111px 0 1.889px;
+  display: flex;
+}
+.ExtractMission_241_238_1065 {
+  color: #9ae600;
+  font-feature-settings: "dlig" on;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  width: 144px;
+  height: 13px;
+  font-family: Plus Jakarta Sans;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 15px;
+  display: inline-block;
+}
+.Container_238_1066 {
+  flex-flow: row;
+  flex-grow: 1;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 7.99306px;
+  height: 13px;
+  padding-right: 28.007px;
+  display: flex;
+}
+.Container_238_1067 {
+  background: #7ccf00;
+  border-radius: 18641400px;
+  width: 6px;
+  height: 6px;
+}
+.Container_238_1068 {
+  flex: 1 0 0;
+  justify-content: center;
+  align-items: center;
+  height: 13px;
+  padding: 0.556px 0 2.444px;
+  display: flex;
+}
+.ConfidentialArchive_238_1069 {
+  color: #7ccf0099;
+  font-feature-settings: "dlig" on;
+  text-transform: uppercase;
+  width: 100px;
+  height: 10px;
+  font-family: Plus Jakarta Sans;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 12px;
+  display: inline-block;
+}
+.Container_238_1070 {
+  width: 431px;
+  height: 192px;
+}
+.Container_238_1071 {
+  box-sizing: border-box;
+  border-bottom: 1.667px solid #7ccf0033;
+  width: 431px;
+  height: 192px;
+  overflow: hidden;
+}
+.Image_238_1072 {
+  aspect-ratio: 431/191;
+  background: #d3d3d3 url(<path-to-image>) 50% / cover no-repeat;
+  width: 431px;
+  height: 191px;
+}
+.Container_238_1073 {
+  width: 431px;
+  height: 192px;
+}
+.Container_238_1074 {
+  background: linear-gradient(#0000 0% 33.33%, #0000001a 66.67% 100%);
+  width: 431px;
+  height: 192px;
+}
+.Container_238_1075 {
+  justify-content: center;
+  align-items: center;
+  width: 96px;
+  height: 96px;
+  display: flex;
+}
+.Container_238_1076 {
+  flex-flow: row;
+  flex: 1 0 0;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 0;
+  display: flex;
+}
+.Container_238_1077 {
+  box-sizing: border-box;
+  background: #0a0c0a;
+  border: 1.667px solid #7ccf00;
+  border-radius: 12px;
+  justify-content: center;
+  align-items: center;
+  width: 96px;
+  height: 96px;
+  padding: 5.66px 5.34px 5.34px 5.66px;
+  display: flex;
+  box-shadow: 0 0 20px #84cc164d;
+}
+.Container_238_1078 {
+  background: #000;
+  border-radius: 8px;
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  width: 85px;
+  height: 85px;
+  display: flex;
+  overflow: hidden;
+}
+.Image_238_1079 {
+  aspect-ratio: 1;
+  background: #d3d3d3 url(<path-to-image>) 50% / cover no-repeat;
+  flex-shrink: 0;
+  width: 85px;
+  height: 85px;
+}
+.Container_238_1080 {
+  background: #7ccf00;
+  border-radius: 4px;
+  justify-content: center;
+  align-items: center;
+  width: 35px;
+  height: 16px;
+  padding: 2.552px 3.502px 3.448px 3.498px;
+  display: flex;
+  box-shadow:
+    0 4px 6px -4px #7ccf0080,
+    0 10px 15px -3px #7ccf0080;
+}
+.Lvl_82_238_1081 {
+  color: #000;
+  font-feature-settings: "dlig" on;
+  letter-spacing: -0.4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  width: 28px;
+  height: 10px;
+  font-family: Plus Jakarta Sans;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 12px;
+  display: inline-block;
+}
+.Navigation_238_1082 {
+  backdrop-filter: blur(6px);
+  box-sizing: border-box;
+  background: #000000e6;
+  border-top: 0.556px solid #7ccf004d;
+  width: 431px;
+  height: 81px;
+}
+.Container_238_1083,
+.Container_238_1085 {
+  width: 24px;
+  height: 24px;
+  overflow: hidden;
+}
+.Container_238_1087 {
+  box-sizing: border-box;
+  background: #7ccf00;
+  border: 1.667px solid #000;
+  border-radius: 4px;
+  justify-content: center;
+  align-items: center;
+  width: 80px;
+  height: 80px;
+  padding: 23.592px 24.402px 24.408px 23.598px;
+  display: flex;
+  box-shadow: 0 0 20px #84cc1680;
+}
+.Container_238_1088 {
+  flex-shrink: 0;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  display: flex;
+}
+.Container_238_1089 {
+  flex: 1 0 0;
+  height: 32px;
+  overflow: hidden;
+}
+.Container_238_1091 {
+  width: 24px;
+  height: 24px;
+  overflow: hidden;
+}
+.Container_238_1093 {
+  flex-flow: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2.99913px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  overflow: hidden;
+}
+
+```
+
+---
+
+```src/components/assets/Container.tsx
+import React from 'react';
+export default function Container() {
+  return <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fillRule="evenodd" clipRule="evenodd" d="M7.99756 5.99833C7.99756 3.78984 9.78789 1.99951 11.9964 1.99951C14.2049 1.99951 15.9952 3.78984 15.9952 5.99833C15.9952 8.20682 14.2049 9.99715 11.9964 9.99715C9.78789 9.99715 7.99756 8.20682 7.99756 5.99833Z" fill="#7CCF00"/>
+<path fillRule="evenodd" clipRule="evenodd" d="M19.9944 17.4948C19.9944 19.9791 19.9944 21.9935 11.9967 21.9935C3.99902 21.9935 3.99902 19.9791 3.99902 17.4948C3.99902 15.0105 7.57998 12.9961 11.9967 12.9961C16.4134 12.9961 19.9944 15.0105 19.9944 17.4948Z" fill="#7CCF00"/>
+</svg>
+;
+}
+```
+
+---
+
+```src/components/ZombieBiohazardGamefolio.tsx
+import React from 'react';
+import styles from '../styles/ZombieBiohazardGamefolio.module.css';
+import Container from './assets/Container';
+
+export default function ZombieBiohazardGamefolio() {
+  return (
+    <div className={styles.ZombieBiohazardGamefolio_238_1006}>
+      <div className={styles.Container_238_1007}>
+        <div className={styles.Container_238_1008}>
+          <div className={styles.Container_238_1009}>
+            <div className={styles.Button_238_1010}>
+              <div className={styles.Container_238_1011}>
+                <Container />
+              </div>
+            </div>
+            <div className={styles.Container_238_1013}>
+              <div className={styles.Container_238_1014}>
+                <Container />
+              </div>
+            </div>
+          </div>
+          <div className={styles.Container_238_1016}>
+            <div className={styles.Container_238_1017}><span className={styles.SystemOnline_238_1018}>System: Online</span></div>
+            <div className={styles.Container_238_1019}>
+              <div className={styles.Image_238_1020}></div>
+            </div>
+          </div>
+        </div>
+        <div className={styles.Container_238_1021}>
+          <div className={styles.Container_238_1022}>
+            <div className={styles.Container_238_1023}>
+              <div className={styles.Container_238_1024}><span className={styles.DeadZoneX_238_1025}>DeadZone_X</span></div>
+              <div className={styles.Container_238_1026}>
+                <Container />
+              </div>
+            </div>
+            <div className={styles.Container_238_1028}><span className={styles.BioSignatureVerified_238_1029}>Bio-Signature Verified</span></div>
+          </div>
+          <div className={styles.Container_238_1030}>
+            <div className={styles.Container_238_1031}>
+              <div className={styles.Container_238_1032}></div>
+              <div className={styles.Container_238_1033}></div>
+              <div className={styles.Container_238_1034}>
+                <div className={styles.Container_238_1035}>
+                  <div className={styles.Container_238_1036}>
+                    <div className={styles.Container_238_1037}><span className={styles.generated_37_238_1038}>37</span></div>
+                    <div className={styles.Container_238_1039}>
+                      <Container />
+                    </div>
+                  </div>
+                  <div className={styles.Container_238_1041}><span className={styles.BioData_238_1042}>Bio-Data</span></div>
+                </div>
+                <div className={styles.Container_238_1043}>
+                  <div className={styles.Container_238_1044}>
+                    <div className={styles.Container_238_1045}><span className={styles.generated_8_238_1046}>8</span></div>
+                  </div>
+                  <div className={styles.Container_238_1047}><span className={styles.Survivors_238_1048}>Survivors</span></div>
+                </div>
+                <div className={styles.Container_238_1049}>
+                  <div className={styles.Container_238_1050}>
+                    <div className={styles.Container_238_1051}><span className={styles.generated_9_238_1052}>9</span></div>
+                  </div>
+                  <div className={styles.Container_238_1053}><span className={styles.Tracking_238_1054}>Tracking</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={styles.Container_238_1055}>
+            <div className={styles.Container_238_1056}>
+              <div className={styles.Container_238_1057}><span className={styles.LastTransmissionDetectedDay_442StillHuntingNoMercyForTheInfectedJoinTheSquadForDailyExtracts_238_1058}>Last transmission detected: Day 442. Still hunting. No mercy for the infected. Join the squad for daily extracts. &#x2622;&#xFE0F;</span></div>
+            </div>
+          </div>
+          <div className={styles.Container_238_1059}>
+            <div className={styles.Container_238_1060}>
+              <div className={styles.Image_238_1061}></div>
+              <div className={styles.Container_238_1062}></div>
+              <div className={styles.Container_238_1063}>
+                <div className={styles.Container_238_1064}><span className={styles.ExtractMission_241_238_1065}>Extract Mission #241</span></div>
+                <div className={styles.Container_238_1066}>
+                  <div className={styles.Container_238_1067}></div>
+                  <div className={styles.Container_238_1068}><span className={styles.ConfidentialArchive_238_1069}>Confidential Archive</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={styles.Container_238_1070}>
+            <div className={styles.Container_238_1071}>
+              <div className={styles.Image_238_1072}></div>
+              <div className={styles.Container_238_1073}></div>
+              <div className={styles.Container_238_1074}></div>
+            </div>
+            <div className={styles.Container_238_1075}>
+              <div className={styles.Container_238_1076}>
+                <div className={styles.Container_238_1077}>
+                  <div className={styles.Container_238_1078}>
+                    <div className={styles.Image_238_1079}></div>
+                  </div>
+                </div>
+                <div className={styles.Container_238_1080}><span className={styles.Lvl_82_238_1081}>LVL 82</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className={styles.Navigation_238_1082}>
+          <div className={styles.Container_238_1083}>
+            <Container />
+          </div>
+          <div className={styles.Container_238_1085}>
+            <Container />
+          </div>
+          <div className={styles.Container_238_1087}>
+            <div className={styles.Container_238_1088}>
+              <div className={styles.Container_238_1089}>
+                <Container />
+              </div>
+            </div>
+          </div>
+          <div className={styles.Container_238_1091}>
+            <Container />
+          </div>
+          <div className={styles.Container_238_1093}>
+            <Container />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+

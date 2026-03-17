@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   backgroundColor: text("background_color").default("#0B2232"), // Default navy background
   cardColor: text("card_color").default("#1E3A8A"), // Default card background
   avatarBorderColor: text("avatar_border_color").default("#4ADE80"), // Default avatar border color
+  profileTheme: text("profile_theme").default("default"), // "default", "zombie"
   profileFont: text("profile_font").default("default"),
   profileFontEffect: text("profile_font_effect").default("none"),
   profileFontAnimation: text("profile_font_animation").default("none"),
