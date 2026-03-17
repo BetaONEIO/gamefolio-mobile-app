@@ -241,6 +241,24 @@ export const PROFILE_THEMES: Record<ProfileThemeName, ProfileThemeTokens> = {
   pink: PINK_THEME,
 };
 
+export const SELECTABLE_PROFILE_THEMES: {
+  id: ProfileThemeName;
+  name: string;
+  description: string;
+  bg: string;
+  accent: string;
+  preview: string[];
+}[] = [
+  {
+    id: 'pink',
+    name: 'Pink',
+    description: 'Rose glass aesthetic with light, frosted card design',
+    bg: '#fce7f3',
+    accent: '#ff2056',
+    preview: ['#fce7f3', '#ff637e', '#fb64b6'],
+  },
+];
+
 export function getProfileTheme(themeName?: string | null): ProfileThemeTokens {
   if (themeName === 'zombie') return ZOMBIE_THEME;
   if (themeName === 'pink') return PINK_THEME;

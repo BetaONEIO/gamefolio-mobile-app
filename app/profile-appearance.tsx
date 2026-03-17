@@ -17,6 +17,7 @@ import ProfilePictureModal from '@/components/ProfilePictureModal';
 import ProfileBorderModal, { AvatarBorder } from '@/components/ProfileBorderModal';
 import CustomAlert from '@/components/CustomAlert';
 import AppearanceStudioModal from '@/components/AppearanceStudioModal';
+import { SELECTABLE_PROFILE_THEMES, type ProfileThemeName } from '@/constants/themes';
 
 type TabType = 'profile';
 
@@ -106,6 +107,9 @@ export default function ProfileAppearance() {
   const [avatar, setAvatar] = useState(user?.avatarUrl || null);
   const [banner, setBanner] = useState(user?.bannerUrl || null);
   const [selectedThemeId, setSelectedThemeId] = useState<string>('basic');
+  const [selectedProfileTheme, setSelectedProfileTheme] = useState<ProfileThemeName | null>(
+    (user?.profileTheme as ProfileThemeName) || null
+  );
 
   // Calculate isDirty
   const currentTheme = QUICK_THEMES.find(t => t.id === selectedThemeId);
@@ -130,13 +134,16 @@ export default function ProfileAppearance() {
     isBorderDirty,
   });
 
+  const isProfileThemeDirty = selectedProfileTheme !== ((user?.profileTheme as ProfileThemeName) || null);
+
   const isDirty = 
     (displayName !== (user?.displayName || '')) ||
     (bio !== (user?.bio || '')) ||
     (avatar !== (user?.avatarUrl || null)) ||
     (banner !== (user?.bannerUrl || null)) ||
     !!isThemeDirty ||
-    isBorderDirty;
+    isBorderDirty ||
+    isProfileThemeDirty;
 
   console.log('[ProfileAppearance] isDirty:', isDirty, 'activeTab:', activeTab);
 
@@ -191,6 +198,7 @@ export default function ProfileAppearance() {
       
       const theme = QUICK_THEMES.find(t => t.accentColor === user.accentColor && t.backgroundColor === user.backgroundColor);
       setSelectedThemeId(theme ? theme.id : 'basic');
+      setSelectedProfileTheme((user.profileTheme as ProfileThemeName) || null);
       
       if (avatarBordersData?.selectedBorderId) {
         const border = avatarBordersData.borders.find((b: AvatarBorder) => b.id === avatarBordersData.selectedBorderId);
@@ -293,6 +301,7 @@ export default function ProfileAppearance() {
         accentColor: theme?.accentColor,
         backgroundColor: theme?.backgroundColor,
         profileBorderId: selectedBorder?.id || null,
+        profileTheme: selectedProfileTheme || undefined,
       };
 
       console.log('[Profile] Sending update via REST API:', updateData);
@@ -488,6 +497,35 @@ export default function ProfileAppearance() {
                     numberOfLines={4}
                     textAlignVertical="top"
                   />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Profile Page Theme</Text>
+                  <Text style={styles.inputHelper}>Choose a design theme for your public profile page.</Text>
+                  <View style={styles.profileThemesRow}>
+                    {SELECTABLE_PROFILE_THEMES.map((t) => {
+                      const isActive = selectedProfileTheme === t.id;
+                      return (
+                        <TouchableOpacity
+                          key={t.id}
+                          style={[styles.profileThemeCard, isActive && styles.profileThemeCardActive]}
+                          onPress={() => setSelectedProfileTheme(isActive ? null : t.id)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[styles.profileThemeSwatch, { backgroundColor: t.bg }]}>
+                            <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[1] }]} />
+                            <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[2], marginLeft: 6 }]} />
+                          </View>
+                          <Text style={[styles.profileThemeLabel, isActive && styles.profileThemeLabelActive]}>{t.name}</Text>
+                          {isActive && (
+                            <View style={styles.profileThemeCheck}>
+                              <Check size={12} color="#FFF" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
                 </View>
 
                 {renderSaveButton(handleSaveProfile)}
@@ -955,5 +993,59 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 12,
     textAlign: 'center',
+  },
+  profileThemesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 4,
+  },
+  profileThemeCard: {
+    width: 100,
+    alignItems: 'center',
+    borderRadius: 10,
+    padding: 8,
+    borderWidth: 2,
+    borderColor: '#1E293B',
+    backgroundColor: '#0F1520',
+    position: 'relative',
+  },
+  profileThemeCardActive: {
+    borderColor: '#f472b6',
+    backgroundColor: '#1a0e1a',
+  },
+  profileThemeSwatch: {
+    width: '100%',
+    height: 52,
+    borderRadius: 7,
+    marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  profileThemeAccentDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+  },
+  profileThemeLabel: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  profileThemeLabelActive: {
+    color: '#f472b6',
+    fontWeight: '700',
+  },
+  profileThemeCheck: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#f472b6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   });
