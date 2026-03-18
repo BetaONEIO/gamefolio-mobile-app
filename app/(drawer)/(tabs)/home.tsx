@@ -824,6 +824,13 @@ export default function HomeScreen() {
             <Camera size={20} color="#4ADE80" />
             <Text style={styles.sectionTitle}>Latest Screenshots</Text>
           </View>
+          <TouchableOpacity
+            style={styles.viewAllButton}
+            onPress={() => router.push({ pathname: '/(drawer)/(tabs)/trending', params: { tab: 'screenshots' } })}
+          >
+            <Text style={styles.viewAllText}>View all</Text>
+            <ChevronRight size={16} color="#4ADE80" />
+          </TouchableOpacity>
         </View>
 
         <ScrollView

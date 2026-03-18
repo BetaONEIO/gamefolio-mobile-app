@@ -50,7 +50,7 @@ import {
 } from 'lucide-react-native';
 import FlameAnimation from '@/components/FlameAnimation';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
@@ -1390,7 +1390,10 @@ const ClipCardItem = React.memo(({ item, onUserPress, onLike, onFire, onShare }:
 ClipCardItem.displayName = 'ClipCardItem';
 
 export default function TrendingScreen() {
-  const [contentType, setContentType] = useState<ContentType>('reels');
+  const { tab } = useLocalSearchParams<{ tab?: ContentType }>();
+  const [contentType, setContentType] = useState<ContentType>(
+    tab && ['reels', 'clips', 'screenshots'].includes(tab) ? tab : 'reels'
+  );
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ever');
