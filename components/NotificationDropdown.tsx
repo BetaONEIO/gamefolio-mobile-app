@@ -182,6 +182,8 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
                 e.stopPropagation();
                 removeNotification(item.id);
               }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.dismissButton}
             >
               <X size={16} color="#64748B" />
             </TouchableOpacity>
@@ -287,52 +289,53 @@ const styles = StyleSheet.create({
   dropdown: {
     position: 'absolute',
     right: 20,
-    width: 320,
-    maxHeight: 400,
+    width: 340,
+    maxHeight: 500,
     backgroundColor: '#0F1520',
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#1E293B',
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 8,
     },
-    shadowOpacity: 0.30,
-    shadowRadius: 4.65,
-    elevation: 8,
+    shadowOpacity: 0.40,
+    shadowRadius: 12,
+    elevation: 12,
     overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
     backgroundColor: '#0F1520',
   },
   headerTitle: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: 'bold',
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 20,
   },
   actionTextGreen: {
     color: '#4ADE80',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   actionTextRed: {
     color: '#EF4444',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
   contentContainer: {
-    height: 300,
+    height: 400,
     flexDirection: 'row',
   },
   listContent: {
@@ -340,12 +343,13 @@ const styles = StyleSheet.create({
   },
   itemContainer: {
     flexDirection: 'row',
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
   },
   iconColumn: {
-    marginRight: 12,
+    marginRight: 14,
     paddingTop: 2,
   },
   contentColumn: {
@@ -355,7 +359,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   userRow: {
     flexDirection: 'row',
@@ -363,53 +367,58 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: '#1E293B',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 10,
     overflow: 'hidden',
   },
   avatarImage: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
   },
   avatarText: {
     color: '#4ADE80',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   title: {
     color: '#FFF',
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    flex: 1,
   },
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+    marginLeft: 8,
   },
   unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
     backgroundColor: '#4ADE80',
+  },
+  dismissButton: {
+    padding: 2,
   },
   description: {
     color: '#94A3B8',
     fontSize: 13,
-    marginBottom: 4,
-    lineHeight: 18,
+    marginBottom: 6,
+    lineHeight: 20,
   },
   time: {
     color: '#64748B',
-    fontSize: 11,
+    fontSize: 12,
   },
   emptyContainer: {
-    padding: 32,
+    padding: 40,
     alignItems: 'center',
   },
   emptyText: {
