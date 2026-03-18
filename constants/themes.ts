@@ -1,4 +1,4 @@
-export type ProfileThemeName = 'default' | 'zombie' | 'pink';
+export type ProfileThemeName = 'default' | 'none' | 'zombie' | 'pink';
 
 export interface ProfileThemeTokens {
   isLight: boolean;
@@ -23,6 +23,8 @@ export interface ProfileThemeTokens {
   statsCardIncludesBio: boolean;
   statAlign: 'center' | 'flex-start';
   statNumberFontSize: number;
+  statLabelPill: boolean;
+  hasDripEffect: boolean;
 
   textPrimary: string;
   textHandle: string;
@@ -89,6 +91,8 @@ const DEFAULT_THEME: ProfileThemeTokens = {
   statsCardIncludesBio: false,
   statAlign: 'center',
   statNumberFontSize: 20,
+  statLabelPill: false,
+  hasDripEffect: false,
   textPrimary: '#FFFFFF',
   textHandle: '#62748e',
   statNumberColor: '#FFFFFF',
@@ -132,18 +136,20 @@ const ZOMBIE_THEME: ProfileThemeTokens = {
   navBorderColor: '#35530e4d',
   accent: '#9ae600',
   accentGlow: '#84cc1626',
-  accentDark: '#3c6300',
+  accentDark: '#1a2e00',
   accentMuted: '#7ccf0033',
   accentFaint: '#7ccf000d',
-  cardBg: '#1a1d1a',
-  cardBorder: '#7ccf004d',
-  cardBorderRadius: 16,
+  cardBg: '#111411',
+  cardBorder: '#9ae600',
+  cardBorderRadius: 12,
   statsTopGradient: ['#84cc16', '#000'],
   statLabels: ['Bio-Data', 'Survivors', 'Tracking'],
-  hasStatsGradientBar: true,
+  hasStatsGradientBar: false,
   statsCardIncludesBio: false,
-  statAlign: 'center',
-  statNumberFontSize: 20,
+  statAlign: 'flex-start',
+  statNumberFontSize: 28,
+  statLabelPill: true,
+  hasDripEffect: true,
   textPrimary: '#FFFFFF',
   textHandle: '#62748e',
   statNumberColor: '#9ae600',
@@ -157,7 +163,7 @@ const ZOMBIE_THEME: ProfileThemeTokens = {
   bioBorderColor: '#7ccf00',
   bioBg: '#7ccf000d',
   followBtnBg: '#9ae600',
-  followBtnTextColor: '#3c6300',
+  followBtnTextColor: '#1a2e00',
   followBtnGradient: null,
   iconBtnBg: '#7ccf001a',
   iconBtnBorder: '#7ccf004d',
@@ -167,8 +173,8 @@ const ZOMBIE_THEME: ProfileThemeTokens = {
   tabInactiveBg: '#0f1a2b',
   tabInactiveBorder: '#1d293d',
   avatarBorderColor: '#9ae600',
-  avatarBorderWidth: 2.5,
-  shadowColor: '#84cc16',
+  avatarBorderWidth: 3,
+  shadowColor: '#9ae600',
   statusText: 'System: Online',
   playCircleBg: '#7ccf00',
   dividerColor: '#7ccf0033',
@@ -199,6 +205,8 @@ const PINK_THEME: ProfileThemeTokens = {
   statsCardIncludesBio: false,
   statAlign: 'flex-start',
   statNumberFontSize: 18,
+  statLabelPill: false,
+  hasDripEffect: false,
   textPrimary: '#1d293d',
   textHandle: '#62748e',
   statNumberColor: '#1d293d',
@@ -237,6 +245,7 @@ const PINK_THEME: ProfileThemeTokens = {
 
 export const PROFILE_THEMES: Record<ProfileThemeName, ProfileThemeTokens> = {
   default: DEFAULT_THEME,
+  none: DEFAULT_THEME,
   zombie: ZOMBIE_THEME,
   pink: PINK_THEME,
 };
@@ -250,6 +259,22 @@ export const SELECTABLE_PROFILE_THEMES: {
   preview: string[];
 }[] = [
   {
+    id: 'none',
+    name: 'None',
+    description: 'Default Gamefolio profile look',
+    bg: '#020b12',
+    accent: '#4ADE80',
+    preview: ['#020b12', '#4ADE80', '#00bba7'],
+  },
+  {
+    id: 'zombie',
+    name: 'Zombie',
+    description: 'Zombie apocalypse terminal aesthetic',
+    bg: '#0a0c0a',
+    accent: '#9ae600',
+    preview: ['#0a0c0a', '#9ae600', '#7ccf00'],
+  },
+  {
     id: 'pink',
     name: 'Pink',
     description: 'Rose glass aesthetic with light, frosted card design',
@@ -262,5 +287,6 @@ export const SELECTABLE_PROFILE_THEMES: {
 export function getProfileTheme(themeName?: string | null): ProfileThemeTokens {
   if (themeName === 'zombie') return ZOMBIE_THEME;
   if (themeName === 'pink') return PINK_THEME;
-  return PINK_THEME;
+  if (themeName === 'none' || themeName === 'default' || !themeName) return DEFAULT_THEME;
+  return DEFAULT_THEME;
 }

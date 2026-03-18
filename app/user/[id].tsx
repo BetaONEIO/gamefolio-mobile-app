@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
 import { useMemo } from 'react';
+import Svg, { Path, Ellipse } from 'react-native-svg';
 import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, Mail, Play, Camera, Flag, ChevronLeft, Bell, Upload } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
@@ -23,6 +24,39 @@ import { getProfileTheme, ProfileThemeTokens } from '@/constants/themes';
 const { width } = Dimensions.get('window');
 
 const TABS = ['Clips', 'Reels', 'Screenshots', 'Favorites'];
+
+function ZombieDrip({ cardWidth, color = '#9ae600' }: { cardWidth: number; color?: string }) {
+  const drips = [
+    { x: 32, h: 22, r: 5.5 },
+    { x: 72, h: 14, r: 4 },
+    { x: 118, h: 28, r: 6.5 },
+    { x: 162, h: 17, r: 4.5 },
+    { x: 210, h: 24, r: 5 },
+    { x: 256, h: 13, r: 3.5 },
+    { x: 300, h: 20, r: 5.5 },
+  ].filter(d => d.x + d.r < cardWidth - 4);
+
+  const svgH = 36;
+  return (
+    <Svg
+      width={cardWidth}
+      height={svgH}
+      style={{ position: 'absolute', bottom: -svgH + 2, left: 0 }}
+    >
+      {drips.map((d, i) => {
+        const colH = Math.max(0, d.h - d.r);
+        return (
+          <Path
+            key={i}
+            d={`M ${d.x - d.r} 0 L ${d.x - d.r} ${colH} Q ${d.x - d.r} ${d.h} ${d.x} ${d.h} Q ${d.x + d.r} ${d.h} ${d.x + d.r} ${colH} L ${d.x + d.r} 0 Z`}
+            fill={color}
+            opacity={0.9}
+          />
+        );
+      })}
+    </Svg>
+  );
+}
 
 function createStyles(theme: ProfileThemeTokens) {
   return StyleSheet.create({
@@ -260,17 +294,17 @@ function createStyles(theme: ProfileThemeTokens) {
     statsCard: {
       marginHorizontal: 16,
       marginTop: 14,
-      marginBottom: 4,
+      marginBottom: theme.hasDripEffect ? 28 : 4,
       backgroundColor: theme.cardBg,
-      borderWidth: 0.5,
+      borderWidth: theme.hasDripEffect ? 1.5 : 0.5,
       borderColor: theme.cardBorder,
       borderRadius: theme.cardBorderRadius,
-      overflow: 'hidden',
+      overflow: theme.hasDripEffect ? 'visible' : 'hidden',
       shadowColor: theme.shadowColor,
       shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.15,
-      shadowRadius: 12,
-      elevation: 3,
+      shadowOpacity: theme.hasDripEffect ? 0.6 : 0.15,
+      shadowRadius: theme.hasDripEffect ? 16 : 12,
+      elevation: theme.hasDripEffect ? 8 : 3,
     },
     statsGradientBar: {
       height: 3,
@@ -298,15 +332,16 @@ function createStyles(theme: ProfileThemeTokens) {
       marginBottom: 2,
     },
     statLabel: {
-      color: theme.isLight ? theme.followingLabelColor : (theme.accentDark === '#022c22' ? '#62748e' : theme.accentDark),
-      fontSize: 8,
+      color: theme.isLight ? theme.followingLabelColor : (theme.statLabelPill ? theme.accentDark : (theme.accentDark === '#022c22' ? '#62748e' : theme.accentDark)),
+      fontSize: theme.statLabelPill ? 10 : 8,
       fontWeight: '900',
       textTransform: 'uppercase',
-      letterSpacing: theme.isLight ? 0.8 : 1.5,
+      letterSpacing: theme.isLight ? 0.8 : 1.2,
       backgroundColor: theme.isLight ? 'transparent' : (theme.accent + 'e6'),
-      paddingHorizontal: theme.isLight ? 0 : 6,
-      paddingVertical: theme.isLight ? 0 : 2,
-      borderRadius: 4,
+      paddingHorizontal: theme.statLabelPill ? 10 : (theme.isLight ? 0 : 6),
+      paddingVertical: theme.statLabelPill ? 4 : (theme.isLight ? 0 : 2),
+      borderRadius: theme.statLabelPill ? 100 : 4,
+      overflow: 'hidden',
     },
     statsCardBioSection: {
       borderTopWidth: 0.5,
@@ -919,6 +954,7 @@ export default function PublicProfileScreen() {
   const [isScreenshotModalVisible, setIsScreenshotModalVisible] = useState(false);
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const [onlineTooltipVisible, setOnlineTooltipVisible] = useState(false);
+  const [statsCardWidth, setStatsCardWidth] = useState(0);
 
   const submitReportMutation = useMutation({
     mutationFn: async (reportData: Record<string, unknown>) => {
@@ -1126,7 +1162,10 @@ export default function PublicProfileScreen() {
         </View>
 
         {/* Stats Card */}
-        <View style={styles.statsCard}>
+        <View
+          style={styles.statsCard}
+          onLayout={e => setStatsCardWidth(e.nativeEvent.layout.width)}
+        >
           {theme.hasStatsGradientBar && (
             <LinearGradient
               colors={theme.statsTopGradient}
@@ -1151,6 +1190,9 @@ export default function PublicProfileScreen() {
               <Text style={styles.statLabel}>{statFollowing}</Text>
             </View>
           </View>
+          {theme.hasDripEffect && statsCardWidth > 0 && (
+            <ZombieDrip cardWidth={statsCardWidth} color={theme.accent} />
+          )}
           {isFollowing && (
             <View style={styles.followingBar}>
               <Text style={styles.followingLabel}>FOLLOWING</Text>
