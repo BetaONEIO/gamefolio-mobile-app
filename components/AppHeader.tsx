@@ -206,7 +206,7 @@ function formatNumber(num: number): string {
 export default function AppHeader({ showBackButton = false, onOpenLevelTracker, hideProfile = false, hideUpload = false }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { unreadCount, markAllRead } = useNotifications();
+  const { unreadCount, markAllRead, fetchNotifications } = useNotifications();
   const [isProfileDropdownVisible, setIsProfileDropdownVisible] = useState(false);
   const [isNotificationDropdownVisible, setIsNotificationDropdownVisible] = useState(false);
   const [isUploadDropdownVisible, setIsUploadDropdownVisible] = useState(false);
@@ -599,7 +599,10 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
         visible={isNotificationDropdownVisible}
         onClose={() => setIsNotificationDropdownVisible(false)}
         topOffset={insets.top + 60}
-        onOpen={() => markAllRead()}
+        onOpen={() => {
+          fetchNotifications();
+          markAllRead();
+        }}
       />
 
       <UploadDropdown 

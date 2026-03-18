@@ -264,6 +264,20 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
     if (isAuthenticated) {
       initialize();
       fetchNotifications();
+
+      const pollInterval = setInterval(() => {
+        fetchNotifications();
+      }, 30000);
+
+      return () => {
+        clearInterval(pollInterval);
+        if (notificationListener.current) {
+          notificationListener.current.remove();
+        }
+        if (responseListener.current) {
+          responseListener.current.remove();
+        }
+      };
     } else {
       initializedRef.current = false;
       setNotifications([]);
