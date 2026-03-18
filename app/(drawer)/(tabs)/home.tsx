@@ -6,7 +6,7 @@ import ScrollView from '@/components/ThemedScrollView';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AppHeader from '@/components/AppHeader';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api, Clip, TaggedUser } from '@/lib/api';
+import { api, Clip, Screenshot, TaggedUser } from '@/lib/api';
 import { shortenGameName, truncateTitle } from '@/constants/formatters';
 import { useAuth } from '@/context/AuthContext';
 import { useUser } from '@/context/UserContext';
@@ -234,6 +234,18 @@ export default function HomeScreen() {
   });
 
 
+
+  const { data: latestScreenshots = [], isLoading: isLoadingScreenshots } = useQuery<Screenshot[]>({
+    queryKey: ['screenshots', 'latest'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      try {
+        return await api.screenshots.getTrending({ period: 'recent', limit: 20 }, token || undefined);
+      } catch {
+        return [];
+      }
+    },
+  });
 
   const { data: latestUploads = [] } = useQuery<LatestUpload[]>({
     queryKey: ['recent-uploads'],
@@ -534,100 +546,104 @@ export default function HomeScreen() {
         {/* Hero Banner */}
         <HeroBanner />
 
-        {/* Featured Clips with Toggle */}
-        <View style={styles.sectionHeader}>
-          <Video size={20} color="#4ADE80" />
-          <Text style={styles.sectionTitle}>Recommended for You</Text>
-        </View>
+        {/* Featured Clips with Toggle — logged-in only */}
+        {user ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <Video size={20} color="#4ADE80" />
+              <Text style={styles.sectionTitle}>Recommended for You</Text>
+            </View>
 
-        {/* Tabs Toggle */}
-        <View style={styles.tabsContainer}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'clips' && styles.activeTabButton]}
-            onPress={() => setActiveTab('clips')}
-          >
-            <Video size={16} color={activeTab === 'clips' ? '#002E15' : '#94A3B8'} />
-            <Text style={[styles.tabText, activeTab === 'clips' && styles.activeTabText]}>Clips</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'reels' && styles.activeTabButton]}
-            onPress={() => setActiveTab('reels')}
-          >
-            <Video size={16} color={activeTab === 'reels' ? '#002E15' : '#94A3B8'} />
-            <Text style={[styles.tabText, activeTab === 'reels' && styles.activeTabText]}>Reels</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Horizontal Carousel */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.clipsList}
-        >
-          {(activeTab === 'clips' ? isLoadingRecommended : isLoadingReels) ? (
-            renderLoadingState()
-          ) : activeClips.length === 0 ? (
-            renderEmptyState(`No ${activeTab} available`)
-          ) : (
-            activeClips.map((clip, index) => (
-              <TouchableOpacity 
-                key={clip.id} 
-                style={activeTab === 'clips' ? styles.featuredClipCard : styles.featuredReelCard}
-                onPress={() => {
-                  if (activeTab === 'reels') {
-                    openReelsViewer(index);
-                  } else {
-                    router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString() } });
-                  }
-                }}
+            {/* Tabs Toggle */}
+            <View style={styles.tabsContainer}>
+              <TouchableOpacity
+                style={[styles.tabButton, activeTab === 'clips' && styles.activeTabButton]}
+                onPress={() => setActiveTab('clips')}
               >
-                <ImageBackground
-                  source={{ uri: getClipThumbnail(clip, activeTab === 'reels') }}
-                  style={activeTab === 'clips' ? styles.featuredClipThumbnail : styles.featuredReelThumbnail}
-                  imageStyle={{ borderRadius: 16 }}
-                >
-                  <View style={styles.latestClipOverlay}>
-                    <View style={styles.latestClipTopStats}>
-                      <View style={styles.statsBadge}>
-                        <Text style={styles.statsText}>{formatDuration(clip.duration)}</Text>
-                        <View style={styles.statsDivider} />
-                        <Eye size={12} color="#FFF" />
-                        <Text style={styles.statsText}>{formatViews(clip.views)}</Text>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.latestClipInfo}>
-                      <Text style={activeTab === 'clips' ? styles.latestClipTitle : styles.reelTitle} numberOfLines={1} ellipsizeMode="tail">{truncateTitle(clip.title)}</Text>
-                      <TouchableOpacity onPress={(e) => {
-                        e.stopPropagation();
-                        router.push({ pathname: '/user/[id]', params: { id: clip.user.id.toString() } });
-                      }}>
-                        <Text style={styles.latestClipUser}>@{clip.user.username}</Text>
-                      </TouchableOpacity>
-                      {clip.taggedUsers && clip.taggedUsers.length > 0 && (
-                        <Text style={styles.taggedUsersText} numberOfLines={1}>
-                          with {clip.taggedUsers.map((u: TaggedUser) => `@${u.username}`).join(', ')}
-                        </Text>
-                      )}
-                      {clip.game && (
-                        <TouchableOpacity
-                          style={styles.gameTag}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            router.push({ pathname: '/game/[id]', params: { id: clip.game.id.toString() } });
-                          }}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.gameTagText}>{shortenGameName(clip.game.name)}</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </View>
-                </ImageBackground>
+                <Video size={16} color={activeTab === 'clips' ? '#002E15' : '#94A3B8'} />
+                <Text style={[styles.tabText, activeTab === 'clips' && styles.activeTabText]}>Clips</Text>
               </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
+              <TouchableOpacity
+                style={[styles.tabButton, activeTab === 'reels' && styles.activeTabButton]}
+                onPress={() => setActiveTab('reels')}
+              >
+                <Video size={16} color={activeTab === 'reels' ? '#002E15' : '#94A3B8'} />
+                <Text style={[styles.tabText, activeTab === 'reels' && styles.activeTabText]}>Reels</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Horizontal Carousel */}
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.clipsList}
+            >
+              {(activeTab === 'clips' ? isLoadingRecommended : isLoadingReels) ? (
+                renderLoadingState()
+              ) : activeClips.length === 0 ? (
+                renderEmptyState(`No ${activeTab} available`)
+              ) : (
+                activeClips.map((clip, index) => (
+                  <TouchableOpacity 
+                    key={clip.id} 
+                    style={activeTab === 'clips' ? styles.featuredClipCard : styles.featuredReelCard}
+                    onPress={() => {
+                      if (activeTab === 'reels') {
+                        openReelsViewer(index);
+                      } else {
+                        router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString() } });
+                      }
+                    }}
+                  >
+                    <ImageBackground
+                      source={{ uri: getClipThumbnail(clip, activeTab === 'reels') }}
+                      style={activeTab === 'clips' ? styles.featuredClipThumbnail : styles.featuredReelThumbnail}
+                      imageStyle={{ borderRadius: 16 }}
+                    >
+                      <View style={styles.latestClipOverlay}>
+                        <View style={styles.latestClipTopStats}>
+                          <View style={styles.statsBadge}>
+                            <Text style={styles.statsText}>{formatDuration(clip.duration)}</Text>
+                            <View style={styles.statsDivider} />
+                            <Eye size={12} color="#FFF" />
+                            <Text style={styles.statsText}>{formatViews(clip.views)}</Text>
+                          </View>
+                        </View>
+                        
+                        <View style={styles.latestClipInfo}>
+                          <Text style={activeTab === 'clips' ? styles.latestClipTitle : styles.reelTitle} numberOfLines={1} ellipsizeMode="tail">{truncateTitle(clip.title)}</Text>
+                          <TouchableOpacity onPress={(e) => {
+                            e.stopPropagation();
+                            router.push({ pathname: '/user/[id]', params: { id: clip.user.id.toString() } });
+                          }}>
+                            <Text style={styles.latestClipUser}>@{clip.user.username}</Text>
+                          </TouchableOpacity>
+                          {clip.taggedUsers && clip.taggedUsers.length > 0 && (
+                            <Text style={styles.taggedUsersText} numberOfLines={1}>
+                              with {clip.taggedUsers.map((u: TaggedUser) => `@${u.username}`).join(', ')}
+                            </Text>
+                          )}
+                          {clip.game && (
+                            <TouchableOpacity
+                              style={styles.gameTag}
+                              onPress={(e) => {
+                                e.stopPropagation();
+                                router.push({ pathname: '/game/[id]', params: { id: clip.game.id.toString() } });
+                              }}
+                              activeOpacity={0.7}
+                            >
+                              <Text style={styles.gameTagText}>{shortenGameName(clip.game.name)}</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    </ImageBackground>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          </>
+        ) : null}
 
         {/* Latest Clips Section */}
         <View style={styles.sectionHeaderWithAction}>
@@ -768,6 +784,73 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
+
+        {/* Latest Screenshots Section */}
+        <View style={styles.sectionHeaderWithAction}>
+          <View style={styles.sectionHeaderLeft}>
+            <Camera size={20} color="#4ADE80" />
+            <Text style={styles.sectionTitle}>Latest Screenshots</Text>
+          </View>
+        </View>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.clipsList}
+        >
+          {isLoadingScreenshots ? (
+            renderLoadingState()
+          ) : latestScreenshots.length === 0 ? (
+            renderEmptyState('No screenshots uploaded yet')
+          ) : (
+            latestScreenshots.map((shot) => (
+              <TouchableOpacity
+                key={shot.id}
+                style={styles.screenshotCard}
+                onPress={() => {
+                  if (shot.user?.id) {
+                    router.push({ pathname: '/user/[id]', params: { id: shot.user.id.toString() } });
+                  }
+                }}
+              >
+                <ImageBackground
+                  source={{ uri: shot.imageUrl || shot.thumbnailUrl }}
+                  style={styles.screenshotThumbnail}
+                  imageStyle={{ borderRadius: 16 }}
+                >
+                  <View style={styles.latestClipOverlay}>
+                    <View style={styles.latestClipTopStats}>
+                      <View style={styles.statsBadge}>
+                        <Eye size={12} color="#FFF" />
+                        <Text style={styles.statsText}>{formatViews(shot.views)}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.latestClipInfo}>
+                      <Text style={styles.latestClipTitle} numberOfLines={1} ellipsizeMode="tail">
+                        {shot.title}
+                      </Text>
+                      {shot.user ? (
+                        <Text style={styles.latestClipUser}>@{shot.user.username}</Text>
+                      ) : null}
+                      {shot.game ? (
+                        <TouchableOpacity
+                          style={styles.gameTag}
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            router.push({ pathname: '/game/[id]', params: { id: shot.game!.id.toString() } });
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.gameTagText}>{shortenGameName(shot.game.name)}</Text>
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  </View>
+                </ImageBackground>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
 
         {/* Extra space for scrolling */}
         <View style={{ height: 20 }} />
@@ -1073,6 +1156,18 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 16,
     backgroundColor: '#1E293B',
+  },
+  screenshotCard: {
+    width: 240,
+    height: 180,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#1E293B',
+  },
+  screenshotThumbnail: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'space-between',
   },
   reelPreviewCard: {
     width: 155,
