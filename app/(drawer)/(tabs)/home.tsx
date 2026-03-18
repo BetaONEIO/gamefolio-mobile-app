@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronRight, Eye, Video, VideoOff, Film, X, Upload, Camera } from 'lucide-react-native';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { ImageBackground, StyleSheet, Text, TouchableOpacity, View, Modal, FlatList, Dimensions, StatusBar, ViewToken, Keyboard, Animated } from 'react-native';
+import { ImageBackground, StyleSheet, Text, TouchableOpacity, View, Modal, FlatList, Dimensions, StatusBar, ViewToken, Keyboard, Animated, useWindowDimensions } from 'react-native';
 import ScrollView from '@/components/ThemedScrollView';
 import { useRouter, useFocusEffect } from 'expo-router';
 import AppHeader from '@/components/AppHeader';
@@ -18,7 +18,8 @@ import type { ReelData, Comment } from '@/components/ReelViewer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+// Keep a static fallback for getItemLayout initialisation; overridden inside the component
+const { height: INITIAL_SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface LatestUpload {
   clipId: number;
@@ -111,6 +112,29 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const reelsFlatListRef = useRef<FlatList>(null);
+
+  // Responsive dimensions — recalculate on orientation change
+  const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = useWindowDimensions();
+  const isTablet = SCREEN_WIDTH >= 600;
+  const contentPadding = isTablet ? 24 : 16;
+
+  // Landscape clip/screenshot cards (16:10 ratio)
+  const clipCardWidth = isTablet
+    ? Math.round(SCREEN_WIDTH * 0.44)
+    : Math.round(SCREEN_WIDTH * 0.72);
+  const clipCardHeight = Math.round(clipCardWidth * 0.6);
+
+  // Portrait reel cards (9:16 ratio)
+  const reelCardWidth = isTablet
+    ? Math.round(SCREEN_WIDTH * 0.22)
+    : Math.round(SCREEN_WIDTH * 0.40);
+  const reelCardHeight = Math.round(reelCardWidth * 1.75);
+
+  // Screenshot cards (4:3 ratio)
+  const screenshotCardWidth = isTablet
+    ? Math.round(SCREEN_WIDTH * 0.40)
+    : Math.round(SCREEN_WIDTH * 0.65);
+  const screenshotCardHeight = Math.round(screenshotCardWidth * 0.68);
 
   useFocusEffect(
     useCallback(() => {
@@ -441,7 +465,7 @@ export default function HomeScreen() {
     length: SCREEN_HEIGHT,
     offset: SCREEN_HEIGHT * index,
     index,
-  }), []);
+  }), [SCREEN_HEIGHT]);
 
   const openReelsViewer = useCallback((startIndex: number = 0) => {
     setActiveReelIndex(startIndex);
@@ -483,17 +507,17 @@ export default function HomeScreen() {
 
   const activeClips = activeTab === 'clips' ? recommendedClips : latestReels;
 
-  const renderEmptyState = (message: string) => (
-    <View style={styles.emptyState}>
+  const renderEmptyState = (message: string, w = clipCardWidth, h = clipCardHeight) => (
+    <View style={[styles.emptyState, { width: w, height: h }]}>
       <VideoOff size={32} color="#475569" />
       <Text style={styles.emptyStateText}>{message}</Text>
     </View>
   );
 
-  const renderLoadingState = () => (
+  const renderLoadingState = (w = clipCardWidth, h = clipCardHeight) => (
     <View style={styles.loadingState}>
-      <View style={styles.loadingCard} />
-      <View style={styles.loadingCard} />
+      <View style={[styles.loadingCard, { width: w, height: h }]} />
+      <View style={[styles.loadingCard, { width: w, height: h }]} />
     </View>
   );
 
@@ -540,7 +564,7 @@ export default function HomeScreen() {
 
       <ScrollView 
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.content, { paddingBottom: 100 }]}
+        contentContainerStyle={[styles.content, { paddingHorizontal: contentPadding, paddingBottom: 100 }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Banner */}
@@ -576,17 +600,26 @@ export default function HomeScreen() {
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.clipsList}
+              contentContainerStyle={[styles.clipsList, { paddingLeft: contentPadding, paddingRight: contentPadding, marginLeft: -contentPadding }]}
             >
               {(activeTab === 'clips' ? isLoadingRecommended : isLoadingReels) ? (
-                renderLoadingState()
+                renderLoadingState(
+                  activeTab === 'clips' ? clipCardWidth : reelCardWidth,
+                  activeTab === 'clips' ? clipCardHeight : reelCardHeight,
+                )
               ) : activeClips.length === 0 ? (
-                renderEmptyState(`No ${activeTab} available`)
+                renderEmptyState(
+                  `No ${activeTab} available`,
+                  activeTab === 'clips' ? clipCardWidth : reelCardWidth,
+                  activeTab === 'clips' ? clipCardHeight : reelCardHeight,
+                )
               ) : (
                 activeClips.map((clip, index) => (
                   <TouchableOpacity 
                     key={clip.id} 
-                    style={activeTab === 'clips' ? styles.featuredClipCard : styles.featuredReelCard}
+                    style={activeTab === 'clips'
+                      ? [styles.featuredClipCard, { width: clipCardWidth, height: clipCardHeight }]
+                      : [styles.featuredReelCard, { width: reelCardWidth, height: reelCardHeight }]}
                     onPress={() => {
                       if (activeTab === 'reels') {
                         openReelsViewer(index);
@@ -657,12 +690,12 @@ export default function HomeScreen() {
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.clipsList}
+          contentContainerStyle={[styles.clipsList, { paddingLeft: contentPadding, paddingRight: contentPadding, marginLeft: -contentPadding }]}
         >
           {isLoadingLatest ? renderLoadingState() : latestClips.length === 0 ? renderEmptyState('No clips uploaded yet') : latestClips.map((clip) => (
             <TouchableOpacity 
               key={clip.id} 
-              style={styles.latestClipCard}
+              style={[styles.latestClipCard, { width: clipCardWidth, height: clipCardHeight }]}
               onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString() } })}
             >
               <ImageBackground
@@ -730,12 +763,12 @@ export default function HomeScreen() {
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.clipsList}
+          contentContainerStyle={[styles.clipsList, { paddingLeft: contentPadding, paddingRight: contentPadding, marginLeft: -contentPadding }]}
         >
-          {isLoadingReels ? renderLoadingState() : latestReels.length === 0 ? renderEmptyState('No reels uploaded yet') : latestReels.slice(0, 10).map((reel, index) => (
+          {isLoadingReels ? renderLoadingState(reelCardWidth, reelCardHeight) : latestReels.length === 0 ? renderEmptyState('No reels uploaded yet', reelCardWidth, reelCardHeight) : latestReels.slice(0, 10).map((reel, index) => (
             <TouchableOpacity 
               key={reel.id} 
-              style={styles.reelPreviewCard}
+              style={[styles.reelPreviewCard, { width: reelCardWidth, height: reelCardHeight }]}
               onPress={() => openReelsViewer(index)}
             >
               <ImageBackground
@@ -796,17 +829,17 @@ export default function HomeScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.clipsList}
+          contentContainerStyle={[styles.clipsList, { paddingLeft: contentPadding, paddingRight: contentPadding, marginLeft: -contentPadding }]}
         >
           {isLoadingScreenshots ? (
-            renderLoadingState()
+            renderLoadingState(screenshotCardWidth, screenshotCardHeight)
           ) : latestScreenshots.length === 0 ? (
-            renderEmptyState('No screenshots uploaded yet')
+            renderEmptyState('No screenshots uploaded yet', screenshotCardWidth, screenshotCardHeight)
           ) : (
             latestScreenshots.map((shot) => (
               <TouchableOpacity
                 key={shot.id}
-                style={styles.screenshotCard}
+                style={[styles.screenshotCard, { width: screenshotCardWidth, height: screenshotCardHeight }]}
                 onPress={() => {
                   if (shot.user?.id) {
                     router.push({ pathname: '/user/[id]', params: { id: shot.user.id.toString() } });
@@ -911,7 +944,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F1520',
   },
   content: {
-    paddingHorizontal: 16,
+    // paddingHorizontal is set dynamically via inline style (contentPadding)
   },
   heroContainer: {
     height: 400, // Large hero image
@@ -990,14 +1023,10 @@ const styles = StyleSheet.create({
   },
   clipsList: {
     gap: 16,
-    paddingRight: 16,
-    paddingLeft: 16,
-    marginLeft: -16,
+    // paddingLeft/paddingRight/marginLeft set dynamically via inline styles
     marginBottom: 20,
   },
   featuredClipCard: {
-    width: 280,
-    height: 180,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1E293B',
@@ -1008,8 +1037,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   featuredReelCard: {
-    width: 155,
-    height: 275,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1E293B',
@@ -1041,8 +1068,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   latestClipCard: {
-    width: 280,
-    height: 180,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1E293B',
@@ -1134,8 +1159,6 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   emptyState: {
-    width: 280,
-    height: 180,
     borderRadius: 16,
     backgroundColor: '#1E293B',
     justifyContent: 'center',
@@ -1152,14 +1175,10 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   loadingCard: {
-    width: 280,
-    height: 180,
     borderRadius: 16,
     backgroundColor: '#1E293B',
   },
   screenshotCard: {
-    width: 240,
-    height: 180,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1E293B',
@@ -1170,8 +1189,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   reelPreviewCard: {
-    width: 155,
-    height: 275,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1E293B',
