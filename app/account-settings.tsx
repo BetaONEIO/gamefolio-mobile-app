@@ -321,21 +321,6 @@ export default function AccountSettings() {
                   </View>
                 </View>
 
-                <View style={styles.divider} />
-
-                <View style={styles.redeemSection}>
-                  <Text style={styles.sectionHeader}>Redeem Code</Text>
-                  <Text style={styles.redeemDescription}>
-                    Have a promotional code? Redeem it here to unlock exclusive rewards, badges, and items.
-                  </Text>
-                  <TouchableOpacity 
-                    style={styles.redeemButton}
-                    onPress={() => setShowRedeemModal(true)}
-                  >
-                    <Ticket size={18} color="#FFF" />
-                    <Text style={styles.redeemButtonText}>Redeem a Code</Text>
-                  </TouchableOpacity>
-                </View>
               </View>
             )}
 
