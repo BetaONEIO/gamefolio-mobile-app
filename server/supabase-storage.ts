@@ -199,8 +199,9 @@ export class SupabaseStorage {
       // Read file buffer
       const fileBuffer = await readFile(file.path);
 
-      // Upload to Supabase
-      const { data, error } = await this.supabase.storage
+      // Upload to Supabase using admin client for private bucket access
+      const adminClient = this.supabaseAdmin || this.supabase;
+      const { data, error } = await adminClient.storage
         .from(this.bucketName)
         .upload(filePath, fileBuffer, {
           contentType: file.mimetype,
@@ -213,13 +214,20 @@ export class SupabaseStorage {
         throw error;
       }
 
-      // Get public URL
+      // Generate a signed URL for private bucket access
+      const isGif = filePath.toLowerCase().endsWith('.gif');
+      const signOptions = isGif ? { download: false } : undefined;
+      const { data: signedData, error: signError } = await adminClient.storage
+        .from(this.bucketName)
+        .createSignedUrl(filePath, 3600, signOptions);
+
+      // Fall back to public URL format (used as storage key in DB, signed at read time)
       const { data: { publicUrl } } = this.supabase.storage
         .from(this.bucketName)
         .getPublicUrl(filePath);
 
       return {
-        url: publicUrl,
+        url: publicUrl, // Store public URL pattern in DB; sign at read time
         path: filePath
       };
     } catch (error) {
@@ -242,8 +250,9 @@ export class SupabaseStorage {
       const generatedFilename = this.generateFilename(filename, type);
       const filePath = `users/${userId}/${generatedFilename}`;
 
-      // Upload to Supabase
-      const { data, error } = await this.supabase.storage
+      // Upload to Supabase using admin client for private bucket access
+      const adminClient = this.supabaseAdmin || this.supabase;
+      const { data, error } = await adminClient.storage
         .from(this.bucketName)
         .upload(filePath, buffer, {
           contentType,
@@ -256,7 +265,7 @@ export class SupabaseStorage {
         throw error;
       }
 
-      // Get public URL
+      // Store public URL pattern in DB; it will be signed at read time via generateSignedUrl
       const { data: { publicUrl } } = this.supabase.storage
         .from(this.bucketName)
         .getPublicUrl(filePath);

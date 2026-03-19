@@ -35,8 +35,21 @@ export const [UserProvider, useUser] = createContextHook(() => {
         }
         if (storedToken) {
           setAuthToken(storedToken);
-        }
-        if (storedUser) {
+          // Restore cached user immediately for fast UI, then refresh from server
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
+          }
+          // Always re-fetch from server to get fresh signed URLs (private bucket)
+          try {
+            const freshData = await api.auth.getUser(storedToken);
+            if (freshData?.user) {
+              setUser(freshData.user);
+              await AsyncStorage.setItem(USER_DATA_KEY, JSON.stringify(freshData.user));
+            }
+          } catch (refreshError) {
+            console.warn('[UserContext] Could not refresh user from server:', refreshError);
+          }
+        } else if (storedUser) {
           setUser(JSON.parse(storedUser));
         }
       } catch (error) {

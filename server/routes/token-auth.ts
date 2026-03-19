@@ -6,6 +6,7 @@ import { StreakService } from '../streak-service';
 import { getDemoUser } from '../demo-user';
 import { scrypt, timingSafeEqual, randomBytes } from 'crypto';
 import { promisify } from 'util';
+import { supabaseStorage } from '../supabase-storage';
 
 const scryptAsync = promisify(scrypt);
 const router = Router();
@@ -128,11 +129,22 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
     const tokens = JWTService.generateTokenPair(userToReturn);
     const { password: _, ...userWithoutPassword } = userToReturn;
 
+    // Sign avatar/banner URLs for private bucket access
+    const [signedAvatarUrl, signedBannerUrl] = await Promise.all([
+      userWithoutPassword.avatarUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.avatarUrl, 3600) : Promise.resolve(null),
+      userWithoutPassword.bannerUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.bannerUrl, 3600) : Promise.resolve(null),
+    ]);
+    const signedUserData = {
+      ...userWithoutPassword,
+      avatarUrl: signedAvatarUrl || userWithoutPassword.avatarUrl,
+      bannerUrl: signedBannerUrl || userWithoutPassword.bannerUrl,
+    };
+
     // Return tokens and user data
     const response = {
       ...tokens,
       user: streakInfo ? {
-        ...userWithoutPassword,
+        ...signedUserData,
         streakInfo: {
           currentStreak: streakInfo.currentStreak,
           bonusAwarded: streakInfo.bonusAwarded,
@@ -142,7 +154,7 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
           message: streakInfo.message,
           isNewMilestone: streakInfo.isNewMilestone,
         },
-      } : userWithoutPassword,
+      } : signedUserData,
     };
 
     return res.json(response);

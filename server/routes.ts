@@ -1650,6 +1650,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const freshUser = await storage.getUserById((req.user as any).id);
       if (freshUser) {
         const { password, ...userWithoutPassword } = freshUser as any;
+        const [signedAvatarUrl, signedBannerUrl] = await Promise.all([
+          userWithoutPassword.avatarUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.avatarUrl, 3600) : Promise.resolve(null),
+          userWithoutPassword.bannerUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.bannerUrl, 3600) : Promise.resolve(null),
+        ]);
         return res.json({
           id: userWithoutPassword.id,
           username: userWithoutPassword.username,
@@ -1657,11 +1661,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailVerified: userWithoutPassword.emailVerified || false,
           profilePictureUrl: userWithoutPassword.profilePictureUrl,
           bio: userWithoutPassword.bio,
-          bannerUrl: userWithoutPassword.bannerUrl,
+          bannerUrl: signedBannerUrl || userWithoutPassword.bannerUrl,
           displayName: userWithoutPassword.displayName,
           backgroundColor: userWithoutPassword.backgroundColor,
           accentColor: userWithoutPassword.accentColor,
-          avatarUrl: userWithoutPassword.avatarUrl,
+          avatarUrl: signedAvatarUrl || userWithoutPassword.avatarUrl,
           createdAt: userWithoutPassword.createdAt,
           userType: userWithoutPassword.userType,
           ageRange: userWithoutPassword.ageRange,
@@ -1707,6 +1711,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fallbackUser = await storage.getUserById((req.user as any).id);
       if (fallbackUser) {
         const { password: pw, ...fallbackWithoutPassword } = fallbackUser as any;
+        const [fbSignedAvatarUrl, fbSignedBannerUrl] = await Promise.all([
+          fallbackWithoutPassword.avatarUrl ? supabaseStorage.convertToSignedUrl(fallbackWithoutPassword.avatarUrl, 3600) : Promise.resolve(null),
+          fallbackWithoutPassword.bannerUrl ? supabaseStorage.convertToSignedUrl(fallbackWithoutPassword.bannerUrl, 3600) : Promise.resolve(null),
+        ]);
         return res.json({
           id: fallbackWithoutPassword.id,
           username: fallbackWithoutPassword.username,
@@ -1714,11 +1722,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailVerified: fallbackWithoutPassword.emailVerified || false,
           profilePictureUrl: fallbackWithoutPassword.profilePictureUrl,
           bio: fallbackWithoutPassword.bio,
-          bannerUrl: fallbackWithoutPassword.bannerUrl,
+          bannerUrl: fbSignedBannerUrl || fallbackWithoutPassword.bannerUrl,
           displayName: fallbackWithoutPassword.displayName,
           backgroundColor: fallbackWithoutPassword.backgroundColor,
           accentColor: fallbackWithoutPassword.accentColor,
-          avatarUrl: fallbackWithoutPassword.avatarUrl,
+          avatarUrl: fbSignedAvatarUrl || fallbackWithoutPassword.avatarUrl,
           createdAt: fallbackWithoutPassword.createdAt,
           userType: fallbackWithoutPassword.userType,
           ageRange: fallbackWithoutPassword.ageRange,
@@ -1760,6 +1768,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Last resort: use session data
     const { password, ...userWithoutPassword } = req.user as any;
+    const [lrSignedAvatarUrl, lrSignedBannerUrl] = await Promise.all([
+      userWithoutPassword.avatarUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.avatarUrl, 3600) : Promise.resolve(null),
+      userWithoutPassword.bannerUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.bannerUrl, 3600) : Promise.resolve(null),
+    ]);
     return res.json({
       id: userWithoutPassword.id,
       username: userWithoutPassword.username,
@@ -1767,11 +1779,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       emailVerified: userWithoutPassword.emailVerified || false,
       profilePictureUrl: userWithoutPassword.profilePictureUrl,
       bio: userWithoutPassword.bio,
-      bannerUrl: userWithoutPassword.bannerUrl,
+      bannerUrl: lrSignedBannerUrl || userWithoutPassword.bannerUrl,
       displayName: userWithoutPassword.displayName,
       backgroundColor: userWithoutPassword.backgroundColor,
       accentColor: userWithoutPassword.accentColor,
-      avatarUrl: userWithoutPassword.avatarUrl,
+      avatarUrl: lrSignedAvatarUrl || userWithoutPassword.avatarUrl,
       createdAt: userWithoutPassword.createdAt,
       userType: userWithoutPassword.userType,
       ageRange: userWithoutPassword.ageRange,
@@ -2877,9 +2889,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User stats not found" });
       }
 
-      // Remove password from response
+      // Remove password from response and sign media URLs for private bucket
       const { password, ...userWithoutPassword } = userWithStats;
-      res.json(userWithoutPassword);
+      const [signedAvatarUrl, signedBannerUrl] = await Promise.all([
+        userWithoutPassword.avatarUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.avatarUrl, 3600) : Promise.resolve(null),
+        userWithoutPassword.bannerUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.bannerUrl, 3600) : Promise.resolve(null),
+      ]);
+      res.json({
+        ...userWithoutPassword,
+        avatarUrl: signedAvatarUrl || userWithoutPassword.avatarUrl,
+        bannerUrl: signedBannerUrl || userWithoutPassword.bannerUrl,
+      });
     } catch (err) {
       console.error("Error fetching user:", err);
       return res.status(500).json({ message: "Error fetching user" });
