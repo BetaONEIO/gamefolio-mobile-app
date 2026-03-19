@@ -274,8 +274,8 @@ export default function ProfileScreen() {
   const profileData = {
     name: user?.displayName || user?.username || 'User',
     handle: user?.username ? `@${user.username}` : '@user',
-    avatar: getEffectiveAvatarUrl(user) || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2670&auto=format&fit=crop',
-    banner: user?.bannerUrl || 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=2671&auto=format&fit=crop',
+    avatar: getEffectiveAvatarUrl(profileStats as any) || getEffectiveAvatarUrl(user) || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2670&auto=format&fit=crop',
+    banner: (profileStats as any)?.bannerUrl || user?.bannerUrl || 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=2671&auto=format&fit=crop',
     level: user?.level || 1,
     totalXP: user?.totalXP || 0,
     verified: user?.emailVerified || false,

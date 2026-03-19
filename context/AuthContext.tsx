@@ -266,15 +266,36 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
               setUser(cachedUser);
 
               // Fetch fresh user data from backend to keep level/XP/etc current
+              let activeUser = cachedUser;
               try {
                 const freshData = await api.auth.getUser(tokens.accessToken);
                 if (!cancelled && mountedRef.current && freshData.user) {
                   console.log('[Auth] Refreshed user data from backend - Level:', freshData.user.level, 'XP:', freshData.user.totalXP);
+                  activeUser = freshData.user;
                   setUser(freshData.user);
                   await secureStorage.setItem(USER_DATA_KEY, JSON.stringify(freshData.user));
                 }
               } catch (e) {
                 console.log('[Auth] Could not refresh user data, using cached:', e);
+              }
+
+              // If avatar/banner still missing, fetch from public profile endpoint (returns signed URLs)
+              if (!cancelled && mountedRef.current && activeUser.username && (!activeUser.avatarUrl || !activeUser.bannerUrl)) {
+                try {
+                  const profileData = await api.users.getProfile(activeUser.username);
+                  if (!cancelled && mountedRef.current && profileData?.user) {
+                    const updated = {
+                      ...activeUser,
+                      avatarUrl: activeUser.avatarUrl || profileData.user.avatarUrl || null,
+                      bannerUrl: activeUser.bannerUrl || profileData.user.bannerUrl || null,
+                    };
+                    console.log('[Auth] Updated avatar/banner from public profile:', updated.avatarUrl ? 'has avatar' : 'no avatar');
+                    setUser(updated);
+                    await secureStorage.setItem(USER_DATA_KEY, JSON.stringify(updated));
+                  }
+                } catch (e) {
+                  console.log('[Auth] Could not fetch public profile for avatar:', e);
+                }
               }
 
               // Load and sync tokens for uploads - use stored Gamefolio tokens or fall back to main tokens
