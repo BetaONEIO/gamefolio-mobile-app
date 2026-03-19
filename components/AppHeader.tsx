@@ -351,12 +351,14 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
             style={styles.iconButton}
             onPress={() => setIsNotificationDropdownVisible(true)}
           >
-            {unreadCount > 0 ? (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-              </View>
-            ) : null}
-            <Bell size={24} color="#FFF" />
+            <View style={styles.bellWrapper}>
+              <Bell size={24} color="#FFF" />
+              {unreadCount > 0 ? (
+                <View style={[styles.notificationBadge, unreadCount > 9 ? styles.notificationBadgeWide : null]}>
+                  <Text style={styles.notificationText} numberOfLines={1}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                </View>
+              ) : null}
+            </View>
           </TouchableOpacity>
 
           {!hideUpload && (
@@ -636,26 +638,37 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 8,
-    position: 'relative',
+    overflow: 'visible',
+  },
+  bellWrapper: {
+    width: 24,
+    height: 24,
+    overflow: 'visible',
   },
   notificationBadge: {
     position: 'absolute',
-    top: 4,
-    right: 4,
+    top: -6,
+    right: -6,
     backgroundColor: '#4ADE80',
-    width: 16,
+    minWidth: 16,
     height: 16,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
+    paddingHorizontal: 3,
+    zIndex: 10,
     borderWidth: 1.5,
     borderColor: '#0F1520',
+  },
+  notificationBadgeWide: {
+    minWidth: 20,
+    borderRadius: 9,
   },
   notificationText: {
     color: '#002E15',
     fontSize: 10,
     fontWeight: 'bold' as const,
+    lineHeight: 12,
   },
   addButton: {
     width: 40,
