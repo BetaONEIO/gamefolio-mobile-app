@@ -1,8 +1,9 @@
 import { useAuth } from '@/context/AuthContext';
 import { useUser } from '@/context/UserContext';
 import { useRevenueCat } from '@/context/RevenueCatContext';
-import { getEffectiveAvatarUrl } from '@/lib/api';
+import { api, getEffectiveAvatarUrl } from '@/lib/api';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter, usePathname } from 'expo-router';
 import { 
   X, 
@@ -63,12 +64,23 @@ type NavItemProps = {
   };
 
 export default function CustomDrawerContent(props: DrawerContentComponentProps) {
-  const { user, logout: authLogout } = useAuth();
+  const { user, logout: authLogout, getAccessToken } = useAuth();
   const { favoriteGames, logout: userLogout } = useUser();
   const { isPro, logoutFromRevenueCat } = useRevenueCat();
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+
+  const { data: selfProfile } = useQuery({
+    queryKey: ['/api/users', user?.username, 'profile'],
+    queryFn: async () => {
+      if (!user?.username) return null;
+      const token = await getAccessToken();
+      return api.users.getProfile(user.username, token ?? undefined);
+    },
+    enabled: !!user?.username,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const [contentHeight, setContentHeight] = useState(0);
   const [visibleHeight, setVisibleHeight] = useState(0);
@@ -119,7 +131,7 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
         >
           <View style={styles.avatarContainer}>
             <Image 
-              source={{ uri: getEffectiveAvatarUrl(user) || 'https://images.unsplash.com/photo-1642436855380-00dccba82294?w=400&auto=format&fit=crop&q=60' }}
+              source={{ uri: getEffectiveAvatarUrl(selfProfile?.user) || getEffectiveAvatarUrl(user) || 'https://images.unsplash.com/photo-1642436855380-00dccba82294?w=400&auto=format&fit=crop&q=60' }}
               style={styles.avatar}
             />
           </View>

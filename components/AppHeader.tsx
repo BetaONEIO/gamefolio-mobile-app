@@ -12,7 +12,7 @@ import UploadDropdown from '@/components/UploadDropdown';
 import { Env } from '@/constants/Env';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationsContext';
-import { getEffectiveAvatarUrl } from '@/lib/api';
+import { api, getEffectiveAvatarUrl } from '@/lib/api';
 
 interface AppHeaderProps {
   showBackButton?: boolean;
@@ -205,8 +205,19 @@ function formatNumber(num: number): string {
 
 export default function AppHeader({ showBackButton = false, onOpenLevelTracker, hideProfile = false, hideUpload = false }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const { unreadCount, markAllRead, fetchNotifications } = useNotifications();
+
+  const { data: selfProfile } = useQuery({
+    queryKey: ['/api/users', user?.username, 'profile'],
+    queryFn: async () => {
+      if (!user?.username) return null;
+      const token = await getAccessToken();
+      return api.users.getProfile(user.username, token ?? undefined);
+    },
+    enabled: !!user?.username,
+    staleTime: 5 * 60 * 1000,
+  });
   const [isProfileDropdownVisible, setIsProfileDropdownVisible] = useState(false);
   const [isNotificationDropdownVisible, setIsNotificationDropdownVisible] = useState(false);
   const [isUploadDropdownVisible, setIsUploadDropdownVisible] = useState(false);
@@ -377,7 +388,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
               activeOpacity={1}
             >
               <Image 
-                source={{ uri: getEffectiveAvatarUrl(user) || 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=100&auto=format&fit=crop' }} 
+                source={{ uri: getEffectiveAvatarUrl(selfProfile?.user) || getEffectiveAvatarUrl(user) || 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=100&auto=format&fit=crop' }} 
                 style={styles.avatar} 
               />
             </TouchableOpacity>
