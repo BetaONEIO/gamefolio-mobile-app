@@ -138,6 +138,13 @@ async function generateContentQRCode(contentUrl: string): Promise<string> {
   }
 }
 
+function resolveMediaUrl(signedUrl: string | null, originalUrl: string | null | undefined): string | null {
+  if (signedUrl) return signedUrl;
+  if (!originalUrl) return null;
+  if (originalUrl.startsWith('http://') || originalUrl.startsWith('https://')) return originalUrl;
+  return null;
+}
+
 function generateSocialMediaLinks(contentUrl: string, title: string) {
   const encodedUrl = encodeURIComponent(contentUrl);
   const encodedTitle = encodeURIComponent(title);
@@ -761,8 +768,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: email.toLowerCase(),
           password: uid, // Use Firebase UID as password (they won't use traditional login)
           emailVerified: true, // Google accounts are pre-verified - no email verification needed
-          avatarUrl: photoURL || "/attached_assets/gamefolio social logo 3d circle web.png",
-          bannerUrl: "/api/static/telegram-cloud-photo-size-4-5929334272504744521-y_1749637964973.jpg",
+          avatarUrl: (photoURL && (photoURL.startsWith('http://') || photoURL.startsWith('https://'))) ? photoURL : null,
+          bannerUrl: null,
           authProvider: "google",
           externalId: uid,
           // Set userType and ageRange to null to force onboarding
@@ -1661,11 +1668,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailVerified: userWithoutPassword.emailVerified || false,
           profilePictureUrl: userWithoutPassword.profilePictureUrl,
           bio: userWithoutPassword.bio,
-          bannerUrl: signedBannerUrl || userWithoutPassword.bannerUrl,
+          bannerUrl: resolveMediaUrl(signedBannerUrl, userWithoutPassword.bannerUrl),
           displayName: userWithoutPassword.displayName,
           backgroundColor: userWithoutPassword.backgroundColor,
           accentColor: userWithoutPassword.accentColor,
-          avatarUrl: signedAvatarUrl || userWithoutPassword.avatarUrl,
+          avatarUrl: resolveMediaUrl(signedAvatarUrl, userWithoutPassword.avatarUrl),
           createdAt: userWithoutPassword.createdAt,
           userType: userWithoutPassword.userType,
           ageRange: userWithoutPassword.ageRange,
@@ -1722,11 +1729,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailVerified: fallbackWithoutPassword.emailVerified || false,
           profilePictureUrl: fallbackWithoutPassword.profilePictureUrl,
           bio: fallbackWithoutPassword.bio,
-          bannerUrl: fbSignedBannerUrl || fallbackWithoutPassword.bannerUrl,
+          bannerUrl: resolveMediaUrl(fbSignedBannerUrl, fallbackWithoutPassword.bannerUrl),
           displayName: fallbackWithoutPassword.displayName,
           backgroundColor: fallbackWithoutPassword.backgroundColor,
           accentColor: fallbackWithoutPassword.accentColor,
-          avatarUrl: fbSignedAvatarUrl || fallbackWithoutPassword.avatarUrl,
+          avatarUrl: resolveMediaUrl(fbSignedAvatarUrl, fallbackWithoutPassword.avatarUrl),
           createdAt: fallbackWithoutPassword.createdAt,
           userType: fallbackWithoutPassword.userType,
           ageRange: fallbackWithoutPassword.ageRange,
@@ -1779,11 +1786,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       emailVerified: userWithoutPassword.emailVerified || false,
       profilePictureUrl: userWithoutPassword.profilePictureUrl,
       bio: userWithoutPassword.bio,
-      bannerUrl: lrSignedBannerUrl || userWithoutPassword.bannerUrl,
+      bannerUrl: resolveMediaUrl(lrSignedBannerUrl, userWithoutPassword.bannerUrl),
       displayName: userWithoutPassword.displayName,
       backgroundColor: userWithoutPassword.backgroundColor,
       accentColor: userWithoutPassword.accentColor,
-      avatarUrl: lrSignedAvatarUrl || userWithoutPassword.avatarUrl,
+      avatarUrl: resolveMediaUrl(lrSignedAvatarUrl, userWithoutPassword.avatarUrl),
       createdAt: userWithoutPassword.createdAt,
       userType: userWithoutPassword.userType,
       ageRange: userWithoutPassword.ageRange,
@@ -2897,8 +2904,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ]);
       res.json({
         ...userWithoutPassword,
-        avatarUrl: signedAvatarUrl || userWithoutPassword.avatarUrl,
-        bannerUrl: signedBannerUrl || userWithoutPassword.bannerUrl,
+        avatarUrl: resolveMediaUrl(signedAvatarUrl, userWithoutPassword.avatarUrl),
+        bannerUrl: resolveMediaUrl(signedBannerUrl, userWithoutPassword.bannerUrl),
       });
     } catch (err) {
       console.error("Error fetching user:", err);

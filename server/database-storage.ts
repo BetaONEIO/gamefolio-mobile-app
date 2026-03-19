@@ -210,8 +210,8 @@ export class DatabaseStorage implements IStorage {
       
       const userWithDefaults = {
         ...safeUserData,
-        avatarUrl: safeUserData.avatarUrl || "/attached_assets/gamefolio social logo 3d circle web.png",
-        bannerUrl: safeUserData.bannerUrl || "/api/static/telegram-cloud-photo-size-4-5929334272504744521-y_1749637964973.jpg",
+        avatarUrl: safeUserData.avatarUrl || null,
+        bannerUrl: safeUserData.bannerUrl || null,
         selectedAvatarBorderId: safeUserData.selectedAvatarBorderId ?? (await db.select({ id: assetRewards.id }).from(assetRewards).where(eq(assetRewards.category, "avatar_border")).limit(1))[0]?.id,
       };
       const [user] = await db.insert(users).values(userWithDefaults).returning();

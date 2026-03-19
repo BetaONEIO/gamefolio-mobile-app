@@ -566,7 +566,14 @@ export interface Conversation {
   updatedAt: string;
 }
 
+function isAbsoluteMediaUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return url.startsWith('http://') || url.startsWith('https://');
+}
+
 export function mapRawUser(raw: any): User {
+  const rawAvatarUrl = raw.avatarUrl || raw.avatar_url || null;
+  const rawBannerUrl = raw.bannerUrl || raw.banner_url || null;
   return {
     id: raw.id,
     username: raw.username,
@@ -578,8 +585,8 @@ export function mapRawUser(raw: any): User {
     level: raw.level || 1,
     currentStreak: raw.currentStreak ?? raw.current_streak ?? 0,
     longestStreak: raw.longestStreak ?? raw.longest_streak ?? 0,
-    avatarUrl: raw.avatarUrl || raw.avatar_url || null,
-    bannerUrl: raw.bannerUrl || raw.banner_url || null,
+    avatarUrl: isAbsoluteMediaUrl(rawAvatarUrl) ? rawAvatarUrl : null,
+    bannerUrl: isAbsoluteMediaUrl(rawBannerUrl) ? rawBannerUrl : null,
     bio: raw.bio || null,
     messagingEnabled: raw.messagingEnabled ?? raw.messaging_enabled ?? true,
     isPrivate: raw.isPrivate ?? raw.is_private ?? false,
@@ -1465,6 +1472,9 @@ export const api = {
         rawFollowersCount: (user as any).followersCount,
         rawFollowingCount: (user as any).followingCount,
       });
+
+      if (!isAbsoluteMediaUrl(user.avatarUrl)) user.avatarUrl = null;
+      if (!isAbsoluteMediaUrl(user.bannerUrl)) user.bannerUrl = null;
       
       return { user };
     },

@@ -136,8 +136,8 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
     ]);
     const signedUserData = {
       ...userWithoutPassword,
-      avatarUrl: signedAvatarUrl || userWithoutPassword.avatarUrl,
-      bannerUrl: signedBannerUrl || userWithoutPassword.bannerUrl,
+      avatarUrl: signedAvatarUrl || ((userWithoutPassword.avatarUrl?.startsWith('http://') || userWithoutPassword.avatarUrl?.startsWith('https://')) ? userWithoutPassword.avatarUrl : null),
+      bannerUrl: signedBannerUrl || ((userWithoutPassword.bannerUrl?.startsWith('http://') || userWithoutPassword.bannerUrl?.startsWith('https://')) ? userWithoutPassword.bannerUrl : null),
     };
 
     // Return tokens and user data
@@ -486,8 +486,8 @@ router.post('/auth/mobile/google', async (req: Request, res: Response) => {
         email: email.toLowerCase(),
         displayName: displayName || email.split('@')[0],
         password: '', // Empty password for OAuth users
-        avatarUrl: photoURL || '/attached_assets/gamefolio social logo 3d circle web.png',
-        bannerUrl: '/api/static/telegram-cloud-photo-size-4-5929334272504744521-y_1749637964973.jpg',
+        avatarUrl: (photoURL && (photoURL.startsWith('http://') || photoURL.startsWith('https://'))) ? photoURL : null,
+        bannerUrl: null,
         emailVerified: true,
         authProvider: 'google',
         externalId: uid,
@@ -672,7 +672,7 @@ router.get('/auth/mobile/discord/callback', async (req: Request, res: Response) 
       const tempUsername = `temp_${id.substring(0, 8)}_${timestamp}`;
       const avatarUrl = avatar 
         ? `https://cdn.discordapp.com/avatars/${id}/${avatar}.png`
-        : '/attached_assets/gamefolio social logo 3d circle web.png';
+        : null;
 
       user = await storage.createUser({
         username: tempUsername.toLowerCase(),
@@ -681,7 +681,7 @@ router.get('/auth/mobile/discord/callback', async (req: Request, res: Response) 
         password: '', // Empty password for OAuth users
         emailVerified: true,
         avatarUrl,
-        bannerUrl: '/api/static/telegram-cloud-photo-size-4-5929334272504744521-y_1749637964973.jpg',
+        bannerUrl: null,
         authProvider: 'discord',
         externalId: id,
         userType: null,
@@ -759,7 +759,7 @@ router.post('/auth/mobile/discord', async (req: Request, res: Response) => {
       const tempUsername = `temp_${id.substring(0, 8)}_${timestamp}`;
       const avatarUrl = avatar 
         ? `https://cdn.discordapp.com/avatars/${id}/${avatar}.png`
-        : '/attached_assets/gamefolio social logo 3d circle web.png';
+        : null;
 
       user = await storage.createUser({
         username: tempUsername.toLowerCase(),
@@ -768,7 +768,7 @@ router.post('/auth/mobile/discord', async (req: Request, res: Response) => {
         password: '', // Empty password for OAuth users
         emailVerified: true,
         avatarUrl,
-        bannerUrl: '/api/static/telegram-cloud-photo-size-4-5929334272504744521-y_1749637964973.jpg',
+        bannerUrl: null,
         authProvider: 'discord',
         externalId: id,
         userType: null,
