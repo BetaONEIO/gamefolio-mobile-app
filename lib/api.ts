@@ -2035,8 +2035,12 @@ export const api = {
         if (data && 'notifications' in data) return data.notifications;
         return [];
       } catch (err: any) {
-        if (err?.status === 404 || err?.status === 401) {
-          console.log('[Notifications API] Endpoint not available:', err.status);
+        if (err?.status === 401) {
+          const e = new Error('NotificationsUnavailable') as any;
+          e.isUnavailable = true;
+          throw e;
+        }
+        if (err?.status === 404) {
           return [];
         }
         console.error('[Notifications API] Failed to fetch notifications:', err);

@@ -78,7 +78,7 @@ function getNotificationIcon(type: Notification['type']) {
 }
 
 export default function NotificationDropdown({ visible, onClose, topOffset, onOpen }: NotificationDropdownProps) {
-  const { notifications, markAllRead, clearAll, removeNotification, markRead } = useNotifications();
+  const { notifications, isUnavailable, markAllRead, clearAll, removeNotification, markRead } = useNotifications();
   const router = useRouter();
 
   React.useEffect(() => {
@@ -247,7 +247,12 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={
                   <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyText}>No notifications</Text>
+                    <Text style={styles.emptyText}>
+                      {isUnavailable ? 'Notifications unavailable' : 'No notifications'}
+                    </Text>
+                    {isUnavailable ? (
+                      <Text style={styles.emptySubText}>Please sign out and sign back in</Text>
+                    ) : null}
                   </View>
                 }
               />
@@ -427,6 +432,12 @@ const styles = StyleSheet.create({
   emptyText: {
     color: '#64748B',
     fontSize: 14,
+  },
+  emptySubText: {
+    color: '#475569',
+    fontSize: 12,
+    marginTop: 6,
+    textAlign: 'center',
   },
   scrollbarTrack: {
     width: 6,

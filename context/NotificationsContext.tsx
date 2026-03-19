@@ -117,6 +117,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isUnavailable, setIsUnavailable] = useState(false);
 
   const authTokenRef = useRef(authTokens?.accessToken);
   authTokenRef.current = authTokens?.accessToken;
@@ -126,6 +127,8 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
 
   const userRef = useRef(user);
   userRef.current = user;
+
+  const unavailableRef = useRef(false);
 
   const registerToken = useCallback(async (token: string) => {
     if (!isAuthenticatedRef.current || !userRef.current) {
@@ -153,6 +156,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
   const fetchNotifications = useCallback(async () => {
     const token = authTokenRef.current;
     if (!token) return;
+    if (unavailableRef.current) return;
     try {
       const [list, count] = await Promise.all([
         api.notifications.list(token),
@@ -160,8 +164,14 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
       ]);
       setNotifications(list);
       setUnreadCount(count > 0 ? count : list.filter(n => !n.isRead).length);
-    } catch {
-      console.log('[Notifications] Failed to fetch notifications from API');
+    } catch (err: any) {
+      if (err?.isUnavailable) {
+        unavailableRef.current = true;
+        setIsUnavailable(true);
+        console.log('[Notifications] API returned 401, stopping polling');
+      } else {
+        console.log('[Notifications] Failed to fetch notifications from API');
+      }
     }
   }, []);
 
@@ -280,8 +290,10 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
       };
     } else {
       initializedRef.current = false;
+      unavailableRef.current = false;
       setNotifications([]);
       setUnreadCount(0);
+      setIsUnavailable(false);
     }
 
     return () => {
@@ -327,6 +339,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
     clearBadge,
     notifications,
     unreadCount,
+    isUnavailable,
     markAllRead,
     clearAll,
     removeNotification,
