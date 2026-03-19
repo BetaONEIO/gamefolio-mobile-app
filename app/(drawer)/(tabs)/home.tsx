@@ -13,7 +13,6 @@ import { useUser } from '@/context/UserContext';
 import ReelViewer from '@/components/ReelViewer';
 import LevelDetailsModal from '@/components/LevelDetailsModal';
 import HeroBanner from '@/components/HeroBanner';
-import AdBanner from '@/components/AdBanner';
 import type { ReelData, Comment } from '@/components/ReelViewer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -740,13 +739,6 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-
-        {/* Ad Banner */}
-        <AdBanner 
-          size="medium" 
-          placement="between-content"
-          onAdClicked={(adId) => console.log('[Home] Ad clicked:', adId)}
-        />
 
         {/* Latest Reels Section */}
         <View style={styles.sectionHeaderWithAction}>
