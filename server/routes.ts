@@ -138,12 +138,18 @@ async function generateContentQRCode(contentUrl: string): Promise<string> {
   }
 }
 
-function resolveMediaUrl(signedUrl: string | null, originalUrl: string | null | undefined): string | null {
+function resolveMediaUrl(signedUrl: string | null, originalUrl: string | null | undefined, defaultUrl?: string): string | null {
   if (signedUrl) return signedUrl;
-  if (!originalUrl) return null;
-  if (originalUrl.startsWith('http://') || originalUrl.startsWith('https://')) return originalUrl;
-  return null;
+  if (originalUrl && (originalUrl.startsWith('http://') || originalUrl.startsWith('https://'))) return originalUrl;
+  return defaultUrl ?? null;
 }
+
+function defaultAvatarUrl(username: string, displayName?: string | null): string {
+  const name = encodeURIComponent((displayName || username || 'User').slice(0, 20));
+  return `https://ui-avatars.com/api/?name=${name}&background=1a1a2e&color=4ADE80&bold=true&size=128`;
+}
+
+const DEFAULT_BANNER_URL = 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800&auto=format&fit=crop';
 
 function generateSocialMediaLinks(contentUrl: string, title: string) {
   const encodedUrl = encodeURIComponent(contentUrl);
@@ -1668,11 +1674,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailVerified: userWithoutPassword.emailVerified || false,
           profilePictureUrl: userWithoutPassword.profilePictureUrl,
           bio: userWithoutPassword.bio,
-          bannerUrl: resolveMediaUrl(signedBannerUrl, userWithoutPassword.bannerUrl),
+          bannerUrl: resolveMediaUrl(signedBannerUrl, userWithoutPassword.bannerUrl, DEFAULT_BANNER_URL),
+          banner_url: resolveMediaUrl(signedBannerUrl, userWithoutPassword.bannerUrl, DEFAULT_BANNER_URL),
           displayName: userWithoutPassword.displayName,
           backgroundColor: userWithoutPassword.backgroundColor,
           accentColor: userWithoutPassword.accentColor,
-          avatarUrl: resolveMediaUrl(signedAvatarUrl, userWithoutPassword.avatarUrl),
+          avatarUrl: resolveMediaUrl(signedAvatarUrl, userWithoutPassword.avatarUrl, defaultAvatarUrl(userWithoutPassword.username, userWithoutPassword.displayName)),
+          avatar_url: resolveMediaUrl(signedAvatarUrl, userWithoutPassword.avatarUrl, defaultAvatarUrl(userWithoutPassword.username, userWithoutPassword.displayName)),
           createdAt: userWithoutPassword.createdAt,
           userType: userWithoutPassword.userType,
           ageRange: userWithoutPassword.ageRange,
@@ -1729,11 +1737,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailVerified: fallbackWithoutPassword.emailVerified || false,
           profilePictureUrl: fallbackWithoutPassword.profilePictureUrl,
           bio: fallbackWithoutPassword.bio,
-          bannerUrl: resolveMediaUrl(fbSignedBannerUrl, fallbackWithoutPassword.bannerUrl),
+          bannerUrl: resolveMediaUrl(fbSignedBannerUrl, fallbackWithoutPassword.bannerUrl, DEFAULT_BANNER_URL),
+          banner_url: resolveMediaUrl(fbSignedBannerUrl, fallbackWithoutPassword.bannerUrl, DEFAULT_BANNER_URL),
           displayName: fallbackWithoutPassword.displayName,
           backgroundColor: fallbackWithoutPassword.backgroundColor,
           accentColor: fallbackWithoutPassword.accentColor,
-          avatarUrl: resolveMediaUrl(fbSignedAvatarUrl, fallbackWithoutPassword.avatarUrl),
+          avatarUrl: resolveMediaUrl(fbSignedAvatarUrl, fallbackWithoutPassword.avatarUrl, defaultAvatarUrl(fallbackWithoutPassword.username, fallbackWithoutPassword.displayName)),
+          avatar_url: resolveMediaUrl(fbSignedAvatarUrl, fallbackWithoutPassword.avatarUrl, defaultAvatarUrl(fallbackWithoutPassword.username, fallbackWithoutPassword.displayName)),
           createdAt: fallbackWithoutPassword.createdAt,
           userType: fallbackWithoutPassword.userType,
           ageRange: fallbackWithoutPassword.ageRange,
@@ -1786,11 +1796,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       emailVerified: userWithoutPassword.emailVerified || false,
       profilePictureUrl: userWithoutPassword.profilePictureUrl,
       bio: userWithoutPassword.bio,
-      bannerUrl: resolveMediaUrl(lrSignedBannerUrl, userWithoutPassword.bannerUrl),
+      bannerUrl: resolveMediaUrl(lrSignedBannerUrl, userWithoutPassword.bannerUrl, DEFAULT_BANNER_URL),
+      banner_url: resolveMediaUrl(lrSignedBannerUrl, userWithoutPassword.bannerUrl, DEFAULT_BANNER_URL),
       displayName: userWithoutPassword.displayName,
       backgroundColor: userWithoutPassword.backgroundColor,
       accentColor: userWithoutPassword.accentColor,
-      avatarUrl: resolveMediaUrl(lrSignedAvatarUrl, userWithoutPassword.avatarUrl),
+      avatarUrl: resolveMediaUrl(lrSignedAvatarUrl, userWithoutPassword.avatarUrl, defaultAvatarUrl(userWithoutPassword.username, userWithoutPassword.displayName)),
+      avatar_url: resolveMediaUrl(lrSignedAvatarUrl, userWithoutPassword.avatarUrl, defaultAvatarUrl(userWithoutPassword.username, userWithoutPassword.displayName)),
       createdAt: userWithoutPassword.createdAt,
       userType: userWithoutPassword.userType,
       ageRange: userWithoutPassword.ageRange,
@@ -2902,10 +2914,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userWithoutPassword.avatarUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.avatarUrl, 3600) : Promise.resolve(null),
         userWithoutPassword.bannerUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.bannerUrl, 3600) : Promise.resolve(null),
       ]);
+      const resolvedAvatarUrl = resolveMediaUrl(signedAvatarUrl, userWithoutPassword.avatarUrl, defaultAvatarUrl(userWithoutPassword.username, userWithoutPassword.displayName));
+      const resolvedBannerUrl = resolveMediaUrl(signedBannerUrl, userWithoutPassword.bannerUrl, DEFAULT_BANNER_URL);
       res.json({
         ...userWithoutPassword,
-        avatarUrl: resolveMediaUrl(signedAvatarUrl, userWithoutPassword.avatarUrl),
-        bannerUrl: resolveMediaUrl(signedBannerUrl, userWithoutPassword.bannerUrl),
+        avatarUrl: resolvedAvatarUrl,
+        avatar_url: resolvedAvatarUrl,
+        bannerUrl: resolvedBannerUrl,
+        banner_url: resolvedBannerUrl,
       });
     } catch (err) {
       console.error("Error fetching user:", err);

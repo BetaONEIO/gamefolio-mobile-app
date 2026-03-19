@@ -1410,21 +1410,7 @@ export const api = {
     },
 
     getProfile: async (username: string, token?: string) => {
-      interface ProfileAPIResponse {
-        user?: User & {
-          clipsCount?: number;
-          followersCount?: number;
-          followingCount?: number;
-        };
-        id?: number;
-        username?: string;
-        displayName?: string;
-        clipsCount?: number;
-        followersCount?: number;
-        followingCount?: number;
-      }
-      
-      const response = await apiFetch<ProfileAPIResponse>(`/api/users/${username}`, {
+      const response = await apiFetch<any>(`/api/users/${username}`, {
         method: 'GET',
         token,
       });
@@ -1432,49 +1418,43 @@ export const api = {
       console.log('[Users API] Raw profile response:', JSON.stringify(response, null, 2));
       
       // Handle both wrapped and unwrapped response formats
-      let user: User & { clipsCount?: number; followersCount?: number; followingCount?: number };
+      let rawUser: any;
       
-      if (response.user) {
-        // Response has user wrapper: { user: { ... } }
-        user = response.user;
-      } else if (response.id || response.username) {
-        // Response is the user object directly: { id, username, ... }
-        user = response as unknown as User & { clipsCount?: number; followersCount?: number; followingCount?: number };
+      if (response && response.user && (response.user.id || response.user.username)) {
+        rawUser = response.user;
+      } else if (response && (response.id || response.username)) {
+        rawUser = response;
       } else {
         console.error('[Users API] Invalid profile response structure');
         throw new Error('Invalid profile response');
       }
       
-      // Map flat count fields to _count structure if present
-      if (!user._count) {
-        user._count = {
-          clips: user.clipsCount ?? 0,
-          followers: user.followersCount ?? 0,
-          following: user.followingCount ?? 0,
-        };
-      }
+      // Run through mapRawUser for proper camelCase/snake_case normalization and URL sanitization
+      const mappedUser = mapRawUser(rawUser);
       
-      // Also check for snake_case variants
-      if (user._count.clips === 0 && user._count.followers === 0 && user._count.following === 0) {
-        const anyUser = user as any;
-        user._count = {
-          clips: anyUser.clips_count ?? anyUser.clipsCount ?? anyUser.clipCount ?? 0,
-          followers: anyUser.followers_count ?? anyUser.followersCount ?? anyUser.followerCount ?? 0,
-          following: anyUser.following_count ?? anyUser.followingCount ?? 0,
-        };
-      }
+      // Build _count from raw data (mapRawUser doesn't cover these extra fields)
+      const countData = rawUser._count || {};
+      const _count = {
+        clips: countData.clips ?? rawUser.clipsCount ?? rawUser.clips_count ?? rawUser.clipCount ?? 0,
+        followers: countData.followers ?? rawUser.followersCount ?? rawUser.followers_count ?? rawUser.followerCount ?? 0,
+        following: countData.following ?? rawUser.followingCount ?? rawUser.following_count ?? 0,
+      };
+      
+      const user = {
+        ...mappedUser,
+        _count,
+        clipsCount: _count.clips,
+        followersCount: _count.followers,
+        followingCount: _count.following,
+      } as User & { _count: { clips: number; followers: number; following: number }; clipsCount: number; followersCount: number; followingCount: number };
       
       console.log('[Users API] Profile stats extracted:', {
         clips: user._count.clips,
         followers: user._count.followers,
         following: user._count.following,
-        rawClipsCount: (user as any).clipsCount,
-        rawFollowersCount: (user as any).followersCount,
-        rawFollowingCount: (user as any).followingCount,
+        avatarUrl: user.avatarUrl,
+        bannerUrl: user.bannerUrl,
       });
-
-      if (!isAbsoluteMediaUrl(user.avatarUrl)) user.avatarUrl = null;
-      if (!isAbsoluteMediaUrl(user.bannerUrl)) user.bannerUrl = null;
       
       return { user };
     },

@@ -134,10 +134,14 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
       userWithoutPassword.avatarUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.avatarUrl, 3600) : Promise.resolve(null),
       userWithoutPassword.bannerUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.bannerUrl, 3600) : Promise.resolve(null),
     ]);
+    const _resolvedAvatar = signedAvatarUrl || ((userWithoutPassword.avatarUrl?.startsWith('http://') || userWithoutPassword.avatarUrl?.startsWith('https://')) ? userWithoutPassword.avatarUrl : null) || `https://ui-avatars.com/api/?name=${encodeURIComponent((userWithoutPassword.displayName || userWithoutPassword.username || 'User').slice(0, 20))}&background=1a1a2e&color=4ADE80&bold=true&size=128`;
+    const _resolvedBanner = signedBannerUrl || ((userWithoutPassword.bannerUrl?.startsWith('http://') || userWithoutPassword.bannerUrl?.startsWith('https://')) ? userWithoutPassword.bannerUrl : null) || 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800&auto=format&fit=crop';
     const signedUserData = {
       ...userWithoutPassword,
-      avatarUrl: signedAvatarUrl || ((userWithoutPassword.avatarUrl?.startsWith('http://') || userWithoutPassword.avatarUrl?.startsWith('https://')) ? userWithoutPassword.avatarUrl : null),
-      bannerUrl: signedBannerUrl || ((userWithoutPassword.bannerUrl?.startsWith('http://') || userWithoutPassword.bannerUrl?.startsWith('https://')) ? userWithoutPassword.bannerUrl : null),
+      avatarUrl: _resolvedAvatar,
+      avatar_url: _resolvedAvatar,
+      bannerUrl: _resolvedBanner,
+      banner_url: _resolvedBanner,
     };
 
     // Return tokens and user data
