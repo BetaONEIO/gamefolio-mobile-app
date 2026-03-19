@@ -2875,8 +2875,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.params.username === "demo") {
         const demoUser = await storage.getUserWithStats(999);
         if (demoUser) {
-          const { password, ...userWithoutPassword } = demoUser;
-          return res.json(userWithoutPassword);
+          const { password, ...demoWithoutPassword } = demoUser;
+          const [demoSignedAvatarUrl, demoSignedBannerUrl] = await Promise.all([
+            demoWithoutPassword.avatarUrl ? supabaseStorage.convertToSignedUrl(demoWithoutPassword.avatarUrl, 3600) : Promise.resolve(null),
+            demoWithoutPassword.bannerUrl ? supabaseStorage.convertToSignedUrl(demoWithoutPassword.bannerUrl, 3600) : Promise.resolve(null),
+          ]);
+          const demoAvatarUrl = resolveMediaUrl(demoSignedAvatarUrl, demoWithoutPassword.avatarUrl, defaultAvatarUrl(demoWithoutPassword.username, demoWithoutPassword.displayName));
+          const demoBannerUrl = resolveMediaUrl(demoSignedBannerUrl, demoWithoutPassword.bannerUrl, DEFAULT_BANNER_URL);
+          return res.json({
+            ...demoWithoutPassword,
+            avatarUrl: demoAvatarUrl,
+            avatar_url: demoAvatarUrl,
+            bannerUrl: demoBannerUrl,
+            banner_url: demoBannerUrl,
+          });
         } else {
           return res.json(getDemoUserWithStats());
         }
