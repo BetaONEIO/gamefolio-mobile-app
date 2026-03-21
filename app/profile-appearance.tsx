@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Image, ActivityIndicator, Switch } from 'react-native';
 import ThemedScrollView from '@/components/ThemedScrollView';
 import { Stack, useLocalSearchParams, useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User as UserIcon, Palette, Image as ImageIcon, Camera, Save, Check } from 'lucide-react-native';
+import { User as UserIcon, Palette, Image as ImageIcon, Camera, Save, Check, Link } from 'lucide-react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import AppHeader from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
@@ -19,7 +20,18 @@ import CustomAlert from '@/components/CustomAlert';
 import AppearanceStudioModal from '@/components/AppearanceStudioModal';
 import { SELECTABLE_PROFILE_THEMES, type ProfileThemeName } from '@/constants/themes';
 
-type TabType = 'profile';
+type TabType = 'profile' | 'platform';
+
+const USER_TYPE_OPTIONS = [
+  { id: 'streamer', label: 'Streamer', description: 'I stream games live', icon: 'video' as const, color: '#A855F7' },
+  { id: 'gamer', label: 'Gamer', description: 'I love playing games', icon: 'gamepad-variant' as const, color: '#22C55E' },
+  { id: 'professional_gamer', label: 'Pro Gamer', description: 'I compete in esports', icon: 'trophy' as const, color: '#EAB308' },
+  { id: 'content_creator', label: 'Creator', description: 'I create gaming content', icon: 'upload' as const, color: '#3B82F6' },
+  { id: 'indie_developer', label: 'Indie Dev', description: 'I develop games', icon: 'code-tags' as const, color: '#06B6D4' },
+  { id: 'viewer', label: 'Viewer', description: 'I watch gaming content', icon: 'eye' as const, color: '#94A3B8' },
+  { id: 'filthy_casual', label: 'Casual', description: 'I play when I can', icon: 'coffee' as const, color: '#F97316' },
+  { id: 'doom_scroller', label: 'Doom Scroller', description: 'I watch clips all day', icon: 'format-list-bulleted' as const, color: '#EF4444' },
+];
 
 const QUICK_THEMES = [
   { id: 'basic', name: 'Basic', accentColor: '#4ADE80', backgroundColor: '#0B2232' },
@@ -75,6 +87,20 @@ export default function ProfileAppearance() {
   
   // Appearance Studio Modal State
   const [appearanceStudioVisible, setAppearanceStudioVisible] = useState(false);
+
+  // User Type State
+  const [userType, setUserType] = useState<string>(user?.userType || '');
+  const [showUserType, setShowUserType] = useState<boolean>(user?.showUserType !== false);
+
+  // Platform Connection State
+  const [steamUsername, setSteamUsername] = useState(user?.steamUsername || '');
+  const [xboxUsername, setXboxUsername] = useState(user?.xboxUsername || '');
+  const [playstationUsername, setPlaystationUsername] = useState(user?.playstationUsername || '');
+  const [twitterUsername, setTwitterUsername] = useState(user?.twitterUsername || '');
+  const [youtubeUsername, setYoutubeUsername] = useState(user?.youtubeUsername || '');
+  const [discordUsername, setDiscordUsername] = useState(user?.discordUsername || '');
+  const [epicUsername, setEpicUsername] = useState(user?.epicUsername || '');
+  const [nintendoUsername, setNintendoUsername] = useState(user?.nintendoUsername || '');
 
   // Save State
   const [isSaved, setIsSaved] = useState(false);
@@ -143,7 +169,17 @@ export default function ProfileAppearance() {
     (banner !== (user?.bannerUrl || null)) ||
     !!isThemeDirty ||
     isBorderDirty ||
-    isProfileThemeDirty;
+    isProfileThemeDirty ||
+    (userType !== (user?.userType || '')) ||
+    (showUserType !== (user?.showUserType !== false)) ||
+    (steamUsername !== (user?.steamUsername || '')) ||
+    (xboxUsername !== (user?.xboxUsername || '')) ||
+    (playstationUsername !== (user?.playstationUsername || '')) ||
+    (twitterUsername !== (user?.twitterUsername || '')) ||
+    (youtubeUsername !== (user?.youtubeUsername || '')) ||
+    (discordUsername !== (user?.discordUsername || '')) ||
+    (epicUsername !== (user?.epicUsername || '')) ||
+    (nintendoUsername !== (user?.nintendoUsername || ''));
 
   console.log('[ProfileAppearance] isDirty:', isDirty, 'activeTab:', activeTab);
 
@@ -195,6 +231,16 @@ export default function ProfileAppearance() {
       setBio(user.bio || '');
       setAvatar(user.avatarUrl || null);
       setBanner(user.bannerUrl || null);
+      setUserType(user.userType || '');
+      setShowUserType(user.showUserType !== false);
+      setSteamUsername(user.steamUsername || '');
+      setXboxUsername(user.xboxUsername || '');
+      setPlaystationUsername(user.playstationUsername || '');
+      setTwitterUsername(user.twitterUsername || '');
+      setYoutubeUsername(user.youtubeUsername || '');
+      setDiscordUsername(user.discordUsername || '');
+      setEpicUsername(user.epicUsername || '');
+      setNintendoUsername(user.nintendoUsername || '');
       
       const theme = QUICK_THEMES.find(t => t.accentColor === user.accentColor && t.backgroundColor === user.backgroundColor);
       setSelectedThemeId(theme ? theme.id : 'basic');
@@ -302,6 +348,16 @@ export default function ProfileAppearance() {
         backgroundColor: theme?.backgroundColor,
         profileBorderId: selectedBorder?.id || null,
         profileTheme: selectedProfileTheme || undefined,
+        userType: userType || null,
+        showUserType,
+        steamUsername: steamUsername || null,
+        xboxUsername: xboxUsername || null,
+        playstationUsername: playstationUsername || null,
+        twitterUsername: twitterUsername || null,
+        youtubeUsername: youtubeUsername || null,
+        discordUsername: discordUsername || null,
+        epicUsername: epicUsername || null,
+        nintendoUsername: nintendoUsername || null,
       };
 
       console.log('[Profile] Sending update via REST API:', updateData);
@@ -371,6 +427,14 @@ export default function ProfileAppearance() {
               <UserIcon size={18} color={activeTab === 'profile' ? '#FFF' : '#94A3B8'} />
               <Text style={[styles.tabText, activeTab === 'profile' && styles.activeTabText]}>Profile</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'platform' && styles.activeTab]} 
+              onPress={() => setActiveTab('platform')}
+            >
+              <Link size={18} color={activeTab === 'platform' ? '#FFF' : '#94A3B8'} />
+              <Text style={[styles.tabText, activeTab === 'platform' && styles.activeTabText]}>Platforms</Text>
+            </TouchableOpacity>
             
             <TouchableOpacity 
               style={styles.tab} 
@@ -379,7 +443,6 @@ export default function ProfileAppearance() {
               <Palette size={18} color="#94A3B8" />
               <Text style={styles.tabText}>Appearance</Text>
             </TouchableOpacity>
-
 
           </ScrollView>
         </View>
@@ -500,6 +563,47 @@ export default function ProfileAppearance() {
                 </View>
 
                 <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Gamer Type</Text>
+                  <Text style={styles.inputHelper}>Select what best describes you as a gamer.</Text>
+                  <View style={styles.userTypeGrid}>
+                    {USER_TYPE_OPTIONS.map((option) => {
+                      const isSelected = userType === option.id;
+                      return (
+                        <TouchableOpacity
+                          key={option.id}
+                          style={[styles.userTypeCard, isSelected && { borderColor: option.color, backgroundColor: `${option.color}18` }]}
+                          onPress={() => setUserType(isSelected ? '' : option.id)}
+                          activeOpacity={0.8}
+                        >
+                          <MaterialCommunityIcons name={option.icon} size={22} color={isSelected ? option.color : '#64748B'} />
+                          <Text style={[styles.userTypeLabel, isSelected && { color: option.color }]}>{option.label}</Text>
+                          <Text style={styles.userTypeDesc}>{option.description}</Text>
+                          {isSelected && (
+                            <View style={[styles.userTypeCheck, { backgroundColor: option.color }]}>
+                              <Check size={10} color="#FFF" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  {userType !== '' && (
+                    <View style={styles.showUserTypeRow}>
+                      <View style={styles.showUserTypeLeft}>
+                        <Text style={styles.showUserTypeLabel}>Show gamer type on profile</Text>
+                        <Text style={styles.showUserTypeDesc}>Display your gamer type badge publicly</Text>
+                      </View>
+                      <Switch
+                        value={showUserType}
+                        onValueChange={setShowUserType}
+                        trackColor={{ false: '#1E293B', true: '#22C55E' }}
+                        thumbColor="#FFF"
+                      />
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Profile Page Theme</Text>
                   <Text style={styles.inputHelper}>Choose a design theme for your public profile page.</Text>
                   <View style={styles.profileThemesRow}>
@@ -532,6 +636,43 @@ export default function ProfileAppearance() {
               </View>
             )}
 
+            {activeTab === 'platform' && (
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Platform Connections</Text>
+                <Text style={styles.inputHelper}>Connect your gaming accounts to display them on your profile.</Text>
+
+                {[
+                  { key: 'steam', label: 'Steam', icon: 'steam', value: steamUsername, setter: setSteamUsername, placeholder: 'Steam username', color: '#1B2838' },
+                  { key: 'xbox', label: 'Xbox', icon: 'microsoft-xbox', value: xboxUsername, setter: setXboxUsername, placeholder: 'Xbox gamertag', color: '#107C10' },
+                  { key: 'playstation', label: 'PlayStation', icon: 'sony-playstation', value: playstationUsername, setter: setPlaystationUsername, placeholder: 'PSN username', color: '#003087' },
+                  { key: 'twitter', label: 'X / Twitter', icon: 'twitter', value: twitterUsername, setter: setTwitterUsername, placeholder: 'X username (without @)', color: '#000000' },
+                  { key: 'youtube', label: 'YouTube', icon: 'youtube', value: youtubeUsername, setter: setYoutubeUsername, placeholder: 'YouTube channel name', color: '#FF0000' },
+                  { key: 'discord', label: 'Discord', icon: 'discord', value: discordUsername, setter: setDiscordUsername, placeholder: 'Discord username', color: '#5865F2' },
+                  { key: 'epic', label: 'Epic Games', icon: 'controller-classic', value: epicUsername, setter: setEpicUsername, placeholder: 'Epic display name', color: '#313131' },
+                  { key: 'nintendo', label: 'Nintendo Switch', icon: 'nintendo-switch', value: nintendoUsername, setter: setNintendoUsername, placeholder: 'Nintendo friend code', color: '#E4000F' },
+                ].map((platform) => (
+                  <View key={platform.key} style={styles.platformRow}>
+                    <View style={[styles.platformIcon, { backgroundColor: platform.color + '22' }]}>
+                      <MaterialCommunityIcons name={platform.icon as any} size={22} color={platform.color === '#000000' ? '#FFF' : platform.color} />
+                    </View>
+                    <View style={styles.platformInputWrapper}>
+                      <Text style={styles.platformLabel}>{platform.label}</Text>
+                      <TextInput
+                        style={styles.platformInput}
+                        value={platform.value}
+                        onChangeText={platform.setter}
+                        placeholder={platform.placeholder}
+                        placeholderTextColor="#64748B"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                    </View>
+                  </View>
+                ))}
+
+                {renderSaveButton(handleSaveProfile)}
+              </View>
+            )}
 
           </ThemedScrollView>
         </KeyboardAvoidingView>
@@ -1047,5 +1188,100 @@ const styles = StyleSheet.create({
     backgroundColor: '#f472b6',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  userTypeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  userTypeCard: {
+    width: '47%',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: '#1E293B',
+    backgroundColor: '#0F1520',
+    position: 'relative',
+    gap: 4,
+  },
+  userTypeLabel: {
+    color: '#CBD5E1',
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  userTypeDesc: {
+    color: '#64748B',
+    fontSize: 11,
+  },
+  userTypeCheck: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  showUserTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0F1520',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    padding: 14,
+    marginTop: 4,
+  },
+  showUserTypeLeft: {
+    flex: 1,
+    marginRight: 12,
+  },
+  showUserTypeLabel: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  showUserTypeDesc: {
+    color: '#64748B',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  platformRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginBottom: 16,
+  },
+  platformIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  platformInputWrapper: {
+    flex: 1,
+  },
+  platformLabel: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  platformInput: {
+    backgroundColor: '#0F1520',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#FFF',
+    fontSize: 14,
   },
   });
