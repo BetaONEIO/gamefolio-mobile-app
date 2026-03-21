@@ -227,7 +227,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
   const [isLootboxModalVisible, setIsLootboxModalVisible] = useState(false);
 
   const lootboxStatusQuery = useQuery({
-    queryKey: ['lootbox-status'],
+    queryKey: ['lootbox-status', user?.id],
     queryFn: async () => {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');

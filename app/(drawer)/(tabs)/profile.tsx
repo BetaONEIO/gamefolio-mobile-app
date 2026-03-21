@@ -355,7 +355,7 @@ export default function ProfileScreen() {
   const [isLootboxModalVisible, setIsLootboxModalVisible] = useState(false);
 
   const lootboxStatusQuery = useQuery({
-    queryKey: ['lootbox-status'],
+    queryKey: ['lootbox-status', user?.id],
     queryFn: async () => {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
@@ -376,6 +376,7 @@ export default function ProfileScreen() {
   useEffect(() => {
     if (lootboxTimerRef.current) {
       clearInterval(lootboxTimerRef.current);
+      lootboxTimerRef.current = null;
     }
     if (!lootboxNextOpenAt || lootboxCanOpen) {
       setLootboxCountdown('');
@@ -384,6 +385,10 @@ export default function ProfileScreen() {
     const update = () => {
       const diff = lootboxNextOpenAt.getTime() - Date.now();
       if (diff <= 0) {
+        if (lootboxTimerRef.current) {
+          clearInterval(lootboxTimerRef.current);
+          lootboxTimerRef.current = null;
+        }
         setLootboxCountdown('');
         lootboxStatusQuery.refetch();
         return;
@@ -398,7 +403,10 @@ export default function ProfileScreen() {
     update();
     lootboxTimerRef.current = setInterval(update, 1000);
     return () => {
-      if (lootboxTimerRef.current) clearInterval(lootboxTimerRef.current);
+      if (lootboxTimerRef.current) {
+        clearInterval(lootboxTimerRef.current);
+        lootboxTimerRef.current = null;
+      }
     };
   }, [lootboxNextOpenAt, lootboxCanOpen]);
 
