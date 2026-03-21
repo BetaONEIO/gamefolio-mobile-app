@@ -24,6 +24,9 @@ import {
   Check,
   Bell,
   UserCheck,
+  UserX,
+  Zap,
+  Swords,
 } from 'lucide-react-native';
 import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, Animated, LayoutChangeEvent, Pressable } from 'react-native';
@@ -288,11 +291,34 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             onPress={() => navigate('/(drawer)/follow-requests')}
             isActive={pathname.includes('follow-requests')}
           />
+          <NavItem
+            icon={UserX}
+            label="Blocked Users"
+            onPress={() => navigate('/(drawer)/blocked-users')}
+            isActive={pathname.includes('blocked-users')}
+          />
           <NavItem 
             icon={User}
             label="My Gamefolio"
             onPress={() => navigate('/(drawer)/(tabs)/profile')}
             isActive={pathname.includes('profile')}
+          />
+        </View>
+
+        {/* Compete Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeaderText}>COMPETE</Text>
+          <NavItem
+            icon={Zap}
+            label="Level Tracker"
+            onPress={() => navigate('/(drawer)/level-tracker')}
+            isActive={pathname.includes('level-tracker')}
+          />
+          <NavItem
+            icon={Swords}
+            label="Battles"
+            onPress={() => navigate('/(drawer)/battles')}
+            isActive={pathname.includes('battles')}
           />
         </View>
 

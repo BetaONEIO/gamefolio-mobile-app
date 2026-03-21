@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Modal, Image, ActivityIndicator } from 'react-native';
 import ThemedScrollView from '@/components/ThemedScrollView';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Shield, Gamepad2, Check, User, Ticket } from 'lucide-react-native';
+import { Shield, Gamepad2, Check, User, Ticket, Lock, Globe, X, QrCode, KeyRound, CheckCircle2 } from 'lucide-react-native';
 import AppHeader from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import UserTypeBadge, { USER_TYPES } from '@/components/UserTypeBadge';
 import RedeemCodeModal from '@/components/RedeemCodeModal';
 
@@ -19,6 +19,7 @@ export default function AccountSettings() {
   const [activeTab, setActiveTab] = useState<TabType>('profile');
   const { user, updateUser, getAccessToken } = useAuth();
   const [showUserType, setShowUserType] = useState(user?.showUserType !== false);
+  const [isPrivate, setIsPrivate] = useState(user?.isPrivate ?? false);
   const [isSaving, setIsSaving] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
 
@@ -40,11 +41,101 @@ export default function AccountSettings() {
     setShowUserType(user?.showUserType !== false);
   }, [user?.showUserType]);
 
+  useEffect(() => {
+    setIsPrivate(user?.isPrivate ?? false);
+  }, [user?.isPrivate]);
+
   // Security/Privacy State
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [isTwoFactorEnabled, setIsTwoFactorEnabled] = useState(false);
+
+  // 2FA State
+  const [show2FAModal, setShow2FAModal] = useState(false);
+  const [twoFAStep, setTwoFAStep] = useState<'setup' | 'verify' | 'disable' | 'success'>('setup');
+  const [twoFAQrCode, setTwoFAQrCode] = useState('');
+  const [twoFASecret, setTwoFASecret] = useState('');
+  const [twoFACode, setTwoFACode] = useState('');
+  const [twoFAPassword, setTwoFAPassword] = useState('');
+  const [twoFAError, setTwoFAError] = useState('');
+  const [twoFALoading, setTwoFALoading] = useState(false);
+
+  const { data: twoFAStatus, refetch: refetch2FA } = useQuery({
+    queryKey: ['2fa-status'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      if (!token) return { enabled: false };
+      try {
+        return await api.twoFactor.getStatus(token);
+      } catch {
+        return { enabled: false };
+      }
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const isTwoFactorEnabled = twoFAStatus?.enabled ?? false;
+
+  const handle2FAToggle = async () => {
+    setTwoFAError('');
+    setTwoFACode('');
+    setTwoFAPassword('');
+    if (!isTwoFactorEnabled) {
+      setTwoFALoading(true);
+      setShow2FAModal(true);
+      setTwoFAStep('setup');
+      try {
+        const token = await getAccessToken();
+        if (!token) throw new Error('Not authenticated');
+        const data = await api.twoFactor.setup(token);
+        setTwoFAQrCode(data.qrCode);
+        setTwoFASecret(data.secret);
+        setTwoFAStep('verify');
+      } catch (e: any) {
+        setTwoFAError(e?.message || 'Failed to start 2FA setup');
+      } finally {
+        setTwoFALoading(false);
+      }
+    } else {
+      setShow2FAModal(true);
+      setTwoFAStep('disable');
+    }
+  };
+
+  const handle2FAEnable = async () => {
+    if (twoFACode.length < 6) { setTwoFAError('Enter the 6-digit code'); return; }
+    setTwoFALoading(true);
+    setTwoFAError('');
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      await api.twoFactor.enable(twoFACode, token);
+      await refetch2FA();
+      setTwoFAStep('success');
+    } catch (e: any) {
+      setTwoFAError(e?.message || 'Invalid code. Please try again.');
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handle2FADisable = async () => {
+    if (!twoFAPassword) { setTwoFAError('Enter your password'); return; }
+    if (!twoFACode) { setTwoFAError('Enter the 6-digit authenticator code'); return; }
+    setTwoFALoading(true);
+    setTwoFAError('');
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      await api.twoFactor.disable(twoFAPassword, twoFACode, token);
+      await refetch2FA();
+      setShow2FAModal(false);
+    } catch (e: any) {
+      setTwoFAError(e?.message || 'Failed to disable 2FA');
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
 
   // Platform State (from previous implementation)
   const [steamId, setSteamId] = useState('');
@@ -91,6 +182,24 @@ export default function AccountSettings() {
     } catch (error) {
       console.error('[AccountSettings] Failed to update showUserType:', error);
       setShowUserType(!newValue);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleTogglePrivacy = async () => {
+    const newValue = !isPrivate;
+    setIsPrivate(newValue);
+    setIsSaving(true);
+    try {
+      await updateProfileMutation.mutateAsync({ isPrivate: newValue } as Record<string, unknown>);
+      if (updateUser) {
+        await updateUser({ isPrivate: newValue });
+      }
+      console.log('[AccountSettings] Updated isPrivate to:', newValue);
+    } catch (error) {
+      console.error('[AccountSettings] Failed to update isPrivate:', error);
+      setIsPrivate(!newValue);
     } finally {
       setIsSaving(false);
     }
@@ -237,15 +346,121 @@ export default function AccountSettings() {
                 <View style={styles.twoFactorContainer}>
                     <View style={styles.twoFactorTextContainer}>
                         <Text style={styles.twoFactorTitle}>Two-Factor Authentication</Text>
-                        <Text style={styles.twoFactorSubtitle}>Add an extra layer of security to your account.</Text>
+                        <Text style={styles.twoFactorSubtitle}>
+                          {isTwoFactorEnabled ? 'Enabled - your account is protected.' : 'Add an extra layer of security to your account.'}
+                        </Text>
                     </View>
                     <TouchableOpacity 
                         style={[styles.toggleSwitch, isTwoFactorEnabled && styles.toggleSwitchActive]}
-                        onPress={() => setIsTwoFactorEnabled(!isTwoFactorEnabled)}
+                        onPress={handle2FAToggle}
                     >
                         <View style={[styles.toggleThumb, isTwoFactorEnabled && styles.toggleThumbActive]} />
                     </TouchableOpacity>
                 </View>
+
+                <Modal visible={show2FAModal} transparent animationType="slide" onRequestClose={() => setShow2FAModal(false)}>
+                  <View style={styles.modalOverlay}>
+                    <View style={styles.twoFAModal}>
+                      <TouchableOpacity style={styles.twoFACloseBtn} onPress={() => setShow2FAModal(false)}>
+                        <X size={20} color="#94A3B8" />
+                      </TouchableOpacity>
+
+                      {twoFAStep === 'setup' && (
+                        <View style={styles.twoFAContent}>
+                          <ActivityIndicator color="#4ADE80" size="large" />
+                          <Text style={styles.twoFATitle}>Setting up 2FA...</Text>
+                        </View>
+                      )}
+
+                      {twoFAStep === 'verify' && (
+                        <View style={styles.twoFAContent}>
+                          <View style={styles.twoFAIconCircle}>
+                            <QrCode size={28} color="#4ADE80" />
+                          </View>
+                          <Text style={styles.twoFATitle}>Scan QR Code</Text>
+                          <Text style={styles.twoFASubtitle}>Scan with your authenticator app (Google Authenticator, Authy, etc.)</Text>
+                          {twoFAQrCode ? (
+                            <Image source={{ uri: twoFAQrCode }} style={styles.qrImage} resizeMode="contain" />
+                          ) : null}
+                          <View style={styles.secretBox}>
+                            <KeyRound size={14} color="#64748B" />
+                            <Text style={styles.secretLabel}>Manual entry key:</Text>
+                            <Text style={styles.secretText} selectable>{twoFASecret}</Text>
+                          </View>
+                          <Text style={styles.twoFAInputLabel}>Enter verification code</Text>
+                          <TextInput
+                            style={styles.twoFAInput}
+                            value={twoFACode}
+                            onChangeText={setTwoFACode}
+                            placeholder="6-digit code"
+                            placeholderTextColor="#475569"
+                            keyboardType="number-pad"
+                            maxLength={6}
+                            autoFocus
+                          />
+                          {twoFAError ? <Text style={styles.twoFAError}>{twoFAError}</Text> : null}
+                          <TouchableOpacity
+                            style={[styles.twoFABtn, twoFALoading && { opacity: 0.6 }]}
+                            onPress={handle2FAEnable}
+                            disabled={twoFALoading}
+                          >
+                            {twoFALoading ? <ActivityIndicator color="#002E15" size="small" /> : <Text style={styles.twoFABtnText}>Enable 2FA</Text>}
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {twoFAStep === 'success' && (
+                        <View style={styles.twoFAContent}>
+                          <View style={[styles.twoFAIconCircle, { backgroundColor: '#0D2016' }]}>
+                            <CheckCircle2 size={28} color="#4ADE80" />
+                          </View>
+                          <Text style={styles.twoFATitle}>2FA Enabled!</Text>
+                          <Text style={styles.twoFASubtitle}>Your account is now protected with two-factor authentication.</Text>
+                          <TouchableOpacity style={styles.twoFABtn} onPress={() => setShow2FAModal(false)}>
+                            <Text style={styles.twoFABtnText}>Done</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {twoFAStep === 'disable' && (
+                        <View style={styles.twoFAContent}>
+                          <View style={[styles.twoFAIconCircle, { backgroundColor: '#1A0A0A' }]}>
+                            <Shield size={28} color="#EF4444" />
+                          </View>
+                          <Text style={styles.twoFATitle}>Disable 2FA</Text>
+                          <Text style={styles.twoFASubtitle}>Enter your password and current authenticator code to disable two-factor authentication.</Text>
+                          <Text style={styles.twoFAInputLabel}>Password</Text>
+                          <TextInput
+                            style={styles.twoFAInput}
+                            value={twoFAPassword}
+                            onChangeText={setTwoFAPassword}
+                            placeholder="Your account password"
+                            placeholderTextColor="#475569"
+                            secureTextEntry
+                          />
+                          <Text style={styles.twoFAInputLabel}>Authenticator code</Text>
+                          <TextInput
+                            style={styles.twoFAInput}
+                            value={twoFACode}
+                            onChangeText={setTwoFACode}
+                            placeholder="6-digit code"
+                            placeholderTextColor="#475569"
+                            keyboardType="number-pad"
+                            maxLength={6}
+                          />
+                          {twoFAError ? <Text style={styles.twoFAError}>{twoFAError}</Text> : null}
+                          <TouchableOpacity
+                            style={[styles.twoFABtn, { backgroundColor: '#EF4444' }, twoFALoading && { opacity: 0.6 }]}
+                            onPress={handle2FADisable}
+                            disabled={twoFALoading}
+                          >
+                            {twoFALoading ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={[styles.twoFABtnText, { color: '#FFFFFF' }]}>Disable 2FA</Text>}
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </Modal>
 
                 <TouchableOpacity style={styles.changePasswordButton} onPress={handleUpdatePassword}>
                   <Text style={styles.changePasswordButtonText}>Change Password</Text>
@@ -317,6 +532,40 @@ export default function AccountSettings() {
                       disabled={isSaving || !user?.userType}
                     >
                       <View style={[styles.toggleThumb, showUserType && styles.toggleThumbActive]} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.privacySection}>
+                  <Text style={styles.sectionHeader}>Account Privacy</Text>
+                  <View style={styles.privacyIconRow}>
+                    {isPrivate ? (
+                      <Lock size={32} color="#4ADE80" />
+                    ) : (
+                      <Globe size={32} color="#64748B" />
+                    )}
+                    <View style={{ flex: 1, marginLeft: 12 }}>
+                      <Text style={styles.privacyTitle}>{isPrivate ? 'Private Account' : 'Public Account'}</Text>
+                      <Text style={styles.privacyDescription}>
+                        {isPrivate
+                          ? 'Only approved followers can see your content and profile.'
+                          : 'Anyone can see your profile and content.'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.toggleContainer}>
+                    <View style={styles.toggleTextContainer}>
+                      <Text style={styles.toggleTitle}>Private Account</Text>
+                      <Text style={styles.toggleSubtitle}>
+                        When on, new followers must request to follow you before seeing your content.
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.toggleSwitch, isPrivate && styles.toggleSwitchActive]}
+                      onPress={handleTogglePrivacy}
+                      disabled={isSaving}
+                    >
+                      <View style={[styles.toggleThumb, isPrivate && styles.toggleThumbActive]} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -483,6 +732,19 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   noBadgeText: { color: '#64748B', fontSize: 14 },
+  privacySection: { marginTop: 24 },
+  privacyIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0F1520',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    marginBottom: 12,
+  },
+  privacyTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' as const, marginBottom: 4 },
+  privacyDescription: { color: '#94A3B8', fontSize: 13, lineHeight: 18 },
   toggleContainer: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -507,6 +769,70 @@ const styles = StyleSheet.create({
   twoFactorTextContainer: { flex: 1, paddingRight: 16 },
   twoFactorTitle: { color: '#FFF', fontSize: 16, fontWeight: '600', marginBottom: 4 },
   twoFactorSubtitle: { color: '#94A3B8', fontSize: 12 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
+  twoFAModal: {
+    backgroundColor: '#0F1520',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 12,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
+    maxHeight: '90%',
+    borderTopWidth: 1,
+    borderColor: '#1E293B',
+  },
+  twoFACloseBtn: { alignSelf: 'flex-end', padding: 8, marginBottom: 8 },
+  twoFAContent: { alignItems: 'center', gap: 12 },
+  twoFAIconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#0D2016',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  twoFATitle: { fontSize: 20, fontWeight: '700' as const, color: '#FFFFFF', textAlign: 'center' },
+  twoFASubtitle: { fontSize: 13, color: '#94A3B8', textAlign: 'center', lineHeight: 20 },
+  qrImage: { width: 200, height: 200, backgroundColor: '#FFFFFF', borderRadius: 12 },
+  secretBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    flexWrap: 'wrap' as const,
+    width: '100%',
+  },
+  secretLabel: { fontSize: 12, color: '#64748B' },
+  secretText: { fontSize: 12, color: '#4ADE80', fontFamily: 'monospace', flex: 1, flexWrap: 'wrap' as const },
+  twoFAInputLabel: { fontSize: 13, color: '#94A3B8', alignSelf: 'flex-start' as const },
+  twoFAInput: {
+    width: '100%',
+    backgroundColor: '#1A2332',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: '#FFFFFF',
+    fontSize: 16,
+    letterSpacing: 4,
+    textAlign: 'center' as const,
+  },
+  twoFAError: { fontSize: 13, color: '#EF4444', textAlign: 'center' },
+  twoFABtn: {
+    backgroundColor: '#4ADE80',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 24,
+    alignItems: 'center' as const,
+    width: '100%',
+    marginTop: 4,
+  },
+  twoFABtnText: { fontSize: 16, fontWeight: '700' as const, color: '#002E15' },
   toggleSwitch: { width: 44, height: 24, borderRadius: 12, backgroundColor: '#334155', padding: 2 },
   toggleSwitchActive: { backgroundColor: '#398457' },
   toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFF' },

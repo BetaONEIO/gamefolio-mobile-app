@@ -11,10 +11,12 @@ import {
   Platform,
   RefreshControl,
   ScrollView,
+  FlatList,
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Search, X, Play, User } from 'lucide-react-native';
+import { Search, X, Play, User, Film, Camera, Video, Gamepad2 } from 'lucide-react-native';
+import { Clip, Screenshot } from '@/lib/api';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api, TwitchGame } from '@/lib/api';
@@ -163,6 +165,7 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLevelModalVisible, setIsLevelModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeSearchTab, setActiveSearchTab] = useState<'all' | 'users' | 'games' | 'clips' | 'reels' | 'screenshots'>('all');
 
 
   const searchInputRef = useRef<TextInput>(null);
@@ -251,6 +254,28 @@ export default function ExploreScreen() {
     staleTime: 30 * 1000,
   });
 
+  const combinedSearchQuery = useQuery({
+    queryKey: ['search', 'combined', debouncedSearch],
+    queryFn: async () => {
+      const trimmedSearch = debouncedSearch?.trim() || '';
+      if (!trimmedSearch) return { clips: [] as Clip[], reels: [] as Clip[], screenshots: [] as Screenshot[] };
+      try {
+        const token = await getAccessToken();
+        const result = await api.search.search(trimmedSearch, token || undefined);
+        return {
+          clips: (result.clips || []).filter((c: Clip) => c.videoType === 'clip'),
+          reels: (result.reels || (result.clips || []).filter((c: Clip) => c.videoType === 'reel')),
+          screenshots: result.screenshots || [],
+        };
+      } catch (error) {
+        console.error('[Explore] Combined search error:', error);
+        return { clips: [] as Clip[], reels: [] as Clip[], screenshots: [] as Screenshot[] };
+      }
+    },
+    enabled: !!debouncedSearch && debouncedSearch.trim().length > 0,
+    staleTime: 30 * 1000,
+  });
+
   const apiSearchResults = React.useMemo(() => 
     searchQuery_api.data?.games || []
   , [searchQuery_api.data?.games]);
@@ -310,6 +335,7 @@ export default function ExploreScreen() {
 
   const clearSearch = useCallback(() => {
     setSearchQuery('');
+    setActiveSearchTab('all');
   }, []);
 
 
@@ -408,116 +434,260 @@ export default function ExploreScreen() {
             />
           }
         >
-          {(searchQuery_api.isLoading || usersSearchQuery.isLoading) && searchQuery.trim().length > 0 ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator color="#4ADE80" size="large" />
-              <Text style={styles.loadingText}>Searching...</Text>
-            </View>
-          ) : searchQuery.trim().length > 0 && (usersSearchQuery.data?.users?.length || 0) > 0 ? (
+          {searchQuery.trim().length > 0 ? (
             <>
-              <View style={styles.sectionHeader}>
-                <User size={18} color="#4ADE80" />
-                <Text style={styles.sectionTitle}>Users</Text>
-              </View>
-              <View style={styles.usersGrid}>
-                {usersSearchQuery.data?.users?.map((user) => (
+              {/* Search Tabs */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.searchTabsScroll}
+                contentContainerStyle={styles.searchTabsContent}
+              >
+                {([
+                  { key: 'all', label: 'All', icon: <Search size={14} color={activeSearchTab === 'all' ? '#0F1520' : '#94A3B8'} /> },
+                  { key: 'users', label: 'Users', icon: <User size={14} color={activeSearchTab === 'users' ? '#0F1520' : '#94A3B8'} /> },
+                  { key: 'games', label: 'Games', icon: <Gamepad2 size={14} color={activeSearchTab === 'games' ? '#0F1520' : '#94A3B8'} /> },
+                  { key: 'clips', label: 'Clips', icon: <Film size={14} color={activeSearchTab === 'clips' ? '#0F1520' : '#94A3B8'} /> },
+                  { key: 'reels', label: 'Reels', icon: <Video size={14} color={activeSearchTab === 'reels' ? '#0F1520' : '#94A3B8'} /> },
+                  { key: 'screenshots', label: 'Screenshots', icon: <Camera size={14} color={activeSearchTab === 'screenshots' ? '#0F1520' : '#94A3B8'} /> },
+                ] as const).map((tab) => (
                   <TouchableOpacity
-                    key={user.id}
-                    style={styles.userCard}
-                    onPress={() => handleUserPress(user)}
-                    activeOpacity={0.7}
+                    key={tab.key}
+                    style={[styles.searchTab, activeSearchTab === tab.key && styles.searchTabActive]}
+                    onPress={() => setActiveSearchTab(tab.key)}
                   >
-                    <Image
-                      source={{ uri: user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop' }}
-                      style={styles.userAvatar}
-                    />
-                    <View style={styles.userInfo}>
-                      <Text style={styles.userDisplayName} numberOfLines={1}>{user.displayName || user.username}</Text>
-                      <Text style={styles.userUsername} numberOfLines={1}>@{user.username}</Text>
-                    </View>
+                    {tab.icon}
+                    <Text style={[styles.searchTabText, activeSearchTab === tab.key && styles.searchTabTextActive]}>
+                      {tab.label}
+                    </Text>
                   </TouchableOpacity>
                 ))}
-              </View>
-              {displayedGames.length > 0 && (
+              </ScrollView>
+
+              {(searchQuery_api.isLoading || usersSearchQuery.isLoading || combinedSearchQuery.isLoading) ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator color="#4ADE80" size="large" />
+                  <Text style={styles.loadingText}>Searching...</Text>
+                </View>
+              ) : (
                 <>
-                  <View style={styles.sectionHeader}>
-                    <Play size={18} color="#4ADE80" />
-                    <Text style={styles.sectionTitle}>Games</Text>
-                  </View>
-                  <View style={styles.gamesGrid}>
-                    {displayedGames.map((game, index) => {
-                      const imageUrl = formatTwitchBoxArt(game.boxArt, 285, 380) || formatTwitchBoxArt(game.icon, 285, 380);
-                      return (
-                        <TouchableOpacity 
-                          key={`${game.id}-${index}`}
-                          style={styles.gameCard} 
-                          onPress={() => handleGamePress(game)}
-                          activeOpacity={0.7}
-                        >
-                          {imageUrl ? (
-                            <Image 
-                              source={{ uri: imageUrl }} 
-                              style={styles.gameImage}
+                  {/* Users Section */}
+                  {(activeSearchTab === 'all' || activeSearchTab === 'users') && (usersSearchQuery.data?.users?.length || 0) > 0 && (
+                    <>
+                      <View style={styles.sectionHeader}>
+                        <User size={18} color="#4ADE80" />
+                        <Text style={styles.sectionTitle}>Users</Text>
+                      </View>
+                      <View style={styles.usersGrid}>
+                        {usersSearchQuery.data?.users?.map((user) => (
+                          <TouchableOpacity
+                            key={user.id}
+                            style={styles.userCard}
+                            onPress={() => handleUserPress(user)}
+                            activeOpacity={0.7}
+                          >
+                            <Image
+                              source={{ uri: user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop' }}
+                              style={styles.userAvatar}
+                            />
+                            <View style={styles.userInfo}>
+                              <Text style={styles.userDisplayName} numberOfLines={1}>{user.displayName || user.username}</Text>
+                              <Text style={styles.userUsername} numberOfLines={1}>@{user.username}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
+
+                  {/* Games Section */}
+                  {(activeSearchTab === 'all' || activeSearchTab === 'games') && displayedGames.length > 0 && (
+                    <>
+                      <View style={styles.sectionHeader}>
+                        <Gamepad2 size={18} color="#4ADE80" />
+                        <Text style={styles.sectionTitle}>Games</Text>
+                      </View>
+                      <View style={styles.gamesGrid}>
+                        {displayedGames.map((game, index) => {
+                          const imageUrl = formatTwitchBoxArt(game.boxArt, 285, 380) || formatTwitchBoxArt(game.icon, 285, 380);
+                          return (
+                            <TouchableOpacity
+                              key={`${game.id}-${index}`}
+                              style={styles.gameCard}
+                              onPress={() => handleGamePress(game)}
+                              activeOpacity={0.7}
+                            >
+                              {imageUrl ? (
+                                <Image source={{ uri: imageUrl }} style={styles.gameImage} resizeMode="cover" />
+                              ) : (
+                                <View style={styles.gameImagePlaceholder}>
+                                  <Play color="#4ADE80" size={24} />
+                                </View>
+                              )}
+                              <View style={styles.gameInfo}>
+                                <Text style={styles.gameName} numberOfLines={2}>{game.name}</Text>
+                                <Text style={styles.gameSubtext}>Tap to explore</Text>
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </>
+                  )}
+
+                  {/* Clips Section */}
+                  {(activeSearchTab === 'all' || activeSearchTab === 'clips') && (combinedSearchQuery.data?.clips?.length || 0) > 0 && (
+                    <>
+                      <View style={styles.sectionHeader}>
+                        <Film size={18} color="#4ADE80" />
+                        <Text style={styles.sectionTitle}>Clips</Text>
+                      </View>
+                      <View style={styles.mediaGrid}>
+                        {combinedSearchQuery.data?.clips?.map((clip) => (
+                          <TouchableOpacity
+                            key={clip.id}
+                            style={styles.mediaCard}
+                            onPress={() => router.push({ pathname: '/clips/[id]', params: { id: clip.id.toString() } })}
+                            activeOpacity={0.7}
+                          >
+                            <Image
+                              source={{ uri: clip.thumbnailUrl || 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?w=300&h=180&fit=crop' }}
+                              style={styles.mediaThumbnail}
                               resizeMode="cover"
                             />
-                          ) : (
-                            <View style={styles.gameImagePlaceholder}>
-                              <Play color="#4ADE80" size={24} />
+                            <View style={styles.mediaOverlay}>
+                              <Film size={16} color="#FFF" />
                             </View>
-                          )}
-                          <View style={styles.gameInfo}>
-                            <Text style={styles.gameName} numberOfLines={2}>{game.name}</Text>
-                            <Text style={styles.gameSubtext}>Tap to explore</Text>
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
+                            <View style={styles.mediaInfo}>
+                              <Text style={styles.mediaTitle} numberOfLines={1}>{clip.title}</Text>
+                              <Text style={styles.mediaSubtext} numberOfLines={1}>{clip.user?.displayName || clip.user?.username}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
+
+                  {/* Reels Section */}
+                  {(activeSearchTab === 'all' || activeSearchTab === 'reels') && (combinedSearchQuery.data?.reels?.length || 0) > 0 && (
+                    <>
+                      <View style={styles.sectionHeader}>
+                        <Video size={18} color="#4ADE80" />
+                        <Text style={styles.sectionTitle}>Reels</Text>
+                      </View>
+                      <View style={styles.mediaGrid}>
+                        {combinedSearchQuery.data?.reels?.map((reel) => (
+                          <TouchableOpacity
+                            key={reel.id}
+                            style={styles.mediaCard}
+                            onPress={() => router.push({ pathname: '/clips/[id]', params: { id: reel.id.toString() } })}
+                            activeOpacity={0.7}
+                          >
+                            <Image
+                              source={{ uri: reel.thumbnailUrl || 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?w=300&h=180&fit=crop' }}
+                              style={styles.mediaThumbnail}
+                              resizeMode="cover"
+                            />
+                            <View style={styles.mediaOverlay}>
+                              <Video size={16} color="#FFF" />
+                            </View>
+                            <View style={styles.mediaInfo}>
+                              <Text style={styles.mediaTitle} numberOfLines={1}>{reel.title}</Text>
+                              <Text style={styles.mediaSubtext} numberOfLines={1}>{reel.user?.displayName || reel.user?.username}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
+
+                  {/* Screenshots Section */}
+                  {(activeSearchTab === 'all' || activeSearchTab === 'screenshots') && (combinedSearchQuery.data?.screenshots?.length || 0) > 0 && (
+                    <>
+                      <View style={styles.sectionHeader}>
+                        <Camera size={18} color="#4ADE80" />
+                        <Text style={styles.sectionTitle}>Screenshots</Text>
+                      </View>
+                      <View style={styles.mediaGrid}>
+                        {combinedSearchQuery.data?.screenshots?.map((shot: Screenshot) => (
+                          <TouchableOpacity
+                            key={shot.id}
+                            style={styles.mediaCard}
+                            onPress={() => router.push({ pathname: '/screenshot/[id]', params: { id: shot.id.toString() } })}
+                            activeOpacity={0.7}
+                          >
+                            <Image
+                              source={{ uri: shot.imageUrl || 'https://images.unsplash.com/photo-1593508512255-86ab42a8e620?w=300&h=180&fit=crop' }}
+                              style={styles.mediaThumbnail}
+                              resizeMode="cover"
+                            />
+                            <View style={styles.mediaOverlay}>
+                              <Camera size={16} color="#FFF" />
+                            </View>
+                            <View style={styles.mediaInfo}>
+                              <Text style={styles.mediaTitle} numberOfLines={1}>{shot.title}</Text>
+                              <Text style={styles.mediaSubtext} numberOfLines={1}>{shot.user?.displayName || shot.user?.username}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  )}
+
+                  {/* Empty State */}
+                  {(activeSearchTab === 'all' && 
+                    (usersSearchQuery.data?.users?.length || 0) === 0 &&
+                    displayedGames.length === 0 &&
+                    (combinedSearchQuery.data?.clips?.length || 0) === 0 &&
+                    (combinedSearchQuery.data?.reels?.length || 0) === 0 &&
+                    (combinedSearchQuery.data?.screenshots?.length || 0) === 0) ||
+                  (activeSearchTab === 'users' && (usersSearchQuery.data?.users?.length || 0) === 0) ||
+                  (activeSearchTab === 'games' && displayedGames.length === 0) ||
+                  (activeSearchTab === 'clips' && (combinedSearchQuery.data?.clips?.length || 0) === 0) ||
+                  (activeSearchTab === 'reels' && (combinedSearchQuery.data?.reels?.length || 0) === 0) ||
+                  (activeSearchTab === 'screenshots' && (combinedSearchQuery.data?.screenshots?.length || 0) === 0) ? (
+                    <View style={styles.emptyContainer}>
+                      <View style={styles.emptyIcon}>
+                        <Search size={40} color="#4ADE80" />
+                      </View>
+                      <Text style={styles.emptyTitle}>No results found</Text>
+                      <Text style={styles.emptyMessage}>Try a different keyword or search tab</Text>
+                    </View>
+                  ) : null}
                 </>
               )}
             </>
-          ) : displayedGames.length === 0 && searchQuery.trim().length > 0 ? (
-            <View style={styles.emptyContainer}>
-              <View style={styles.emptyIcon}>
-                <Search size={40} color="#4ADE80" />
-              </View>
-              <Text style={styles.emptyTitle}>No results found</Text>
-              <Text style={styles.emptyMessage}>Try searching with a different keyword</Text>
-            </View>
           ) : (
             <View style={styles.gamesGrid}>
               {displayedGames.map((game, index) => {
-              const imageUrl = formatTwitchBoxArt(game.boxArt, 285, 380) || formatTwitchBoxArt(game.icon, 285, 380);
-              return (
-                <TouchableOpacity 
-                  key={`${game.id}-${index}`}
-                  style={styles.gameCard} 
-                  onPress={() => handleGamePress(game)}
-                  activeOpacity={0.7}
-                >
-                  {imageUrl ? (
-                    <Image 
-                      source={{ uri: imageUrl }} 
-                      style={styles.gameImage}
-                      resizeMode="cover"
-                      onError={(e) => {
-                        console.log('[Explore] Image load error for', game.name, ':', e.nativeEvent.error);
-                      }}
-                      onLoad={() => {
-                        console.log('[Explore] Image loaded successfully:', game.name);
-                      }}
-                    />
-                  ) : (
-                    <View style={styles.gameImagePlaceholder}>
-                      <Play color="#4ADE80" size={24} />
+                const imageUrl = formatTwitchBoxArt(game.boxArt, 285, 380) || formatTwitchBoxArt(game.icon, 285, 380);
+                return (
+                  <TouchableOpacity
+                    key={`${game.id}-${index}`}
+                    style={styles.gameCard}
+                    onPress={() => handleGamePress(game)}
+                    activeOpacity={0.7}
+                  >
+                    {imageUrl ? (
+                      <Image
+                        source={{ uri: imageUrl }}
+                        style={styles.gameImage}
+                        resizeMode="cover"
+                        onError={(e) => {
+                          console.log('[Explore] Image load error for', game.name, ':', e.nativeEvent.error);
+                        }}
+                      />
+                    ) : (
+                      <View style={styles.gameImagePlaceholder}>
+                        <Play color="#4ADE80" size={24} />
+                      </View>
+                    )}
+                    <View style={styles.gameInfo}>
+                      <Text style={styles.gameName} numberOfLines={2}>{game.name}</Text>
+                      <Text style={styles.gameSubtext}>Tap to explore</Text>
                     </View>
-                  )}
-                  <View style={styles.gameInfo}>
-                    <Text style={styles.gameName} numberOfLines={2}>{game.name}</Text>
-                    <Text style={styles.gameSubtext}>Tap to explore</Text>
-                  </View>
-                </TouchableOpacity>
-              );
+                  </TouchableOpacity>
+                );
               })}
             </View>
           )}
@@ -860,6 +1030,78 @@ const styles = StyleSheet.create({
   usersGrid: {
     paddingHorizontal: HORIZONTAL_PADDING,
     paddingBottom: 8,
+  },
+  searchTabsScroll: {
+    maxHeight: 48,
+  },
+  searchTabsContent: {
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingVertical: 8,
+    gap: 8,
+    flexDirection: 'row',
+  },
+  searchTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#2D3748',
+  },
+  searchTabActive: {
+    backgroundColor: '#4ADE80',
+    borderColor: '#4ADE80',
+  },
+  searchTabText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#94A3B8',
+  },
+  searchTabTextActive: {
+    color: '#0F1520',
+  },
+  mediaGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: HORIZONTAL_PADDING,
+    paddingTop: 4,
+    paddingBottom: 12,
+    gap: 10,
+  },
+  mediaCard: {
+    width: '47%',
+    backgroundColor: '#1A2332',
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  mediaThumbnail: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: '#2D3748',
+  },
+  mediaOverlay: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 6,
+    padding: 4,
+  },
+  mediaInfo: {
+    padding: 8,
+  },
+  mediaTitle: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  mediaSubtext: {
+    fontSize: 11,
+    color: '#64748B',
   },
   userCard: {
     flexDirection: 'row',

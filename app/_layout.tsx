@@ -9,6 +9,8 @@ import { UserProvider } from "@/context/UserContext";
 import { LootboxCollectionProvider } from "@/context/LootboxCollectionContext";
 import { RevenueCatProvider } from "@/context/RevenueCatContext";
 import { NotificationsProvider } from "@/context/NotificationsContext";
+import { DailyStreakProvider } from "@/context/DailyStreakContext";
+import DailyStreakOverlay from "@/components/DailyStreakOverlay";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 
@@ -28,6 +30,7 @@ function AppContent() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0F1520' }}>
       <StatusBar style="light" />
+      <DailyStreakOverlay />
       <Stack screenOptions={{ 
         headerBackTitle: "Back", 
         headerShown: false,
@@ -78,11 +81,13 @@ export default function RootLayout() {
       <AuthProvider>
         <RevenueCatProvider>
           <NotificationsProvider>
-            <UserProvider>
-              <LootboxCollectionProvider>
-                <AppContent />
-              </LootboxCollectionProvider>
-            </UserProvider>
+            <DailyStreakProvider>
+              <UserProvider>
+                <LootboxCollectionProvider>
+                  <AppContent />
+                </LootboxCollectionProvider>
+              </UserProvider>
+            </DailyStreakProvider>
           </NotificationsProvider>
         </RevenueCatProvider>
       </AuthProvider>

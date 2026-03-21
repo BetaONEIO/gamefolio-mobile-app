@@ -16,6 +16,7 @@ import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Lock, Eye, EyeOff, ArrowRight, User as UserIcon, AlertCircle, CheckCircle, Calendar, LogOut } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
+import { useDailyStreak } from '@/context/DailyStreakContext';
 import { api, APIError } from '@/lib/api';
 import { useDebounce } from '@/hooks/useDebounce';
 import { isUsernameAppropriate } from '@/lib/profanity-filter';
@@ -69,6 +70,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { login: loginUser, isLoading: authLoading, isAuthenticated, user, logout: logoutUser } = useAuth();
+  const { showStreak } = useDailyStreak();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
@@ -434,6 +436,10 @@ export default function LoginScreen() {
           result.streakInfo,
           result.gamefolioTokens
         );
+
+        if (result.streakInfo && result.streakInfo.bonusAwarded > 0) {
+          showStreak(result.streakInfo);
+        }
         
         console.log('[Login] Success:', result.user.username);
         

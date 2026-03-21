@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
 import { useMemo } from 'react';
 import Svg, { Path, Ellipse } from 'react-native-svg';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, Mail, Play, Camera, Flag, ChevronLeft, Bell, Upload } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, Mail, Play, Camera, Flag, ChevronLeft, Bell, Upload, UserX } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -457,6 +457,20 @@ function createStyles(theme: ProfileThemeTokens) {
       borderColor: theme.iconBtnBorder,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    blockBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 10,
+      backgroundColor: 'rgba(249,115,22,0.1)',
+      borderWidth: 0.5,
+      borderColor: 'rgba(249,115,22,0.3)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    blockBtnActive: {
+      backgroundColor: '#F97316',
+      borderColor: '#F97316',
     },
     reportBtn: {
       width: 40,
@@ -916,6 +930,7 @@ export default function PublicProfileScreen() {
   const favoriteGames = favoritesData || [];
 
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [isProfileModalVisible, setIsProfileModalVisible] = useState(false);
   const [isBannerModalVisible, setIsBannerModalVisible] = useState(false);
   const [isReportModalVisible, setIsReportModalVisible] = useState(false);
@@ -932,6 +947,21 @@ export default function PublicProfileScreen() {
       return api.reports.submit(reportData as any, token);
     },
   });
+
+  const blockMutation = useMutation({
+    mutationFn: async ({ block }: { block: boolean }) => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      if (block) return api.blocking.block(Number(userId), token);
+      return api.blocking.unblock(Number(userId), token);
+    },
+    onMutate: ({ block }) => setIsBlocked(block),
+    onError: (_err, { block }) => setIsBlocked(!block),
+  });
+
+  const handleToggleBlock = () => {
+    blockMutation.mutate({ block: !isBlocked });
+  };
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -1241,6 +1271,13 @@ export default function PublicProfileScreen() {
                 onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
               >
                 <Mail size={16} color={theme.memberSinceColor} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.blockBtn, isBlocked && styles.blockBtnActive]}
+                onPress={handleToggleBlock}
+                disabled={blockMutation.isPending}
+              >
+                <UserX size={14} color={isBlocked ? '#FFFFFF' : '#F97316'} />
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.reportBtn}

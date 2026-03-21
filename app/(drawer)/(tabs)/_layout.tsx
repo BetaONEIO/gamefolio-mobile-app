@@ -123,6 +123,12 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="screenshots"
+        options={{
+          href: null,
+        }}
+      />
 
 
     </Tabs>

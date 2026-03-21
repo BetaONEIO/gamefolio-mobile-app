@@ -1153,6 +1153,12 @@ export const api = {
   },
 
   screenshots: {
+    getLatest: (token?: string) =>
+      apiFetch<Screenshot[]>('/api/screenshots/latest', {
+        method: 'GET',
+        token,
+      }),
+
     getUserScreenshots: (userId: number, token?: string) =>
       apiFetch<Screenshot[]>(`/api/users/${userId}/screenshots`, {
         method: 'GET',
@@ -1391,6 +1397,19 @@ export const api = {
       });
     },
 
+    getRandom: (limit = 8, token?: string) =>
+      apiFetch<{
+        id: number;
+        username: string;
+        displayName: string;
+        avatarUrl: string | null;
+        level?: number;
+        totalXP?: number;
+      }[]>(`/api/users/random?limit=${limit}`, {
+        method: 'GET',
+        token,
+      }),
+
     getFeatured: async (token?: string) => {
       console.log('[Users API] 🔵 Fetching featured users...');
       return apiFetch<{
@@ -1626,6 +1645,27 @@ export const api = {
         reels?: Clip[];
         screenshots?: Screenshot[];
       }>(`/api/search?q=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        token,
+      });
+    },
+
+    clips: (query: string, token?: string) => {
+      return apiFetch<Clip[]>(`/api/search/clips?q=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        token,
+      });
+    },
+
+    reels: (query: string, token?: string) => {
+      return apiFetch<Clip[]>(`/api/search/reels?q=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        token,
+      });
+    },
+
+    screenshots: (query: string, token?: string) => {
+      return apiFetch<Screenshot[]>(`/api/search/screenshots?q=${encodeURIComponent(query)}`, {
         method: 'GET',
         token,
       });
@@ -2144,5 +2184,37 @@ export const api = {
         token,
       });
     },
+  },
+
+  twoFactor: {
+    getStatus: (token: string) =>
+      apiFetch<{ enabled: boolean }>('/api/2fa/status', {
+        method: 'GET',
+        token,
+        useCookieAuth: true,
+      }),
+
+    setup: (token: string) =>
+      apiFetch<{ qrCode: string; secret: string; keyUri: string }>('/api/2fa/setup', {
+        method: 'POST',
+        token,
+        useCookieAuth: true,
+      }),
+
+    enable: (code: string, token: string) =>
+      apiFetch<{ message: string; enabled: boolean }>('/api/2fa/enable', {
+        method: 'POST',
+        body: JSON.stringify({ code }),
+        token,
+        useCookieAuth: true,
+      }),
+
+    disable: (password: string, code: string, token: string) =>
+      apiFetch<{ message: string; enabled: boolean }>('/api/2fa/disable', {
+        method: 'POST',
+        body: JSON.stringify({ password, code }),
+        token,
+        useCookieAuth: true,
+      }),
   },
 };

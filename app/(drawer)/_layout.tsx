@@ -39,6 +39,24 @@ export default function DrawerLayout() {
         }}
       />
       <Drawer.Screen
+        name="blocked-users"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="level-tracker"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="battles"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
         name="messages"
         options={{
           headerShown: false,
