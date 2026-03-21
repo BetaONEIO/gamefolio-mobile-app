@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,82 +6,110 @@ import {
   StyleSheet,
   ImageBackground,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { Video } from 'lucide-react-native';
+import { Video, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { Env } from '@/constants/Env';
 
-interface HeroTextData {
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+interface HeroSlide {
+  id: number;
   title: string;
-  subtitle: string;
-  buttonText: string;
-  buttonUrl: string;
-  targetAudience: string;
+  subtitle: string | null;
+  buttonText: string | null;
+  buttonLink: string | null;
+  imageUrl: string;
+  displayOrder: number;
   isActive: boolean;
-  backgroundUrl?: string;
-  backgroundType?: 'image' | 'gif' | 'video';
+  visibility: string;
+  textAlign: string;
 }
+
+const FALLBACK_SLIDES: HeroSlide[] = [
+  {
+    id: 0,
+    title: 'Welcome Back, Gamers',
+    subtitle: 'Upload, discover, and share epic gaming clips with the community',
+    buttonText: 'Start Building Now',
+    buttonLink: '/upload',
+    imageUrl: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=1200&auto=format&fit=crop&q=80',
+    displayOrder: 0,
+    isActive: true,
+    visibility: 'everyone',
+    textAlign: 'center',
+  },
+];
 
 export default function HeroBanner() {
   const router = useRouter();
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const { data: heroData, isLoading, error } = useQuery<HeroTextData>({
-    queryKey: ['hero-text', 'experienced'],
+  const { data: slides, isLoading } = useQuery<HeroSlide[]>({
+    queryKey: ['/api/hero-slides'],
     queryFn: async () => {
-      console.log('[HeroBanner] Fetching hero text from API...');
-      const response = await fetch(`${Env.BACKEND_URL}/api/hero-text/experienced`);
-      
-      if (!response.ok) {
-        console.log('[HeroBanner] API request failed, using fallback');
-        throw new Error('Failed to fetch hero text');
-      }
-      
-      const data = await response.json();
-      console.log('[HeroBanner] Received hero data:', data);
-      return data;
+      const res = await fetch(`${Env.BACKEND_URL}/api/hero-slides`);
+      if (!res.ok) throw new Error('Failed to fetch hero slides');
+      return res.json();
     },
-    staleTime: 1000 * 60 * 30, // Cache for 30 minutes
-    gcTime: 1000 * 60 * 60, // Keep in cache for 1 hour
+    staleTime: 1000 * 60 * 10,
     retry: 1,
   });
 
-  const handleButtonPress = useCallback(() => {
-    const data = heroData?.isActive ? heroData : { buttonUrl: '/upload' };
-    const buttonUrl = data.buttonUrl || '/upload';
-    console.log('[HeroBanner] Button pressed, navigating to:', buttonUrl);
-    
-    if (buttonUrl === '/upload' || buttonUrl === '/(drawer)/(tabs)/create') {
-      router.push('/(drawer)/(tabs)/create');
-    } else if (buttonUrl.startsWith('/')) {
-      router.push(buttonUrl as any);
+  const { data: settings } = useQuery<{ intervalSeconds: number }>({
+    queryKey: ['/api/hero-slides/settings'],
+    queryFn: async () => {
+      const res = await fetch(`${Env.BACKEND_URL}/api/hero-slides/settings`);
+      if (!res.ok) throw new Error('Failed to fetch settings');
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 30,
+    retry: 1,
+  });
+
+  const activeSlides = (slides && slides.length > 0) ? slides : FALLBACK_SLIDES;
+  const intervalMs = ((settings?.intervalSeconds) || 6) * 1000;
+
+  const goToSlide = useCallback((idx: number) => {
+    setCurrentSlide(idx);
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (activeSlides.length > 1) {
+      timerRef.current = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % activeSlides.length);
+      }, intervalMs);
     }
-  }, [heroData, router]);
+  }, [activeSlides.length, intervalMs]);
 
-  const renderTitle = useCallback((title: string) => {
-    const lines = title.split('\\n');
-    return lines.map((line, index) => (
-      <Text key={index} style={styles.heroTitle}>
-        {line}
-      </Text>
-    ));
-  }, []);
+  useEffect(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (activeSlides.length > 1) {
+      timerRef.current = setInterval(() => {
+        setCurrentSlide((prev) => (prev + 1) % activeSlides.length);
+      }, intervalMs);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [activeSlides.length, intervalMs]);
 
-  // Use fallback data if API fails or returns no data
-  const fallbackData: HeroTextData = {
-    title: 'Build Your Gamefolio',
-    subtitle: 'Upload, discover, and share epic gaming clips with the community',
-    buttonText: 'Start Building Now',
-    buttonUrl: '/upload',
-    targetAudience: 'experienced_users',
-    isActive: true,
-  };
+  useEffect(() => {
+    if (currentSlide >= activeSlides.length) setCurrentSlide(0);
+  }, [activeSlides.length, currentSlide]);
 
-  const displayData = heroData?.isActive ? heroData : fallbackData;
-  const backgroundUrl = displayData.backgroundUrl || 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=1200&auto=format&fit=crop&q=80';
+  const handleButtonPress = useCallback((slide: HeroSlide) => {
+    const link = slide.buttonLink || '/upload';
+    if (link === '/upload' || link === '/(drawer)/(tabs)/create') {
+      router.push('/(drawer)/(tabs)/create');
+    } else if (link.startsWith('/')) {
+      router.push(link as any);
+    }
+  }, [router]);
 
-  // Show loading skeleton
+  const slide = activeSlides[Math.min(currentSlide, activeSlides.length - 1)];
+  const isCenter = slide.textAlign === 'center';
+
   if (isLoading) {
     return (
       <View style={[styles.container, styles.loadingContainer]}>
@@ -97,32 +125,68 @@ export default function HeroBanner() {
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={{ uri: backgroundUrl }}
+        source={{ uri: slide.imageUrl }}
         style={styles.backgroundImage}
-        imageStyle={styles.backgroundImageStyle}
         resizeMode="cover"
       >
         <LinearGradient
-          colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.7)']}
+          colors={['rgba(0,0,0,0.75)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0.75)']}
           locations={[0, 0.5, 1]}
           style={styles.gradient}
         >
-          <View style={styles.contentContainer}>
-            <View style={styles.titleContainer}>
-              {renderTitle(displayData.title)}
-            </View>
-            
-            <Text style={styles.heroSubtitle}>{displayData.subtitle}</Text>
-            
-            <TouchableOpacity
-              style={styles.ctaButton}
-              onPress={handleButtonPress}
-              activeOpacity={0.85}
-            >
-              <Video size={18} color="#002E15" />
-              <Text style={styles.ctaButtonText}>{displayData.buttonText}</Text>
-            </TouchableOpacity>
+          <View style={[styles.contentContainer, isCenter && styles.contentCenter]}>
+            <Text style={[styles.heroTitle, isCenter && styles.textCenter]} numberOfLines={3}>
+              {slide.title}
+            </Text>
+
+            {slide.subtitle ? (
+              <Text style={[styles.heroSubtitle, isCenter && styles.textCenter]} numberOfLines={2}>
+                {slide.subtitle}
+              </Text>
+            ) : null}
+
+            {slide.buttonText ? (
+              <TouchableOpacity
+                style={styles.ctaButton}
+                onPress={() => handleButtonPress(slide)}
+                activeOpacity={0.85}
+              >
+                <Video size={16} color="#002E15" />
+                <Text style={styles.ctaButtonText}>{slide.buttonText}</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
+
+          {/* Nav arrows — only shown when > 1 slide */}
+          {activeSlides.length > 1 ? (
+            <>
+              <TouchableOpacity
+                style={[styles.navArrow, styles.navArrowLeft]}
+                onPress={() => goToSlide((currentSlide - 1 + activeSlides.length) % activeSlides.length)}
+                activeOpacity={0.7}
+              >
+                <ChevronLeft size={20} color="#FFF" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.navArrow, styles.navArrowRight]}
+                onPress={() => goToSlide((currentSlide + 1) % activeSlides.length)}
+                activeOpacity={0.7}
+              >
+                <ChevronRight size={20} color="#FFF" />
+              </TouchableOpacity>
+            </>
+          ) : null}
+
+          {/* Dot indicators */}
+          {activeSlides.length > 1 ? (
+            <View style={styles.dotsRow}>
+              {activeSlides.map((_, i) => (
+                <TouchableOpacity key={i} onPress={() => goToSlide(i)} activeOpacity={0.8}>
+                  <View style={[styles.dot, i === currentSlide && styles.dotActive]} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
         </LinearGradient>
       </ImageBackground>
     </View>
@@ -132,69 +196,66 @@ export default function HeroBanner() {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    height: 200,
+    height: 210,
     marginBottom: 16,
     marginHorizontal: -16,
-    paddingHorizontal: 0,
     overflow: 'hidden',
     alignSelf: 'center',
   },
-
   backgroundImage: {
     flex: 1,
     width: '100%',
     height: '100%',
   },
-  backgroundImageStyle: {
-  },
   gradient: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingBottom: 28,
+    paddingTop: 16,
   },
   contentContainer: {
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 400,
+    alignItems: 'flex-start',
+    maxWidth: SCREEN_WIDTH - 80,
   },
-  titleContainer: {
+  contentCenter: {
     alignItems: 'center',
-    marginBottom: 8,
+    alignSelf: 'center',
+    maxWidth: SCREEN_WIDTH - 40,
   },
   heroTitle: {
-    fontSize: 24,
-    fontWeight: '800' as const,
+    fontSize: 22,
+    fontWeight: '800',
     color: '#FFFFFF',
-    textAlign: 'center',
-    lineHeight: 30,
+    lineHeight: 28,
     letterSpacing: -0.5,
-    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+    marginBottom: 6,
   },
   heroSubtitle: {
-    fontSize: 13,
-    fontWeight: '500' as const,
+    fontSize: 12,
+    fontWeight: '500',
     color: '#4ADE80',
-    textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 17,
     marginBottom: 12,
-    paddingHorizontal: 8,
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+  },
+  textCenter: {
+    textAlign: 'center',
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#4ADE80',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 9,
     borderRadius: 10,
-    gap: 8,
+    gap: 7,
     ...Platform.select({
       ios: {
         shadowColor: '#4ADE80',
@@ -202,16 +263,50 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.4,
         shadowRadius: 8,
       },
-      android: {
-        elevation: 6,
-      },
+      android: { elevation: 6 },
     }),
   },
   ctaButtonText: {
-    fontSize: 14,
-    fontWeight: '700' as const,
+    fontSize: 13,
+    fontWeight: '700',
     color: '#002E15',
     letterSpacing: 0.3,
+  },
+  navArrow: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -20,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 20,
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navArrowLeft: {
+    left: 10,
+  },
+  navArrowRight: {
+    right: 10,
+  },
+  dotsRow: {
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  dotActive: {
+    width: 18,
+    backgroundColor: '#4ADE80',
   },
   loadingContainer: {
     backgroundColor: '#1E293B',
