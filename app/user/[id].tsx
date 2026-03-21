@@ -1117,6 +1117,9 @@ export default function PublicProfileScreen() {
             )}
           </View>
           <Text style={styles.handle}>{handle}</Text>
+          {user.bio ? (
+            <Text style={[styles.bio, { marginTop: 6, textTransform: 'none', fontSize: 13, fontWeight: '400', letterSpacing: 0 }]} numberOfLines={3}>{user.bio}</Text>
+          ) : null}
 
           {/* Pill badge below handle for light/pink theme */}
           {theme.isLight && user.emailVerified && theme.verifiedLabel.length > 0 && (
@@ -1198,15 +1201,9 @@ export default function PublicProfileScreen() {
               <Text style={styles.followingLabel}>FOLLOWING</Text>
             </View>
           )}
-          {/* Bio/member since inside card for pink theme */}
+          {/* Collection button inside card for pink theme */}
           {theme.statsCardIncludesBio && (
             <View style={styles.statsCardBioSection}>
-              {user.createdAt ? (
-                <Text style={styles.statsCardMemberSince}>{formatJoinDate(user.createdAt).toUpperCase()}</Text>
-              ) : null}
-              {user.bio ? (
-                <Text style={styles.statsCardBio}>{user.bio}</Text>
-              ) : null}
               <LinearGradient
                 colors={theme.collectionGradient}
                 start={{ x: 0, y: 0.5 }}
@@ -1241,15 +1238,6 @@ export default function PublicProfileScreen() {
 
         {/* Profile Info */}
         <View style={styles.profileInfoSection}>
-          {!theme.statsCardIncludesBio && user.createdAt ? (
-            <Text style={styles.memberSince}>Member since {formatJoinDate(user.createdAt)}</Text>
-          ) : null}
-          {!theme.statsCardIncludesBio && user.bio ? (
-            <View style={styles.bioContainer}>
-              <Text style={styles.bio}>{user.bio}</Text>
-            </View>
-          ) : null}
-
           {/* Platform chips */}
           {platforms.length > 0 && (
             <View style={styles.platformsRow}>

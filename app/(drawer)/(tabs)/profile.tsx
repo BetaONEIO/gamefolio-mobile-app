@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Pressable } from 'react-native';
 import ScrollView from '@/components/ThemedScrollView';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart, Gift } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { getProfileTheme, ProfileThemeTokens } from '@/constants/themes';
 import { useAuth } from '@/context/AuthContext';
@@ -354,61 +354,6 @@ export default function ProfileScreen() {
   const [isLevelModalVisible, setIsLevelModalVisible] = useState(false);
   const [isLootboxModalVisible, setIsLootboxModalVisible] = useState(false);
 
-  const lootboxStatusQuery = useQuery({
-    queryKey: ['lootbox-status', user?.id],
-    queryFn: async () => {
-      const token = await getAccessToken();
-      if (!token) throw new Error('Not authenticated');
-      return api.lootbox.getStatus(token);
-    },
-    staleTime: 60 * 1000,
-    enabled: !!user,
-  });
-
-  const lootboxCanOpen = lootboxStatusQuery.data?.canOpen ?? false;
-  const lootboxNextOpenAt = useMemo(() => {
-    return lootboxStatusQuery.data?.nextOpenAt ? new Date(lootboxStatusQuery.data.nextOpenAt) : null;
-  }, [lootboxStatusQuery.data?.nextOpenAt]);
-
-  const [lootboxCountdown, setLootboxCountdown] = useState('');
-  const lootboxTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  useEffect(() => {
-    if (lootboxTimerRef.current) {
-      clearInterval(lootboxTimerRef.current);
-      lootboxTimerRef.current = null;
-    }
-    if (!lootboxNextOpenAt || lootboxCanOpen) {
-      setLootboxCountdown('');
-      return;
-    }
-    const update = () => {
-      const diff = lootboxNextOpenAt.getTime() - Date.now();
-      if (diff <= 0) {
-        if (lootboxTimerRef.current) {
-          clearInterval(lootboxTimerRef.current);
-          lootboxTimerRef.current = null;
-        }
-        setLootboxCountdown('');
-        lootboxStatusQuery.refetch();
-        return;
-      }
-      const h = Math.floor(diff / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setLootboxCountdown(
-        `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-      );
-    };
-    update();
-    lootboxTimerRef.current = setInterval(update, 1000);
-    return () => {
-      if (lootboxTimerRef.current) {
-        clearInterval(lootboxTimerRef.current);
-        lootboxTimerRef.current = null;
-      }
-    };
-  }, [lootboxNextOpenAt, lootboxCanOpen]);
 
   const [selectedScreenshot, setSelectedScreenshot] = useState<Screenshot | null>(null);
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
@@ -455,7 +400,7 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: h.containerBg }]}>
       <AppHeader onOpenLevelTracker={() => setIsLevelModalVisible(true)} />
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {isBirthdayToday(user?.birthday) && (
           <BirthdayBanner 
             displayName={user?.displayName || user?.username || 'User'} 
@@ -511,26 +456,6 @@ export default function ProfileScreen() {
               >
                 <LevelBadge level={profileData.level} currentXP={profileData.totalXP} size={32} thickness={3} />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.lootboxBadgeContainer}
-                onPress={() => setIsLootboxModalVisible(true)}
-                activeOpacity={0.7}
-              >
-                <LinearGradient
-                  colors={lootboxCanOpen ? ['#A855F7', '#7C3AED'] : ['#334155', '#1E293B']}
-                  style={styles.lootboxBadge}
-                >
-                  <Gift size={18} color={lootboxCanOpen ? '#FFF' : '#64748B'} />
-                </LinearGradient>
-                {lootboxCanOpen ? (
-                  <View style={styles.lootboxAvailableDot} />
-                ) : null}
-                {!lootboxCanOpen && lootboxCountdown.length > 0 ? (
-                  <View style={styles.lootboxCountdownBadge}>
-                    <Text style={styles.lootboxCountdownText}>{lootboxCountdown}</Text>
-                  </View>
-                ) : null}
-              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -561,6 +486,9 @@ export default function ProfileScreen() {
               </View>
             </View>
             <Text style={[styles.handle, { color: h.handleColor }]}>{profileData.handle}</Text>
+            {profileData.bio ? (
+              <Text style={[styles.bio, { color: h.bioColor, marginTop: 6 }]}>{profileData.bio}</Text>
+            ) : null}
             <UserTypeBadge 
               userType={user?.userType} 
               showUserType={user?.showUserType !== false} 
@@ -610,11 +538,8 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Member since + bio below the card */}
-        <View style={{ marginTop: 16, paddingHorizontal: 4 }}>
-          <Text style={[styles.memberSince, { color: h.memberSinceColor }]}>Member since {profileData.joined}</Text>
-          <Text style={[styles.bio, { color: h.bioColor }]}>{profileData.bio}</Text>
-          <View style={styles.platformsRow}>
+        {profileData.platforms.length > 0 ? (
+          <View style={[styles.platformsRow, { marginTop: 12, paddingHorizontal: 4 }]}>
             {profileData.platforms.map((platform, index) => (
               <View key={index} style={[styles.platformTag, { backgroundColor: platform.color }]}>
                 {platform.type === 'xbox' && <Gamepad2 size={12} color="#FFF" />}
@@ -624,7 +549,7 @@ export default function ProfileScreen() {
               </View>
             ))}
           </View>
-        </View>
+        ) : null}
 
         {/* Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor }]} contentContainerStyle={styles.tabsContent}>
@@ -862,10 +787,7 @@ export default function ProfileScreen() {
       <DailyLootboxModal
         visible={isLootboxModalVisible}
         onClose={() => setIsLootboxModalVisible(false)}
-        onClaimed={() => {
-          console.log('[Profile] Lootbox claimed successfully');
-          lootboxStatusQuery.refetch();
-        }}
+        onClaimed={() => {}}
       />
 
       <ScreenshotViewerModal
@@ -921,8 +843,10 @@ const styles = StyleSheet.create({
     height: 6,
     backgroundColor: '#1E1033',
   },
+  scrollContent: {
+    paddingBottom: 120,
+  },
   content: {
-    flex: 1,
     paddingHorizontal: 16,
     marginTop: -90,
   },
@@ -962,59 +886,6 @@ const styles = StyleSheet.create({
     bottom: -12,
     left: '50%',
     marginLeft: -16,
-  },
-  lootboxBadgeContainer: {
-    position: 'absolute',
-    bottom: -8,
-    left: 70,
-  },
-  lootboxBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#0F1520',
-    shadowColor: '#A855F7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  lootboxBadgeText: {
-    fontSize: 20,
-  },
-  lootboxAvailableDot: {
-    position: 'absolute',
-    top: -3,
-    right: -3,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#4ADE80',
-    borderWidth: 2,
-    borderColor: '#0F1520',
-  },
-  lootboxCountdownBadge: {
-    position: 'absolute',
-    bottom: -18,
-    left: '50%',
-    transform: [{ translateX: -22 }],
-    backgroundColor: '#1E293B',
-    borderRadius: 6,
-    paddingVertical: 2,
-    paddingHorizontal: 4,
-    borderWidth: 1,
-    borderColor: '#334155',
-    minWidth: 44,
-    alignItems: 'center',
-  },
-  lootboxCountdownText: {
-    fontSize: 9,
-    color: '#F59E0B',
-    fontWeight: 'bold' as const,
-    letterSpacing: 0.5,
   },
   onlineIndicator: {
     position: 'absolute',
