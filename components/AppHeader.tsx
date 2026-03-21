@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, TextInput, Animated, Keyboard, Platform, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { BlurView } from 'expo-blur';
-import { Bell, Menu, Plus, Search, ChevronLeft, X, Hash, User, Gamepad2, BadgeCheck } from 'lucide-react-native';
+import { Bell, Menu, Plus, Search, ChevronLeft, X, Hash, User, Gamepad2, BadgeCheck, Gift } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRouter, useSegments } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
@@ -10,6 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import ProfileDropdown from '@/components/ProfileDropdown';
 import NotificationDropdown from '@/components/NotificationDropdown';
 import UploadDropdown from '@/components/UploadDropdown';
+import DailyLootboxModal from '@/components/DailyLootboxModal';
 import { Env } from '@/constants/Env';
 import { useAuth } from '@/context/AuthContext';
 import { useNotifications } from '@/context/NotificationsContext';
@@ -223,6 +224,20 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
   const [isNotificationDropdownVisible, setIsNotificationDropdownVisible] = useState(false);
   const [isUploadDropdownVisible, setIsUploadDropdownVisible] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [isLootboxModalVisible, setIsLootboxModalVisible] = useState(false);
+
+  const lootboxStatusQuery = useQuery({
+    queryKey: ['lootbox-status'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      return api.lootbox.getStatus(token);
+    },
+    staleTime: 60 * 1000,
+    enabled: !!user,
+  });
+
+  const lootboxCanOpen = lootboxStatusQuery.data?.canOpen ?? false;
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const searchAnimation = useRef(new Animated.Value(0)).current;
@@ -358,6 +373,20 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
           <TouchableOpacity style={styles.iconButton} onPress={openSearch}>
             <Search size={24} color="#FFF" />
           </TouchableOpacity>
+
+          {!!user && (
+            <TouchableOpacity
+              style={styles.iconButton}
+              onPress={() => setIsLootboxModalVisible(true)}
+            >
+              <View style={styles.giftWrapper}>
+                <Gift size={24} color={lootboxCanOpen ? '#A855F7' : '#FFF'} />
+                {lootboxCanOpen ? (
+                  <View style={styles.lootboxAvailableDot} />
+                ) : null}
+              </View>
+            </TouchableOpacity>
+          )}
       
           <TouchableOpacity 
             style={styles.iconButton}
@@ -626,6 +655,14 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
         onClose={() => setIsUploadDropdownVisible(false)}
         topOffset={insets.top + 60}
       />
+
+      <DailyLootboxModal
+        visible={isLootboxModalVisible}
+        onClose={() => setIsLootboxModalVisible(false)}
+        onClaimed={() => {
+          lootboxStatusQuery.refetch();
+        }}
+      />
     </>
   );
 }
@@ -658,6 +695,22 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     overflow: 'visible',
+  },
+  giftWrapper: {
+    width: 24,
+    height: 24,
+    overflow: 'visible',
+  },
+  lootboxAvailableDot: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: '#4ADE80',
+    borderWidth: 1.5,
+    borderColor: '#0F1520',
   },
   notificationBadge: {
     position: 'absolute',

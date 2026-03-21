@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Pressable } from 'react-native';
 import ScrollView from '@/components/ThemedScrollView';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart, Gift } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -353,6 +353,19 @@ export default function ProfileScreen() {
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const [isLevelModalVisible, setIsLevelModalVisible] = useState(false);
   const [isLootboxModalVisible, setIsLootboxModalVisible] = useState(false);
+
+  const lootboxStatusQuery = useQuery({
+    queryKey: ['lootbox-status'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      return api.lootbox.getStatus(token);
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const lootboxCanOpen = lootboxStatusQuery.data?.canOpen ?? false;
+
   const [selectedScreenshot, setSelectedScreenshot] = useState<Screenshot | null>(null);
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
   const [isScreenshotModalVisible, setIsScreenshotModalVisible] = useState(false);
@@ -453,6 +466,21 @@ export default function ProfileScreen() {
                 activeOpacity={0.7}
               >
                 <LevelBadge level={profileData.level} currentXP={profileData.totalXP} size={32} thickness={3} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.lootboxBadgeContainer}
+                onPress={() => setIsLootboxModalVisible(true)}
+                activeOpacity={0.7}
+              >
+                <LinearGradient
+                  colors={lootboxCanOpen ? ['#A855F7', '#7C3AED'] : ['#334155', '#1E293B']}
+                  style={styles.lootboxBadge}
+                >
+                  <Gift size={18} color={lootboxCanOpen ? '#FFF' : '#64748B'} />
+                </LinearGradient>
+                {lootboxCanOpen ? (
+                  <View style={styles.lootboxAvailableDot} />
+                ) : null}
               </TouchableOpacity>
             </View>
           </View>
@@ -906,6 +934,17 @@ const styles = StyleSheet.create({
   },
   lootboxBadgeText: {
     fontSize: 20,
+  },
+  lootboxAvailableDot: {
+    position: 'absolute',
+    top: -3,
+    right: -3,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#4ADE80',
+    borderWidth: 2,
+    borderColor: '#0F1520',
   },
   onlineIndicator: {
     position: 'absolute',
