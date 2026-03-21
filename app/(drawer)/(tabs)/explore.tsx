@@ -42,6 +42,98 @@ interface SearchUser {
 const { width } = Dimensions.get('window');
 const HORIZONTAL_PADDING = 16;
 
+const GAME_CATEGORIES: Record<string, string> = {
+  'League of Legends': 'MOBA',
+  'Dota 2': 'MOBA',
+  'Teamfight Tactics': 'Strategy',
+  'Legends of Runeterra': 'Card Game',
+  'Grand Theft Auto V': 'Open World',
+  'Counter-Strike 2': 'FPS',
+  'VALORANT': 'FPS',
+  'Call of Duty: Warzone': 'Battle Royale',
+  'Call of Duty: Modern Warfare III': 'FPS',
+  'Call of Duty: Black Ops III': 'FPS',
+  'Fortnite': 'Battle Royale',
+  'PUBG: BATTLEGROUNDS': 'Battle Royale',
+  'Apex Legends': 'Battle Royale',
+  'Minecraft': 'Sandbox',
+  'Rust': 'Survival',
+  'Elden Ring': 'RPG',
+  'Dark Souls III': 'Action RPG',
+  'Dark Souls': 'Action RPG',
+  'Hollow Knight': 'Indie',
+  'Celeste': 'Indie',
+  'Hades': 'Roguelike',
+  'The Binding of Isaac: Rebirth': 'Roguelike',
+  'Rocket League': 'Sports',
+  'Tom Clancy\'s Rainbow Six Siege': 'FPS',
+  'Overwatch 2': 'FPS',
+  'World of Warcraft': 'MMORPG',
+  'Final Fantasy XIV Online': 'MMORPG',
+  'Lost Ark': 'MMORPG',
+  'Black Desert Online': 'MMORPG',
+  'Old School RuneScape': 'MMORPG',
+  'RuneScape': 'MMORPG',
+  'Dead by Daylight': 'Horror',
+  'Phasmophobia': 'Horror',
+  'Resident Evil Village': 'Horror',
+  'DayZ': 'Survival',
+  'Valheim': 'Survival',
+  'Hearthstone': 'Card Game',
+  'Magic: The Gathering': 'Card Game',
+  'Baldur\'s Gate 3': 'RPG',
+  'The Witcher 3: Wild Hunt': 'RPG',
+  'Diablo IV': 'Action RPG',
+  'Path of Exile': 'Action RPG',
+  'Warframe': 'Action RPG',
+  'Sea of Thieves': 'Adventure',
+  'Hogwarts Legacy': 'RPG',
+  'Honkai: Star Rail': 'RPG',
+  'Genshin Impact': 'RPG',
+  'Palworld': 'Survival',
+  'Stardew Valley': 'Simulation',
+  'The Sims 4': 'Simulation',
+  'Cities: Skylines': 'Simulation',
+  'Satisfactory': 'Simulation',
+  'Factorio': 'Strategy',
+  'Age of Empires II': 'Strategy',
+  'Age of Empires IV': 'Strategy',
+  'Civilization VI': 'Strategy',
+  'Crusader Kings III': 'Strategy',
+  'XCOM 2': 'Strategy',
+  'StarCraft II': 'Strategy',
+  'Total War: Warhammer III': 'Strategy',
+  'Super Smash Bros. Ultimate': 'Fighting',
+  'Super Smash Bros. Melee': 'Fighting',
+  'MultiVersus': 'Fighting',
+  'Terraria': 'Sandbox',
+  'Roblox': 'Sandbox',
+  'Minecraft': 'Sandbox',
+  'Escape From Tarkov': 'FPS',
+  'Destiny 2': 'FPS',
+  'Battlefield 1': 'FPS',
+  'Battlefield 2042': 'FPS',
+  'Pokémon Sword/Shield': 'RPG',
+  'Super Mario 64': 'Platformer',
+  'The Legend of Zelda: Ocarina of Time': 'Adventure',
+  'The Legend of Zelda: Tears of the Kingdom': 'Adventure',
+  'The Legend of Zelda: Breath of the Wild': 'Adventure',
+  'Animal Crossing: New Horizons': 'Simulation',
+  'Mario Kart 8': 'Racing',
+  'Splatoon 3': 'FPS',
+  'Fall Guys': 'Battle Royale',
+  'Among Us': 'Party',
+  'VRChat': 'Social',
+  'Slime Rancher': 'Simulation',
+  'Disney Dreamlight Valley': 'Simulation',
+  'The Elder Scrolls V: Skyrim': 'RPG',
+  'Red Dead Redemption 2': 'Open World',
+};
+
+function getGameCategory(name: string): string | null {
+  return GAME_CATEGORIES[name] || null;
+}
+
 const FALLBACK_GAMES: TwitchGame[] = [
   { id: '21779', name: 'League of Legends', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/21779-{width}x{height}.jpg' },
   { id: '32982', name: 'Grand Theft Auto V', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32982_IGDB-{width}x{height}.jpg' },
@@ -526,7 +618,13 @@ export default function ExploreScreen() {
                               )}
                               <View style={styles.gameInfo}>
                                 <Text style={styles.gameName} numberOfLines={2}>{game.name}</Text>
-                                <Text style={styles.gameSubtext}>Tap to explore</Text>
+                                {getGameCategory(game.name) ? (
+                                  <View style={styles.categoryTag}>
+                                    <Text style={styles.categoryTagText}>{getGameCategory(game.name)}</Text>
+                                  </View>
+                                ) : (
+                                  <Text style={styles.gameSubtext}>Tap to explore</Text>
+                                )}
                               </View>
                             </TouchableOpacity>
                           );
@@ -684,7 +782,13 @@ export default function ExploreScreen() {
                     )}
                     <View style={styles.gameInfo}>
                       <Text style={styles.gameName} numberOfLines={2}>{game.name}</Text>
-                      <Text style={styles.gameSubtext}>Tap to explore</Text>
+                      {getGameCategory(game.name) ? (
+                        <View style={styles.categoryTag}>
+                          <Text style={styles.categoryTagText}>{getGameCategory(game.name)}</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.gameSubtext}>Tap to explore</Text>
+                      )}
                     </View>
                   </TouchableOpacity>
                 );
@@ -1010,6 +1114,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500' as const,
     color: '#64748B',
+  },
+  categoryTag: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#4ADE8022',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#4ADE8044',
+  },
+  categoryTagText: {
+    fontSize: 10,
+    fontWeight: '700' as const,
+    color: '#4ADE80',
+    letterSpacing: 0.5,
   },
   titleContainer: {
     marginBottom: 16,

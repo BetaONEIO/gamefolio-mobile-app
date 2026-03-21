@@ -74,6 +74,24 @@ export default function DrawerLayout() {
           headerShown: false,
         }}
       />
+      <Drawer.Screen
+        name="bookmarks"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="help"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="game-categories"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Drawer>
     </AuthGuard>
   );

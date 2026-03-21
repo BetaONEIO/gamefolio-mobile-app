@@ -652,6 +652,9 @@ export const api = {
         body: JSON.stringify(data),
         useCookieAuth: true,
       });
+      if (response?.requires2FA === true) {
+        return { requires2FA: true as const, userId: response.userId as number, user: null as any, accessToken: '', refreshToken: '', expiresIn: 0 };
+      }
       return mapAuthResponse(response);
     },
 
@@ -2187,6 +2190,15 @@ export const api = {
   },
 
   twoFactor: {
+    verifyLogin: async (userId: number, code: string) => {
+      const response = await apiFetch<any>('/api/2fa/verify', {
+        method: 'POST',
+        body: JSON.stringify({ userId, code }),
+        useCookieAuth: true,
+      });
+      return mapAuthResponse(response);
+    },
+
     getStatus: (token: string) =>
       apiFetch<{ enabled: boolean }>('/api/2fa/status', {
         method: 'GET',

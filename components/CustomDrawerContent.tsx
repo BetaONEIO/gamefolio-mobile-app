@@ -27,6 +27,9 @@ import {
   UserX,
   Zap,
   Swords,
+  Bookmark,
+  HelpCircle,
+  Gamepad2,
 } from 'lucide-react-native';
 import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, Animated, LayoutChangeEvent, Pressable } from 'react-native';
@@ -322,6 +325,23 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
           />
         </View>
 
+        {/* Library Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionHeaderText}>LIBRARY</Text>
+          <NavItem
+            icon={Bookmark}
+            label="Bookmarks"
+            onPress={() => navigate('/(drawer)/bookmarks')}
+            isActive={pathname.includes('bookmarks')}
+          />
+          <NavItem
+            icon={Gamepad2}
+            label="Game Categories"
+            onPress={() => navigate('/(drawer)/game-categories')}
+            isActive={pathname.includes('game-categories')}
+          />
+        </View>
+
         {/* Settings Section */}
         <View style={styles.section}>
           <Text style={styles.sectionHeaderText}>SETTINGS</Text>
@@ -336,6 +356,12 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             label="Profile & Appearance"
             onPress={() => navigate('/profile-appearance')}
             isActive={pathname.includes('profile-appearance')}
+          />
+          <NavItem
+            icon={HelpCircle}
+            label="Help & Support"
+            onPress={() => navigate('/(drawer)/help')}
+            isActive={pathname.includes('help')}
           />
         </View>
 

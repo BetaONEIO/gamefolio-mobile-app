@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Lock, Eye, EyeOff, ArrowRight, User as UserIcon, AlertCircle, CheckCircle, Calendar, LogOut } from 'lucide-react-native';
+import { Lock, Eye, EyeOff, ArrowRight, User as UserIcon, AlertCircle, CheckCircle, Calendar, LogOut, Shield } from 'lucide-react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useDailyStreak } from '@/context/DailyStreakContext';
 import { api, APIError } from '@/lib/api';
@@ -72,6 +72,10 @@ export default function LoginScreen() {
   const { login: loginUser, isLoading: authLoading, isAuthenticated, user, logout: logoutUser } = useAuth();
   const { showStreak } = useDailyStreak();
   const [isLogin, setIsLogin] = useState(true);
+  const [twoFAPending, setTwoFAPending] = useState(false);
+  const [twoFAUserId, setTwoFAUserId] = useState<number | null>(null);
+  const [twoFACode, setTwoFACode] = useState('');
+  const [twoFAError, setTwoFAError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -428,6 +432,12 @@ export default function LoginScreen() {
           password,
         });
 
+        if (result.requires2FA) {
+          setTwoFAUserId(result.userId);
+          setTwoFAPending(true);
+          return;
+        }
+
         await loginUser(
           result.user, 
           result.accessToken, 
@@ -543,6 +553,34 @@ export default function LoginScreen() {
     }
   };
 
+  const handleTwoFAVerify = async () => {
+    if (!twoFACode || twoFACode.length < 6) {
+      setTwoFAError('Enter the 6-digit code from your authenticator app');
+      return;
+    }
+    if (!twoFAUserId) return;
+    setIsLoading(true);
+    setTwoFAError('');
+    try {
+      const result = await api.twoFactor.verifyLogin(twoFAUserId, twoFACode);
+      await loginUser(result.user, result.accessToken, result.refreshToken, result.expiresIn, result.streakInfo, result.gamefolioTokens);
+      if (result.streakInfo && result.streakInfo.bonusAwarded > 0) showStreak(result.streakInfo);
+      if (!result.user.emailVerified) {
+        router.replace({ pathname: '/verify-code', params: { email: result.user.email || '' } });
+        return;
+      }
+      if (!result.user.userType) {
+        router.replace('/onboarding');
+        return;
+      }
+      router.replace('/(drawer)/(tabs)/home');
+    } catch (error) {
+      setTwoFAError(error instanceof Error ? error.message : 'Invalid code. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const colors = {
     background: '#0F1520', // Deep dark blue/black
     primary: '#4ADE80',    // Bright green
@@ -593,7 +631,43 @@ export default function LoginScreen() {
             />
           </View>
 
+          {/* 2FA Verification Step */}
+          {twoFAPending && (
+            <View style={{ paddingHorizontal: 24, paddingTop: 16 }}>
+              <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: '#1E293B', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                  <Shield size={28} color={colors.primary} />
+                </View>
+                <Text style={{ color: colors.text, fontSize: 22, fontWeight: '700', marginBottom: 8 }}>Two-Factor Authentication</Text>
+                <Text style={{ color: colors.textDim, fontSize: 14, textAlign: 'center' }}>Enter the 6-digit code from your authenticator app to continue.</Text>
+              </View>
+              <TextInput
+                style={{ backgroundColor: '#1E293B', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: '#FFF', fontSize: 24, letterSpacing: 8, textAlign: 'center', borderWidth: 1, borderColor: twoFAError ? colors.error : '#2D3F55', marginBottom: 12 }}
+                placeholder="000000"
+                placeholderTextColor="#4A5568"
+                value={twoFACode}
+                onChangeText={(t) => { setTwoFACode(t.replace(/[^0-9]/g, '').slice(0, 6)); setTwoFAError(''); }}
+                keyboardType="number-pad"
+                maxLength={6}
+                testID="input-2fa-code"
+              />
+              {twoFAError ? <Text style={{ color: colors.error, fontSize: 13, textAlign: 'center', marginBottom: 12 }}>{twoFAError}</Text> : null}
+              <TouchableOpacity
+                style={{ backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginBottom: 12, opacity: isLoading ? 0.7 : 1 }}
+                onPress={handleTwoFAVerify}
+                disabled={isLoading}
+                testID="button-verify-2fa"
+              >
+                <Text style={{ color: '#0F1520', fontSize: 16, fontWeight: '700' }}>{isLoading ? 'Verifying...' : 'Verify'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setTwoFAPending(false); setTwoFAUserId(null); setTwoFACode(''); setTwoFAError(''); }} style={{ alignItems: 'center', paddingVertical: 8 }}>
+                <Text style={{ color: colors.textDim, fontSize: 14 }}>Back to Login</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Toggle Switch */}
+          {!twoFAPending && (
           <View style={styles.toggleContainer}>
             <TouchableOpacity 
               style={[styles.toggleButton, isLogin && styles.toggleButtonActive]}
@@ -611,9 +685,10 @@ export default function LoginScreen() {
               <Text style={[styles.toggleText, !isLogin && styles.toggleTextActive]}>Sign up</Text>
             </TouchableOpacity>
           </View>
+          )}
 
           {/* Form Section */}
-          <View style={styles.formContainer}>
+          {!twoFAPending && <View style={styles.formContainer}>
             
 
             {isLogin ? (
@@ -908,7 +983,7 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
 
-          </View>
+          </View>}
         </ScrollView>
       </KeyboardAvoidingView>
       

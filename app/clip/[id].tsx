@@ -209,6 +209,7 @@ export default function ClipDetailScreen() {
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'warning' | 'success' } | null>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastOpacity = useRef(new Animated.Value(0)).current;
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
   const showToast = useCallback((message: string, type: 'error' | 'warning' | 'success' = 'error') => {
     if (toastTimeoutRef.current) {
@@ -323,6 +324,53 @@ export default function ClipDetailScreen() {
   });
 
   const isOwnClip = clip?.userId === currentUser?.id;
+
+  const EMOJI_OPTIONS = ['😮', '💯', '🎮', '👏', '🤣', '😍', '💀', '🤯'];
+
+  const { data: allReactions = [], refetch: refetchReactions } = useQuery({
+    queryKey: ['clip', clipId, 'all-reactions'],
+    queryFn: async () => {
+      if (!clipId) return [];
+      try {
+        const token = await getGamefolioToken();
+        return await api.clips.getReactions(clipId, token || undefined);
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!clipId,
+    staleTime: 30000,
+  });
+
+  const emojiCounts = React.useMemo(() => {
+    const counts: Record<string, { count: number; userReacted: boolean; reactionId: number | null }> = {};
+    allReactions.forEach((r: any) => {
+      if (!counts[r.emoji]) counts[r.emoji] = { count: 0, userReacted: false, reactionId: null };
+      counts[r.emoji].count++;
+      if (currentUser && Number(r.userId) === Number(currentUser.id)) {
+        counts[r.emoji].userReacted = true;
+        counts[r.emoji].reactionId = r.id;
+      }
+    });
+    return counts;
+  }, [allReactions, currentUser]);
+
+  const handleEmojiReact = async (emoji: string) => {
+    setShowEmojiPicker(false);
+    const token = await getGamefolioToken();
+    if (!token) return;
+    const existing = emojiCounts[emoji];
+    try {
+      if (existing?.userReacted && existing.reactionId) {
+        await api.clips.deleteReaction(clipId!, existing.reactionId, token);
+      } else {
+        await api.clips.fire(clipId!, token, emoji);
+      }
+      refetchReactions();
+    } catch (e) {
+      showToast('Could not add reaction', 'error');
+    }
+  };
 
   const { mutate: deleteClip } = deleteClipMutation;
   const handleDeleteClip = useCallback(() => {
@@ -1960,6 +2008,56 @@ export default function ClipDetailScreen() {
               <Flag size={20} color="#64748B" />
               <Text style={styles.reportText}>Report</Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Emoji Reactions */}
+          <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              {Object.entries(emojiCounts)
+                .filter(([emoji]) => emoji !== '🔥')
+                .map(([emoji, data]) => (
+                  <TouchableOpacity
+                    key={emoji}
+                    onPress={() => handleEmojiReact(emoji)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: data.userReacted ? '#4ADE8022' : '#1E293B',
+                      borderRadius: 20,
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                      gap: 4,
+                      borderWidth: 1,
+                      borderColor: data.userReacted ? '#4ADE8066' : 'transparent',
+                    }}
+                    testID={`button-emoji-${emoji}`}
+                  >
+                    <Text style={{ fontSize: 16 }}>{emoji}</Text>
+                    <Text style={{ color: data.userReacted ? '#4ADE80' : '#94A3B8', fontSize: 12, fontWeight: '600' }}>{data.count}</Text>
+                  </TouchableOpacity>
+                ))}
+              <TouchableOpacity
+                onPress={() => setShowEmojiPicker(v => !v)}
+                style={{ backgroundColor: '#1E293B', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 }}
+                testID="button-open-emoji-picker"
+              >
+                <Text style={{ color: '#64748B', fontSize: 13 }}>+ React</Text>
+              </TouchableOpacity>
+            </View>
+            {showEmojiPicker && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, backgroundColor: '#0F1520', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#1E293B' }}>
+                {EMOJI_OPTIONS.map(emoji => (
+                  <TouchableOpacity
+                    key={emoji}
+                    onPress={() => handleEmojiReact(emoji)}
+                    style={{ padding: 8 }}
+                    testID={`button-pick-emoji-${emoji}`}
+                  >
+                    <Text style={{ fontSize: 24 }}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
 
           {/* Comments Section */}

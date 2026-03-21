@@ -13,6 +13,8 @@ import { useUser } from '@/context/UserContext';
 import ReelViewer from '@/components/ReelViewer';
 import LevelDetailsModal from '@/components/LevelDetailsModal';
 import HeroBanner from '@/components/HeroBanner';
+import WelcomePackDialog from '@/components/WelcomePackDialog';
+import ProOnboardingModal from '@/components/ProOnboardingModal';
 import type { ReelData, Comment } from '@/components/ReelViewer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -268,6 +270,20 @@ export default function HomeScreen() {
         return [];
       }
     },
+  });
+
+  const { data: featuredUsers = [] } = useQuery<any[]>({
+    queryKey: ['/api/users/featured'],
+    queryFn: async () => {
+      try {
+        const res = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/users/featured`);
+        if (!res.ok) return [];
+        return res.json();
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 60000,
   });
 
   const { data: latestUploads = [] } = useQuery<LatestUpload[]>({
@@ -526,8 +542,28 @@ export default function HomeScreen() {
         colors={['#0F1520', '#020617']}
         style={StyleSheet.absoluteFill}
       />
+      <WelcomePackDialog />
+      <ProOnboardingModal onUpgrade={() => router.push('/(drawer)/store')} />
       
       <AppHeader onOpenLevelTracker={() => setIsLevelModalVisible(true)} />
+
+      {/* Email Verification Banner */}
+      {user && !user.emailVerified && (
+        <TouchableOpacity
+          style={styles.verifyBanner}
+          onPress={() => router.push({ pathname: '/verify-code', params: { email: user.email || '' } })}
+          activeOpacity={0.85}
+          testID="banner-verify-email"
+        >
+          <View style={styles.verifyBannerContent}>
+            <View style={styles.verifyDot} />
+            <Text style={styles.verifyBannerText}>
+              Verify your email to unlock all features
+            </Text>
+            <Text style={styles.verifyBannerCta}>Verify</Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Latest Uploads Ticker */}
       <View style={styles.tickerContainer}>
@@ -568,6 +604,35 @@ export default function HomeScreen() {
       >
         {/* Hero Banner */}
         <HeroBanner />
+
+        {/* Featured Users */}
+        {featuredUsers.length > 0 && (
+          <View style={{ marginBottom: 28 }}>
+            <View style={styles.sectionHeader}>
+              <ChevronRight size={20} color="#4ADE80" />
+              <Text style={styles.sectionTitle}>Featured Gamers</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.featuredUsersRow, { paddingRight: 8 }]}>
+              {featuredUsers.map((u: any) => (
+                <TouchableOpacity
+                  key={u.id}
+                  style={styles.featuredUserCard}
+                  onPress={() => router.push({ pathname: '/user/[id]', params: { id: u.id.toString() } })}
+                  activeOpacity={0.8}
+                  testID={`card-featured-user-${u.id}`}
+                >
+                  <Image
+                    source={{ uri: u.avatarUrl || `https://ui-avatars.com/api/?name=${u.username}&background=1E293B&color=4ADE80&size=60` }}
+                    style={styles.featuredUserAvatar}
+                    contentFit="cover"
+                  />
+                  <Text style={styles.featuredUserName} numberOfLines={1}>@{u.username}</Text>
+                  {u.level ? <Text style={styles.featuredUserLevel}>Lvl {u.level}</Text> : null}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Featured Clips with Toggle — logged-in only */}
         {user ? (
@@ -1308,5 +1373,61 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600' as const,
   },
-
+  verifyBanner: {
+    backgroundColor: '#F59E0B',
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+  },
+  verifyBannerContent: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+  },
+  verifyDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFF',
+  },
+  verifyBannerText: {
+    flex: 1,
+    color: '#0F1520',
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  verifyBannerCta: {
+    color: '#0F1520',
+    fontSize: 13,
+    fontWeight: '800' as const,
+    textDecorationLine: 'underline' as const,
+  },
+  featuredUsersRow: {
+    flexDirection: 'row' as const,
+    gap: 12,
+    marginBottom: 4,
+  },
+  featuredUserCard: {
+    alignItems: 'center' as const,
+    width: 76,
+    gap: 6,
+  },
+  featuredUserAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#1E293B',
+    borderWidth: 2,
+    borderColor: '#4ADE80',
+  },
+  featuredUserName: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '600' as const,
+    textAlign: 'center' as const,
+  },
+  featuredUserLevel: {
+    color: '#4ADE80',
+    fontSize: 10,
+    textAlign: 'center' as const,
+  },
 });
