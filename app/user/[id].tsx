@@ -351,21 +351,6 @@ function createStyles(theme: ProfileThemeTokens) {
       paddingBottom: 12,
       gap: 6,
     },
-    statsCardMemberSince: {
-      color: theme.memberSinceColor + 'cc',
-      fontSize: 9,
-      fontWeight: '900',
-      letterSpacing: 0.9,
-      textTransform: 'uppercase',
-    },
-    statsCardBio: {
-      color: theme.bioTextColor,
-      fontSize: 11,
-      fontWeight: '700',
-      lineHeight: 17,
-      letterSpacing: -0.275,
-      textTransform: 'uppercase',
-    },
     statsCardCollectionBtn: {
       borderRadius: 100,
       paddingVertical: 5,
@@ -402,22 +387,6 @@ function createStyles(theme: ProfileThemeTokens) {
       paddingHorizontal: 16,
       paddingTop: 16,
       paddingBottom: 8,
-    },
-    memberSince: {
-      color: theme.memberSinceColor,
-      fontSize: 13,
-      fontWeight: '600',
-      marginBottom: 8,
-    },
-    bioContainer: {
-      borderLeftWidth: 2,
-      borderLeftColor: theme.bioBorderColor,
-      backgroundColor: theme.bioBg,
-      paddingLeft: 12,
-      paddingVertical: 10,
-      paddingRight: 10,
-      borderRadius: 4,
-      marginBottom: 14,
     },
     bio: {
       color: theme.isLight ? theme.bioTextColor : (theme.accent + 'cc'),
@@ -974,12 +943,6 @@ export default function PublicProfileScreen() {
     if (!url) return '';
     if (url.startsWith('http')) return url;
     return url.replace('{width}', '600').replace('{height}', '800');
-  };
-
-  const formatJoinDate = (dateStr?: string) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return `Member Since ${d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`;
   };
 
   if (isProfileLoading || !user) {

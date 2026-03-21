@@ -16,7 +16,6 @@ import ProfileBannerModal from '@/components/ProfileBannerModal';
 import ShareProfileModal from '@/components/ShareProfileModal';
 import LevelBadge from '@/components/LevelBadge';
 import LevelDetailsModal from '@/components/LevelDetailsModal';
-import DailyLootboxModal from '@/components/DailyLootboxModal';
 import UserTypeBadge from '@/components/UserTypeBadge';
 import StyledUsername from '@/components/StyledUsername';
 import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
@@ -352,7 +351,6 @@ export default function ProfileScreen() {
   const [isBannerModalVisible, setIsBannerModalVisible] = useState(false);
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const [isLevelModalVisible, setIsLevelModalVisible] = useState(false);
-  const [isLootboxModalVisible, setIsLootboxModalVisible] = useState(false);
 
 
   const [selectedScreenshot, setSelectedScreenshot] = useState<Screenshot | null>(null);
@@ -782,12 +780,6 @@ export default function ProfileScreen() {
         onClose={() => setIsLevelModalVisible(false)}
         level={profileData.level}
         currentXP={profileData.totalXP}
-      />
-
-      <DailyLootboxModal
-        visible={isLootboxModalVisible}
-        onClose={() => setIsLootboxModalVisible(false)}
-        onClaimed={() => {}}
       />
 
       <ScreenshotViewerModal
