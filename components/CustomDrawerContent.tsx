@@ -26,7 +26,6 @@ import {
   UserCheck,
   UserX,
   Zap,
-  Swords,
   Bookmark,
   HelpCircle,
   Gamepad2,
@@ -316,12 +315,6 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             label="Level Tracker"
             onPress={() => navigate('/(drawer)/level-tracker')}
             isActive={pathname.includes('level-tracker')}
-          />
-          <NavItem
-            icon={Swords}
-            label="Battles"
-            onPress={() => navigate('/(drawer)/battles')}
-            isActive={pathname.includes('battles')}
           />
         </View>
 
