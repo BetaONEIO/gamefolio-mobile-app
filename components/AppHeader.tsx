@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, TextInput, Animated, Keyboard, Platform, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { BlurView } from 'expo-blur';
-import { Bell, Menu, Plus, Search, ChevronLeft, X, Hash, User, Gamepad2, BadgeCheck, Gift } from 'lucide-react-native';
+import { Bell, Menu, Plus, Search, ChevronLeft, X, Hash, User, Gamepad2, BadgeCheck, Gift, Settings, Palette, Crown, HelpCircle, LogOut, ChevronRight } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRouter, useSegments } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
@@ -12,6 +12,7 @@ import UploadDropdown from '@/components/UploadDropdown';
 import DailyLootboxModal from '@/components/DailyLootboxModal';
 import { Env } from '@/constants/Env';
 import { useAuth } from '@/context/AuthContext';
+import { useRevenueCat } from '@/context/RevenueCatContext';
 import { useNotifications } from '@/context/NotificationsContext';
 import { api, getEffectiveAvatarUrl } from '@/lib/api';
 
@@ -206,7 +207,8 @@ function formatNumber(num: number): string {
 
 export default function AppHeader({ showBackButton = false, onOpenLevelTracker, hideProfile = false, hideUpload = false }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
-  const { user, getAccessToken } = useAuth();
+  const { user, getAccessToken, logout: authLogout } = useAuth();
+  const { isPro, logoutFromRevenueCat } = useRevenueCat();
   const { unreadCount, markAllRead, fetchNotifications } = useNotifications();
 
   const { data: selfProfile } = useQuery({
@@ -223,6 +225,8 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
   const [isUploadDropdownVisible, setIsUploadDropdownVisible] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isLootboxModalVisible, setIsLootboxModalVisible] = useState(false);
+  const [isProfileMenuVisible, setIsProfileMenuVisible] = useState(false);
+  const profileMenuAnimation = useRef(new Animated.Value(0)).current;
 
   const lootboxStatusQuery = useQuery({
     queryKey: ['lootbox-status', user?.id],
@@ -305,6 +309,41 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
       setDebouncedQuery('');
     });
   }, [searchAnimation]);
+
+  const openProfileMenu = () => {
+    setIsProfileMenuVisible(true);
+    Animated.spring(profileMenuAnimation, {
+      toValue: 1,
+      useNativeDriver: true,
+      tension: 120,
+      friction: 10,
+    }).start();
+  };
+
+  const closeProfileMenu = useCallback(() => {
+    Animated.spring(profileMenuAnimation, {
+      toValue: 0,
+      useNativeDriver: true,
+      tension: 120,
+      friction: 10,
+    }).start(() => {
+      setIsProfileMenuVisible(false);
+    });
+  }, [profileMenuAnimation]);
+
+  const navigateFromProfileMenu = (path: string) => {
+    closeProfileMenu();
+    setTimeout(() => router.push(path as any), 150);
+  };
+
+  const handleProfileLogout = async () => {
+    closeProfileMenu();
+    setTimeout(async () => {
+      await logoutFromRevenueCat();
+      await authLogout();
+      router.replace('/');
+    }, 200);
+  };
 
   const handleHashtagPress = useCallback((hashtag: Hashtag) => {
     router.push(`/tag/${hashtag.name}`);
@@ -412,7 +451,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
           {!hideProfile && (
             <TouchableOpacity 
               style={styles.avatarContainer}
-              onPress={() => router.navigate('/(drawer)/(tabs)/profile')}
+              onPress={openProfileMenu}
               activeOpacity={0.8}
             >
               <ExpoImage
@@ -654,6 +693,132 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
           lootboxStatusQuery.refetch();
         }}
       />
+
+      {/* Profile Menu Dropdown */}
+      <Modal
+        visible={isProfileMenuVisible}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        onRequestClose={closeProfileMenu}
+      >
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={closeProfileMenu}
+        />
+        <Animated.View
+          style={[
+            styles.profileMenu,
+            {
+              top: insets.top + 60,
+              opacity: profileMenuAnimation,
+              transform: [{
+                translateY: profileMenuAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [-12, 0],
+                }),
+              }, {
+                scale: profileMenuAnimation.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.95, 1],
+                }),
+              }],
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          {/* User Info Header */}
+          <TouchableOpacity
+            style={styles.profileMenuHeader}
+            onPress={() => navigateFromProfileMenu('/(drawer)/(tabs)/profile')}
+            activeOpacity={0.7}
+          >
+            <ExpoImage
+              source={{ uri: getEffectiveAvatarUrl(selfProfile?.user) || getEffectiveAvatarUrl(user) || undefined }}
+              placeholder={{ uri: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=100&auto=format&fit=crop' }}
+              contentFit="cover"
+              style={styles.profileMenuAvatar}
+            />
+            <View style={styles.profileMenuUserInfo}>
+              <Text style={styles.profileMenuDisplayName} numberOfLines={1}>
+                {user?.displayName || user?.username || 'User'}
+              </Text>
+              <Text style={styles.profileMenuUsername} numberOfLines={1}>
+                @{user?.username || 'user'}
+              </Text>
+            </View>
+            <ChevronRight size={16} color="#64748B" />
+          </TouchableOpacity>
+
+          <View style={styles.profileMenuDivider} />
+
+          {/* Menu Items */}
+          <TouchableOpacity
+            style={styles.profileMenuItem}
+            onPress={() => navigateFromProfileMenu('/account-settings')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.profileMenuItemIcon}>
+              <Settings size={18} color="#4ADE80" />
+            </View>
+            <Text style={styles.profileMenuItemLabel}>Account Settings</Text>
+            <ChevronRight size={14} color="#334155" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.profileMenuItem}
+            onPress={() => navigateFromProfileMenu('/profile-appearance')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.profileMenuItemIcon}>
+              <Palette size={18} color="#4ADE80" />
+            </View>
+            <Text style={styles.profileMenuItemLabel}>Profile & Appearance</Text>
+            <ChevronRight size={14} color="#334155" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.profileMenuItem}
+            onPress={() => navigateFromProfileMenu(isPro ? '/manage-subscription' : '/(drawer)/(tabs)/profile')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.profileMenuItemIcon}>
+              <Crown size={18} color={isPro ? '#10B981' : '#4ADE80'} />
+            </View>
+            <Text style={[styles.profileMenuItemLabel, isPro && { color: '#10B981' }]}>
+              {isPro ? 'Pro Member' : 'Upgrade to Pro'}
+            </Text>
+            <ChevronRight size={14} color="#334155" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.profileMenuItem}
+            onPress={() => navigateFromProfileMenu('/(drawer)/help')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.profileMenuItemIcon}>
+              <HelpCircle size={18} color="#4ADE80" />
+            </View>
+            <Text style={styles.profileMenuItemLabel}>Help & Support</Text>
+            <ChevronRight size={14} color="#334155" />
+          </TouchableOpacity>
+
+          <View style={styles.profileMenuDivider} />
+
+          {/* Logout */}
+          <TouchableOpacity
+            style={[styles.profileMenuItem, styles.profileMenuLogout]}
+            onPress={handleProfileLogout}
+            activeOpacity={0.7}
+          >
+            <View style={[styles.profileMenuItemIcon, styles.profileMenuLogoutIcon]}>
+              <LogOut size={18} color="#EF4444" />
+            </View>
+            <Text style={styles.profileMenuLogoutLabel}>Log Out</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </Modal>
     </>
   );
 }
@@ -925,5 +1090,89 @@ const styles = StyleSheet.create({
   noResultsSubtext: {
     color: '#64748B',
     fontSize: 14,
+  },
+  profileMenu: {
+    position: 'absolute',
+    right: 16,
+    width: 260,
+    backgroundColor: '#0D1117',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 16,
+    zIndex: 200,
+  },
+  profileMenuHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  profileMenuAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#4ADE80',
+  },
+  profileMenuUserInfo: {
+    flex: 1,
+  },
+  profileMenuDisplayName: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  profileMenuUsername: {
+    color: '#64748B',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  profileMenuDivider: {
+    height: 1,
+    backgroundColor: '#1E293B',
+    marginHorizontal: 0,
+  },
+  profileMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    gap: 12,
+  },
+  profileMenuItemIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: 'rgba(74, 222, 128, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.15)',
+  },
+  profileMenuItemLabel: {
+    flex: 1,
+    color: '#E2E8F0',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  profileMenuLogout: {
+    marginBottom: 2,
+  },
+  profileMenuLogoutIcon: {
+    backgroundColor: 'rgba(239, 68, 68, 0.08)',
+    borderColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  profileMenuLogoutLabel: {
+    flex: 1,
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
