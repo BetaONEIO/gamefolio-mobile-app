@@ -7,7 +7,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRouter, useSegments } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import ProfileDropdown from '@/components/ProfileDropdown';
 import NotificationDropdown from '@/components/NotificationDropdown';
 import UploadDropdown from '@/components/UploadDropdown';
 import DailyLootboxModal from '@/components/DailyLootboxModal';
@@ -220,7 +219,6 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
     enabled: !!user?.username,
     staleTime: 5 * 60 * 1000,
   });
-  const [isProfileDropdownVisible, setIsProfileDropdownVisible] = useState(false);
   const [isNotificationDropdownVisible, setIsNotificationDropdownVisible] = useState(false);
   const [isUploadDropdownVisible, setIsUploadDropdownVisible] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -414,8 +412,8 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
           {!hideProfile && (
             <TouchableOpacity 
               style={styles.avatarContainer}
-              onPress={() => setIsProfileDropdownVisible(true)}
-              activeOpacity={1}
+              onPress={() => router.navigate('/(drawer)/(tabs)/profile')}
+              activeOpacity={0.8}
             >
               <ExpoImage
                 source={{ uri: getEffectiveAvatarUrl(selfProfile?.user) || getEffectiveAvatarUrl(user) || undefined }}
@@ -632,13 +630,6 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
           )}
         </View>
       </Modal>
-
-      <ProfileDropdown 
-        visible={isProfileDropdownVisible}
-        onClose={() => setIsProfileDropdownVisible(false)}
-        topOffset={insets.top + 60}
-        onOpenLevelTracker={onOpenLevelTracker}
-      />
 
       <NotificationDropdown 
         visible={isNotificationDropdownVisible}
