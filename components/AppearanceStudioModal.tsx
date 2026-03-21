@@ -46,21 +46,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
-import {
-  TetrisTheme,
-  PacmanTheme,
-  MatrixTheme,
-  RetroArcadeTheme,
-  SpaceInvadersTheme,
-  PixelStarsTheme,
-  NeonCityTheme,
-  SnakeTheme,
-  BreakoutTheme,
-  GalaxianTheme,
-  CyberpunkGridTheme,
-  PongTheme,
-} from '@/components/AnimatedThemes';
 import ImageEditorModal from '@/components/ImageEditorModal';
+import { SELECTABLE_PROFILE_THEMES, type ProfileThemeName } from '@/constants/themes';
 import ProfileBorderModal, { AvatarBorder } from '@/components/ProfileBorderModal';
 import CustomAlert from '@/components/CustomAlert';
 import StyledUsername, { FONT_STYLES, EFFECT_STYLES, TextStyleConfig } from '@/components/StyledUsername';
@@ -87,20 +74,6 @@ const QUICK_THEMES = [
   { id: 'baby_pink', name: 'Baby Pink', accentColor: '#F9A8D4', backgroundColor: '#E0218A' },
 ];
 
-const PREMIUM_THEMES = [
-  { id: 'tetris', name: 'Tetris', type: 'tetris' },
-  { id: 'pacman', name: 'Pac-Man', type: 'pacman' },
-  { id: 'matrix', name: 'Matrix Rain', type: 'matrix' },
-  { id: 'retro_arcade', name: 'Retro Arcade', type: 'retro_arcade' },
-  { id: 'space_invaders', name: 'Space Invaders', type: 'space_invaders' },
-  { id: 'pixel_stars', name: 'Pixel Stars', type: 'pixel_stars' },
-  { id: 'neon_city', name: 'Neon City', type: 'neon_city' },
-  { id: 'snake', name: 'Snake Game', type: 'snake' },
-  { id: 'breakout', name: 'Breakout', type: 'breakout' },
-  { id: 'galaxian', name: 'Galaxian', type: 'galaxian' },
-  { id: 'cyberpunk_grid', name: 'Cyberpunk Grid', type: 'cyberpunk_grid' },
-  { id: 'pong', name: 'Pong', type: 'pong' },
-];
 
 const VERIFICATION_BADGES = [
   { id: 'none', name: 'None', icon: 'none', color: '#64748B', unlocked: true },
@@ -150,30 +123,6 @@ const SAMPLE_BANNERS = [
   { id: 'gradient_arctic', name: 'Arctic', colors: ['#00D2FF', '#3A7BD5'], type: 'gradient' as const },
 ];
 
-const BACKGROUND_IMAGES = [
-  { id: 'none', name: 'None', url: null },
-  { id: 'red_gradient', name: 'Red Gradient', url: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/1t9b8zgw24bk9gmeghgni' },
-  { id: 'blue_gradient', name: 'Blue Gradient', url: 'https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=800&q=80' },
-  { id: 'purple_gradient', name: 'Purple Gradient', url: 'https://images.unsplash.com/photo-1557682268-e3955ed5d83f?w=800&q=80' },
-  { id: 'green_gradient', name: 'Green Gradient', url: 'https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=800&q=80' },
-  { id: 'orange_gradient', name: 'Orange Gradient', url: 'https://images.unsplash.com/photo-1557682260-96773eb01377?w=800&q=80' },
-  { id: 'pink_gradient', name: 'Pink Gradient', url: 'https://images.unsplash.com/photo-1557682224-5b8590cd9ec5?w=800&q=80' },
-  { id: 'teal_gradient', name: 'Teal Gradient', url: 'https://images.unsplash.com/photo-1557682233-43e671455eaa?w=800&q=80' },
-  { id: 'dark_space', name: 'Dark Space', url: 'https://images.unsplash.com/photo-1419242902214-272b3f66ee7a?w=800&q=80' },
-  { id: 'nebula', name: 'Nebula', url: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=800&q=80' },
-  { id: 'galaxy', name: 'Galaxy', url: 'https://images.unsplash.com/photo-1502134249126-9f3755a50d78?w=800&q=80' },
-  { id: 'aurora', name: 'Aurora', url: 'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=800&q=80' },
-  { id: 'abstract_1', name: 'Abstract 1', url: 'https://images.unsplash.com/photo-1550859492-d5da9d8e45f3?w=800&q=80' },
-  { id: 'abstract_2', name: 'Abstract 2', url: 'https://images.unsplash.com/photo-1550537687-c91072c4792d?w=800&q=80' },
-  { id: 'abstract_3', name: 'Abstract 3', url: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80' },
-  { id: 'cyberpunk', name: 'Cyberpunk', url: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&q=80' },
-  { id: 'neon_lights', name: 'Neon Lights', url: 'https://images.unsplash.com/photo-1496096265110-f83ad7f96608?w=800&q=80' },
-  { id: 'geometric', name: 'Geometric', url: 'https://images.unsplash.com/photo-1551269901-5c5e14c25df7?w=800&q=80' },
-  { id: 'particles', name: 'Particles', url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&q=80' },
-  { id: 'waves', name: 'Waves', url: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&q=80' },
-  { id: 'marble', name: 'Marble', url: 'https://images.unsplash.com/photo-1511149755252-35875b273fd6?w=800&q=80' },
-  { id: 'bokeh', name: 'Bokeh', url: 'https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?w=800&q=80' },
-];
 
 const SAMPLE_BORDERS: AvatarBorder[] = [
   { id: 10001, name: 'Default', imageUrl: 'https://i.imgur.com/placeholder1.png', rarity: 'common', unlocked: true },
@@ -210,31 +159,6 @@ const MENU_ITEMS: { id: SectionType; label: string; icon: React.ReactNode; color
   { id: 'nfts', label: 'NFT Gallery', icon: <Wallet size={20} color="#FFF" />, color: '#06B6D4' },
 ];
 
-function AnimatedThemePreview({ theme }: { theme: typeof PREMIUM_THEMES[0] }) {
-  const renderAnimation = () => {
-    switch (theme.type) {
-      case 'tetris': return <TetrisTheme />;
-      case 'pacman': return <PacmanTheme />;
-      case 'matrix': return <MatrixTheme />;
-      case 'retro_arcade': return <RetroArcadeTheme />;
-      case 'space_invaders': return <SpaceInvadersTheme />;
-      case 'pixel_stars': return <PixelStarsTheme />;
-      case 'neon_city': return <NeonCityTheme />;
-      case 'snake': return <SnakeTheme />;
-      case 'breakout': return <BreakoutTheme />;
-      case 'galaxian': return <GalaxianTheme />;
-      case 'cyberpunk_grid': return <CyberpunkGridTheme />;
-      case 'pong': return <PongTheme />;
-      default: return null;
-    }
-  };
-
-  return (
-    <View style={styles.animatedThemePreview}>
-      {renderAnimation()}
-    </View>
-  );
-}
 
 export default function AppearanceStudioModal({ visible, onClose, onSaved }: AppearanceStudioModalProps) {
   const { user, updateUser, getAccessToken } = useAuth();
@@ -260,7 +184,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
   const mainScrollViewRef = React.useRef<ScrollView>(null);
   const [textStyleTab, setTextStyleTab] = useState<'font' | 'effect' | 'color'>('font');
   const [selectedVerificationBadge, setSelectedVerificationBadge] = useState<string>('none');
-  const [selectedBackgroundImage, setSelectedBackgroundImage] = useState<string | null>(null);
+  const [selectedProfileTheme, setSelectedProfileTheme] = useState<ProfileThemeName | null>(null);
   
 
   const [editorVisible, setEditorVisible] = useState(false);
@@ -330,8 +254,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
       const savedVerificationBadge = (user as any).verificationBadgeId || 'none';
       setSelectedVerificationBadge(savedVerificationBadge);
       
-      const savedBackgroundImage = (user as any).backgroundImageUrl || null;
-      setSelectedBackgroundImage(savedBackgroundImage);
+      setSelectedProfileTheme((user?.profileTheme as ProfileThemeName) || null);
     }
   }, [user, visible, avatarBordersData]);
 
@@ -369,7 +292,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
     (selectedEffectId !== ((user as any)?.textEffectId || 'none')) ||
     (textCustomColor !== ((user as any)?.textCustomColor || '#FFFFFF')) ||
     (selectedVerificationBadge !== ((user as any)?.verificationBadgeId || 'none')) ||
-    (selectedBackgroundImage !== ((user as any)?.backgroundImageUrl || null));
+    (selectedProfileTheme !== ((user?.profileTheme as ProfileThemeName) || null));
 
   const pickImage = async () => {
     try {
@@ -474,7 +397,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
         textCustomColor: textCustomColor,
         profileBorderId: selectedBorder?.id || null,
         verificationBadgeId: selectedVerificationBadge,
-        backgroundImageUrl: selectedBackgroundImage || undefined,
+        profileTheme: selectedProfileTheme || undefined,
       };
 
       const response = await api.users.updateProfile(user?.id || 0, updateData, token);
@@ -921,76 +844,46 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
 
       <View style={styles.premiumSection}>
         <View style={styles.premiumHeader}>
-          <Crown size={20} color="#FFD700" />
-          <Text style={styles.premiumTitle}>Premium Themes</Text>
+          <Palette size={20} color="#F472B6" />
+          <Text style={styles.premiumTitle}>Profile Page Themes</Text>
         </View>
-        <Text style={styles.premiumSubtitle}>Animated themes with stunning effects</Text>
+        <Text style={styles.premiumSubtitle}>Full themed designs for your public profile page</Text>
 
-        <View style={styles.premiumThemesGrid}>
-          {PREMIUM_THEMES.map((theme) => (
-            <TouchableOpacity key={theme.id} style={styles.premiumThemeItem}>
-              <View style={styles.premiumThemePreview}>
-                <AnimatedThemePreview theme={theme} />
-                <View style={styles.premiumBadge}>
-                  <Crown size={10} color="#FFD700" />
+        <View style={styles.profileThemesGrid}>
+          {SELECTABLE_PROFILE_THEMES.map((t) => {
+            const isActive = selectedProfileTheme === t.id;
+            return (
+              <TouchableOpacity
+                key={t.id}
+                style={[styles.profileThemeCard, isActive && styles.profileThemeCardActive]}
+                onPress={() => setSelectedProfileTheme(isActive ? null : t.id as ProfileThemeName)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.profileThemeSwatch, { backgroundColor: t.bg }]}>
+                  <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[1] }]} />
+                  <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[2], marginLeft: 4 }]} />
+                  {isActive && (
+                    <View style={styles.profileThemeCheck}>
+                      <Check size={10} color="#FFF" />
+                    </View>
+                  )}
                 </View>
-              </View>
-              <Text style={styles.premiumThemeName}>{theme.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      <View style={styles.backgroundImageSection}>
-        <View style={styles.backgroundImageHeader}>
-          <ImageIcon size={20} color="#3B82F6" />
-          <Text style={styles.backgroundImageTitle}>Background Images</Text>
-        </View>
-        <Text style={styles.backgroundImageSubtitle}>Choose a background image that will appear behind your profile content</Text>
-
-        <View style={styles.backgroundImagesGrid}>
-          {BACKGROUND_IMAGES.map((bg) => (
-            <TouchableOpacity
-              key={bg.id}
-              style={[
-                styles.backgroundImageItem,
-                selectedBackgroundImage === bg.url && styles.backgroundImageItemSelected,
-              ]}
-              onPress={() => setSelectedBackgroundImage(bg.url)}
-            >
-              <View style={styles.backgroundImagePreview}>
-                {bg.url ? (
-                  <Image source={{ uri: bg.url }} style={styles.backgroundImagePreviewImage} />
-                ) : (
-                  <View style={styles.backgroundImagePreviewNone}>
-                    <X size={24} color="#64748B" />
-                  </View>
-                )}
-                {selectedBackgroundImage === bg.url && (
-                  <View style={styles.backgroundImageCheckmark}>
-                    <Check size={12} color="#FFF" />
-                  </View>
-                )}
-              </View>
-              <Text style={[styles.backgroundImageName, selectedBackgroundImage === bg.url && styles.backgroundImageNameSelected]} numberOfLines={1}>
-                {bg.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text style={[styles.profileThemeLabel, isActive && styles.profileThemeLabelActive]} numberOfLines={1}>
+                  {t.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         <View style={styles.backgroundImageHints}>
           <View style={styles.hintRow}>
-            <ImageIcon size={14} color="#94A3B8" />
-            <Text style={styles.hintText}>Background appears behind all content on your profile</Text>
-          </View>
-          <View style={styles.hintRow}>
             <Sparkles size={14} color="#94A3B8" />
-            <Text style={styles.hintText}>Select &quot;None&quot; to use solid background color</Text>
+            <Text style={styles.hintText}>Themes change colours, cards, and typography on your profile</Text>
           </View>
           <View style={styles.hintRow}>
-            <Crown size={14} color="#94A3B8" />
-            <Text style={styles.hintText}>More premium backgrounds coming soon</Text>
+            <Palette size={14} color="#94A3B8" />
+            <Text style={styles.hintText}>Tap the active theme again to remove it</Text>
           </View>
         </View>
       </View>
@@ -2449,41 +2342,54 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginBottom: 16,
   },
-  premiumThemesGrid: {
+  profileThemesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
   },
-  premiumThemeItem: {
-    width: (SCREEN_WIDTH - 80) / 3,
+  profileThemeCard: {
+    width: (SCREEN_WIDTH - 88) / 3,
     alignItems: 'center',
   },
-  premiumThemePreview: {
+  profileThemeCardActive: {},
+  profileThemeSwatch: {
     width: '100%',
-    aspectRatio: 1.5,
+    aspectRatio: 1.4,
     borderRadius: 10,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: '#334155',
     position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingBottom: 6,
+    paddingLeft: 6,
   },
-  animatedThemePreview: {
-    flex: 1,
-    overflow: 'hidden',
+  profileThemeAccentDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
-  premiumBadge: {
+  profileThemeCheck: {
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    padding: 4,
-    borderRadius: 8,
+    backgroundColor: '#4ADE80',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  premiumThemeName: {
+  profileThemeLabel: {
     fontSize: 11,
     color: '#94A3B8',
-    marginTop: 6,
+    marginTop: 5,
     textAlign: 'center',
+  },
+  profileThemeLabelActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   borderPreviewSection: {
     alignItems: 'center',
