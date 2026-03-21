@@ -519,7 +519,7 @@ export interface AvatarBorder {
 export interface Notification {
   id: number;
   userId: number;
-  type: "like" | "comment" | "follow" | "upload" | "reply" | "clip_mention" | "comment_mention" | "flame" | "fire" | "message" | "follower" | "mention";
+  type: "like" | "comment" | "follow" | "upload" | "reply" | "clip_mention" | "comment_mention" | "flame" | "fire" | "message" | "follower" | "mention" | "follow_request";
   title: string;
   message: string;
   isRead: boolean;
@@ -535,6 +535,20 @@ export interface Notification {
     username: string;
     displayName?: string;
     avatarUrl?: string;
+  };
+}
+
+export interface FollowRequest {
+  id: number;
+  requesterId: number;
+  addresseeId: number;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+  requester?: {
+    id: number;
+    username: string;
+    displayName?: string;
+    avatarUrl?: string | null;
   };
 }
 
@@ -2104,6 +2118,31 @@ export const api = {
       } catch {
         console.log('[Notifications API] Clear all endpoint not available');
       }
+    },
+  },
+
+  followRequests: {
+    getPending: async (token: string): Promise<FollowRequest[]> => {
+      try {
+        const data = await apiFetch<FollowRequest[]>('/api/follow-requests', { token });
+        return Array.isArray(data) ? data : [];
+      } catch {
+        return [];
+      }
+    },
+
+    approve: async (requestId: number, token: string): Promise<void> => {
+      await apiFetch(`/api/follow-requests/${requestId}/approve`, {
+        method: 'POST',
+        token,
+      });
+    },
+
+    reject: async (requestId: number, token: string): Promise<void> => {
+      await apiFetch(`/api/follow-requests/${requestId}/reject`, {
+        method: 'POST',
+        token,
+      });
     },
   },
 };

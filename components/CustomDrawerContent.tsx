@@ -21,7 +21,9 @@ import {
   Plus,
   Crown,
   ArrowRight,
-  Check
+  Check,
+  Bell,
+  UserCheck,
 } from 'lucide-react-native';
 import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, Animated, LayoutChangeEvent, Pressable } from 'react-native';
@@ -29,6 +31,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AddGamesModal from '@/components/AddGamesModal';
 import PaywallModal from '@/components/PaywallModal';
 import ProBadge from '@/components/ProBadge';
+import { useNotifications } from '@/context/NotificationsContext';
 
 
 
@@ -37,9 +40,10 @@ type NavItemProps = {
   label: string;
   onPress: () => void;
   isActive?: boolean;
+  badgeCount?: number;
 };
 
-  const NavItem = ({ icon: Icon, label, onPress, isActive }: NavItemProps) => {
+  const NavItem = ({ icon: Icon, label, onPress, isActive, badgeCount }: NavItemProps) => {
     const [isHovered, setIsHovered] = useState(false);
     
     return (
@@ -54,7 +58,14 @@ type NavItemProps = {
         onHoverOut={() => setIsHovered(false)}
       >
         <View style={styles.navItemContent}>
-          <Icon size={24} color="#4ADE80" strokeWidth={2} />
+          <View style={styles.navIconWrap}>
+            <Icon size={24} color="#4ADE80" strokeWidth={2} />
+            {badgeCount != null && badgeCount > 0 ? (
+              <View style={styles.navBadge}>
+                <Text style={styles.navBadgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={[styles.navItemLabel, isActive && styles.navItemLabelActive]}>
             {label}
           </Text>
@@ -67,6 +78,7 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
   const { user, logout: authLogout, getAccessToken } = useAuth();
   const { favoriteGames, logout: userLogout } = useUser();
   const { isPro, logoutFromRevenueCat } = useRevenueCat();
+  const { unreadCount } = useNotifications();
   const router = useRouter();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
@@ -264,6 +276,19 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             isActive={pathname.includes('messages')} 
           />
           <NavItem 
+            icon={Bell}
+            label="Notifications"
+            onPress={() => navigate('/(drawer)/notifications')}
+            isActive={pathname.includes('notifications')}
+            badgeCount={unreadCount}
+          />
+          <NavItem 
+            icon={UserCheck}
+            label="Follow Requests"
+            onPress={() => navigate('/(drawer)/follow-requests')}
+            isActive={pathname.includes('follow-requests')}
+          />
+          <NavItem 
             icon={User}
             label="My Gamefolio"
             onPress={() => navigate('/(drawer)/(tabs)/profile')}
@@ -440,6 +465,28 @@ const styles = StyleSheet.create({
   navItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  navIconWrap: {
+    position: 'relative',
+    width: 24,
+    height: 24,
+  },
+  navBadge: {
+    position: 'absolute',
+    top: -5,
+    right: -7,
+    backgroundColor: '#EF4444',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  navBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '800',
   },
   navItemLabel: {
     color: '#FFF',

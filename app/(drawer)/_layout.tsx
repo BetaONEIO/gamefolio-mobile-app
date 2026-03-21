@@ -27,6 +27,18 @@ export default function DrawerLayout() {
         }}
       />
       <Drawer.Screen
+        name="notifications"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="follow-requests"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
         name="messages"
         options={{
           headerShown: false,

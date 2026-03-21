@@ -222,6 +222,9 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Notifications</Text>
             <View style={styles.headerActions}>
+              <TouchableOpacity onPress={() => { onClose(); router.push('/(drawer)/notifications' as any); }}>
+                <Text style={styles.actionTextBlue}>See All</Text>
+              </TouchableOpacity>
               <TouchableOpacity onPress={markAllRead}>
                 <Text style={styles.actionTextGreen}>Mark Read</Text>
               </TouchableOpacity>
@@ -331,6 +334,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 14,
     flexShrink: 0,
+  },
+  actionTextBlue: {
+    color: '#38BDF8',
+    fontSize: 13,
+    fontWeight: '600',
   },
   actionTextGreen: {
     color: '#4ADE80',
