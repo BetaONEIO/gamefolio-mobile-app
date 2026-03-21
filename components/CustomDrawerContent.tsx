@@ -288,18 +288,6 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             badgeCount={unreadCount}
           />
           <NavItem 
-            icon={UserCheck}
-            label="Follow Requests"
-            onPress={() => navigate('/(drawer)/follow-requests')}
-            isActive={pathname.includes('follow-requests')}
-          />
-          <NavItem
-            icon={UserX}
-            label="Blocked Users"
-            onPress={() => navigate('/(drawer)/blocked-users')}
-            isActive={pathname.includes('blocked-users')}
-          />
-          <NavItem 
             icon={User}
             label="My Gamefolio"
             onPress={() => navigate('/(drawer)/(tabs)/profile')}
@@ -349,6 +337,18 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             label="Profile & Appearance"
             onPress={() => navigate('/profile-appearance')}
             isActive={pathname.includes('profile-appearance')}
+          />
+          <NavItem 
+            icon={UserCheck}
+            label="Follow Requests"
+            onPress={() => navigate('/(drawer)/follow-requests')}
+            isActive={pathname.includes('follow-requests')}
+          />
+          <NavItem
+            icon={UserX}
+            label="Blocked Users"
+            onPress={() => navigate('/(drawer)/blocked-users')}
+            isActive={pathname.includes('blocked-users')}
           />
           <NavItem
             icon={HelpCircle}
