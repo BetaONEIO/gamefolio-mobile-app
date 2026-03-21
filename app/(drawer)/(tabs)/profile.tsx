@@ -23,6 +23,7 @@ import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { api, Clip, Screenshot, Game, getEffectiveAvatarUrl } from '@/lib/api';
+import { Env } from '@/constants/Env';
 
 
 const { width } = Dimensions.get('window');
@@ -167,6 +168,7 @@ function createHeaderStyles(theme: ProfileThemeTokens) {
 export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState('Clips');
   const [isAddGamesModalVisible, setIsAddGamesModalVisible] = useState(false);
+  const [profileSectionTab, setProfileSectionTab] = useState<'stats' | 'collection'>('stats');
   const router = useRouter();
   const { user, getAccessToken } = useAuth();
   const theme = useMemo(() => getProfileTheme((user as any)?.profileTheme), [user]);
@@ -293,6 +295,24 @@ export default function ProfileScreen() {
     platforms: buildPlatforms()
   };
 
+
+  // Fetch owned NFTs — only when collection tab is active
+  const { data: nftData, isLoading: nftsLoading } = useQuery<{ nfts: any[]; count: number }>({
+    queryKey: ['/api/nfts/owned'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch(`${Env.BACKEND_URL}/api/nfts/owned`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) throw new Error('Failed to fetch NFTs');
+      return res.json();
+    },
+    enabled: profileSectionTab === 'collection',
+    staleTime: 60_000,
+  });
+
+  const ownedNfts = useMemo(() => (nftData?.nfts || []).filter((n: any) => !n.sold), [nftData]);
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: number, type: 'clip' | 'reel' | 'screenshot' } | null>(null);
@@ -505,38 +525,71 @@ export default function ProfileScreen() {
               overflow: 'hidden',
             }
           ]}>
-            {/* Top row with Collection button */}
+            {/* Top row with Collection toggle button */}
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingTop: 12, marginBottom: 4 }}>
               <TouchableOpacity 
-                style={[styles.collectionButton, { backgroundColor: theme.accent, borderColor: theme.accentMuted }]}
-                onPress={() => router.push('/(drawer)/collections')}
+                style={[styles.collectionButton, {
+                  backgroundColor: profileSectionTab === 'collection' ? theme.accent : 'transparent',
+                  borderColor: theme.accent,
+                  borderWidth: 1.5,
+                }]}
+                onPress={() => setProfileSectionTab(profileSectionTab === 'collection' ? 'stats' : 'collection')}
                 activeOpacity={0.8}
               >
-                <FolderHeart size={14} color="#FFF" />
-                <Text style={styles.collectionButtonText}>Collection</Text>
+                <FolderHeart size={14} color={profileSectionTab === 'collection' ? '#FFF' : theme.accent} />
+                <Text style={[styles.collectionButtonText, { color: profileSectionTab === 'collection' ? '#FFF' : theme.accent }]}>
+                  {profileSectionTab === 'collection' ? 'Stats' : 'Collection'}
+                </Text>
               </TouchableOpacity>
             </View>
 
-            <View style={[styles.infoBorderInner, { paddingTop: 8, paddingBottom: 16 }]}>
-              <View style={[styles.statsRowCompact, { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 }]}>
-                <View style={styles.statColumn}>
-                  <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.uploads}</Text>
-                  <Text style={[styles.statLabel, { color: h.statLabelColor }]}>UPLOADS</Text>
-                </View>
-                <View style={styles.statColumn}>
-                  <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.followers}</Text>
-                  <Text style={[styles.statLabel, { color: h.statLabelColor }]}>FOLLOWERS</Text>
-                </View>
-                <View style={styles.statColumn}>
-                  <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.following}</Text>
-                  <Text style={[styles.statLabel, { color: h.statLabelColor }]}>FOLLOWING</Text>
+            {profileSectionTab === 'stats' ? (
+              <View style={[styles.infoBorderInner, { paddingTop: 8, paddingBottom: 16 }]}>
+                <View style={[styles.statsRowCompact, { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 }]}>
+                  <View style={styles.statColumn}>
+                    <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.uploads}</Text>
+                    <Text style={[styles.statLabel, { color: h.statLabelColor }]}>UPLOADS</Text>
+                  </View>
+                  <View style={styles.statColumn}>
+                    <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.followers}</Text>
+                    <Text style={[styles.statLabel, { color: h.statLabelColor }]}>FOLLOWERS</Text>
+                  </View>
+                  <View style={styles.statColumn}>
+                    <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.following}</Text>
+                    <Text style={[styles.statLabel, { color: h.statLabelColor }]}>FOLLOWING</Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            ) : (
+              <View style={styles.nftCollectionContainer}>
+                {nftsLoading ? (
+                  <Text style={styles.nftLoadingText}>Loading collection...</Text>
+                ) : ownedNfts.length === 0 ? (
+                  <View style={styles.nftEmptyState}>
+                    <Text style={[styles.nftEmptyTitle, { color: h.statNumberColor }]}>No NFTs yet</Text>
+                    <Text style={[styles.nftEmptySubtitle, { color: h.statLabelColor }]}>Mint your first Gamefolio NFT to start your collection</Text>
+                  </View>
+                ) : (
+                  <View style={styles.nftGrid}>
+                    {ownedNfts.map((nft: any) => (
+                      <View key={nft.tokenId} style={[styles.nftCard, { backgroundColor: h.cardBg, borderColor: h.cardBorder }]}>
+                        {nft.image ? (
+                          <Image source={{ uri: nft.image }} style={styles.nftImage} resizeMode="cover" />
+                        ) : (
+                          <View style={[styles.nftImagePlaceholder, { backgroundColor: theme.accentMuted }]} />
+                        )}
+                        <Text style={[styles.nftName, { color: h.statNumberColor }]} numberOfLines={1}>{nft.name || `#${nft.tokenId}`}</Text>
+                        <Text style={[styles.nftTokenId, { color: h.statLabelColor }]}>#{nft.tokenId}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         </View>
 
-        {profileData.platforms.length > 0 ? (
+        {profileSectionTab === 'stats' && profileData.platforms.length > 0 ? (
           <View style={[styles.platformsRow, { marginTop: 12, paddingHorizontal: 4 }]}>
             {profileData.platforms.map((platform, index) => (
               <View key={index} style={[styles.platformTag, { backgroundColor: platform.color }]}>
@@ -937,18 +990,73 @@ const styles = StyleSheet.create({
   collectionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#10B981',
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 16,
     gap: 6,
-    borderWidth: 2,
-    borderColor: '#E879F9',
   },
   collectionButtonText: {
     color: '#FFF',
     fontSize: 13,
     fontWeight: '600',
+  },
+  nftCollectionContainer: {
+    paddingHorizontal: 12,
+    paddingTop: 4,
+    paddingBottom: 16,
+  },
+  nftLoadingText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  nftEmptyState: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+  },
+  nftEmptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  nftEmptySubtitle: {
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  nftGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  nftCard: {
+    width: (width - 80) / 3,
+    borderRadius: 10,
+    overflow: 'hidden',
+    borderWidth: 1,
+  },
+  nftImage: {
+    width: '100%',
+    aspectRatio: 1,
+  },
+  nftImagePlaceholder: {
+    width: '100%',
+    aspectRatio: 1,
+    opacity: 0.4,
+  },
+  nftName: {
+    fontSize: 11,
+    fontWeight: '700',
+    paddingHorizontal: 6,
+    paddingTop: 6,
+  },
+  nftTokenId: {
+    fontSize: 10,
+    paddingHorizontal: 6,
+    paddingBottom: 6,
+    opacity: 0.7,
   },
   leftBorderFade: {
     position: 'absolute',
