@@ -287,6 +287,20 @@ export default function HomeScreen() {
     staleTime: 60000,
   });
 
+  const { data: trendingGames = [] } = useQuery<any[]>({
+    queryKey: ['/api/twitch/games/top'],
+    queryFn: async () => {
+      try {
+        const res = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/twitch/games/top`);
+        if (!res.ok) return [];
+        return res.json();
+      } catch {
+        return [];
+      }
+    },
+    staleTime: 300000,
+  });
+
   const { data: latestUploads = [] } = useQuery<LatestUpload[]>({
     queryKey: ['recent-uploads'],
     queryFn: async () => {
@@ -605,6 +619,41 @@ export default function HomeScreen() {
       >
         {/* Hero Banner */}
         <HeroBanner />
+
+        {/* Trending Games */}
+        {trendingGames.length > 0 && (
+          <View style={{ marginBottom: 28 }}>
+            <View style={styles.sectionHeaderWithAction}>
+              <Text style={styles.sectionTitle}>Trending Games</Text>
+              <TouchableOpacity style={styles.viewAllButton} onPress={() => router.push('/(drawer)/(tabs)/explore')}>
+                <Text style={styles.viewAllText}>Explore</Text>
+                <ChevronRight size={16} color="#4ADE80" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 4, flexDirection: 'row' }}>
+              {trendingGames.slice(0, 12).map((game: any) => {
+                const artUrl = game.box_art_url
+                  ? game.box_art_url.replace('{width}', '200').replace('{height}', '267')
+                  : null;
+                const gameSlug = game.name ? game.name.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+                return (
+                  <TouchableOpacity
+                    key={game.id}
+                    onPress={() => router.push({ pathname: '/game/[id]', params: { id: gameSlug } })}
+                    activeOpacity={0.8}
+                  >
+                    <Image
+                      source={{ uri: artUrl || `https://ui-avatars.com/api/?name=${game.name}&background=1E293B&color=4ADE80&size=100` }}
+                      style={styles.trendingGameArt}
+                      contentFit="cover"
+                    />
+                    <Text style={styles.trendingGameName} numberOfLines={2}>{game.name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Featured Users */}
         {featuredUsers.length > 0 && (
@@ -1430,5 +1479,19 @@ const styles = StyleSheet.create({
     color: '#4ADE80',
     fontSize: 10,
     textAlign: 'center' as const,
+  },
+  trendingGameArt: {
+    width: 90,
+    height: 120,
+    borderRadius: 12,
+    backgroundColor: '#1E293B',
+  },
+  trendingGameName: {
+    color: '#CBD5E1',
+    fontSize: 11,
+    fontWeight: '600' as const,
+    textAlign: 'center' as const,
+    marginTop: 6,
+    width: 90,
   },
 });

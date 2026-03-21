@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { ScrollView, ScrollViewProps, View, Animated, StyleSheet, FlatList, FlatListProps } from 'react-native';
+import { ScrollView, ScrollViewProps, View, Animated, StyleSheet, FlatList, FlatListProps, Platform } from 'react-native';
 import { Colors } from '@/constants/colors';
 
 export default function ThemedScrollView({ style, contentContainerStyle, children, ...props }: ScrollViewProps) {
@@ -92,12 +92,9 @@ export default function ThemedScrollView({ style, contentContainerStyle, childre
 
 const styles = StyleSheet.create({
   container: {
-    // If the parent doesn't enforce flex, we might need it, but usually ScrollView fills space.
-    // We expect 'style' to provide flex: 1 or dimensions.
-    // But we default to flex 1 if no style provided? No, let's respect style.
     position: 'relative',
-    overflow: 'hidden',
-  },
+    overflow: Platform.OS === 'web' ? 'visible' : 'hidden',
+  } as any,
   scrollView: {
     flex: 1,
   },
