@@ -4,7 +4,7 @@ import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Sta
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { getProfileTheme, ProfileThemeTokens } from '@/constants/themes';
 import { useAuth } from '@/context/AuthContext';
@@ -362,9 +362,45 @@ export default function ProfileScreen() {
       return api.lootbox.getStatus(token);
     },
     staleTime: 60 * 1000,
+    enabled: !!user,
   });
 
   const lootboxCanOpen = lootboxStatusQuery.data?.canOpen ?? false;
+  const lootboxNextOpenAt = useMemo(() => {
+    return lootboxStatusQuery.data?.nextOpenAt ? new Date(lootboxStatusQuery.data.nextOpenAt) : null;
+  }, [lootboxStatusQuery.data?.nextOpenAt]);
+
+  const [lootboxCountdown, setLootboxCountdown] = useState('');
+  const lootboxTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (lootboxTimerRef.current) {
+      clearInterval(lootboxTimerRef.current);
+    }
+    if (!lootboxNextOpenAt || lootboxCanOpen) {
+      setLootboxCountdown('');
+      return;
+    }
+    const update = () => {
+      const diff = lootboxNextOpenAt.getTime() - Date.now();
+      if (diff <= 0) {
+        setLootboxCountdown('');
+        lootboxStatusQuery.refetch();
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setLootboxCountdown(
+        `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+      );
+    };
+    update();
+    lootboxTimerRef.current = setInterval(update, 1000);
+    return () => {
+      if (lootboxTimerRef.current) clearInterval(lootboxTimerRef.current);
+    };
+  }, [lootboxNextOpenAt, lootboxCanOpen]);
 
   const [selectedScreenshot, setSelectedScreenshot] = useState<Screenshot | null>(null);
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
@@ -480,6 +516,11 @@ export default function ProfileScreen() {
                 </LinearGradient>
                 {lootboxCanOpen ? (
                   <View style={styles.lootboxAvailableDot} />
+                ) : null}
+                {!lootboxCanOpen && lootboxCountdown.length > 0 ? (
+                  <View style={styles.lootboxCountdownBadge}>
+                    <Text style={styles.lootboxCountdownText}>{lootboxCountdown}</Text>
+                  </View>
                 ) : null}
               </TouchableOpacity>
             </View>
@@ -815,6 +856,7 @@ export default function ProfileScreen() {
         onClose={() => setIsLootboxModalVisible(false)}
         onClaimed={() => {
           console.log('[Profile] Lootbox claimed successfully');
+          lootboxStatusQuery.refetch();
         }}
       />
 
@@ -945,6 +987,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#4ADE80',
     borderWidth: 2,
     borderColor: '#0F1520',
+  },
+  lootboxCountdownBadge: {
+    position: 'absolute',
+    bottom: -18,
+    left: '50%',
+    transform: [{ translateX: -22 }],
+    backgroundColor: '#1E293B',
+    borderRadius: 6,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#334155',
+    minWidth: 44,
+    alignItems: 'center',
+  },
+  lootboxCountdownText: {
+    fontSize: 9,
+    color: '#F59E0B',
+    fontWeight: 'bold' as const,
+    letterSpacing: 0.5,
   },
   onlineIndicator: {
     position: 'absolute',
