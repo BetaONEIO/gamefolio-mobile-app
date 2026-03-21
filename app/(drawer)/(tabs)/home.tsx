@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronRight, Eye, Video, VideoOff, Film, X, Upload, Camera } from 'lucide-react-native';
 import React, { useState, useCallback, useRef, useEffect } from 'react';
