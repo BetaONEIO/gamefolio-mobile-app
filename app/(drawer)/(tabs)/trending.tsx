@@ -4691,6 +4691,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   commentsSection: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: '#0F1520',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
