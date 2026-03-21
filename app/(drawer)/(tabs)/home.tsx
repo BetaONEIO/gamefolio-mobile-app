@@ -273,34 +273,6 @@ export default function HomeScreen() {
     },
   });
 
-  const { data: featuredUsers = [] } = useQuery<any[]>({
-    queryKey: ['/api/users/featured'],
-    queryFn: async () => {
-      try {
-        const res = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/users/featured`);
-        if (!res.ok) return [];
-        return res.json();
-      } catch {
-        return [];
-      }
-    },
-    staleTime: 60000,
-  });
-
-  const { data: trendingGames = [] } = useQuery<any[]>({
-    queryKey: ['/api/twitch/games/top'],
-    queryFn: async () => {
-      try {
-        const res = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/twitch/games/top`);
-        if (!res.ok) return [];
-        return res.json();
-      } catch {
-        return [];
-      }
-    },
-    staleTime: 300000,
-  });
-
   const { data: latestUploads = [] } = useQuery<LatestUpload[]>({
     queryKey: ['recent-uploads'],
     queryFn: async () => {
@@ -619,70 +591,6 @@ export default function HomeScreen() {
       >
         {/* Hero Banner */}
         <HeroBanner />
-
-        {/* Trending Games */}
-        {trendingGames.length > 0 && (
-          <View style={{ marginBottom: 28 }}>
-            <View style={styles.sectionHeaderWithAction}>
-              <Text style={styles.sectionTitle}>Trending Games</Text>
-              <TouchableOpacity style={styles.viewAllButton} onPress={() => router.push('/(drawer)/(tabs)/explore')}>
-                <Text style={styles.viewAllText}>Explore</Text>
-                <ChevronRight size={16} color="#4ADE80" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 4, flexDirection: 'row' }}>
-              {trendingGames.slice(0, 12).map((game: any) => {
-                const artUrl = game.box_art_url
-                  ? game.box_art_url.replace('{width}', '200').replace('{height}', '267')
-                  : null;
-                const gameSlug = game.name ? game.name.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
-                return (
-                  <TouchableOpacity
-                    key={game.id}
-                    onPress={() => router.push({ pathname: '/game/[id]', params: { id: gameSlug } })}
-                    activeOpacity={0.8}
-                  >
-                    <Image
-                      source={{ uri: artUrl || `https://ui-avatars.com/api/?name=${game.name}&background=1E293B&color=4ADE80&size=100` }}
-                      style={styles.trendingGameArt}
-                      contentFit="cover"
-                    />
-                    <Text style={styles.trendingGameName} numberOfLines={2}>{game.name}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Featured Users */}
-        {featuredUsers.length > 0 && (
-          <View style={{ marginBottom: 28 }}>
-            <View style={styles.sectionHeader}>
-              <ChevronRight size={20} color="#4ADE80" />
-              <Text style={styles.sectionTitle}>Featured Gamers</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.featuredUsersRow, { paddingRight: 8 }]}>
-              {featuredUsers.map((u: any) => (
-                <TouchableOpacity
-                  key={u.id}
-                  style={styles.featuredUserCard}
-                  onPress={() => router.push({ pathname: '/user/[id]', params: { id: u.id.toString() } })}
-                  activeOpacity={0.8}
-                  testID={`card-featured-user-${u.id}`}
-                >
-                  <Image
-                    source={{ uri: u.avatarUrl || `https://ui-avatars.com/api/?name=${u.username}&background=1E293B&color=4ADE80&size=60` }}
-                    style={styles.featuredUserAvatar}
-                    contentFit="cover"
-                  />
-                  <Text style={styles.featuredUserName} numberOfLines={1}>@{u.username}</Text>
-                  {u.level ? <Text style={styles.featuredUserLevel}>Lvl {u.level}</Text> : null}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
 
         {/* Featured Clips with Toggle — logged-in only */}
         {user ? (
