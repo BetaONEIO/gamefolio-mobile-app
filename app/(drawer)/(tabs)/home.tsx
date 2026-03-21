@@ -49,6 +49,10 @@ const formatViews = (views: number) => {
   return views.toString();
 };
 
+const isNewContent = (createdAt: string | Date) => {
+  return Date.now() - new Date(createdAt).getTime() < 86400000 * 3;
+};
+
 const PLACEHOLDER_THUMBNAILS = {
   clip: [
     'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=450&fit=crop',
@@ -592,7 +596,31 @@ export default function HomeScreen() {
         {/* Hero Banner */}
         <HeroBanner />
 
-        {/* Featured Clips with Toggle — logged-in only */}
+        {/* Join Pro Today — only for non-pro users */}
+        {(!user || !user.isPro) && (
+          <TouchableOpacity
+            style={styles.proPromoCard}
+            onPress={() => router.push('/(drawer)/store')}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#065F46', '#047857', '#059669']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.proPromoGradient}
+            >
+              <View style={styles.proPromoContent}>
+                <Text style={styles.proPromoTitle}>Join Pro Today!</Text>
+                <Text style={styles.proPromoSubtitle}>Enjoy the many benefits of joining Pro</Text>
+              </View>
+              <View style={styles.proPromoButton}>
+                <Text style={styles.proPromoButtonText}>Join Pro</Text>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        {/* Recommended for You */}
         {user ? (
           <>
             <View style={styles.sectionHeader}>
@@ -656,12 +684,24 @@ export default function HomeScreen() {
                       imageStyle={{ borderRadius: 16 }}
                     >
                       <View style={styles.latestClipOverlay}>
-                        <View style={styles.latestClipTopStats}>
-                          <View style={styles.statsBadge}>
-                            <Text style={styles.statsText}>{formatDuration(clip.duration)}</Text>
-                            <View style={styles.statsDivider} />
-                            <Eye size={12} color="#FFF" />
-                            <Text style={styles.statsText}>{formatViews(clip.views)}</Text>
+                        <View style={styles.cardTopRow}>
+                          <View style={styles.topBadgesLeft}>
+                            {clip.createdAt && isNewContent(clip.createdAt) && (
+                              <View style={styles.newBadge}>
+                                <Text style={styles.newBadgeText}>NEW</Text>
+                              </View>
+                            )}
+                          </View>
+                          <View style={styles.statsBadgesRight}>
+                            {clip.duration > 0 && (
+                              <View style={styles.statsBadge}>
+                                <Text style={styles.statsText}>{formatDuration(clip.duration)}</Text>
+                              </View>
+                            )}
+                            <View style={styles.statsBadge}>
+                              <Eye size={12} color="#FFF" />
+                              <Text style={styles.statsText}>{formatViews(clip.views)}</Text>
+                            </View>
                           </View>
                         </View>
                         
@@ -698,11 +738,34 @@ export default function HomeScreen() {
               )}
             </ScrollView>
           </>
-        ) : null}
+        ) : (
+          <>
+            <View style={styles.sectionHeader}>
+              <Video size={20} color="#4ADE80" />
+              <Text style={styles.sectionTitle}>Recommended for You</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.loginPromptCard}
+              onPress={() => router.push('/onboarding/index')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.loginPromptTitle}>Log in to see recommendations</Text>
+              <Text style={styles.loginPromptText}>
+                Sign in to get personalised clip and reel recommendations based on your favourite games.
+              </Text>
+              <View style={styles.loginPromptButton}>
+                <Text style={styles.loginPromptButtonText}>Sign In</Text>
+              </View>
+            </TouchableOpacity>
+          </>
+        )}
 
         {/* Latest Clips Section */}
         <View style={styles.sectionHeaderWithAction}>
-          <Text style={styles.sectionTitle}>Latest Clips</Text>
+          <View style={styles.sectionHeaderLeft}>
+            <Video size={20} color="#4ADE80" />
+            <Text style={styles.sectionTitle}>Latest Clips</Text>
+          </View>
           <TouchableOpacity style={styles.viewAllButton} onPress={() => router.push('/(drawer)/(tabs)/clips/latest')}>
             <Text style={styles.viewAllText}>View all</Text>
             <ChevronRight size={16} color="#4ADE80" />
@@ -726,13 +789,25 @@ export default function HomeScreen() {
                 imageStyle={{ borderRadius: 16 }}
               >
                 <View style={styles.latestClipOverlay}>
-                  <View style={styles.latestClipTopStats}>
-                     <View style={styles.statsBadge}>
-                        <Text style={styles.statsText}>{formatDuration(clip.duration)}</Text>
-                        <View style={styles.statsDivider} />
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.topBadgesLeft}>
+                      {clip.createdAt && isNewContent(clip.createdAt) && (
+                        <View style={styles.newBadge}>
+                          <Text style={styles.newBadgeText}>NEW</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.statsBadgesRight}>
+                      {clip.duration > 0 && (
+                        <View style={styles.statsBadge}>
+                          <Text style={styles.statsText}>{formatDuration(clip.duration)}</Text>
+                        </View>
+                      )}
+                      <View style={styles.statsBadge}>
                         <Eye size={12} color="#FFF" />
-                        <Text style={styles.statsText}>{clip.views}</Text>
-                     </View>
+                        <Text style={styles.statsText}>{formatViews(clip.views)}</Text>
+                      </View>
+                    </View>
                   </View>
                   
                   <View style={styles.latestClipInfo}>
@@ -792,12 +867,24 @@ export default function HomeScreen() {
                 imageStyle={{ borderRadius: 16 }}
               >
                 <View style={styles.latestClipOverlay}>
-                  <View style={styles.latestClipTopStats}>
-                    <View style={styles.statsBadge}>
-                      <Text style={styles.statsText}>{formatDuration(reel.duration)}</Text>
-                      <View style={styles.statsDivider} />
-                      <Eye size={12} color="#FFF" />
-                      <Text style={styles.statsText}>{formatViews(reel.views)}</Text>
+                  <View style={styles.cardTopRow}>
+                    <View style={styles.topBadgesLeft}>
+                      {reel.createdAt && isNewContent(reel.createdAt) && (
+                        <View style={styles.newBadge}>
+                          <Text style={styles.newBadgeText}>NEW</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.statsBadgesRight}>
+                      {reel.duration > 0 && (
+                        <View style={styles.statsBadge}>
+                          <Text style={styles.statsText}>{formatDuration(reel.duration)}</Text>
+                        </View>
+                      )}
+                      <View style={styles.statsBadge}>
+                        <Eye size={12} color="#FFF" />
+                        <Text style={styles.statsText}>{formatViews(reel.views)}</Text>
+                      </View>
                     </View>
                   </View>
                   <View style={styles.latestClipInfo}>
@@ -874,10 +961,19 @@ export default function HomeScreen() {
                   imageStyle={{ borderRadius: 16 }}
                 >
                   <View style={styles.latestClipOverlay}>
-                    <View style={styles.latestClipTopStats}>
-                      <View style={styles.statsBadge}>
-                        <Eye size={12} color="#FFF" />
-                        <Text style={styles.statsText}>{formatViews(shot.views)}</Text>
+                    <View style={styles.cardTopRow}>
+                      <View style={styles.topBadgesLeft}>
+                        {shot.createdAt && isNewContent(shot.createdAt) && (
+                          <View style={styles.newBadge}>
+                            <Text style={styles.newBadgeText}>NEW</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View style={styles.statsBadgesRight}>
+                        <View style={styles.statsBadge}>
+                          <Eye size={12} color="#FFF" />
+                          <Text style={styles.statsText}>{formatViews(shot.views)}</Text>
+                        </View>
                       </View>
                     </View>
                     <View style={styles.latestClipInfo}>
@@ -1401,5 +1497,106 @@ const styles = StyleSheet.create({
     textAlign: 'center' as const,
     marginTop: 6,
     width: 90,
+  },
+
+  proPromoCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 20,
+    marginBottom: 4,
+  },
+  proPromoGradient: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  proPromoContent: {
+    flex: 1,
+  },
+  proPromoTitle: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '800' as const,
+    letterSpacing: 0.3,
+  },
+  proPromoSubtitle: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  proPromoButton: {
+    backgroundColor: '#FFF',
+    paddingHorizontal: 18,
+    paddingVertical: 9,
+    borderRadius: 10,
+    marginLeft: 12,
+  },
+  proPromoButtonText: {
+    color: '#065F46',
+    fontSize: 14,
+    fontWeight: '800' as const,
+  },
+
+  loginPromptCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  loginPromptTitle: {
+    color: '#FFF',
+    fontSize: 17,
+    fontWeight: '700' as const,
+    marginBottom: 6,
+  },
+  loginPromptText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  loginPromptButton: {
+    backgroundColor: '#4ADE80',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignSelf: 'flex-start' as const,
+  },
+  loginPromptButtonText: {
+    color: '#002E15',
+    fontSize: 14,
+    fontWeight: '700' as const,
+  },
+
+  cardTopRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'flex-start' as const,
+  },
+  topBadgesLeft: {
+    flexDirection: 'row' as const,
+    gap: 4,
+    flexWrap: 'wrap' as const,
+  },
+  statsBadgesRight: {
+    flexDirection: 'row' as const,
+    gap: 4,
+    alignItems: 'center' as const,
+  },
+  newBadge: {
+    backgroundColor: '#4ADE80',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 5,
+  },
+  newBadgeText: {
+    color: '#002E15',
+    fontSize: 9,
+    fontWeight: '800' as const,
+    letterSpacing: 0.5,
   },
 });
