@@ -108,7 +108,6 @@ const GAME_CATEGORIES: Record<string, string> = {
   'MultiVersus': 'Fighting',
   'Terraria': 'Sandbox',
   'Roblox': 'Sandbox',
-  'Minecraft': 'Sandbox',
   'Escape From Tarkov': 'FPS',
   'Destiny 2': 'FPS',
   'Battlefield 1': 'FPS',
