@@ -673,7 +673,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Authentication Routes (Basic)
   // ==========================================
 
-  app.post("/api/auth/verify-password", authMiddleware, async (req, res) => {
+  app.post("/api/auth/verify-password", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const { password } = req.body;
@@ -1404,7 +1404,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==========================================
 
   // Get 2FA status for current user
-  app.get("/api/2fa/status", authMiddleware, async (req, res) => {
+  app.get("/api/2fa/status", hybridAuth, async (req, res) => {
     try {
       const user = req.user as User;
       const fullUser = await storage.getUserById(user.id);
@@ -1423,7 +1423,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Setup 2FA - generate secret and QR code
-  app.post("/api/2fa/setup", authMiddleware, async (req, res) => {
+  app.post("/api/2fa/setup", hybridAuth, async (req, res) => {
     try {
       const user = req.user as User;
       const fullUser = await storage.getUserById(user.id);
@@ -1456,7 +1456,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Enable 2FA after verifying a TOTP code
-  app.post("/api/2fa/enable", authMiddleware, async (req, res) => {
+  app.post("/api/2fa/enable", hybridAuth, async (req, res) => {
     try {
       const user = req.user as User;
       const { code } = req.body;
@@ -1500,7 +1500,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Disable 2FA (requires password verification)
-  app.post("/api/2fa/disable", authMiddleware, async (req, res) => {
+  app.post("/api/2fa/disable", hybridAuth, async (req, res) => {
     try {
       const user = req.user as User;
       const { password, code } = req.body;
@@ -1834,13 +1834,59 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     });
   });
 
+  // Update current authenticated user's profile (used by mobile app)
+  app.patch("/api/user", hybridAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+
+      // Fields that exist in the DB schema and can be updated
+      const DB_ALLOWED_FIELDS = new Set([
+        "displayName", "bio", "userType", "location", "website",
+        "avatarUrl", "bannerUrl", "activeProfilePicType",
+        "accentColor", "backgroundColor", "cardColor",
+        "profileFont", "profileFontEffect", "profileFontAnimation", "profileFontColor",
+        "profileBackgroundType", "profileBackgroundTheme", "profileBackgroundAnimation", "profileBackgroundImageUrl",
+        "hideBanner", "profileTheme", "showUserType", "messagingEnabled", "isPrivate",
+        "steamUsername", "xboxUsername", "playstationUsername",
+        "discordUsername", "epicUsername", "twitchUsername", "youtubeUsername",
+        "twitterUsername", "instagramUsername", "facebookUsername", "nintendoUsername",
+      ]);
+
+      // Filter to only DB-safe fields (isOnline/lastActive are not DB columns — handled ephemerally)
+      const safeBody = Object.fromEntries(
+        Object.entries(req.body).filter(([key]) => DB_ALLOWED_FIELDS.has(key))
+      );
+
+      // If there are no DB fields to update (e.g. only isOnline was sent), return current user
+      if (Object.keys(safeBody).length === 0) {
+        const currentUser = await storage.getUserById(userId);
+        if (!currentUser) {
+          return res.status(404).json({ message: "User not found" });
+        }
+        const { password, ...userWithoutPassword } = currentUser as any;
+        return res.json({ user: userWithoutPassword });
+      }
+
+      const updatedUser = await storage.updateUser(userId, safeBody);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password, ...userWithoutPassword } = updatedUser as any;
+      res.json({ user: userWithoutPassword });
+    } catch (err) {
+      console.error("Error updating user via PATCH /api/user:", err);
+      return res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
   // ==========================================
   // User Routes
   // ==========================================
 
   // Change Password Route
   // ==========================================
-  app.post("/api/users/change-password", authMiddleware, async (req, res) => {
+  app.post("/api/users/change-password", hybridAuth, async (req, res) => {
     try {
       const user = (req as any).user;
       if (!user) {
@@ -1886,7 +1932,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==========================================
   
   // Step 1: Initiate account deletion with username verification
-  app.post("/api/users/me/delete/initiate", authMiddleware, async (req, res) => {
+  app.post("/api/users/me/delete/initiate", hybridAuth, async (req, res) => {
     try {
       const user = (req as any).user;
       const { confirm_username } = req.body;
@@ -1934,7 +1980,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Step 2: Final confirmation and account deletion
-  app.post("/api/users/me/delete/confirm", authMiddleware, async (req, res) => {
+  app.post("/api/users/me/delete/confirm", hybridAuth, async (req, res) => {
     try {
       const user = (req as any).user;
       const { confirmed } = req.body;
@@ -1995,7 +2041,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Search users endpoint for messaging (must come before parameterized routes)
-  app.get("/api/users/search", authMiddleware, async (req, res) => {
+  app.get("/api/users/search", hybridAuth, async (req, res) => {
     try {
       const query = req.query.q as string;
 
@@ -2399,7 +2445,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get user's XP history (actual XP earnings from various sources)
-  app.get("/api/user/:userId/xp-history", authMiddleware, async (req, res) => {
+  app.get("/api/user/:userId/xp-history", hybridAuth, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       const requestingUserId = (req.user as any).id;
@@ -2424,7 +2470,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get user's daily activity and progress for the Level Tracker
-  app.get("/api/user/:userId/daily-activity", authMiddleware, async (req, res) => {
+  app.get("/api/user/:userId/daily-activity", hybridAuth, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       const requestingUserId = (req.user as any).id;
@@ -2513,7 +2559,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Recalculate levels for all users based on their current XP
-  app.post("/api/admin/recalculate-levels", authMiddleware, async (req, res) => {
+  app.post("/api/admin/recalculate-levels", hybridAuth, async (req, res) => {
     try {
       // Check if user is admin
       if (req.user!.role !== 'admin') {
@@ -2546,7 +2592,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Award monthly top contributor badges retroactively
-  app.post("/api/admin/award-monthly-badges", authMiddleware, async (req, res) => {
+  app.post("/api/admin/award-monthly-badges", hybridAuth, async (req, res) => {
     try {
       // Check if user is admin
       if (req.user!.role !== 'admin') {
@@ -2601,7 +2647,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get user point history (admin endpoint)
-  app.get("/api/admin/users/:userId/points-history", authMiddleware, async (req, res) => {
+  app.get("/api/admin/users/:userId/points-history", hybridAuth, async (req, res) => {
     try {
       // Check if user is admin
       if (req.user!.role !== 'admin') {
@@ -2624,7 +2670,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Manually adjust user points (admin endpoint)
-  app.post("/api/admin/users/:userId/adjust-points", authMiddleware, async (req, res) => {
+  app.post("/api/admin/users/:userId/adjust-points", hybridAuth, async (req, res) => {
     try {
       // Check if user is admin
       if (req.user!.role !== 'admin') {
@@ -2693,7 +2739,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get points system breakdown (admin endpoint)
-  app.get("/api/admin/points-system", authMiddleware, async (req, res) => {
+  app.get("/api/admin/points-system", hybridAuth, async (req, res) => {
     try {
       // Check if user is admin
       if (req.user!.role !== 'admin') {
@@ -2725,7 +2771,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Recalculate upload points for all historic clips and screenshots
-  app.post("/api/admin/recalculate-upload-points", authMiddleware, async (req, res) => {
+  app.post("/api/admin/recalculate-upload-points", hybridAuth, async (req, res) => {
     try {
       // Check if user is admin
       if (req.user!.role !== 'admin') {
@@ -2788,7 +2834,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Clear historic migration points (admin only)
-  app.post("/api/admin/clear-historic-points", authMiddleware, async (req, res) => {
+  app.post("/api/admin/clear-historic-points", hybridAuth, async (req, res) => {
     try {
       // Check if user is admin
       if (req.user!.role !== 'admin') {
@@ -2815,7 +2861,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Recalculate all users' total points and levels from points history (admin only)
-  app.post("/api/admin/recalculate-points-and-levels", authMiddleware, async (req, res) => {
+  app.post("/api/admin/recalculate-points-and-levels", hybridAuth, async (req, res) => {
     try {
       // Check if user is admin
       if (req.user!.role !== 'admin') {
@@ -3269,7 +3315,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Update user profile
-  app.patch("/api/users/:id", authMiddleware, async (req, res) => {
+  app.patch("/api/users/:id", hybridAuth, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
 
@@ -3358,7 +3404,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Upload avatar
-  app.post("/api/upload/avatar", authMiddleware, upload.single("avatar"), async (req, res) => {
+  app.post("/api/upload/avatar", hybridAuth, upload.single("avatar"), async (req, res) => {
     try {
       console.log('Avatar upload request received');
       console.log('User authenticated:', req.isAuthenticated());
@@ -3528,7 +3574,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Upload profile image
-  app.post("/api/users/:id/profile-image", authMiddleware, upload.single("profileImage"), async (req, res) => {
+  app.post("/api/users/:id/profile-image", hybridAuth, upload.single("profileImage"), async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
 
@@ -4283,7 +4329,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get personalized recommended clips for authenticated user
-  app.get("/api/recommended-clips", authMiddleware, async (req, res) => {
+  app.get("/api/recommended-clips", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id;
       if (!userId) {
@@ -4923,7 +4969,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Update clip
-  app.patch("/api/clips/:id", authMiddleware, async (req, res) => {
+  app.patch("/api/clips/:id", hybridAuth, async (req, res) => {
     try {
       const clipId = parseInt(req.params.id);
       const clip = await storage.getClip(clipId);
@@ -4951,7 +4997,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Delete clip
-  app.delete("/api/clips/:id", authMiddleware, async (req, res) => {
+  app.delete("/api/clips/:id", hybridAuth, async (req, res) => {
     try {
       const clipId = parseInt(req.params.id);
       const clip = await storage.getClip(clipId);
@@ -5005,7 +5051,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Pin/unpin clip
-  app.patch("/api/clips/:id/pin", authMiddleware, async (req, res) => {
+  app.patch("/api/clips/:id/pin", hybridAuth, async (req, res) => {
     try {
       const clipId = parseInt(req.params.id);
       const clip = await storage.getClip(clipId);
@@ -5059,7 +5105,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Update clip thumbnail
-  app.put("/api/clips/:id/thumbnail", authMiddleware, async (req, res) => {
+  app.put("/api/clips/:id/thumbnail", hybridAuth, async (req, res) => {
     try {
       const clipId = parseInt(req.params.id);
       const { thumbnailUrl } = req.body;
@@ -5090,7 +5136,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Upload custom thumbnail for clip
-  app.post("/api/clips/:id/thumbnail", authMiddleware, upload.single("thumbnail"), async (req, res) => {
+  app.post("/api/clips/:id/thumbnail", hybridAuth, upload.single("thumbnail"), async (req, res) => {
     try {
       const clipId = parseInt(req.params.id);
 
@@ -5228,7 +5274,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Delete comment
-  app.delete("/api/clips/:clipId/comments/:id", authMiddleware, async (req, res) => {
+  app.delete("/api/clips/:clipId/comments/:id", hybridAuth, async (req, res) => {
     try {
       const commentId = parseInt(req.params.id);
       const comment = await storage.getComment(commentId);
@@ -5257,7 +5303,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Like a clip comment
-  app.post("/api/comments/:id/like", authMiddleware, async (req, res) => {
+  app.post("/api/comments/:id/like", hybridAuth, async (req, res) => {
     try {
       const commentId = parseInt(req.params.id);
       const userId = req.user!.id;
@@ -5279,7 +5325,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Unlike a clip comment
-  app.delete("/api/comments/:id/like", authMiddleware, async (req, res) => {
+  app.delete("/api/comments/:id/like", hybridAuth, async (req, res) => {
     try {
       const commentId = parseInt(req.params.id);
       const userId = req.user!.id;
@@ -5311,7 +5357,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Like a screenshot comment
-  app.post("/api/screenshot-comments/:id/like", authMiddleware, async (req, res) => {
+  app.post("/api/screenshot-comments/:id/like", hybridAuth, async (req, res) => {
     try {
       const commentId = parseInt(req.params.id);
       const userId = req.user!.id;
@@ -5333,7 +5379,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Unlike a screenshot comment
-  app.delete("/api/screenshot-comments/:id/like", authMiddleware, async (req, res) => {
+  app.delete("/api/screenshot-comments/:id/like", hybridAuth, async (req, res) => {
     try {
       const commentId = parseInt(req.params.id);
       const userId = req.user!.id;
@@ -6007,7 +6053,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Add game to favorites
-  app.post("/api/users/:id/favorites", authMiddleware, async (req, res) => {
+  app.post("/api/users/:id/favorites", hybridAuth, async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
 
@@ -6055,7 +6101,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Remove game from favorites
-  app.delete("/api/users/:userId/favorites/:gameId", authMiddleware, async (req, res) => {
+  app.delete("/api/users/:userId/favorites/:gameId", hybridAuth, async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       const gameId = parseInt(req.params.gameId);
@@ -6142,7 +6188,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Check follow status by username
-  app.get("/api/users/:username/follow-status", authMiddleware, async (req, res) => {
+  app.get("/api/users/:username/follow-status", hybridAuth, async (req, res) => {
     try {
       const followerId = req.user?.id ?? 0;
       const { username } = req.params;
@@ -6178,7 +6224,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Follow a user by username
-  app.post("/api/users/:username/follow", authMiddleware, async (req, res) => {
+  app.post("/api/users/:username/follow", hybridAuth, async (req, res) => {
     try {
       const followerId = req.user?.id ?? 0;
       const { username } = req.params;
@@ -6238,7 +6284,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Unfollow a user by username
-  app.delete("/api/users/:username/follow", authMiddleware, async (req, res) => {
+  app.delete("/api/users/:username/follow", hybridAuth, async (req, res) => {
     try {
       const followerId = req.user?.id ?? 0;
       const { username } = req.params;
@@ -6278,7 +6324,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Follow a user
-  app.post("/api/users/:id/follow", authMiddleware, async (req, res) => {
+  app.post("/api/users/:id/follow", hybridAuth, async (req, res) => {
     try {
       const followerId = req.user?.id ?? 0;
       const followingId = parseInt(req.params.id);
@@ -6338,7 +6384,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Unfollow a user
-  app.delete("/api/users/:id/follow", authMiddleware, async (req, res) => {
+  app.delete("/api/users/:id/follow", hybridAuth, async (req, res) => {
     try {
       const followerId = req.user?.id ?? 0;
       const followingId = parseInt(req.params.id);
@@ -6376,7 +6422,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==========================================
 
   // Get pending follow requests for the current user
-  app.get("/api/follow-requests", authMiddleware, async (req, res) => {
+  app.get("/api/follow-requests", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id ?? 0;
       const followRequests = await storage.getPendingFollowRequests(userId);
@@ -6388,7 +6434,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Approve a follow request
-  app.post("/api/follow-requests/:requestId/approve", authMiddleware, async (req, res) => {
+  app.post("/api/follow-requests/:requestId/approve", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id ?? 0;
       const requestId = parseInt(req.params.requestId);
@@ -6423,7 +6469,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Reject a follow request
-  app.post("/api/follow-requests/:requestId/reject", authMiddleware, async (req, res) => {
+  app.post("/api/follow-requests/:requestId/reject", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id ?? 0;
       const requestId = parseInt(req.params.requestId);
@@ -6455,7 +6501,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Approve follow request via notification ID (for notification buttons)
-  app.post("/api/notifications/:notificationId/approve-follow", authMiddleware, async (req, res) => {
+  app.post("/api/notifications/:notificationId/approve-follow", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id ?? 0;
       const notificationId = parseInt(req.params.notificationId);
@@ -6499,7 +6545,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Reject follow request via notification ID (for notification buttons)
-  app.post("/api/notifications/:notificationId/reject-follow", authMiddleware, async (req, res) => {
+  app.post("/api/notifications/:notificationId/reject-follow", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id ?? 0;
       const notificationId = parseInt(req.params.notificationId);
@@ -8165,7 +8211,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Update hero text settings (admin only)
-  app.patch("/api/hero-text/experienced", authMiddleware, async (req, res) => {
+  app.patch("/api/hero-text/experienced", hybridAuth, async (req, res) => {
     try {
       // Check if user is admin
       if (req.user!.role !== 'admin') {
@@ -8209,7 +8255,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Pin/unpin screenshot
-  app.patch("/api/screenshots/:id/pin", authMiddleware, async (req, res) => {
+  app.patch("/api/screenshots/:id/pin", hybridAuth, async (req, res) => {
     try {
       const screenshotId = parseInt(req.params.id);
       const screenshot = await storage.getScreenshot(screenshotId);
@@ -8239,7 +8285,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Delete screenshot
-  app.delete("/api/screenshots/:id", authMiddleware, async (req, res) => {
+  app.delete("/api/screenshots/:id", hybridAuth, async (req, res) => {
     try {
       const screenshotId = parseInt(req.params.id);
       console.log(`🗑️ Attempting to delete screenshot ${screenshotId}`);
@@ -8526,7 +8572,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Delete conversation history
-  app.delete("/api/conversations/:userId", authMiddleware, async (req, res) => {
+  app.delete("/api/conversations/:userId", hybridAuth, async (req, res) => {
     try {
       const otherUserId = parseInt(req.params.userId);
       if (isNaN(otherUserId)) {
@@ -8632,7 +8678,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==========================================
 
   // Block a user
-  app.post("/api/users/block", authMiddleware, async (req, res) => {
+  app.post("/api/users/block", hybridAuth, async (req, res) => {
     try {
       const { userId } = req.body;
 
@@ -8672,7 +8718,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Unblock a user
-  app.post("/api/users/unblock", authMiddleware, async (req, res) => {
+  app.post("/api/users/unblock", hybridAuth, async (req, res) => {
     try {
       const { userId } = req.body;
 
@@ -8695,11 +8741,11 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Get blocked users - COMMENTED OUT as we have an override in blocked-users-fix.ts
   /*
   // DISABLED - Using direct override instead
-  // app.get("/api/users/blocked", authMiddleware, async (req, res) => {
+  // app.get("/api/users/blocked", hybridAuth, async (req, res) => {
   */
 
   // Update messaging preferences
-  app.post("/api/users/messaging-preferences", authMiddleware, async (req, res) => {
+  app.post("/api/users/messaging-preferences", hybridAuth, async (req, res) => {
     try {
       const { messagingEnabled } = req.body;
 
@@ -8721,7 +8767,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Update privacy preferences
-  app.post("/api/users/privacy-preferences", authMiddleware, async (req, res) => {
+  app.post("/api/users/privacy-preferences", hybridAuth, async (req, res) => {
     try {
       const { isPrivate } = req.body;
 
@@ -9062,7 +9108,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   console.log("🔧 ADDING BLOCKED USERS ROUTE OVERRIDE EARLY");
 
   // Force override the blocked users route immediately
-  app.get("/api/users/blocked", authMiddleware, async (req: any, res: any) => {
+  app.get("/api/users/blocked", hybridAuth, async (req: any, res: any) => {
     console.log("🔍 BLOCKED USERS ROUTE HIT - DIRECT OVERRIDE!");
 
     if (!req.user) {
@@ -9135,7 +9181,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==========================================
 
   // Get current user's favorite games for sidebar
-  app.get("/api/user-game-favorites", authMiddleware, async (req, res) => {
+  app.get("/api/user-game-favorites", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id;
 
@@ -9157,7 +9203,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get personalized recommendations based on user's favorite games
-  app.get("/api/recommendations", authMiddleware, async (req, res) => {
+  app.get("/api/recommendations", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id;
 
@@ -9219,7 +9265,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==========================================
 
   // Get user's notifications
-  app.get("/api/notifications", authMiddleware, async (req, res) => {
+  app.get("/api/notifications", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id ?? 0;
       const notifications = await storage.getNotificationsByUserId(userId);
@@ -9231,7 +9277,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get unread notifications count
-  app.get("/api/notifications/unread-count", authMiddleware, async (req, res) => {
+  app.get("/api/notifications/unread-count", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id ?? 0;
       const count = await storage.getUnreadNotificationsCount(userId);
@@ -9243,7 +9289,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Mark all notifications as read (must come before :id route)
-  app.post("/api/notifications/mark-all-read", authMiddleware, async (req, res) => {
+  app.post("/api/notifications/mark-all-read", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id ?? 0;
       const success = await storage.markAllNotificationsAsRead(userId);
@@ -9260,7 +9306,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Mark notification as read
-  app.post("/api/notifications/:id/mark-read", authMiddleware, async (req, res) => {
+  app.post("/api/notifications/:id/mark-read", hybridAuth, async (req, res) => {
     try {
       const notificationId = parseInt(req.params.id);
       const success = await storage.markNotificationAsRead(notificationId);
@@ -9277,7 +9323,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Delete all notifications for the authenticated user (must come before :id route)
-  app.delete("/api/notifications/delete-all", authMiddleware, async (req, res) => {
+  app.delete("/api/notifications/delete-all", hybridAuth, async (req, res) => {
     try {
       const userId = req.user?.id ?? 0;
 
@@ -9295,7 +9341,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Delete notification
-  app.delete("/api/notifications/:id", authMiddleware, async (req, res) => {
+  app.delete("/api/notifications/:id", hybridAuth, async (req, res) => {
     try {
       const notificationId = parseInt(req.params.id);
       const userId = req.user?.id ?? 0;
@@ -9398,7 +9444,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Delete screenshot comment
-  app.delete("/api/screenshot-comments/:id", authMiddleware, async (req, res) => {
+  app.delete("/api/screenshot-comments/:id", hybridAuth, async (req, res) => {
     try {
       const commentId = parseInt(req.params.id);
       const comments = await storage.getCommentsByClipId(0); // Note: This endpoint needs to be updated for screenshot comments
@@ -9791,7 +9837,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==========================================
 
   // Get upload success data for confirmation screen
-  app.get("/api/upload-success/:contentType/:id", authMiddleware, async (req, res) => {
+  app.get("/api/upload-success/:contentType/:id", hybridAuth, async (req, res) => {
     try {
       const { contentType, id } = req.params;
       const contentId = parseInt(id);
@@ -9881,7 +9927,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==========================================
 
   // Get or create wallet - generates wallet server-side for instant creation
-  app.post("/api/wallet/create", authMiddleware, async (req, res) => {
+  app.post("/api/wallet/create", hybridAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const user = await storage.getUser(userId);
@@ -9929,7 +9975,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Update wallet address for authenticated user
-  app.post("/api/wallet/address", authMiddleware, async (req, res) => {
+  app.post("/api/wallet/address", hybridAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const { walletAddress } = req.body;
@@ -9969,7 +10015,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get wallet info for authenticated user
-  app.get("/api/wallet/info", authMiddleware, async (req, res) => {
+  app.get("/api/wallet/info", hybridAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const user = await storage.getUser(userId);
@@ -10005,7 +10051,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get user's on-chain GF token balance
-  app.get("/api/token/balance", authMiddleware, async (req, res) => {
+  app.get("/api/token/balance", hybridAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const user = await storage.getUser(userId);
@@ -10071,7 +10117,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Purchase NFT with GF tokens
-  app.post("/api/nft/purchase", authMiddleware, async (req, res) => {
+  app.post("/api/nft/purchase", hybridAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const { nftId } = req.body;
@@ -10151,7 +10197,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Add NFT to watchlist
-  app.post("/api/nft/watchlist", authMiddleware, async (req, res) => {
+  app.post("/api/nft/watchlist", hybridAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const validatedData = insertNftWatchlistSchema.parse({
@@ -10172,7 +10218,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Remove NFT from watchlist
-  app.delete("/api/nft/watchlist/:nftId", authMiddleware, async (req, res) => {
+  app.delete("/api/nft/watchlist/:nftId", hybridAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const nftId = parseInt(req.params.nftId);
@@ -10190,7 +10236,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get user's NFT watchlist
-  app.get("/api/nft/watchlist", authMiddleware, async (req, res) => {
+  app.get("/api/nft/watchlist", hybridAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const watchlist = await storage.getNftWatchlist(userId);
@@ -10202,7 +10248,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Check if NFT is in user's watchlist
-  app.get("/api/nft/watchlist/check/:nftId", authMiddleware, async (req, res) => {
+  app.get("/api/nft/watchlist/check/:nftId", hybridAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const nftId = parseInt(req.params.nftId);
@@ -10228,7 +10274,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   } as const;
 
   // Create Crossmint order for GF token purchase
-  app.post("/api/token/create-order", authMiddleware, async (req, res) => {
+  app.post("/api/token/create-order", hybridAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const { packageId } = req.body;
@@ -10334,7 +10380,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Check Crossmint order status and deliver GF tokens
-  app.post("/api/token/complete-order", authMiddleware, async (req, res) => {
+  app.post("/api/token/complete-order", hybridAuth, async (req, res) => {
     try {
       const userId = req.user!.id;
       const { orderId } = req.body;
@@ -10428,7 +10474,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Test Crossmint API connection
-  app.get("/api/token/test-connection", authMiddleware, async (req, res) => {
+  app.get("/api/token/test-connection", hybridAuth, async (req, res) => {
     try {
       const apiKey = process.env.CROSSMINT_API_KEY;
       
@@ -10482,7 +10528,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==================== DAILY LOOTBOX ROUTES ====================
 
   // Get lootbox status - check if user can open today's lootbox
-  app.get("/api/lootbox/status", authMiddleware, async (req, res) => {
+  app.get("/api/lootbox/status", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const status = await storage.getDailyLootboxStatus(userId);
@@ -10494,7 +10540,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Open daily lootbox
-  app.post("/api/lootbox/open", authMiddleware, async (req, res) => {
+  app.post("/api/lootbox/open", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       
@@ -10545,7 +10591,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get user's claimed rewards
-  app.get("/api/lootbox/rewards", authMiddleware, async (req, res) => {
+  app.get("/api/lootbox/rewards", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const rewards = await storage.getUserClaimedRewards(userId);
@@ -10557,7 +10603,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get user's complete collection data (for Collection page)
-  app.get("/api/lootbox/collection", authMiddleware, async (req, res) => {
+  app.get("/api/lootbox/collection", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const collectionData = await storage.getUserCollectionData(userId);
@@ -10580,7 +10626,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Reset lootbox for testing (development only)
-  app.post("/api/lootbox/reset", authMiddleware, async (req, res) => {
+  app.post("/api/lootbox/reset", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       await storage.resetUserLootbox(userId);
@@ -10594,7 +10640,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==================== WELCOME PACK ROUTES ====================
 
   // Get welcome pack status
-  app.get("/api/welcome-pack/status", authMiddleware, async (req, res) => {
+  app.get("/api/welcome-pack/status", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const user = await storage.getUser(userId);
@@ -10614,7 +10660,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Claim welcome pack - grants NFT voucher, random store item, and random animated border
-  app.post("/api/welcome-pack/claim", authMiddleware, async (req, res) => {
+  app.post("/api/welcome-pack/claim", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const user = await storage.getUser(userId);
@@ -10746,7 +10792,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==================== SUBSCRIPTION ROUTES ====================
 
   // Sync subscription status from RevenueCat
-  app.post("/api/subscription/sync", authMiddleware, async (req, res) => {
+  app.post("/api/subscription/sync", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const { isPro } = req.body;
@@ -10804,7 +10850,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Check and grant monthly Pro lootbox (can be called on app load for Pro users)
-  app.post("/api/subscription/claim-monthly-lootbox", authMiddleware, async (req, res) => {
+  app.post("/api/subscription/claim-monthly-lootbox", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const user = await storage.getUserById(userId);
@@ -10837,7 +10883,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Get current subscription status
-  app.get("/api/subscription/status", authMiddleware, async (req, res) => {
+  app.get("/api/subscription/status", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const user = await storage.getUserById(userId);
@@ -10888,7 +10934,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   // Cancel subscription via Stripe directly, with RevenueCat fallback
-  app.post("/api/subscription/cancel", authMiddleware, async (req, res) => {
+  app.post("/api/subscription/cancel", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any).id;
       const { reason } = req.body || {};
