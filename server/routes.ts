@@ -2965,7 +2965,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const username = req.params.username.startsWith('@') ? req.params.username.slice(1) : req.params.username;
       const user = await storage.getUserByUsername(username);
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        // User not in local DB — try proxying to production
+        const prodUser = await proxyToProduction(`/api/users/${encodeURIComponent(username)}`);
+        if (!prodUser) return res.status(404).json({ message: "User not found" });
+        return res.json(prodUser);
       }
 
       // Check privacy controls for private profiles

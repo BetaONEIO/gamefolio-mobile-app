@@ -7,6 +7,88 @@ import { getDemoUser } from '../demo-user';
 import { scrypt, timingSafeEqual, randomBytes } from 'crypto';
 import { promisify } from 'util';
 import { supabaseStorage } from '../supabase-storage';
+import { db } from '../db';
+import { sql } from 'drizzle-orm';
+
+const PRODUCTION_API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://app.gamefolio.com';
+
+// Sync a user from production to the local DB (upsert by production userId)
+async function syncUserFromProduction(prodUser: any): Promise<any> {
+  try {
+    const userId = prodUser.id;
+    const username = prodUser.username || null;
+    const email = prodUser.email || null;
+    const displayName = prodUser.displayName || prodUser.display_name || username || null;
+    const bio = prodUser.bio || null;
+    const avatarUrl = prodUser.avatarUrl || prodUser.avatar_url || null;
+    const bannerUrl = prodUser.bannerUrl || prodUser.banner_url || null;
+    const xp = prodUser.xp || 0;
+    const level = prodUser.level || 1;
+    const gameTokens = prodUser.gameTokens || prodUser.game_tokens || 0;
+    const isPrivate = prodUser.isPrivate ?? prodUser.is_private ?? false;
+    const authProvider = prodUser.authProvider || prodUser.auth_provider || 'local';
+
+    // If a different user has this username locally, rename their username to avoid conflict
+    if (username) {
+      await db.execute(sql`
+        UPDATE users SET username = CONCAT(username, '_dev')
+        WHERE username = ${username} AND id != ${userId}
+      `);
+    }
+    // If a different user has this email locally, clear their email to avoid conflict
+    if (email) {
+      await db.execute(sql`
+        UPDATE users SET email = NULL
+        WHERE email = ${email} AND id != ${userId}
+      `);
+    }
+
+    // Placeholder password hash that can never match any real password
+    const placeholderPassword = 'PRODUCTION_SYNCED.notavalidhash';
+
+    await db.execute(sql`
+      INSERT INTO users (
+        id, username, email, password, display_name, bio, avatar_url, banner_url,
+        xp, level, game_tokens, is_private, auth_provider, created_at, updated_at
+      ) VALUES (
+        ${userId}, ${username}, ${email}, ${placeholderPassword}, ${displayName}, ${bio},
+        ${avatarUrl}, ${bannerUrl}, ${xp}, ${level}, ${gameTokens},
+        ${isPrivate}, ${authProvider}, NOW(), NOW()
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        username = EXCLUDED.username,
+        email = EXCLUDED.email,
+        display_name = EXCLUDED.display_name,
+        bio = EXCLUDED.bio,
+        avatar_url = EXCLUDED.avatar_url,
+        banner_url = EXCLUDED.banner_url,
+        xp = EXCLUDED.xp,
+        level = EXCLUDED.level,
+        is_private = EXCLUDED.is_private,
+        updated_at = NOW()
+    `);
+    return await storage.getUserById(userId);
+  } catch (err) {
+    console.error('[syncUserFromProduction] Failed to sync user:', err);
+    return null;
+  }
+}
+
+// Proxy login to the production server; returns { accessToken, refreshToken, user } or null
+async function proxyLoginToProduction(username: string, password: string): Promise<any | null> {
+  try {
+    const response = await fetch(`${PRODUCTION_API_URL}/api/auth/token/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!response.ok) return null;
+    return response.json();
+  } catch (err) {
+    console.error('[proxyLoginToProduction] Failed:', err);
+    return null;
+  }
+}
 
 const scryptAsync = promisify(scrypt);
 const router = Router();
@@ -81,7 +163,37 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
     }
 
     if (!user) {
-      return res.status(401).json({ message: 'Incorrect username or password' });
+      // User not in local DB — try production server for authentication
+      console.log(`[login] User "${username}" not found locally, trying production server...`);
+      const prodResult = await proxyLoginToProduction(username, password);
+      if (!prodResult || !prodResult.user) {
+        return res.status(401).json({ message: 'Invalid username or password' });
+      }
+
+      // Sync the user to local DB so subsequent requests work
+      const syncedUser = await syncUserFromProduction(prodResult.user);
+      if (!syncedUser) {
+        return res.status(500).json({ message: 'Failed to sync user account. Please try again.' });
+      }
+
+      // Issue a LOCAL JWT for this user (so the local server can verify it)
+      const tokens = JWTService.generateTokenPair(syncedUser);
+      const { password: _pw, ...userWithoutPassword } = syncedUser;
+
+      const [signedAvatarUrl, signedBannerUrl] = await Promise.all([
+        userWithoutPassword.avatarUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.avatarUrl, 3600) : Promise.resolve(null),
+        userWithoutPassword.bannerUrl ? supabaseStorage.convertToSignedUrl(userWithoutPassword.bannerUrl, 3600) : Promise.resolve(null),
+      ]);
+      const resolvedAvatar = signedAvatarUrl || userWithoutPassword.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent((userWithoutPassword.displayName || userWithoutPassword.username || 'User').slice(0, 20))}&background=1a1a2e&color=4ADE80&bold=true&size=128`;
+      const resolvedBanner = signedBannerUrl || userWithoutPassword.bannerUrl || 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800&auto=format&fit=crop';
+
+      console.log(`[login] Production login successful for "${username}" (userId: ${syncedUser.id})`);
+      return res.json({
+        ...tokens,
+        user: { ...userWithoutPassword, avatarUrl: resolvedAvatar, bannerUrl: resolvedBanner },
+        needsOnboarding: false,
+        isNewUser: false,
+      });
     }
 
     // Check auth provider
@@ -94,6 +206,26 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
     if (user.authProvider === 'discord') {
       return res.status(401).json({ 
         message: "This account is associated with Discord - please login using the 'Continue with Discord' button" 
+      });
+    }
+
+    // If this is a production-synced user (placeholder password), proxy to production
+    if (user.password?.startsWith('PRODUCTION_SYNCED')) {
+      console.log(`[login] Production-synced user "${username}", proxying to production...`);
+      const prodResult = await proxyLoginToProduction(username, password);
+      if (!prodResult || !prodResult.user) {
+        return res.status(401).json({ message: 'Invalid username or password' });
+      }
+      // Re-sync updated user data from production
+      const syncedUser = await syncUserFromProduction(prodResult.user) || user;
+      const tokens = JWTService.generateTokenPair(syncedUser);
+      const { password: _pw, ...syncedUserWithoutPassword } = syncedUser;
+      console.log(`[login] Production proxy login successful for "${username}"`);
+      return res.json({
+        ...tokens,
+        user: syncedUserWithoutPassword,
+        needsOnboarding: false,
+        isNewUser: false,
       });
     }
 
