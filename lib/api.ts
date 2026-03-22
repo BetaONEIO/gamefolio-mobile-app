@@ -181,18 +181,25 @@ async function apiFetch<T>(
         endpoint.startsWith('/api/user/') ||
         endpoint.startsWith('/api/auth/');
       
-      const errorMessage = (token && isKnownProductionEndpoint)
+      // A 200 HTML response means the request hit the frontend SPA instead of the API
+      // (wrong server URL or CORS redirect). This is NOT a session expiry.
+      // Only treat it as session expiry if the status indicates auth failure (4xx) or redirect (3xx).
+      const isAuthFailureStatus = response.status === 401 || response.status === 403 || (response.status >= 300 && response.status < 400);
+      const isSessionExpired = !!(token && isKnownProductionEndpoint && isAuthFailureStatus);
+
+      const errorMessage = isSessionExpired
         ? 'Your session has expired. Please log in again.'
         : 'Server returned HTML instead of JSON. Please verify EXPO_PUBLIC_BACKEND_URL is set correctly and points to your backend server.';
       
       const apiError = new APIError(
         errorMessage,
         response.status,
-        { html: htmlText.substring(0, 500), url, baseUrl, isSessionExpired: token && isKnownProductionEndpoint }
+        { html: htmlText.substring(0, 500), url, baseUrl, isSessionExpired }
       );
       
-      // Trigger auto-logout for session expiry on write/sensitive endpoints
-      if (token && isKnownProductionEndpoint && fetchOptions.method && fetchOptions.method !== 'GET' && _logoutCallback && !_logoutTriggered) {
+      // Trigger auto-logout only for genuine session expiry (auth failure status codes), not for
+      // 200 HTML which indicates the request hit the wrong server (frontend SPA).
+      if (isSessionExpired && fetchOptions.method && fetchOptions.method !== 'GET' && _logoutCallback && !_logoutTriggered) {
         _logoutTriggered = true;
         console.warn('[API] Session expired (HTML on write endpoint) — triggering auto-logout');
         setTimeout(() => _logoutCallback?.(), 500);
