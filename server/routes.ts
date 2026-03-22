@@ -1852,6 +1852,14 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         "twitterUsername", "instagramUsername", "facebookUsername", "nintendoUsername",
       ]);
 
+      // Validate username if provided
+      if (req.body.username !== undefined) {
+        const usernameVal = req.body.username;
+        if (typeof usernameVal !== 'string' || !/^[a-zA-Z][a-zA-Z0-9_]{2,19}$/.test(usernameVal)) {
+          return res.status(400).json({ message: "Invalid username. Must be 3-20 characters, start with a letter, and contain only letters, numbers, and underscores." });
+        }
+      }
+
       // Filter to only DB-safe fields (isOnline/lastActive are not DB columns — handled ephemerally)
       const safeBody = Object.fromEntries(
         Object.entries(req.body).filter(([key]) => DB_ALLOWED_FIELDS.has(key))

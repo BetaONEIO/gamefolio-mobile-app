@@ -141,7 +141,8 @@ export default function ProfileAppearance() {
   const currentTheme = QUICK_THEMES.find(t => t.id === selectedThemeId);
   const isThemeDirty = currentTheme && user && (
     currentTheme.accentColor !== (user.accentColor || QUICK_THEMES[0].accentColor) || 
-    currentTheme.backgroundColor !== (user.backgroundColor || QUICK_THEMES[0].backgroundColor)
+    currentTheme.backgroundColor !== (user.backgroundColor || QUICK_THEMES[0].backgroundColor) ||
+    currentTheme.primaryColor !== (user.primaryColor || QUICK_THEMES[0].primaryColor)
   );
 
   const { data: avatarBordersData } = useQuery({
@@ -310,8 +311,8 @@ export default function ProfileAppearance() {
       return;
     }
 
-    if (usernameError) {
-      showAlert('Error', 'Please fix the username error before saving', 'error');
+    if (usernameError || !username || username.trim().length === 0) {
+      showAlert('Error', usernameError || 'Username is required', 'error');
       return;
     }
 
@@ -373,7 +374,9 @@ export default function ProfileAppearance() {
   const handleUsernameChange = (value: string) => {
     setUsername(value);
     if (value.length === 0) {
-      setUsernameError(null);
+      setUsernameError('Username is required');
+    } else if (!/^[a-zA-Z]/.test(value)) {
+      setUsernameError('Username must start with a letter');
     } else if (value.length < 3) {
       setUsernameError('Username must be at least 3 characters');
     } else if (value.length > 20) {

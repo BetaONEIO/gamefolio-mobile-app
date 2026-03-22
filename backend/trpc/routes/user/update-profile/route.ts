@@ -11,7 +11,7 @@ const JWT_SECRET = Env.JWT_SECRET;
 export default publicProcedure
   .input(
     z.object({
-      username: z.string().min(3).max(20).optional(),
+      username: z.string().min(3).max(20).regex(/^[a-zA-Z][a-zA-Z0-9_]{2,19}$/, 'Username must start with a letter and contain only letters, numbers, and underscores').optional(),
       displayName: z.string().optional(),
       bio: z.string().optional(),
       avatarUrl: z.string().optional(),
