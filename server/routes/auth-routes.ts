@@ -5,6 +5,7 @@ import { storage } from '../storage';
 import { eq, sql } from 'drizzle-orm';
 import { promisify } from 'util';
 import { scrypt, randomBytes, timingSafeEqual } from 'crypto';
+import bcrypt from 'bcryptjs';
 import {
   createVerificationCode,
   verifyEmailCode,
@@ -33,10 +34,10 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
-    // Find user by username using only the 4 columns that exist in the staging DB
+    // Find user by username — fetch all columns for a complete response
+    // Note: production DB may only have id, username, password, profile_theme
     const rawResult = await db.execute(sql`
-      SELECT id, username, password, profile_theme
-      FROM users WHERE LOWER(username) = LOWER(${username})
+      SELECT * FROM users WHERE LOWER(username) = LOWER(${username})
     `);
     const rows = (rawResult as any).rows || rawResult || [];
     const user = rows[0] as any;
@@ -45,12 +46,16 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    // Verify password
-    const [hashedPassword, salt] = user.password.split('.');
-    const hashedPasswordBuf = Buffer.from(hashedPassword, 'hex');
-    const suppliedPasswordBuf = (await scryptAsync(password, salt, 64)) as Buffer;
-
-    const passwordMatch = timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+    // Verify password — support both bcrypt ($2b$/$2a$) and legacy scrypt (hash.salt) formats
+    let passwordMatch = false;
+    if (user.password && (user.password.startsWith('$2b$') || user.password.startsWith('$2a$'))) {
+      passwordMatch = await bcrypt.compare(password, user.password);
+    } else if (user.password && user.password.includes('.')) {
+      const [hashedPassword, salt] = user.password.split('.');
+      const hashedPasswordBuf = Buffer.from(hashedPassword, 'hex');
+      const suppliedPasswordBuf = (await scryptAsync(password, salt, 64)) as Buffer;
+      passwordMatch = timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
+    }
 
     if (!passwordMatch) {
       return res.status(401).json({ message: 'Invalid username or password' });
@@ -60,42 +65,46 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
 
-    // Build user response (camelCase for mobile app)
-    // Only id, username, password, profile_theme exist in the staging DB
+    // Build full user response using real DB values
     const userResponse = {
       id: user.id,
       username: user.username,
-      displayName: null,
-      bio: null,
-      avatarUrl: null,
-      bannerUrl: null,
-      accentColor: '#4ADE80',
-      primaryColor: '#02172C',
-      backgroundColor: '#0B2232',
-      cardColor: null,
-      avatarBorderColor: null,
+      displayName: user.display_name || user.username,
+      email: user.email || null,
+      bio: user.bio || null,
+      avatarUrl: user.avatar_url || null,
+      bannerUrl: user.banner_url || null,
+      accentColor: user.accent_color || '#4ADE80',
+      primaryColor: user.primary_color || '#02172C',
+      backgroundColor: user.background_color || '#0B2232',
+      cardColor: user.card_color || null,
+      avatarBorderColor: user.avatar_border_color || null,
       profileTheme: user.profile_theme || null,
-      profileFont: null,
-      userType: null,
-      showUserType: false,
-      ageRange: null,
-      authProvider: 'local',
-      externalId: null,
-      role: 'user',
-      status: 'active',
-      messagingEnabled: true,
-      isPrivate: false,
-      steamUsername: null,
-      xboxUsername: null,
-      playstationUsername: null,
-      discordUsername: null,
-      epicUsername: null,
-      nintendoUsername: null,
-      twitterUsername: null,
-      youtubeUsername: null,
-      emailVerified: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      profileFont: user.profile_font || null,
+      userType: user.user_type || null,
+      showUserType: user.show_user_type || false,
+      ageRange: user.age_range || null,
+      authProvider: user.auth_provider || 'local',
+      externalId: user.external_id || null,
+      role: user.role || 'user',
+      status: user.status || 'active',
+      messagingEnabled: user.messaging_enabled !== false,
+      isPrivate: user.is_private || false,
+      steamUsername: user.steam_username || null,
+      xboxUsername: user.xbox_username || null,
+      playstationUsername: user.playstation_username || null,
+      discordUsername: user.discord_username || null,
+      epicUsername: user.epic_username || null,
+      nintendoUsername: user.nintendo_username || null,
+      twitterUsername: user.twitter_username || null,
+      youtubeUsername: user.youtube_username || null,
+      emailVerified: user.email_verified === true || user.email_verified === 't' || user.email_verified === 1,
+      twoFactorEnabled: user.two_factor_enabled || false,
+      level: user.level || 1,
+      totalXP: user.total_xp || 0,
+      gamefolioTokenBalance: user.gamefolio_token_balance || 0,
+      createdAt: user.created_at ? new Date(user.created_at).toISOString() : new Date().toISOString(),
+      updatedAt: user.updated_at ? new Date(user.updated_at).toISOString() : new Date().toISOString(),
     };
 
     return res.status(200).json({
