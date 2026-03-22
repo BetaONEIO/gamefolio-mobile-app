@@ -5,8 +5,25 @@ function getBackendUrl(): string {
   console.log('[Env] 🔍 Backend URL Configuration');
   console.log('[Env] Platform:', Platform.OS);
   console.log('[Env] EXPO_PUBLIC_BACKEND_URL:', process.env.EXPO_PUBLIC_BACKEND_URL || 'NOT SET');
+  console.log('[Env] EXPO_PUBLIC_DOMAIN:', process.env.EXPO_PUBLIC_DOMAIN || 'NOT SET');
   console.log('[Env] EXPO_PUBLIC_RORK_API_BASE_URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL || 'NOT SET');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+  // On web, prefer the local dev backend (EXPO_PUBLIC_DOMAIN) set by the
+  // dev workflow, so the canvas preview hits the local Express server instead
+  // of the production URL (which serves the web app HTML for all routes).
+  if (Platform.OS === 'web' && process.env.EXPO_PUBLIC_DOMAIN) {
+    const domain = process.env.EXPO_PUBLIC_DOMAIN.trim();
+    if (domain) {
+      const url = (domain.startsWith('http://') || domain.startsWith('https://'))
+        ? domain
+        : `https://${domain}`;
+      const cleanUrl = url.replace(/\/+$/, '');
+      console.log('[Env] ✅ USING LOCAL DEV BACKEND (web):', cleanUrl);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      return cleanUrl;
+    }
+  }
   
   // Check if env var is set and valid (not just the Expo dev server)
   if (process.env.EXPO_PUBLIC_BACKEND_URL) {

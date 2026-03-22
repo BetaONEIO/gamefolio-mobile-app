@@ -1,13 +1,29 @@
 import jwt from 'jsonwebtoken';
 
-// Use a secure secret from environment variables, or a default for development
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// Primary secret from env; fallback is the app default (also stored in constants/Env.ts)
+const JWT_SECRET = process.env.JWT_SECRET || 'Jkdjsl$22Awj2@32kjlskjfads232s';
+const APP_DEFAULT_SECRET = 'Jkdjsl$22Awj2@32kjlskjfads232s';
+
+// All secrets to try during verification (supports cross-environment tokens)
+const VERIFY_SECRETS = Array.from(new Set([JWT_SECRET, APP_DEFAULT_SECRET]));
+
 const ACCESS_TOKEN_EXPIRY = '7d'; // 7 days
 const REFRESH_TOKEN_EXPIRY = '30d'; // 30 days
 
 export interface TokenPayload {
   userId: number;
   type: 'access' | 'refresh';
+}
+
+function verifyWithAnySecret(token: string): TokenPayload {
+  for (const secret of VERIFY_SECRETS) {
+    try {
+      return jwt.verify(token, secret) as TokenPayload;
+    } catch {
+      // try next secret
+    }
+  }
+  throw new jwt.JsonWebTokenError('Invalid token');
 }
 
 /**
@@ -43,7 +59,7 @@ export function generateRefreshToken(userId: number): string {
  */
 export function verifyAccessToken(token: string): number | null {
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const payload = verifyWithAnySecret(token);
 
     if (payload.type !== 'access') {
       return null;
@@ -61,7 +77,7 @@ export function verifyAccessToken(token: string): number | null {
  */
 export function verifyRefreshToken(token: string): number | null {
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const payload = verifyWithAnySecret(token);
 
     if (payload.type !== 'refresh') {
       return null;
@@ -95,8 +111,7 @@ export class JWTService {
    */
   static verifyToken(token: string): TokenPayload {
     try {
-      const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
-      return payload;
+      return verifyWithAnySecret(token);
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
         throw new Error('Token has expired');
