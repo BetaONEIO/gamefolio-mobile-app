@@ -1,10 +1,10 @@
 import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useRevenueCat } from '@/context/RevenueCatContext';
-import { Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
-import { Flame, User, Settings, Shield, LogOut, TrendingUp, Crown } from 'lucide-react-native';
+import { Image, Modal, StyleSheet, Text, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
+import { Flame, User, Settings, Shield, LogOut, Trophy, Star, UserCog } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import ProBadge from '@/components/ProBadge';
+import { getEffectiveAvatarUrl } from '@/lib/api';
 
 
 interface ProfileDropdownProps {
@@ -18,7 +18,8 @@ export default function ProfileDropdown({ visible, onClose, topOffset, onOpenLev
   const router = useRouter();
   const { user, logout } = useAuth();
   const { isPro } = useRevenueCat();
-  
+
+  const avatarUri = getEffectiveAvatarUrl(user) || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop';
 
   return (
     <Modal
@@ -31,104 +32,109 @@ export default function ProfileDropdown({ visible, onClose, topOffset, onOpenLev
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
             <View style={[styles.dropdown, { top: topOffset }]}>
+
               {/* Header Section */}
               <View style={styles.header}>
+                <Image source={{ uri: avatarUri }} style={styles.avatar} />
                 <View style={styles.userInfo}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.userName}>{user?.displayName || user?.username || 'User'}</Text>
-                    {isPro && <ProBadge size="small" />}
-                    <View style={styles.streakBadge}>
-                      <Flame size={11} color="#FF5722" fill="#FF5722" />
-                      <Text style={styles.streakNumber}>{user?.currentStreak || 0}</Text>
-                    </View>
-                  </View>
+                  <Text style={styles.userName} numberOfLines={1}>
+                    {user?.displayName || user?.username || 'User'}
+                  </Text>
+                  <Text style={styles.userSubtitle} numberOfLines={1}>
+                    {(user as any)?.userType || (user as any)?.title || 'Gamer'}
+                  </Text>
                   <Text style={styles.userHandle}>@{user?.username || 'user'}</Text>
+                </View>
+                <View style={styles.streakBadge}>
+                  <Flame size={13} color="#FF6B35" fill="#FF6B35" />
+                  <Text style={styles.streakNumber}>{user?.currentStreak || 0}</Text>
                 </View>
               </View>
 
               <View style={styles.divider} />
 
-              {/* View Profile */}
-              <TouchableOpacity 
+              {/* View Gamefolio */}
+              <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
                   onClose();
                   router.push('/(drawer)/(tabs)/profile');
                 }}
               >
-                <User size={20} color="#FFF" />
-                <Text style={styles.menuText}>View Profile</Text>
+                <User size={20} color="#94A3B8" strokeWidth={1.5} />
+                <Text style={styles.menuText}>View Gamefolio</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
+              {/* Level Tracker */}
+              <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => {
                   onClose();
                   onOpenLevelTracker?.();
                 }}
               >
-                <TrendingUp size={20} color="#FFF" />
+                <Trophy size={20} color="#94A3B8" strokeWidth={1.5} />
                 <Text style={styles.menuText}>Level Tracker</Text>
+              </TouchableOpacity>
+
+              {/* Go Pro */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  onClose();
+                  router.push('/(drawer)/(tabs)/profile');
+                }}
+              >
+                <Star size={20} color="#FACC15" fill={isPro ? '#FACC15' : 'transparent'} strokeWidth={1.5} />
+                <Text style={styles.menuText}>Go Pro</Text>
               </TouchableOpacity>
 
               <View style={styles.divider} />
 
-              {/* Settings Section */}
+              {/* Settings section */}
               <Text style={styles.sectionTitle}>Settings</Text>
-              
-              <TouchableOpacity 
-                style={styles.menuItem} 
+
+              <TouchableOpacity
+                style={styles.menuItem}
                 onPress={() => {
                   onClose();
                   router.push({ pathname: '/account-settings', params: { tab: 'platforms' } });
                 }}
               >
-                <Settings size={20} color="#FFF" />
+                <Settings size={20} color="#94A3B8" strokeWidth={1.5} />
                 <Text style={styles.menuText}>Account Settings</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.menuItem} 
+              <TouchableOpacity
+                style={styles.menuItem}
                 onPress={() => {
                   onClose();
                   router.push({ pathname: '/profile-appearance', params: { tab: 'profile' } });
                 }}
               >
-                <User size={20} color="#FFF" />
+                <UserCog size={20} color="#94A3B8" strokeWidth={1.5} />
                 <Text style={styles.menuText}>Profile & Appearance</Text>
               </TouchableOpacity>
 
-              <View style={styles.divider} />
-
-              {/* Go Pro / Pro Status */}
-              {!isPro && (
-                <TouchableOpacity 
-                  style={styles.proMenuItem}
-                  onPress={() => {
-                    onClose();
-                    router.push('/(drawer)/(tabs)/profile');
-                  }}
-                >
-                  <Crown size={20} color="#10B981" />
-                  <Text style={styles.proMenuText}>Upgrade to Pro</Text>
-                </TouchableOpacity>
-              )}
-
               {/* Admin Panel */}
               <TouchableOpacity style={styles.menuItem} onPress={onClose}>
-                <Shield size={20} color="#FFF" />
+                <Shield size={20} color="#94A3B8" strokeWidth={1.5} />
                 <Text style={styles.menuText}>Admin Panel</Text>
               </TouchableOpacity>
 
               {/* Logout */}
-              <TouchableOpacity style={styles.menuItem} onPress={() => {
-                onClose();
-                logout();
-                router.replace('/');
-              }}>
-                <LogOut size={20} color="#EF4444" />
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  onClose();
+                  logout();
+                  router.replace('/');
+                }}
+              >
+                <LogOut size={20} color="#EF4444" strokeWidth={1.5} />
                 <Text style={[styles.menuText, styles.logoutText]}>Logout</Text>
               </TouchableOpacity>
+
             </View>
           </TouchableWithoutFeedback>
         </View>
@@ -144,107 +150,97 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     position: 'absolute',
-    right: 20,
-    width: 280,
-    backgroundColor: '#131F2A',
-    borderRadius: 12,
+    right: 12,
+    width: 300,
+    backgroundColor: '#1A2535',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#1E293B',
-    paddingVertical: 8,
-    // Shadow for depth
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.30,
-    shadowRadius: 4.65,
-    elevation: 8,
+    borderColor: '#253347',
+    paddingBottom: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 12,
   },
   header: {
-    flexDirection: 'column',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    gap: 12,
-  },
-  userInfo: {
-    gap: 2,
-    width: '100%',
-  },
-  nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 14,
+    gap: 12,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: '#4ADE80',
+  },
+  userInfo: {
+    flex: 1,
+    gap: 2,
   },
   userName: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+  },
+  userSubtitle: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  userHandle: {
+    color: '#94A3B8',
+    fontSize: 13,
   },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A0D0A',
+    backgroundColor: '#2A1206',
     borderWidth: 1,
-    borderColor: '#FF5722',
-    borderRadius: 6,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    gap: 3,
+    borderColor: '#FF6B35',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    gap: 4,
   },
   streakNumber: {
-    color: '#FF5722',
-    fontSize: 11,
-    fontWeight: 'bold',
+    color: '#FF6B35',
+    fontSize: 13,
+    fontWeight: '700',
   },
-  userHandle: {
-    color: '#94A3B8',
-    fontSize: 14,
-  },
-
   divider: {
     height: 1,
-    backgroundColor: '#1E293B',
-    marginVertical: 4,
+    backgroundColor: '#1E2D3C',
+    marginVertical: 2,
+  },
+  sectionTitle: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
+    textTransform: 'uppercase',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    paddingVertical: 11,
+    gap: 14,
   },
   menuText: {
-    color: '#FFF',
+    color: '#E2E8F0',
     fontSize: 15,
     fontWeight: '500',
   },
-  sectionTitle: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '600',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
   logoutText: {
     color: '#EF4444',
-  },
-  proMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    marginHorizontal: 8,
-    borderRadius: 8,
-    marginVertical: 4,
-  },
-  proMenuText: {
-    color: '#10B981',
-    fontSize: 15,
-    fontWeight: '600' as const,
   },
 });
