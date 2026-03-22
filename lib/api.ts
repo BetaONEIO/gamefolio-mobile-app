@@ -53,11 +53,17 @@ interface FetchOptions extends RequestInit {
   htmlFallback?: unknown;
 }
 
+let _refreshCallback: (() => Promise<string | null>) | null = null;
+let _logoutCallback: (() => void) | null = null;
+let _logoutTriggered = false;
+
 export const setAuthCallbacks = (
   refreshCallback: () => Promise<string | null>,
   logoutCallback: () => void
 ) => {
-  // Callbacks registered for future use
+  _refreshCallback = refreshCallback;
+  _logoutCallback = logoutCallback;
+  _logoutTriggered = false;
 };
 
 async function apiFetch<T>(
@@ -166,11 +172,33 @@ async function apiFetch<T>(
       
       console.warn('[API] ⚠️ API returned HTML instead of JSON');
       console.warn('[API] HTML preview:', htmlText.substring(0, 200));
-      throw new APIError(
-        'Server returned HTML instead of JSON. Please verify EXPO_PUBLIC_BACKEND_URL is set correctly and points to your backend server.',
+      
+      // If a token was provided and a known production endpoint returned HTML,
+      // the server rejected the token (the SPA serves HTML for auth failures).
+      // Mark this as a session error so callers can handle it appropriately.
+      const isKnownProductionEndpoint =
+        endpoint === '/api/user' ||
+        endpoint.startsWith('/api/user/') ||
+        endpoint.startsWith('/api/auth/');
+      
+      const errorMessage = (token && isKnownProductionEndpoint)
+        ? 'Your session has expired. Please log in again.'
+        : 'Server returned HTML instead of JSON. Please verify EXPO_PUBLIC_BACKEND_URL is set correctly and points to your backend server.';
+      
+      const apiError = new APIError(
+        errorMessage,
         response.status,
-        { html: htmlText.substring(0, 500), url, baseUrl }
+        { html: htmlText.substring(0, 500), url, baseUrl, isSessionExpired: token && isKnownProductionEndpoint }
       );
+      
+      // Trigger auto-logout for session expiry on write/sensitive endpoints
+      if (token && isKnownProductionEndpoint && fetchOptions.method && fetchOptions.method !== 'GET' && _logoutCallback && !_logoutTriggered) {
+        _logoutTriggered = true;
+        console.warn('[API] Session expired (HTML on write endpoint) — triggering auto-logout');
+        setTimeout(() => _logoutCallback?.(), 500);
+      }
+      
+      throw apiError;
     }
     
     console.log(`[API] ✅ Response status: ${response.status}`);
