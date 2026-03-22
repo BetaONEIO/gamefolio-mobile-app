@@ -33,11 +33,13 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
-    // Find user by username or email (case-insensitive)
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(sql`LOWER(${users.username}) = LOWER(${username}) OR LOWER(${users.email}) = LOWER(${username})`);
+    // Find user by username using only the 4 columns that exist in the staging DB
+    const rawResult = await db.execute(sql`
+      SELECT id, username, password, profile_theme
+      FROM users WHERE LOWER(username) = LOWER(${username})
+    `);
+    const rows = (rawResult as any).rows || rawResult || [];
+    const user = rows[0] as any;
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid username or password' });
@@ -58,14 +60,49 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
 
-    // Return user data without password
-    const { password: _, ...userWithoutPassword } = user;
+    // Build user response (camelCase for mobile app)
+    // Only id, username, password, profile_theme exist in the staging DB
+    const userResponse = {
+      id: user.id,
+      username: user.username,
+      displayName: null,
+      bio: null,
+      avatarUrl: null,
+      bannerUrl: null,
+      accentColor: '#4ADE80',
+      primaryColor: '#02172C',
+      backgroundColor: '#0B2232',
+      cardColor: null,
+      avatarBorderColor: null,
+      profileTheme: user.profile_theme || null,
+      profileFont: null,
+      userType: null,
+      showUserType: false,
+      ageRange: null,
+      authProvider: 'local',
+      externalId: null,
+      role: 'user',
+      status: 'active',
+      messagingEnabled: true,
+      isPrivate: false,
+      steamUsername: null,
+      xboxUsername: null,
+      playstationUsername: null,
+      discordUsername: null,
+      epicUsername: null,
+      nintendoUsername: null,
+      twitterUsername: null,
+      youtubeUsername: null,
+      emailVerified: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
     return res.status(200).json({
       accessToken,
       refreshToken,
       expiresIn: 604800, // 7 days in seconds
-      user: userWithoutPassword
+      user: userResponse
     });
 
   } catch (error) {

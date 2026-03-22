@@ -167,15 +167,115 @@ export class DatabaseStorage implements IStorage {
     console.log('✅ PRODUCTION SESSION STORE: PostgreSQL connect-pg-simple initialized with DATABASE_URL');
   }
 
+  // Safe user query that only selects columns known to exist in the production DB.
+  // The local schema has columns (email_verified, wallet_address, etc.) that don't
+  // exist in the production Supabase DB, so db.select().from(users) fails there.
+  private async safeGetUserByRawSql(where: 'id' | 'username', value: number | string): Promise<User | null> {
+    const condition = where === 'id'
+      ? sql`id = ${value}`
+      : sql`LOWER(username) = LOWER(${value})`;
+    // Only query the 4 columns that actually exist in the staging DB
+    const rawResult = await db.execute(sql`
+      SELECT id, username, password, profile_theme
+      FROM users WHERE ${condition}
+    `);
+    const rows = (rawResult as any).rows || rawResult || [];
+    const row = rows[0] as any;
+    if (!row) return null;
+    // Map to User type with defaults for all columns that don't exist in the staging DB
+    return {
+      id: row.id,
+      username: row.username,
+      password: row.password,
+      emailVerified: true,
+      displayName: null,
+      bio: null,
+      avatarUrl: null,
+      bannerUrl: null,
+      accentColor: '#4ADE80',
+      primaryColor: '#02172C',
+      backgroundColor: '#0B2232',
+      cardColor: '#1E3A8A',
+      avatarBorderColor: '#4ADE80',
+      profileTheme: row.profile_theme ?? 'default',
+      profileFont: 'default',
+      profileFontEffect: 'none',
+      profileFontAnimation: 'none',
+      profileFontColor: '#FFFFFF',
+      profileBackgroundImageUrl: null,
+      profileBackgroundPositionX: '50',
+      profileBackgroundPositionY: '50',
+      profileBackgroundZoom: '100',
+      profileBackgroundDesktopX: '50',
+      profileBackgroundDesktopY: '50',
+      profileBackgroundDesktopZoom: '100',
+      hideBanner: false,
+      layoutStyle: 'grid',
+      userType: null,
+      showUserType: true,
+      ageRange: null,
+      authProvider: 'local',
+      externalId: null,
+      role: 'user',
+      status: 'active',
+      lastLoginAt: null,
+      totalLoginTime: 0,
+      bannedReason: null,
+      messagingEnabled: true,
+      currentStreak: 0,
+      longestStreak: 0,
+      lastStreakUpdate: null,
+      walletAddress: null,
+      walletChain: null,
+      walletCreatedAt: null,
+      encryptedPrivateKey: null,
+      gfTokenBalance: 0,
+      isPro: false,
+      proSubscriptionType: null,
+      proSubscriptionStartDate: null,
+      proSubscriptionEndDate: null,
+      stripeCustomerId: null,
+      stripeSubscriptionId: null,
+      selectedAvatarBorderId: null,
+      selectedNameTagId: null,
+      selectedBorderId: null,
+      selectedVerificationBadgeId: null,
+      nftProfileTokenId: null,
+      nftProfileImageUrl: null,
+      activeProfilePicType: 'upload',
+      dateOfBirth: null,
+      birthday: null,
+      lastBirthdayNotificationYear: null,
+      canMintNfts: false,
+      canSellNfts: false,
+      welcomePackClaimed: false,
+      twoFactorEnabled: false,
+      twoFactorSecret: null,
+      steamUsername: null,
+      xboxUsername: null,
+      playstationUsername: null,
+      twitterUsername: null,
+      youtubeUsername: null,
+      discordUsername: null,
+      epicUsername: null,
+      nintendoUsername: null,
+      instagramUsername: null,
+      facebookUsername: null,
+      isPrivate: false,
+      totalXP: 0,
+      level: 1,
+      createdAt: null,
+      updatedAt: null,
+    } as User;
+  }
+
   // User operations
   async getUser(id: number): Promise<User | null> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || null;
+    return this.safeGetUserByRawSql('id', id);
   }
 
   async getUserByUsername(username: string): Promise<User | null> {
-    const [user] = await db.select().from(users).where(ilike(users.username, username));
-    return user || null;
+    return this.safeGetUserByRawSql('username', username);
   }
 
   async getUserById(id: number): Promise<User | null> {
