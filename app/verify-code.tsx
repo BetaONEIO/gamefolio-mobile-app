@@ -14,7 +14,7 @@ import {
 import { Image } from 'expo-image';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowRight, ChevronLeft, Mail } from 'lucide-react-native';
+import { ArrowRight, ChevronLeft, Mail, LogOut } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/context/AuthContext';
 import { api, APIError } from '@/lib/api';
@@ -23,7 +23,7 @@ import CustomAlert from '@/components/CustomAlert';
 export default function VerifyCodeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout: logoutUser } = useAuth();
   const [code, setCode] = useState('');
   const [error, setError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -187,6 +187,11 @@ export default function VerifyCodeScreen() {
     errorText: '#FF6B6B',
   };
 
+  const handleLogout = async () => {
+    await logoutUser();
+    router.replace('/');
+  };
+
   const handleOnPress = () => {
     inputRef.current?.focus();
   };
@@ -203,6 +208,13 @@ export default function VerifyCodeScreen() {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <ChevronLeft size={24} color={colors.text} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handleLogout}
+          style={styles.logoutHeaderButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <LogOut size={20} color={colors.textDim} />
         </TouchableOpacity>
       </View>
 
@@ -354,12 +366,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 10,
     paddingBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   backButton: {
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'flex-start',
+  },
+  logoutHeaderButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
   scrollContent: {
     flexGrow: 1,
