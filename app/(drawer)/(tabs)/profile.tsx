@@ -1087,6 +1087,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: 'bold',
     color: '#FFF',
+    marginTop: 10,
   },
 
   handle: {
@@ -1223,8 +1224,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 0,
-    marginTop: 8,
+    marginTop: 16,
+    marginBottom: 16,
   },
   platformTag: {
     flexDirection: 'row',
