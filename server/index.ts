@@ -18,12 +18,7 @@ import { createOGMetaMiddleware } from './og-meta';
 import { storage } from './storage';
 import { LeaderboardService, loadXpSettingsFromDB } from './leaderboard-service';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const app = express();
 
@@ -151,7 +146,7 @@ app.use((req, res, next) => {
     await loadXpSettingsFromDB();
 
     // Serve static email assets
-    app.use('/static/email-assets', express.static(path.join(__dirname, 'static/email-assets')));
+    app.use('/static/email-assets', express.static(path.join(process.cwd(), 'server/static/email-assets')));
 
     app.use('/api', authRoutes);
     app.use('/api/admin', adminRoutes);

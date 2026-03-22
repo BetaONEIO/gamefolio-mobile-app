@@ -1,8 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
 import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
 import fs from "fs";
 import { promises as fsPromises } from "fs";
 // Remove superjson import - not needed
@@ -40,9 +38,6 @@ function generateAlphanumericShareCode(length: number): string {
   return result;
 }
 
-// Get __dirname equivalent for ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 import { getDemoUser, getDemoUserWithStats, getDemoClips, getDemoFavoriteGames } from "./demo-user";
 import axios from "axios";
@@ -1630,7 +1625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   app.get("/api/version", (req, res) => {
     try {
-      const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8'));
+      const packageJson = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
       res.json({
         version: packageJson.version,
         buildTime: SERVER_START_TIME,
@@ -9133,9 +9128,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Static file serving for banner images and attached assets
-  app.use('/banners', express.static(path.join(__dirname, '../client/public/banners')));
-  app.use('/attached_assets', express.static(path.join(__dirname, '../attached_assets')));
-  app.use('/api/static', express.static(path.join(__dirname, 'static')));
+  app.use('/banners', express.static(path.join(process.cwd(), 'client/public/banners')));
+  app.use('/attached_assets', express.static(path.join(process.cwd(), 'attached_assets')));
+  app.use('/api/static', express.static(path.join(process.cwd(), 'server/static')));
 
   // ==========================================
   // User Game Favorites (Sidebar-specific endpoint)

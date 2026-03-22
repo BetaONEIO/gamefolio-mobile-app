@@ -14,8 +14,8 @@ export function log(message: string, source = "express") {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
-  const staticBuildPath = path.resolve(import.meta.dirname, "..", "static-build");
+  const distPath = path.resolve(process.cwd(), "server", "public");
+  const staticBuildPath = path.resolve(process.cwd(), "static-build");
 
   if (fs.existsSync(distPath)) {
     app.use(express.static(distPath));

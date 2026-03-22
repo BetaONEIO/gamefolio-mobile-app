@@ -2,8 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { IStorage } from './storage';
 import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 interface OGMetaTags {
   title: string;
@@ -136,13 +134,10 @@ export function createOGMetaMiddleware(storage: IStorage) {
 
       // If we have OG tags, inject them into the HTML
       if (ogTags) {
-        const __filename = fileURLToPath(import.meta.url);
-        const __dirname = dirname(__filename);
-        
         // Use the correct index.html based on environment
         const clientTemplate = process.env.NODE_ENV === 'production'
-          ? path.resolve(__dirname, "public", "index.html")
-          : path.resolve(__dirname, "..", "client", "index.html");
+          ? path.resolve(process.cwd(), "server", "public", "index.html")
+          : path.resolve(process.cwd(), "client", "index.html");
 
         let html = await fs.promises.readFile(clientTemplate, "utf-8");
         
