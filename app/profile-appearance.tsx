@@ -142,7 +142,7 @@ export default function ProfileAppearance() {
   const isThemeDirty = currentTheme && user && (
     currentTheme.accentColor !== (user.accentColor || QUICK_THEMES[0].accentColor) || 
     currentTheme.backgroundColor !== (user.backgroundColor || QUICK_THEMES[0].backgroundColor) ||
-    (user.primaryColor != null && currentTheme.primaryColor !== user.primaryColor)
+    currentTheme.primaryColor !== (user.primaryColor || QUICK_THEMES[0].primaryColor)
   );
 
   const { data: avatarBordersData } = useQuery({
