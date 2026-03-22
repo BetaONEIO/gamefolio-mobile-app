@@ -1841,9 +1841,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
       // Fields that exist in the DB schema and can be updated
       const DB_ALLOWED_FIELDS = new Set([
-        "displayName", "bio", "userType", "location", "website",
+        "username", "displayName", "bio", "userType", "location", "website",
         "avatarUrl", "bannerUrl", "activeProfilePicType",
-        "accentColor", "backgroundColor", "cardColor",
+        "accentColor", "primaryColor", "backgroundColor", "cardColor",
         "profileFont", "profileFontEffect", "profileFontAnimation", "profileFontColor",
         "profileBackgroundType", "profileBackgroundTheme", "profileBackgroundAnimation", "profileBackgroundImageUrl",
         "hideBanner", "profileTheme", "showUserType", "messagingEnabled", "isPrivate",

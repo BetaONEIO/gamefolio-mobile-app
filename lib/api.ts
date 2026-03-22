@@ -330,6 +330,7 @@ export interface User {
   ageRange?: string;
   gfTokenBalance?: number;
   accentColor?: string;
+  primaryColor?: string;
   backgroundColor?: string;
   displayNameColor?: string;
   isOnline?: boolean;
@@ -608,6 +609,7 @@ export function mapRawUser(raw: any): User {
     showUserType: raw.showUserType ?? raw.show_user_type,
     gfTokenBalance: raw.gfTokenBalance ?? raw.gf_token_balance ?? 0,
     accentColor: raw.accentColor || raw.accent_color,
+    primaryColor: raw.primaryColor || raw.primary_color,
     backgroundColor: raw.backgroundColor || raw.background_color,
     displayNameColor: raw.displayNameColor || raw.display_name_color,
     isOnline: raw.isOnline ?? raw.is_online,

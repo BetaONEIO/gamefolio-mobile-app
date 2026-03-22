@@ -34,15 +34,15 @@ const USER_TYPE_OPTIONS = [
 ];
 
 const QUICK_THEMES = [
-  { id: 'basic', name: 'Basic', accentColor: '#4ADE80', backgroundColor: '#0B2232' },
-  { id: 'purple_night', name: 'Purple Night', accentColor: '#A855F7', backgroundColor: '#1E1B4B' },
-  { id: 'golden_yellow', name: 'Golden Yellow', accentColor: '#FACC15', backgroundColor: '#713F12' },
-  { id: 'rose_gold', name: 'Rose Gold', accentColor: '#F472B6', backgroundColor: '#4C1D4D' },
-  { id: 'sunset_orange', name: 'Sunset Orange', accentColor: '#FB7185', backgroundColor: '#431407' },
-  { id: 'arctic_blue', name: 'Arctic Blue', accentColor: '#38BDF8', backgroundColor: '#0C4A6E' },
-  { id: 'midnight_black', name: 'Midnight Black', accentColor: '#FFFFFF', backgroundColor: '#000000' },
-  { id: 'white', name: 'White', accentColor: '#FFFFFF', backgroundColor: '#FFFFFF' },
-  { id: 'baby_pink', name: 'Baby Pink', accentColor: '#F9A8D4', backgroundColor: '#E0218A' },
+  { id: 'basic', name: 'Basic', accentColor: '#4ADE80', primaryColor: '#02172C', backgroundColor: '#0B2232' },
+  { id: 'purple_night', name: 'Purple Night', accentColor: '#A855F7', primaryColor: '#13103A', backgroundColor: '#1E1B4B' },
+  { id: 'golden_yellow', name: 'Golden Yellow', accentColor: '#FACC15', primaryColor: '#4A2800', backgroundColor: '#713F12' },
+  { id: 'rose_gold', name: 'Rose Gold', accentColor: '#F472B6', primaryColor: '#32112D', backgroundColor: '#4C1D4D' },
+  { id: 'sunset_orange', name: 'Sunset Orange', accentColor: '#FB7185', primaryColor: '#2A0C03', backgroundColor: '#431407' },
+  { id: 'arctic_blue', name: 'Arctic Blue', accentColor: '#38BDF8', primaryColor: '#062B45', backgroundColor: '#0C4A6E' },
+  { id: 'midnight_black', name: 'Midnight Black', accentColor: '#FFFFFF', primaryColor: '#111111', backgroundColor: '#000000' },
+  { id: 'white', name: 'White', accentColor: '#CCCCCC', primaryColor: '#E8E8E8', backgroundColor: '#FFFFFF' },
+  { id: 'baby_pink', name: 'Baby Pink', accentColor: '#F9A8D4', primaryColor: '#8A1250', backgroundColor: '#E0218A' },
 ];
 
 
@@ -96,8 +96,6 @@ export default function ProfileAppearance() {
   const [steamUsername, setSteamUsername] = useState(user?.steamUsername || '');
   const [xboxUsername, setXboxUsername] = useState(user?.xboxUsername || '');
   const [playstationUsername, setPlaystationUsername] = useState(user?.playstationUsername || '');
-  const [twitterUsername, setTwitterUsername] = useState(user?.twitterUsername || '');
-  const [youtubeUsername, setYoutubeUsername] = useState(user?.youtubeUsername || '');
   const [discordUsername, setDiscordUsername] = useState(user?.discordUsername || '');
   const [epicUsername, setEpicUsername] = useState(user?.epicUsername || '');
   const [nintendoUsername, setNintendoUsername] = useState(user?.nintendoUsername || '');
@@ -128,6 +126,8 @@ export default function ProfileAppearance() {
   }, [tab]);
 
   // Profile Form State
+  const [username, setUsername] = useState(user?.username || '');
+  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [avatar, setAvatar] = useState(user?.avatarUrl || null);
@@ -163,6 +163,7 @@ export default function ProfileAppearance() {
   const isProfileThemeDirty = selectedProfileTheme !== ((user?.profileTheme as ProfileThemeName) || null);
 
   const isDirty = 
+    (username !== (user?.username || '')) ||
     (displayName !== (user?.displayName || '')) ||
     (bio !== (user?.bio || '')) ||
     (avatar !== (user?.avatarUrl || null)) ||
@@ -175,8 +176,6 @@ export default function ProfileAppearance() {
     (steamUsername !== (user?.steamUsername || '')) ||
     (xboxUsername !== (user?.xboxUsername || '')) ||
     (playstationUsername !== (user?.playstationUsername || '')) ||
-    (twitterUsername !== (user?.twitterUsername || '')) ||
-    (youtubeUsername !== (user?.youtubeUsername || '')) ||
     (discordUsername !== (user?.discordUsername || '')) ||
     (epicUsername !== (user?.epicUsername || '')) ||
     (nintendoUsername !== (user?.nintendoUsername || ''));
@@ -227,6 +226,7 @@ export default function ProfileAppearance() {
   // Update state when user loads (only if not dirty)
   useEffect(() => {
     if (user && !isDirty) {
+      setUsername(user.username || '');
       setDisplayName(user.displayName || '');
       setBio(user.bio || '');
       setAvatar(user.avatarUrl || null);
@@ -236,8 +236,6 @@ export default function ProfileAppearance() {
       setSteamUsername(user.steamUsername || '');
       setXboxUsername(user.xboxUsername || '');
       setPlaystationUsername(user.playstationUsername || '');
-      setTwitterUsername(user.twitterUsername || '');
-      setYoutubeUsername(user.youtubeUsername || '');
       setDiscordUsername(user.discordUsername || '');
       setEpicUsername(user.epicUsername || '');
       setNintendoUsername(user.nintendoUsername || '');
@@ -307,15 +305,13 @@ export default function ProfileAppearance() {
   
 
   const handleSave = async () => {
-    console.log('[ProfileAppearance] handleSave called');
-    console.log('[ProfileAppearance] user:', user);
-    console.log('[ProfileAppearance] user exists:', !!user);
-    console.log('[ProfileAppearance] user id:', user?.id);
-    console.log('[ProfileAppearance] user username:', user?.username);
-    
     if (!user) {
-      console.error('[ProfileAppearance] No user found - showing alert');
       showAlert('Error', 'You must be logged in to save changes', 'error');
+      return;
+    }
+
+    if (usernameError) {
+      showAlert('Error', 'Please fix the username error before saving', 'error');
       return;
     }
 
@@ -323,28 +319,23 @@ export default function ProfileAppearance() {
       isSavingRef.current = true;
       setIsSaving(true);
 
-      console.log('[ProfileAppearance] Getting access token...');
       let token = await getAccessToken();
-      console.log('[ProfileAppearance] Access token received:', !!token);
-      console.log('[ProfileAppearance] Token length:', token?.length);
       
       if (!token) {
-        console.error('[ProfileAppearance] No token received, checking authTokens...');
-        console.error('[ProfileAppearance] This might be a dev account or token refresh issue');
         showAlert('Error', 'Session expired. Please log out and log in again.', 'error');
         return;
       }
       
       const theme = QUICK_THEMES.find(t => t.id === selectedThemeId);
-
-      console.log('[Profile] Saving profile:', { displayName, bio, avatar, banner, theme });
       
       const updateData = {
+        username: username || undefined,
         displayName,
         bio,
         avatarUrl: avatar || undefined,
         bannerUrl: banner || undefined,
         accentColor: theme?.accentColor,
+        primaryColor: theme?.primaryColor,
         backgroundColor: theme?.backgroundColor,
         profileBorderId: selectedBorder?.id || null,
         profileTheme: selectedProfileTheme || undefined,
@@ -353,8 +344,6 @@ export default function ProfileAppearance() {
         steamUsername: steamUsername || null,
         xboxUsername: xboxUsername || null,
         playstationUsername: playstationUsername || null,
-        twitterUsername: twitterUsername || null,
-        youtubeUsername: youtubeUsername || null,
         discordUsername: discordUsername || null,
         epicUsername: epicUsername || null,
         nintendoUsername: nintendoUsername || null,
@@ -378,6 +367,21 @@ export default function ProfileAppearance() {
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
+    }
+  };
+
+  const handleUsernameChange = (value: string) => {
+    setUsername(value);
+    if (value.length === 0) {
+      setUsernameError(null);
+    } else if (value.length < 3) {
+      setUsernameError('Username must be at least 3 characters');
+    } else if (value.length > 20) {
+      setUsernameError('Username must be 20 characters or fewer');
+    } else if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+      setUsernameError('Only letters, numbers, and underscores are allowed');
+    } else {
+      setUsernameError(null);
     }
   };
 
@@ -538,6 +542,24 @@ export default function ProfileAppearance() {
                 )}
 
                 <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Username</Text>
+                  <TextInput
+                    style={[styles.input, usernameError ? styles.inputError : null]}
+                    value={username}
+                    onChangeText={handleUsernameChange}
+                    placeholder="Enter username"
+                    placeholderTextColor="#64748B"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  {usernameError ? (
+                    <Text style={styles.inputErrorText}>{usernameError}</Text>
+                  ) : (
+                    <Text style={styles.inputHelper}>3–20 characters. Letters, numbers, and underscores only.</Text>
+                  )}
+                </View>
+
+                <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Display Name</Text>
                   <TextInput
                     style={styles.input}
@@ -645,8 +667,6 @@ export default function ProfileAppearance() {
                   { key: 'steam', label: 'Steam', icon: 'steam', value: steamUsername, setter: setSteamUsername, placeholder: 'Steam username', color: '#1B2838' },
                   { key: 'xbox', label: 'Xbox', icon: 'microsoft-xbox', value: xboxUsername, setter: setXboxUsername, placeholder: 'Xbox gamertag', color: '#107C10' },
                   { key: 'playstation', label: 'PlayStation', icon: 'sony-playstation', value: playstationUsername, setter: setPlaystationUsername, placeholder: 'PSN username', color: '#003087' },
-                  { key: 'twitter', label: 'X / Twitter', icon: 'twitter', value: twitterUsername, setter: setTwitterUsername, placeholder: 'X username (without @)', color: '#000000' },
-                  { key: 'youtube', label: 'YouTube', icon: 'youtube', value: youtubeUsername, setter: setYoutubeUsername, placeholder: 'YouTube channel name', color: '#FF0000' },
                   { key: 'discord', label: 'Discord', icon: 'discord', value: discordUsername, setter: setDiscordUsername, placeholder: 'Discord username', color: '#5865F2' },
                   { key: 'epic', label: 'Epic Games', icon: 'controller-classic', value: epicUsername, setter: setEpicUsername, placeholder: 'Epic display name', color: '#313131' },
                   { key: 'nintendo', label: 'Nintendo Switch', icon: 'nintendo-switch', value: nintendoUsername, setter: setNintendoUsername, placeholder: 'Nintendo friend code', color: '#E4000F' },
@@ -882,6 +902,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     color: '#FFF',
     fontSize: 14,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  inputErrorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
   },
   textArea: {
     minHeight: 100,

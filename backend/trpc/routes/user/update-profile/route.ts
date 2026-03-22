@@ -11,11 +11,13 @@ const JWT_SECRET = Env.JWT_SECRET;
 export default publicProcedure
   .input(
     z.object({
+      username: z.string().min(3).max(20).optional(),
       displayName: z.string().optional(),
       bio: z.string().optional(),
       avatarUrl: z.string().optional(),
       bannerUrl: z.string().optional(),
       accentColor: z.string().optional(),
+      primaryColor: z.string().optional(),
       backgroundColor: z.string().optional(),
       displayNameColor: z.string().optional(),
       profileBorderId: z.string().optional(),
@@ -48,11 +50,13 @@ export default publicProcedure
     }
 
     const updates: any = {};
+    if (input.username !== undefined) updates.username = input.username;
     if (input.displayName !== undefined) updates.display_name = input.displayName;
     if (input.bio !== undefined) updates.bio = input.bio;
     if (input.avatarUrl !== undefined) updates.avatar_url = input.avatarUrl;
     if (input.bannerUrl !== undefined) updates.banner_url = input.bannerUrl;
     if (input.accentColor !== undefined) updates.accent_color = input.accentColor;
+    if (input.primaryColor !== undefined) updates.primary_color = input.primaryColor;
     if (input.backgroundColor !== undefined) updates.background_color = input.backgroundColor;
     if (input.displayNameColor !== undefined) updates.display_name_color = input.displayNameColor;
     if (input.profileBorderId !== undefined) updates.profile_border_id = input.profileBorderId;
@@ -98,6 +102,7 @@ export default publicProcedure
         messagingEnabled: updatedUser.messaging_enabled,
         isPrivate: updatedUser.is_private,
         accentColor: updatedUser.accent_color,
+        primaryColor: updatedUser.primary_color,
         backgroundColor: updatedUser.background_color,
         displayNameColor: updatedUser.display_name_color,
         userType: updatedUser.user_type,
