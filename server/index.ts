@@ -142,9 +142,6 @@ app.use((req, res, next) => {
 
     const server = await registerRoutes(app);
 
-    // Load XP settings from DB and sync into POINT_VALUES
-    await loadXpSettingsFromDB();
-
     // Serve static email assets
     app.use('/static/email-assets', express.static(path.join(process.cwd(), 'server/static/email-assets')));
 
@@ -274,6 +271,7 @@ app.use((req, res, next) => {
     // ALWAYS serve the app on port 5000
     // this serves both the API and the client.
     // It is the only port that is not firewalled.
+    // Open the port immediately so deployment health checks pass quickly.
     const port = 5000;
     server.listen({
       port,
@@ -281,16 +279,22 @@ app.use((req, res, next) => {
       reusePort: true,
     }, () => {
       log(`serving on port ${port}`);
-
-      LeaderboardService.processPeriodicLeaderboardClosures()
-        .then(() => log('Leaderboard periodic closures check completed'))
-        .catch((err) => console.error('Leaderboard closures check failed:', err));
-
-      setInterval(() => {
-        LeaderboardService.processPeriodicLeaderboardClosures()
-          .catch((err) => console.error('Leaderboard closures check failed:', err));
-      }, 6 * 60 * 60 * 1000);
     });
+
+    // Load XP settings and start leaderboard service in the background
+    // so they don't delay port opening.
+    loadXpSettingsFromDB()
+      .then(() => {
+        LeaderboardService.processPeriodicLeaderboardClosures()
+          .then(() => log('Leaderboard periodic closures check completed'))
+          .catch((err) => console.error('Leaderboard closures check failed:', err));
+
+        setInterval(() => {
+          LeaderboardService.processPeriodicLeaderboardClosures()
+            .catch((err) => console.error('Leaderboard closures check failed:', err));
+        }, 6 * 60 * 60 * 1000);
+      })
+      .catch((err) => console.error('Background startup failed:', err));
   } catch (error) {
     console.error("Fatal server error:", error);
     process.exit(1);

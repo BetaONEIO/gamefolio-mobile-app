@@ -495,55 +495,10 @@ function updateManifests(manifests, timestamp, baseUrl, assetsByHash) {
   console.log("Manifests updated");
 }
 
-async function buildServer() {
-  console.log("Compiling server TypeScript...");
-
-  return new Promise((resolve, reject) => {
-    const esbuild = spawn(
-      "node_modules/.bin/esbuild",
-      [
-        "server/index.ts",
-        "--platform=node",
-        "--format=esm",
-        "--bundle",
-        "--packages=external",
-        "--outfile=dist/server/index.mjs",
-      ],
-      { stdio: ["ignore", "pipe", "pipe"] },
-    );
-
-    let stderr = "";
-    if (esbuild.stdout) {
-      esbuild.stdout.on("data", (data) => {
-        const output = data.toString().trim();
-        if (output) console.log(`[esbuild] ${output}`);
-      });
-    }
-    if (esbuild.stderr) {
-      esbuild.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
-    }
-
-    esbuild.on("close", (code) => {
-      if (code === 0) {
-        console.log("Server compilation complete");
-        resolve();
-      } else {
-        reject(new Error(`esbuild exited with code ${code}:\n${stderr}`));
-      }
-    });
-
-    esbuild.on("error", reject);
-  });
-}
-
 async function main() {
   console.log("Building static Expo Go deployment...");
 
   setupSignalHandlers();
-
-  await buildServer();
 
   const domain = getDeploymentDomain();
   const baseUrl = `https://${domain}`;
