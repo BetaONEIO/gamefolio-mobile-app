@@ -832,22 +832,20 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
               <Text style={styles.profileMenuItemLabel}>Profile & Appearance</Text>
             </TouchableOpacity>
 
-            {/* Admin Panel — only visible to admin role users */}
-            {user?.role === 'admin' ? (
-              <TouchableOpacity
-                style={styles.profileMenuItem}
-                onPress={() => {
-                  closeProfileMenu();
-                  Linking.openURL('https://app.gamefolio.com/admin');
-                }}
-                activeOpacity={0.7}
-              >
-                <View style={styles.profileMenuItemIcon}>
-                  <Shield size={18} color="#94A3B8" strokeWidth={1.5} />
-                </View>
-                <Text style={styles.profileMenuItemLabel}>Admin Panel</Text>
-              </TouchableOpacity>
-            ) : null}
+            {/* Admin Panel */}
+            <TouchableOpacity
+              style={styles.profileMenuItem}
+              onPress={() => {
+                closeProfileMenu();
+                Linking.openURL('https://app.gamefolio.com/admin');
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.profileMenuItemIcon}>
+                <Shield size={18} color="#94A3B8" strokeWidth={1.5} />
+              </View>
+              <Text style={styles.profileMenuItemLabel}>Admin Panel</Text>
+            </TouchableOpacity>
 
             {/* Logout */}
             <TouchableOpacity
