@@ -9,8 +9,20 @@ function getBackendUrl(): string {
   console.log('[Env] EXPO_PUBLIC_RORK_API_BASE_URL:', process.env.EXPO_PUBLIC_RORK_API_BASE_URL || 'NOT SET');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
-  
-  // Check if env var is set and valid (not just the Expo dev server)
+  // EXPO_PUBLIC_DOMAIN is set by the Replit dev workflow to point to the local backend.
+  // It takes priority so all dev traffic goes to the local server (which has the latest API endpoints).
+  if (process.env.EXPO_PUBLIC_DOMAIN) {
+    let url = process.env.EXPO_PUBLIC_DOMAIN.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = `https://${url}`;
+    }
+    url = url.replace(/\/+$/, '');
+    console.log('[Env] ✅ USING LOCAL BACKEND (EXPO_PUBLIC_DOMAIN):', url);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    return url;
+  }
+
+  // Check if explicit backend URL override is set and valid (not just the Expo dev server)
   if (process.env.EXPO_PUBLIC_BACKEND_URL) {
     let url = process.env.EXPO_PUBLIC_BACKEND_URL.trim();
     
