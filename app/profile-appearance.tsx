@@ -139,10 +139,17 @@ export default function ProfileAppearance() {
 
   // Calculate isDirty
   const currentTheme = QUICK_THEMES.find(t => t.id === selectedThemeId);
+  // For legacy users with no stored primaryColor, derive baseline from the inferred theme
+  const inferredStoredTheme = user ? QUICK_THEMES.find(t =>
+    t.accentColor === user.accentColor && t.backgroundColor === user.backgroundColor
+  ) : null;
+  const storedPrimaryColor = user?.primaryColor ||
+    inferredStoredTheme?.primaryColor ||
+    QUICK_THEMES[0].primaryColor;
   const isThemeDirty = currentTheme && user && (
     currentTheme.accentColor !== (user.accentColor || QUICK_THEMES[0].accentColor) || 
     currentTheme.backgroundColor !== (user.backgroundColor || QUICK_THEMES[0].backgroundColor) ||
-    currentTheme.primaryColor !== (user.primaryColor || QUICK_THEMES[0].primaryColor)
+    currentTheme.primaryColor !== storedPrimaryColor
   );
 
   const { data: avatarBordersData } = useQuery({
