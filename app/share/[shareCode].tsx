@@ -177,7 +177,7 @@ export default function ShareCodeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080E17' },
+  container: { flex: 1, backgroundColor: '#0C1821' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#1E293B', alignItems: 'center', justifyContent: 'center' },
   headerTitle: { color: '#FFF', fontSize: 17, fontWeight: '600' },
@@ -187,9 +187,9 @@ const styles = StyleSheet.create({
   errorTitle: { color: '#FFF', fontSize: 20, fontWeight: '700', marginBottom: 8 },
   errorText: { color: '#64748B', fontSize: 14, textAlign: 'center', lineHeight: 20 },
   homeBtn: { marginTop: 24, backgroundColor: '#4ADE80', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
-  homeBtnText: { color: '#0F1520', fontSize: 15, fontWeight: '700' },
+  homeBtnText: { color: '#131F2A', fontSize: 15, fontWeight: '700' },
   contentWrap: { flex: 1, padding: 16 },
-  card: { backgroundColor: '#0F1520', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#1E293B' },
+  card: { backgroundColor: '#131F2A', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#1E293B' },
   thumbnailWrap: { position: 'relative', width: '100%', aspectRatio: 16 / 9 },
   thumbnail: { width: '100%', height: '100%' },
   thumbnailFallback: { backgroundColor: '#1E293B', alignItems: 'center', justifyContent: 'center' },
@@ -206,5 +206,5 @@ const styles = StyleSheet.create({
   viewsRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   viewsText: { color: '#64748B', fontSize: 12 },
   openBtn: { marginTop: 16, backgroundColor: '#4ADE80', borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
-  openBtnText: { color: '#0F1520', fontSize: 16, fontWeight: '700' },
+  openBtnText: { color: '#131F2A', fontSize: 16, fontWeight: '700' },
 });

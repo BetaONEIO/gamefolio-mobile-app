@@ -126,7 +126,7 @@ export default function LatestScreenshotsPage() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#0F1520', '#020617']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#131F2A', '#061021']} style={StyleSheet.absoluteFill} />
       <AppHeader />
       <View style={styles.pageHeader}>
         <View style={styles.pageTitleRow}>
@@ -218,7 +218,7 @@ export default function LatestScreenshotsPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F1520' },
+  container: { flex: 1, backgroundColor: '#131F2A' },
   pageHeader: { paddingHorizontal: 16, paddingBottom: 12 },
   pageTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   pageTitle: { fontSize: 24, fontWeight: '800' as const, color: '#FFFFFF' },
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
   },
   cardImage: {
     width: '100%',

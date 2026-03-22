@@ -101,10 +101,10 @@ export default function GameCategoriesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080E17' },
+  container: { flex: 1, backgroundColor: '#0C1821' },
   searchWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1E293B', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 16 },
   searchInput: { flex: 1, color: '#FFF', fontSize: 15 },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0F1520', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#1E293B', gap: 12 },
+  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#131F2A', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#1E293B', gap: 12 },
   iconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   iconText: { fontSize: 13, fontWeight: '800' },
   cardLabel: { color: '#FFF', fontSize: 15, fontWeight: '600' },

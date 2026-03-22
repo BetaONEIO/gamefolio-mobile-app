@@ -337,7 +337,7 @@ export default function LatestClipsPage() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0F1520', '#020617']}
+        colors={['#131F2A', '#061021']}
         style={StyleSheet.absoluteFill}
       />
 
@@ -466,7 +466,7 @@ export default function LatestClipsPage() {
                     <View style={styles.thumbnailWrapper}>
                       {!itemId ? (
                         <LinearGradient
-                          colors={['#1E293B', '#0F1520']}
+                          colors={['#1E293B', '#131F2A']}
                           style={styles.allGamesThumbnail}
                         >
                           <Gamepad2 size={32} color="#4ADE80" />
@@ -528,7 +528,7 @@ export default function LatestClipsPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   pageTitleContainer: {
     paddingHorizontal: 20,
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   filterModal: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '70%',

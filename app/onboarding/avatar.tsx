@@ -22,7 +22,7 @@ export default function OnboardingAvatarScreen() {
   const [image, setImage] = useState<string | null>(null);
 
   const colors = {
-    background: '#0F1520', 
+    background: '#131F2A', 
     primary: '#4ADE80',    
     text: '#FFFFFF',
     textDim: '#94A3B8',

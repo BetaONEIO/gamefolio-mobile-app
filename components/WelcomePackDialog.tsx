@@ -57,7 +57,7 @@ export default function WelcomePackDialog({ onDismiss }: Props) {
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <View style={styles.overlay}>
         <View style={styles.container}>
-          <LinearGradient colors={['#0F1520', '#1E293B']} style={styles.gradient} />
+          <LinearGradient colors={['#131F2A', '#1E293B']} style={styles.gradient} />
 
           <View style={styles.headerRow}>
             <View style={styles.iconWrap}>
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   rewardSub: { color: '#64748B', fontSize: 12, marginTop: 2 },
   claimBtn: { borderRadius: 14, overflow: 'hidden', marginBottom: 12 },
   claimGrad: { paddingVertical: 15, alignItems: 'center' },
-  claimBtnText: { color: '#0F1520', fontSize: 16, fontWeight: '800' },
+  claimBtnText: { color: '#131F2A', fontSize: 16, fontWeight: '800' },
   claimedBadge: { backgroundColor: '#4ADE8022', borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: '#4ADE8044', marginBottom: 12 },
   claimedText: { color: '#4ADE80', fontSize: 15, fontWeight: '700' },
   continueBtn: { alignItems: 'center', paddingVertical: 10 },

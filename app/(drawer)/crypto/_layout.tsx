@@ -93,7 +93,7 @@ export default function CryptoLayout() {
             screenOptions={{
               headerShown: false,
               animation: 'fade',
-              contentStyle: { backgroundColor: '#0F1520' },
+              contentStyle: { backgroundColor: '#131F2A' },
             }}
           >
             <Stack.Screen name="dashboard" />
@@ -113,7 +113,7 @@ export default function CryptoLayout() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   safeArea: {
     flex: 1,

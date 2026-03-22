@@ -128,7 +128,7 @@ export default function BuyReturnPage() {
               activeOpacity={0.8}
             >
               <Text style={styles.primaryButtonText}>View Wallet</Text>
-              <ArrowRight size={18} color="#0A0E27" />
+              <ArrowRight size={18} color="#0E1831" />
             </TouchableOpacity>
             
             <TouchableOpacity
@@ -149,7 +149,7 @@ export default function BuyReturnPage() {
               onPress={() => router.push('/crypto/buy')}
               activeOpacity={0.8}
             >
-              <RefreshCw size={18} color="#0A0E27" />
+              <RefreshCw size={18} color="#0E1831" />
               <Text style={styles.primaryButtonText}>Try Again</Text>
             </TouchableOpacity>
             
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '700' as const,
-    color: '#0A0E27',
+    color: '#0E1831',
   },
   secondaryButton: {
     backgroundColor: '#1E293B',

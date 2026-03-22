@@ -19,7 +19,7 @@ export default function TabLayout() {
         headerShown: false,
         animation: 'shift',
         tabBarStyle: {
-          backgroundColor: '#0F1520',
+          backgroundColor: '#131F2A',
           borderTopColor: '#1E293B',
           height: tabBarHeight,
           paddingBottom: tabBarPaddingBottom,
@@ -76,7 +76,7 @@ export default function TabLayout() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   borderWidth: 6,
-                  borderColor: '#0F1520', // Match tab bar bg
+                  borderColor: '#131F2A', // Match tab bar bg
                   shadowColor: '#000',
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.3,

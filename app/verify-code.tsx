@@ -174,7 +174,7 @@ export default function VerifyCodeScreen() {
   };
 
   const colors = {
-    background: '#0F1520',
+    background: '#131F2A',
     primary: '#4ADE80',
     inputBg: 'rgba(30, 41, 59, 0.5)',
     text: '#FFFFFF',

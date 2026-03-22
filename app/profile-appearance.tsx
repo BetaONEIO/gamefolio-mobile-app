@@ -741,7 +741,7 @@ export default function ProfileAppearance() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   saveButtonActive: {
     backgroundColor: '#22C55E', // Green when active
@@ -874,7 +874,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   input: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderWidth: 1,
     borderColor: '#334155',
     borderRadius: 6,
@@ -1021,7 +1021,7 @@ const styles = StyleSheet.create({
   },
   borderPreviewContainer: {
     padding: 12,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#1E293B',
@@ -1103,7 +1103,7 @@ const styles = StyleSheet.create({
   nftPlaceholder: {
     width: '100%',
     aspectRatio: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#334155',
@@ -1118,7 +1118,7 @@ const styles = StyleSheet.create({
   },
   nftEmptyState: {
     padding: 20,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#1E293B',
@@ -1148,7 +1148,7 @@ const styles = StyleSheet.create({
     padding: 8,
     borderWidth: 2,
     borderColor: '#1E293B',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     position: 'relative',
   },
   profileThemeCardActive: {
@@ -1202,7 +1202,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1.5,
     borderColor: '#1E293B',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     position: 'relative',
     gap: 4,
   },
@@ -1230,7 +1230,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#1E293B',
@@ -1275,7 +1275,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   platformInput: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderWidth: 1,
     borderColor: '#334155',
     borderRadius: 6,

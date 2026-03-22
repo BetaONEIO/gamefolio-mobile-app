@@ -108,7 +108,7 @@ export default function LootboxSpinAnimation({
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0F1520', '#7C3AED', '#0F1520']}
+        colors={['#131F2A', '#7C3AED', '#131F2A']}
         locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFillObject}
       />
@@ -167,14 +167,14 @@ export default function LootboxSpinAnimation({
           </View>
 
           <LinearGradient
-            colors={['#0F1520', 'transparent']}
+            colors={['#131F2A', 'transparent']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.leftFade}
             pointerEvents="none"
           />
           <LinearGradient
-            colors={['transparent', '#0F1520']}
+            colors={['transparent', '#131F2A']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.rightFade}
@@ -194,7 +194,7 @@ export default function LootboxSpinAnimation({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   content: {
     flex: 1,

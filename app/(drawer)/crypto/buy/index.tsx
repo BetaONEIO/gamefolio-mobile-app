@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
   continueButtonText: {
     fontSize: 16,
     fontWeight: '700' as const,
-    color: '#0F1520',
+    color: '#131F2A',
   },
   continueButtonTextDisabled: {
     color: '#64748B',

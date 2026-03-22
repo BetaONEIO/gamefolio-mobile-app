@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     right: 20,
     width: 340,
     maxHeight: 500,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#1E293B',
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     gap: 12,
   },
   headerTitle: {

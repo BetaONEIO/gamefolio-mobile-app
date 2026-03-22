@@ -66,7 +66,7 @@ export default function SampleProfileScreen() {
   });
 
   const user = profileData?.user;
-  const bgColor = user?.backgroundColor || '#0F1520';
+  const bgColor = user?.backgroundColor || '#131F2A';
   const accentColor = user?.accentColor || '#4ADE80';
 
   const clips = allClips.filter(c => c.videoType !== 'reel');
@@ -641,7 +641,7 @@ export default function SampleProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   scrollView: {
     flex: 1,
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
     height: 114,
     borderRadius: 57,
     borderWidth: 4,
-    borderColor: '#0F1520',
+    borderColor: '#131F2A',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1247,7 +1247,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,

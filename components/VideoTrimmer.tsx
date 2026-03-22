@@ -348,7 +348,7 @@ export default function VideoTrimmer({
           hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
           {...leftPanResponder.panHandlers}
         >
-          <ChevronLeft size={16} color="#0F1520" />
+          <ChevronLeft size={16} color="#131F2A" />
         </View>
 
         {/* Right Handle */}
@@ -357,7 +357,7 @@ export default function VideoTrimmer({
           hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
           {...rightPanResponder.panHandlers}
         >
-          <ChevronRight size={16} color="#0F1520" />
+          <ChevronRight size={16} color="#131F2A" />
         </View>
       </View>
     </View>

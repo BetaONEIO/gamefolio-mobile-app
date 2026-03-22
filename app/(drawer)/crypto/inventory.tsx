@@ -130,7 +130,7 @@ export default function InventoryPage() {
             onPress={() => router.push('/crypto/store')}
             activeOpacity={0.8}
           >
-            <ShoppingBag size={18} color="#0A0E27" />
+            <ShoppingBag size={18} color="#0E1831" />
             <Text style={styles.emptyButtonText}>Browse Store</Text>
           </TouchableOpacity>
         </View>
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
   emptyButtonText: {
     fontSize: 15,
     fontWeight: '700' as const,
-    color: '#0A0E27',
+    color: '#0E1831',
   },
   itemsGrid: {
     flexDirection: 'row',
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 1,
     borderRadius: 12,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   equippedBadgeText: {
     fontSize: 10,
     fontWeight: '700' as const,
-    color: '#0A0E27',
+    color: '#0E1831',
   },
   itemRarityBadge: {
     position: 'absolute',

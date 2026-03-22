@@ -44,7 +44,7 @@ const XP_TASKS: XPTask[] = [
     xpReward: 100,
     icon: Video,
     iconColor: '#4ADE80',
-    iconBg: '#0F1520',
+    iconBg: '#131F2A',
   },
   {
     id: 'invite-friends',
@@ -53,7 +53,7 @@ const XP_TASKS: XPTask[] = [
     xpReward: 250,
     icon: UserPlus,
     iconColor: '#4ADE80',
-    iconBg: '#0F1520',
+    iconBg: '#131F2A',
   },
   {
     id: 'community-discussion',
@@ -62,7 +62,7 @@ const XP_TASKS: XPTask[] = [
     xpReward: 75,
     icon: MessageSquare,
     iconColor: '#4ADE80',
-    iconBg: '#0F1520',
+    iconBg: '#131F2A',
   },
 ];
 
@@ -186,7 +186,7 @@ export default function LevelDetailsModal({ visible, onClose, level: propLevel, 
     >
       <View style={styles.modalContainer}>
         <LinearGradient
-          colors={['#0F1520', '#134E4A', '#0F1520']}
+          colors={['#131F2A', '#134E4A', '#131F2A']}
           locations={[0, 0.5, 1]}
           style={StyleSheet.absoluteFillObject}
         />
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   },
   content: {
     height: '90%',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     width: 130,
     height: 130,
     borderRadius: 65,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -639,7 +639,7 @@ const styles = StyleSheet.create({
   startButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0F1520',
+    color: '#131F2A',
   },
   referSection: {
     marginBottom: 40,
@@ -656,7 +656,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
@@ -681,7 +681,7 @@ const styles = StyleSheet.create({
   },
   referLinkInput: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
@@ -700,6 +700,6 @@ const styles = StyleSheet.create({
   copyButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#0F1520',
+    color: '#131F2A',
   },
 });

@@ -530,7 +530,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
        <LinearGradient
-        colors={['#0F1520', '#020617']}
+        colors={['#131F2A', '#061021']}
         style={StyleSheet.absoluteFill}
       />
       <WelcomePackDialog />
@@ -1059,7 +1059,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   content: {
     // paddingHorizontal is set dynamically via inline style (contentPadding)
@@ -1445,12 +1445,12 @@ const styles = StyleSheet.create({
   },
   verifyBannerText: {
     flex: 1,
-    color: '#0F1520',
+    color: '#131F2A',
     fontSize: 13,
     fontWeight: '600' as const,
   },
   verifyBannerCta: {
-    color: '#0F1520',
+    color: '#131F2A',
     fontSize: 13,
     fontWeight: '800' as const,
     textDecorationLine: 'underline' as const,

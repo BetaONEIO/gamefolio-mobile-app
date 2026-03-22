@@ -468,7 +468,7 @@ export default function ExploreScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0F1520', '#020617']}
+        colors={['#131F2A', '#061021']}
         style={StyleSheet.absoluteFill}
       />
       
@@ -536,12 +536,12 @@ export default function ExploreScreen() {
                 contentContainerStyle={styles.searchTabsContent}
               >
                 {([
-                  { key: 'all', label: 'All', icon: <Search size={14} color={activeSearchTab === 'all' ? '#0F1520' : '#94A3B8'} /> },
-                  { key: 'users', label: 'Users', icon: <User size={14} color={activeSearchTab === 'users' ? '#0F1520' : '#94A3B8'} /> },
-                  { key: 'games', label: 'Games', icon: <Gamepad2 size={14} color={activeSearchTab === 'games' ? '#0F1520' : '#94A3B8'} /> },
-                  { key: 'clips', label: 'Clips', icon: <Film size={14} color={activeSearchTab === 'clips' ? '#0F1520' : '#94A3B8'} /> },
-                  { key: 'reels', label: 'Reels', icon: <Video size={14} color={activeSearchTab === 'reels' ? '#0F1520' : '#94A3B8'} /> },
-                  { key: 'screenshots', label: 'Screenshots', icon: <Camera size={14} color={activeSearchTab === 'screenshots' ? '#0F1520' : '#94A3B8'} /> },
+                  { key: 'all', label: 'All', icon: <Search size={14} color={activeSearchTab === 'all' ? '#131F2A' : '#94A3B8'} /> },
+                  { key: 'users', label: 'Users', icon: <User size={14} color={activeSearchTab === 'users' ? '#131F2A' : '#94A3B8'} /> },
+                  { key: 'games', label: 'Games', icon: <Gamepad2 size={14} color={activeSearchTab === 'games' ? '#131F2A' : '#94A3B8'} /> },
+                  { key: 'clips', label: 'Clips', icon: <Film size={14} color={activeSearchTab === 'clips' ? '#131F2A' : '#94A3B8'} /> },
+                  { key: 'reels', label: 'Reels', icon: <Video size={14} color={activeSearchTab === 'reels' ? '#131F2A' : '#94A3B8'} /> },
+                  { key: 'screenshots', label: 'Screenshots', icon: <Camera size={14} color={activeSearchTab === 'screenshots' ? '#131F2A' : '#94A3B8'} /> },
                 ] as const).map((tab) => (
                   <TouchableOpacity
                     key={tab.key}
@@ -819,7 +819,7 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   contentHeader: {
     paddingHorizontal: HORIZONTAL_PADDING,
@@ -881,7 +881,7 @@ const styles = StyleSheet.create({
     top: 56,
     left: 0,
     right: 0,
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     borderRadius: 12,
     maxHeight: 400,
     borderWidth: 1,
@@ -1030,7 +1030,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     fontSize: 16,
     fontWeight: '700' as const,
-    color: '#0F1520',
+    color: '#131F2A',
   },
   emptyContainer: {
     flex: 1,
@@ -1082,7 +1082,7 @@ const styles = StyleSheet.create({
   },
   gameCard: {
     width: '47%',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 16,
@@ -1181,7 +1181,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   searchTabTextActive: {
-    color: '#0F1520',
+    color: '#131F2A',
   },
   mediaGrid: {
     flexDirection: 'row',
@@ -1193,7 +1193,7 @@ const styles = StyleSheet.create({
   },
   mediaCard: {
     width: '47%',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     borderRadius: 10,
     overflow: 'hidden',
   },
@@ -1226,7 +1226,7 @@ const styles = StyleSheet.create({
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,

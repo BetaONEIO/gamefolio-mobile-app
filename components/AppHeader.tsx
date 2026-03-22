@@ -831,7 +831,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
     zIndex: 10,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -866,7 +866,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#4ADE80',
     borderWidth: 1.5,
-    borderColor: '#0F1520',
+    borderColor: '#131F2A',
   },
   notificationBadge: {
     position: 'absolute',
@@ -881,7 +881,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
     zIndex: 10,
     borderWidth: 1.5,
-    borderColor: '#0F1520',
+    borderColor: '#131F2A',
   },
   notificationBadgeWide: {
     minWidth: 20,

@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
   footer: {
     padding: 30,
     paddingBottom: 50,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   sliderContainer: {
     flexDirection: 'row',

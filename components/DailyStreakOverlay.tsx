@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     borderRadius: 24,
     padding: 32,
     alignItems: 'center',
@@ -183,6 +183,6 @@ const styles = StyleSheet.create({
   claimBtnText: {
     fontSize: 16,
     fontWeight: '700' as const,
-    color: '#0F1520',
+    color: '#131F2A',
   },
 });

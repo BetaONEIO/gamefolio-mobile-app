@@ -325,7 +325,7 @@ export default function ConversationScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <LinearGradient
-        colors={['#0F1520', '#020617']}
+        colors={['#131F2A', '#061021']}
         style={StyleSheet.absoluteFill}
       />
 
@@ -485,7 +485,7 @@ export default function ConversationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   header: {
     flexDirection: 'row',
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#22C55E',
     borderWidth: 2,
-    borderColor: '#0F1520',
+    borderColor: '#131F2A',
   },
   userTextInfo: {
     flex: 1,

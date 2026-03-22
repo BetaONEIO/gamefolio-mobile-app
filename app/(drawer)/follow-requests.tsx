@@ -228,7 +228,7 @@ export default function FollowRequestsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#080E17',
+    backgroundColor: '#0C1821',
   },
   headerBar: {
     flexDirection: 'row',

@@ -865,7 +865,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   scrollView: {
     flex: 1,
@@ -941,7 +941,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: '#22C55E',
     borderWidth: 3,
-    borderColor: '#0F1520',
+    borderColor: '#131F2A',
   },
   bannerShareButton: {
     position: 'absolute',

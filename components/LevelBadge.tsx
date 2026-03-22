@@ -42,8 +42,8 @@ export default function LevelBadge({
       <Svg width={size} height={size}>
         <Defs>
           <LinearGradient id="darkBg" x1="0%" y1="0%" x2="0%" y2="100%">
-            <Stop offset="0%" stopColor="#1a2332" stopOpacity="1" />
-            <Stop offset="100%" stopColor="#0F1520" stopOpacity="1" />
+            <Stop offset="0%" stopColor="#1E2D3C" stopOpacity="1" />
+            <Stop offset="100%" stopColor="#131F2A" stopOpacity="1" />
           </LinearGradient>
           <LinearGradient id="greenGlow" x1="0%" y1="0%" x2="0%" y2="100%">
             <Stop offset="0%" stopColor="#22C55E" stopOpacity="0.3" />

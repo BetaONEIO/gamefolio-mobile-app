@@ -119,7 +119,7 @@ export default function StakingPage() {
           activeOpacity={0.8}
           disabled={!stakeAmount}
         >
-          <Lock size={18} color="#0A0E27" />
+          <Lock size={18} color="#0E1831" />
           <Text style={styles.stakeButtonText}>Stake Tokens</Text>
         </TouchableOpacity>
       </View>
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderRadius: 12,
     paddingHorizontal: 16,
     marginBottom: 20,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     color: '#4ADE80',
   },
   estimateSection: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderRadius: 12,
     padding: 16,
     marginBottom: 20,
@@ -376,7 +376,7 @@ const styles = StyleSheet.create({
   stakeButtonText: {
     fontSize: 16,
     fontWeight: '700' as const,
-    color: '#0A0E27',
+    color: '#0E1831',
   },
   emptyState: {
     alignItems: 'center',

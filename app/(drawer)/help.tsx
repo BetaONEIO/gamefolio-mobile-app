@@ -114,9 +114,9 @@ export default function HelpScreen() {
             <Text style={styles.contactTitle}>Still need help?</Text>
             <Text style={styles.contactSub}>Our support team is here for you</Text>
             <TouchableOpacity style={styles.contactBtn} onPress={() => handleContact('email')} testID="button-contact-email">
-              <Mail size={18} color="#0F1520" />
+              <Mail size={18} color="#131F2A" />
               <Text style={styles.contactBtnText}>Email Support</Text>
-              <ExternalLink size={14} color="#0F1520" />
+              <ExternalLink size={14} color="#131F2A" />
             </TouchableOpacity>
             <TouchableOpacity style={[styles.contactBtn, styles.discordBtn]} onPress={() => handleContact('discord')} testID="button-contact-discord">
               <MessageCircle size={18} color="#FFF" />
@@ -131,17 +131,17 @@ export default function HelpScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080E17' },
+  container: { flex: 1, backgroundColor: '#0C1821' },
   sectionTitle: { color: '#64748B', fontSize: 12, fontWeight: '700', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 12 },
-  faqCard: { backgroundColor: '#0F1520', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#1E293B' },
+  faqCard: { backgroundColor: '#131F2A', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#1E293B' },
   faqCardOpen: { borderColor: '#4ADE8044' },
   faqRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
   faqQuestion: { color: '#FFF', fontSize: 15, fontWeight: '600', flex: 1, lineHeight: 22 },
   faqAnswer: { color: '#94A3B8', fontSize: 14, lineHeight: 22, marginTop: 12 },
-  contactSection: { marginTop: 32, padding: 20, backgroundColor: '#0F1520', borderRadius: 16, borderWidth: 1, borderColor: '#1E293B' },
+  contactSection: { marginTop: 32, padding: 20, backgroundColor: '#131F2A', borderRadius: 16, borderWidth: 1, borderColor: '#1E293B' },
   contactTitle: { color: '#FFF', fontSize: 18, fontWeight: '700', marginBottom: 4 },
   contactSub: { color: '#4A5568', fontSize: 14, marginBottom: 16 },
   contactBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#4ADE80', borderRadius: 12, paddingVertical: 13, marginBottom: 10 },
-  contactBtnText: { color: '#0F1520', fontSize: 15, fontWeight: '700', flex: 1, textAlign: 'center' },
+  contactBtnText: { color: '#131F2A', fontSize: 15, fontWeight: '700', flex: 1, textAlign: 'center' },
   discordBtn: { backgroundColor: '#5865F2' },
 });

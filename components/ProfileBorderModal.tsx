@@ -199,7 +199,7 @@ export default function ProfileBorderModal({
     >
       <View style={styles.centeredView}>
         <LinearGradient
-          colors={['#0F1520', '#3730A3', '#0F1520']}
+          colors={['#131F2A', '#3730A3', '#131F2A']}
           locations={[0, 0.5, 1]}
           style={StyleSheet.absoluteFillObject}
         />
@@ -416,7 +416,7 @@ const styles = StyleSheet.create({
   },
   modalView: {
     height: '85%',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     shadowColor: '#000',
@@ -685,7 +685,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderTopWidth: 1,
     borderTopColor: '#1E293B',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   confirmButton: {
     flexDirection: 'row',

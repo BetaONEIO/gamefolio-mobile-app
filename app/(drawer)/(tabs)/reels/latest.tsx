@@ -356,7 +356,7 @@ export default function LatestReelsPage() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0F1520', '#020617']}
+        colors={['#131F2A', '#061021']}
         style={StyleSheet.absoluteFill}
       />
 
@@ -585,7 +585,7 @@ export default function LatestReelsPage() {
                           <Gamepad2 size={40} color="#4ADE80" />
                           {isSelected && (
                             <View style={styles.selectedBadgeOverlay}>
-                              <Check size={14} color="#0F1520" strokeWidth={3} />
+                              <Check size={14} color="#131F2A" strokeWidth={3} />
                             </View>
                           )}
                           <View style={styles.gameInfoOverlay}>
@@ -602,7 +602,7 @@ export default function LatestReelsPage() {
                           />
                           {isSelected && (
                             <View style={styles.selectedBadgeOverlay}>
-                              <Check size={14} color="#0F1520" strokeWidth={3} />
+                              <Check size={14} color="#131F2A" strokeWidth={3} />
                             </View>
                           )}
                           <View style={styles.gameInfoOverlay}>
@@ -682,7 +682,7 @@ export default function LatestReelsPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   pageTitleContainer: {
     paddingHorizontal: 20,
@@ -853,7 +853,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   filterModal: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '90%',

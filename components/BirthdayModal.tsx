@@ -49,10 +49,10 @@ export default function BirthdayModal({
   }, [visible, initialDate]);
 
   const colors = {
-    background: '#0F1520',
+    background: '#131F2A',
     primary: '#4ADE80',
     secondary: '#1E293B',
-    surface: '#1A2332',
+    surface: '#1E2D3C',
     surfaceHighlight: '#243044',
     text: '#FFFFFF',
     textDim: '#94A3B8',

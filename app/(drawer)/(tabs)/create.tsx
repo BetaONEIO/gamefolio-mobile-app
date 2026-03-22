@@ -591,7 +591,7 @@ export default function CreateScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0F1520', '#020617']}
+        colors={['#131F2A', '#061021']}
         style={StyleSheet.absoluteFill}
       />
 
@@ -1115,7 +1115,7 @@ export default function CreateScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   header: {
     paddingHorizontal: 20,

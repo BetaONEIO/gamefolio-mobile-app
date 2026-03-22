@@ -6,7 +6,7 @@ export default function BuyLayout() {
       screenOptions={{
         headerShown: false,
         animation: 'fade',
-        contentStyle: { backgroundColor: '#0F1520' },
+        contentStyle: { backgroundColor: '#131F2A' },
       }}
     >
       <Stack.Screen name="index" />

@@ -312,7 +312,7 @@ export default function DailyLootboxModal({ visible, onClose, onClaimed }: Daily
     >
       <View style={styles.modalContainer}>
         <LinearGradient
-          colors={['#0F1520', '#7C3AED', '#0F1520']}
+          colors={['#131F2A', '#7C3AED', '#131F2A']}
           locations={[0, 0.5, 1]}
           style={StyleSheet.absoluteFillObject}
         />
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   },
   content: {
     height: '90%',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
@@ -754,6 +754,6 @@ const styles = StyleSheet.create({
   doneButtonText: {
     fontSize: 18,
     fontWeight: 'bold' as const,
-    color: '#0F1520',
+    color: '#131F2A',
   },
 });

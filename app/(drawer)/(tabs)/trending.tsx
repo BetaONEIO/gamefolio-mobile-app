@@ -3183,7 +3183,7 @@ export default function TrendingScreen() {
                     </View>
                     {selectedReelGame === null && (
                       <View style={styles.gameFilterSelectedBadge}>
-                        <Check size={14} color="#0F1520" />
+                        <Check size={14} color="#131F2A" />
                       </View>
                     )}
                     <View style={styles.gameFilterCardOverlay}>
@@ -3229,7 +3229,7 @@ export default function TrendingScreen() {
                         />
                         {isSelected && (
                           <View style={styles.gameFilterSelectedBadge}>
-                            <Check size={14} color="#0F1520" />
+                            <Check size={14} color="#131F2A" />
                           </View>
                         )}
                         <View style={styles.gameFilterCardOverlay}>
@@ -3336,7 +3336,7 @@ export default function TrendingScreen() {
                     </View>
                     {selectedClipGame === null && (
                       <View style={styles.gameFilterSelectedBadge}>
-                        <Check size={14} color="#0F1520" />
+                        <Check size={14} color="#131F2A" />
                       </View>
                     )}
                     <View style={styles.gameFilterCardOverlay}>
@@ -3382,7 +3382,7 @@ export default function TrendingScreen() {
                         />
                         {isSelected && (
                           <View style={styles.gameFilterSelectedBadge}>
-                            <Check size={14} color="#0F1520" />
+                            <Check size={14} color="#131F2A" />
                           </View>
                         )}
                         <View style={styles.gameFilterCardOverlay}>
@@ -3489,7 +3489,7 @@ export default function TrendingScreen() {
                     </View>
                     {selectedScreenshotGame === null && (
                       <View style={styles.gameFilterSelectedBadge}>
-                        <Check size={14} color="#0F1520" />
+                        <Check size={14} color="#131F2A" />
                       </View>
                     )}
                     <View style={styles.gameFilterCardOverlay}>
@@ -3535,7 +3535,7 @@ export default function TrendingScreen() {
                         />
                         {isSelected && (
                           <View style={styles.gameFilterSelectedBadge}>
-                            <Check size={14} color="#0F1520" />
+                            <Check size={14} color="#131F2A" />
                           </View>
                         )}
                         <View style={styles.gameFilterCardOverlay}>
@@ -3561,11 +3561,11 @@ export default function TrendingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   screenshotsViewContainer: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   reelContainer: {
     width: SCREEN_WIDTH,
@@ -4129,7 +4129,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   gameTagText: {
-    color: '#0F1520',
+    color: '#131F2A',
     fontSize: 10,
     fontWeight: 'bold' as const,
   },
@@ -4154,7 +4154,7 @@ const styles = StyleSheet.create({
   screenshotThumbnail: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
   },
   screenshotsContainer: {
     paddingBottom: 100,
@@ -4208,7 +4208,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   uploadButtonText: {
-    color: '#0F1520',
+    color: '#131F2A',
     fontSize: 16,
     fontWeight: '700' as const,
   },
@@ -4221,7 +4221,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     position: 'relative',
   },
   modalClose: {
@@ -4253,7 +4253,7 @@ const styles = StyleSheet.create({
   },
   modalSidebar: {
     flex: SCREEN_WIDTH < 768 ? 1 : 0.25,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     padding: 16,
   },
   modalUserRow: {
@@ -4298,7 +4298,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   modalGameText: {
-    color: '#0F1520',
+    color: '#131F2A',
     fontSize: 12,
     fontWeight: 'bold' as const,
   },
@@ -4393,7 +4393,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     zIndex: 1000,
   },
   fullScreenCommentsHeader: {
@@ -4421,7 +4421,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#1E293B',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   commentInput: {
     flex: 1,
@@ -4453,7 +4453,7 @@ const styles = StyleSheet.create({
     color: '#4ADE80',
   },
   clipCardContainer: {
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     marginBottom: 12,
     borderRadius: 16,
     padding: 16,
@@ -4695,7 +4695,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
@@ -4704,7 +4704,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   commentInputWrapper: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   commentsListWrapper: {
     flex: 1,
@@ -4800,7 +4800,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#1E293B',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   reelCommentInput: {
     flex: 1,
@@ -4925,7 +4925,7 @@ const styles = StyleSheet.create({
     height: 20,
   },
   gameFilterModal: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: '70%',
@@ -4998,7 +4998,7 @@ const styles = StyleSheet.create({
   },
   gameFilterModalNew: {
     height: '90%',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
@@ -5162,7 +5162,7 @@ const styles = StyleSheet.create({
   gameFilterAllGamesPlaceholderNew: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -5226,7 +5226,7 @@ const styles = StyleSheet.create({
   gridThumbnailImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
   },
   gridThumbnailOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -5237,7 +5237,7 @@ const styles = StyleSheet.create({
     aspectRatio: 16 / 9,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     marginBottom: 12,
   },
   slideshowFeaturedTouchable: {
@@ -5251,7 +5251,7 @@ const styles = StyleSheet.create({
   slideshowFeaturedImage: {
     width: '100%',
     height: '100%',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
   },
   featuredScreenshotDetails: {
     gap: 8,

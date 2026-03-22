@@ -50,7 +50,7 @@ export default function DashboardPage() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#1a3a2f', '#0F1520']}
+        colors={['#1a3a2f', '#131F2A']}
         style={styles.gradientBackground}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 0.5 }}
@@ -213,7 +213,7 @@ export default function DashboardPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   gradientBackground: {
     position: 'absolute' as const,

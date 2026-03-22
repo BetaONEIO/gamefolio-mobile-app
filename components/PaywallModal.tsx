@@ -57,7 +57,7 @@ export default function PaywallModal({ visible, onClose }: PaywallModalProps) {
         
         <View style={styles.container}>
           <LinearGradient
-            colors={['#1A1F35', '#0F1520']}
+            colors={['#1A1F35', '#131F2A']}
             style={styles.gradient}
           >
             <ScrollView 
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 18,
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     alignItems: 'center',
     justifyContent: 'center',
   },

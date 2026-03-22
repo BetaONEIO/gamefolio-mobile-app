@@ -28,7 +28,7 @@ function AppContent() {
   usePushNotifications(isAuthenticated);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0F1520' }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#131F2A' }}>
       <StatusBar style="light" />
       <DailyStreakOverlay />
       <Stack screenOptions={{ 

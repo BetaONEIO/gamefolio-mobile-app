@@ -14,7 +14,7 @@ export default function DrawerLayout() {
         drawerStyle: {
              width: '85%', 
              maxWidth: 320,
-             backgroundColor: '#0F1520',
+             backgroundColor: '#131F2A',
         },
         overlayColor: 'rgba(0,0,0,0.8)',
         swipeEdgeWidth: 100,

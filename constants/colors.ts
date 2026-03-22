@@ -3,7 +3,7 @@ const tintColorLight = "#2f95dc";
 export const Colors = {
   primary: '#4ADE80',
   scrollbar: '#4ADE80',
-  background: '#0F1520',
+  background: '#131F2A',
   surface: '#1E293B',
   text: '#FFFFFF',
   textDim: '#94A3B8',

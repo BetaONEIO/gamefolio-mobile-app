@@ -137,7 +137,7 @@ export default function BookmarksScreen() {
                   onPress={() => setActiveTab('clips')}
                   testID="button-bookmark-clips"
                 >
-                  <Film size={15} color={activeTab === 'clips' ? '#0F1520' : '#64748B'} />
+                  <Film size={15} color={activeTab === 'clips' ? '#131F2A' : '#64748B'} />
                   <Text style={[styles.tabText, activeTab === 'clips' && styles.tabTextActive]}>Clips</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -145,7 +145,7 @@ export default function BookmarksScreen() {
                   onPress={() => setActiveTab('screenshots')}
                   testID="button-bookmark-screenshots"
                 >
-                  <Camera size={15} color={activeTab === 'screenshots' ? '#0F1520' : '#64748B'} />
+                  <Camera size={15} color={activeTab === 'screenshots' ? '#131F2A' : '#64748B'} />
                   <Text style={[styles.tabText, activeTab === 'screenshots' && styles.tabTextActive]}>Screenshots</Text>
                 </TouchableOpacity>
               </View>
@@ -180,13 +180,13 @@ export default function BookmarksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080E17' },
+  container: { flex: 1, backgroundColor: '#0C1821' },
   filterBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 },
   tabs: { flex: 1, flexDirection: 'row', backgroundColor: '#1E293B', borderRadius: 10, padding: 4, gap: 4 },
   tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 8 },
   tabActive: { backgroundColor: '#4ADE80' },
   tabText: { color: '#64748B', fontSize: 13, fontWeight: '600' },
-  tabTextActive: { color: '#0F1520' },
+  tabTextActive: { color: '#131F2A' },
   viewToggle: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#1E293B', alignItems: 'center', justifyContent: 'center' },
   gridCard: { width: CARD_W, aspectRatio: 16 / 10, borderRadius: 12, overflow: 'hidden', backgroundColor: '#1E293B', position: 'relative' },
   gridThumb: { width: '100%', height: '100%' },
@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   gridGrad: { ...StyleSheet.absoluteFillObject },
   gridTitle: { position: 'absolute', bottom: 8, left: 8, right: 8, color: '#FFF', fontSize: 11, fontWeight: '600' },
   playIcon: { position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 12, padding: 4 },
-  listCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0F1520', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#1E293B', marginBottom: 8, gap: 12 },
+  listCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#131F2A', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#1E293B', marginBottom: 8, gap: 12 },
   listThumbWrap: { borderRadius: 8, overflow: 'hidden' },
   listThumb: { width: 80, height: 52 },
   listTitle: { color: '#FFF', fontSize: 14, fontWeight: '600', marginBottom: 4 },

@@ -29,7 +29,7 @@ export default function OnboardingUserTypeScreen() {
   const [selectedType, setSelectedType] = useState<string | null>(data.userType);
 
   const colors = {
-    background: '#0F1520', 
+    background: '#131F2A', 
     primary: '#4ADE80',    
     text: '#FFFFFF',
     textDim: '#94A3B8',
@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '48%',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',

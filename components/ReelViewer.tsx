@@ -910,7 +910,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   commentsSection: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     overflow: 'hidden',
@@ -1003,7 +1003,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   commentInputWrapper: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   reelCommentInputContainer: {
     flexDirection: 'row',
@@ -1012,7 +1012,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#1E293B',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   reelCommentInput: {
     flex: 1,

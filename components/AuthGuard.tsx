@@ -71,7 +71,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -65,7 +65,7 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
   const [showQRCode, setShowQRCode] = useState(false);
   
   const profileUrl = `https://app.gamefolio.com/@${profile.username}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(profileUrl)}&bgcolor=0F1520&color=FFFFFF`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(profileUrl)}&bgcolor=131F2A&color=FFFFFF`;
 
   const copyToClipboard = async () => {
     await Clipboard.setStringAsync(profileUrl);
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     width: '92%',
     maxWidth: 480,
     maxHeight: '85%',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#1E293B',
@@ -574,7 +574,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   shareInAppText: {
-    color: '#0F1520',
+    color: '#131F2A',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   qrCodeWrapper: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,

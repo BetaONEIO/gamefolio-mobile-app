@@ -81,7 +81,7 @@ export default function BlockedUsersScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#0F1520', '#020617']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#131F2A', '#061021']} style={StyleSheet.absoluteFill} />
       <AppHeader />
       <View style={styles.header}>
         <Text style={styles.title}>Blocked Users</Text>
@@ -122,7 +122,7 @@ export default function BlockedUsersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   header: {
     paddingHorizontal: 20,
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   userRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     borderRadius: 12,
     padding: 12,
     marginBottom: 10,

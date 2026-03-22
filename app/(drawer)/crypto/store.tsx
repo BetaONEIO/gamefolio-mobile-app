@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   featuredButtonText: {
     fontSize: 15,
     fontWeight: '700' as const,
-    color: '#0A0E27',
+    color: '#0E1831',
   },
   section: {
     marginBottom: 20,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     width: '100%',
     aspectRatio: 1,
     borderRadius: 12,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,

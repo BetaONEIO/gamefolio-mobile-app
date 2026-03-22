@@ -61,7 +61,7 @@ export default function ProOnboardingModal({ onDismiss, onUpgrade }: Props) {
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
-          <LinearGradient colors={['#1a0f2e', '#0F1520']} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={['#1a0f2e', '#131F2A']} style={StyleSheet.absoluteFill} />
 
           <TouchableOpacity style={styles.closeBtn} onPress={handleClose} testID="button-close-pro-modal">
             <X size={20} color="#4A5568" />

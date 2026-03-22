@@ -422,7 +422,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
       <Text style={styles.sectionSubtitle}>Customize your Gamefolio presence</Text>
 
       <View style={styles.previewCard}>
-        <View style={[styles.previewBanner, { backgroundColor: currentTheme?.backgroundColor || '#0F1520' }]}>
+        <View style={[styles.previewBanner, { backgroundColor: currentTheme?.backgroundColor || '#131F2A' }]}>
           {banner ? (
             <Image source={{ uri: banner }} style={styles.previewBannerImage} />
           ) : (
@@ -432,9 +432,9 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
             />
           )}
         </View>
-        <View style={[styles.previewContent, { backgroundColor: currentTheme?.backgroundColor || '#0F1520' }]}>
+        <View style={[styles.previewContent, { backgroundColor: currentTheme?.backgroundColor || '#131F2A' }]}>
           <View style={styles.previewAvatarWrapper}>
-            <View style={[styles.previewAvatar, { borderColor: currentTheme?.backgroundColor || '#0F1520' }]}>
+            <View style={[styles.previewAvatar, { borderColor: currentTheme?.backgroundColor || '#131F2A' }]}>
               {avatar ? (
                 <Image source={{ uri: avatar }} style={styles.previewAvatarImage} />
               ) : (
@@ -1552,7 +1552,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
       <View style={styles.container}>
         <LinearGradient
-          colors={['#0F1520', '#1A1F2E', '#0F1520']}
+          colors={['#131F2A', '#1A1F2E', '#131F2A']}
           style={StyleSheet.absoluteFill}
         />
         <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -1679,7 +1679,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   safeArea: {
     flex: 1,
@@ -2247,7 +2247,7 @@ const styles = StyleSheet.create({
   },
   storeBannerPreview: {
     height: 80,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2269,7 +2269,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   storeBannerPriceText: {
-    color: '#0F1520',
+    color: '#131F2A',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -2407,7 +2407,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     overflow: 'hidden',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -2547,7 +2547,7 @@ const styles = StyleSheet.create({
     height: '70%',
     borderRadius: 100,
     overflow: 'hidden',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   borderStyleAvatar: {
     width: '100%',
@@ -2624,7 +2624,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   miniBorderOverlay: {
     position: 'absolute',
@@ -3392,7 +3392,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   backgroundImageCheckmark: {
     position: 'absolute',
@@ -3455,7 +3455,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     marginBottom: 8,
     position: 'relative',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   borderItemOverlay: {
     position: 'absolute',

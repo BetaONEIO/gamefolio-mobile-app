@@ -209,7 +209,7 @@ export default function StorePage() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0A0E27', '#1E293B', '#0F172A']}
+        colors={['#0E1831', '#1E293B', '#0F172A']}
         style={styles.gradient}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -299,7 +299,7 @@ export default function StorePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0E27',
+    backgroundColor: '#0E1831',
   },
   gradient: {
     flex: 1,
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   headerContainer: {
-    backgroundColor: '#0A0E27',
+    backgroundColor: '#0E1831',
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     gap: 8,
-    backgroundColor: '#0A0E27',
+    backgroundColor: '#0E1831',
   },
   tab: {
     flex: 1,

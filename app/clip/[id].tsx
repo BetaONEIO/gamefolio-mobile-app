@@ -1693,7 +1693,7 @@ export default function ClipDetailScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#0F1520', '#020617']}
+        colors={['#131F2A', '#061021']}
         style={StyleSheet.absoluteFill}
       />
       
@@ -2045,7 +2045,7 @@ export default function ClipDetailScreen() {
               </TouchableOpacity>
             </View>
             {showEmojiPicker && (
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, backgroundColor: '#0F1520', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#1E293B' }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, backgroundColor: '#131F2A', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#1E293B' }}>
                 {EMOJI_OPTIONS.map(emoji => (
                   <TouchableOpacity
                     key={emoji}
@@ -2397,7 +2397,7 @@ export default function ClipDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   reelViewerContainer: {
     flex: 1,
@@ -2636,7 +2636,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   gameTagText: {
-    color: '#0F1520',
+    color: '#131F2A',
     fontSize: 12,
     fontWeight: 'bold' as const,
   },
@@ -2683,7 +2683,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: SCREEN_HEIGHT * 0.7,

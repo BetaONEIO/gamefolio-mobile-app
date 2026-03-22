@@ -582,7 +582,7 @@ export default function LoginScreen() {
   };
 
   const colors = {
-    background: '#0F1520', // Deep dark blue/black
+    background: '#131F2A', // Deep dark blue/black
     primary: '#4ADE80',    // Bright green
     secondary: '#1E293B',  // Input background
     text: '#FFFFFF',
@@ -658,7 +658,7 @@ export default function LoginScreen() {
                 disabled={isLoading}
                 testID="button-verify-2fa"
               >
-                <Text style={{ color: '#0F1520', fontSize: 16, fontWeight: '700' }}>{isLoading ? 'Verifying...' : 'Verify'}</Text>
+                <Text style={{ color: '#131F2A', fontSize: 16, fontWeight: '700' }}>{isLoading ? 'Verifying...' : 'Verify'}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { setTwoFAPending(false); setTwoFAUserId(null); setTwoFACode(''); setTwoFAError(''); }} style={{ alignItems: 'center', paddingVertical: 8 }}>
                 <Text style={{ color: colors.textDim, fontSize: 14 }}>Back to Login</Text>

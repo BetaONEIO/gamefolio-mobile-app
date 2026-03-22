@@ -610,7 +610,7 @@ export default function AccountSettings() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   titleContainer: {
     paddingHorizontal: 20,
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderWidth: 1,
     borderColor: '#334155',
     borderRadius: 6,
@@ -716,7 +716,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     gap: 12, 
     marginBottom: 20,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     padding: 16,
     borderRadius: 8,
     borderWidth: 1,
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
   },
   previewLabel: { color: '#94A3B8', fontSize: 14 },
   noBadgeContainer: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     padding: 16,
     borderRadius: 8,
     borderWidth: 1,
@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
   privacyIconRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     padding: 16,
     borderRadius: 8,
     borderWidth: 1,
@@ -750,7 +750,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     justifyContent: 'space-between', 
     paddingVertical: 8,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     padding: 16,
     borderRadius: 8,
     borderWidth: 1,
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
   twoFactorSubtitle: { color: '#94A3B8', fontSize: 12 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'flex-end' },
   twoFAModal: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 12,
@@ -811,7 +811,7 @@ const styles = StyleSheet.create({
   twoFAInputLabel: { fontSize: 13, color: '#94A3B8', alignSelf: 'flex-start' as const },
   twoFAInput: {
     width: '100%',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     borderWidth: 1,
     borderColor: '#1E293B',
     borderRadius: 10,

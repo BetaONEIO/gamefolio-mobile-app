@@ -356,7 +356,7 @@ export default function ScreenshotViewerModal({
     >
       <View style={styles.container}>
         <LinearGradient
-          colors={['#0F1520', '#020617']}
+          colors={['#131F2A', '#061021']}
           style={StyleSheet.absoluteFill}
         />
 
@@ -685,7 +685,7 @@ export default function ScreenshotViewerModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   header: {
     flexDirection: 'row',
@@ -825,7 +825,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   gameTagText: {
-    color: '#0F1520',
+    color: '#131F2A',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -936,7 +936,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     height: SCREEN_HEIGHT * 0.7,

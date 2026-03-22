@@ -31,12 +31,12 @@ export default function UploadSuccessScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom + 24 }]}>
       <Stack.Screen options={{ headerShown: false }} />
-      <LinearGradient colors={['#080E17', '#0F1520', '#080E17']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#0C1821', '#131F2A', '#0C1821']} style={StyleSheet.absoluteFill} />
 
       <View style={styles.content}>
         <Animated.View style={[styles.iconWrap, { transform: [{ scale: scaleAnim }] }]}>
           <LinearGradient colors={['#4ADE80', '#22C55E']} style={styles.iconGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <CheckCircle size={52} color="#0F1520" strokeWidth={2.5} />
+            <CheckCircle size={52} color="#131F2A" strokeWidth={2.5} />
           </LinearGradient>
         </Animated.View>
 
@@ -58,7 +58,7 @@ export default function UploadSuccessScreen() {
           testID="button-view-profile"
           activeOpacity={0.85}
         >
-          <Eye size={18} color="#0F1520" />
+          <Eye size={18} color="#131F2A" />
           <Text style={styles.primaryBtnText}>View on Profile</Text>
         </TouchableOpacity>
 
@@ -77,7 +77,7 @@ export default function UploadSuccessScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080E17', justifyContent: 'space-between' },
+  container: { flex: 1, backgroundColor: '#0C1821', justifyContent: 'space-between' },
   content: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 28, paddingHorizontal: 32 },
   iconWrap: { marginBottom: 8 },
   iconGrad: { width: 100, height: 100, borderRadius: 50, alignItems: 'center', justifyContent: 'center' },
@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
   badgeText: { color: '#4ADE80', fontSize: 14, fontWeight: '700' },
   actions: { paddingHorizontal: 24, gap: 12 },
   primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#4ADE80', borderRadius: 14, paddingVertical: 16 },
-  primaryBtnText: { color: '#0F1520', fontSize: 16, fontWeight: '700' },
+  primaryBtnText: { color: '#131F2A', fontSize: 16, fontWeight: '700' },
   secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#1E293B', borderRadius: 14, paddingVertical: 16 },
   secondaryBtnText: { color: '#4ADE80', fontSize: 16, fontWeight: '600' },
 });

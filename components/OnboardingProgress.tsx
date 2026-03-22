@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   stepNumber: {
     fontSize: 12,

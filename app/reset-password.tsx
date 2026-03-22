@@ -42,7 +42,7 @@ export default function ResetPasswordScreen() {
   });
 
   const colors = {
-    background: '#0F1520',
+    background: '#131F2A',
     primary: '#4ADE80',
     secondary: '#1E293B',
     text: '#FFFFFF',

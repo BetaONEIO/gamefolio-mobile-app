@@ -303,7 +303,7 @@ export default function CollectionsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <LinearGradient
-        colors={['#0F1520', '#1A1F2E']}
+        colors={['#131F2A', '#1A1F2E']}
         style={StyleSheet.absoluteFillObject}
       />
       
@@ -358,7 +358,7 @@ export default function CollectionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   loadingContainer: {
     alignItems: 'center',

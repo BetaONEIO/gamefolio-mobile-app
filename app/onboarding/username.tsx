@@ -26,7 +26,7 @@ export default function OnboardingUsernameScreen() {
   const debouncedUsername = useDebounce(inputValue, 500);
 
   const colors = {
-    background: '#0F1520', 
+    background: '#131F2A', 
     primary: '#4ADE80',    
     text: '#FFFFFF',
     textDim: '#94A3B8',
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   stepNumber: {
     fontSize: 12,

@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     borderRadius: 24, // Slightly rounder
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
     borderWidth: 1,
     borderColor: '#334155', // Subtle border
     shadowColor: "#000",

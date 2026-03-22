@@ -57,7 +57,7 @@ export default function LevelTrackerScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#0F1520', '#020617']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#131F2A', '#061021']} style={StyleSheet.absoluteFill} />
       <AppHeader />
       <ScrollView
         style={styles.scrollView}
@@ -77,7 +77,7 @@ export default function LevelTrackerScreen() {
           <>
             {/* Level Card */}
             <LinearGradient
-              colors={['#1A2D1A', '#0F1520']}
+              colors={['#1A2D1A', '#131F2A']}
               style={styles.levelCard}
             >
               <View style={styles.levelBadgeRow}>
@@ -182,7 +182,7 @@ export default function LevelTrackerScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0F1520' },
+  container: { flex: 1, backgroundColor: '#131F2A' },
   scrollView: { flex: 1 },
   scrollContent: { paddingBottom: 100 },
   pageHeader: { paddingHorizontal: 20, paddingBottom: 20 },
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
 
   streakCard: {
     marginHorizontal: 16,
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     padding: 14,
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#1E293B',
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   xpAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A2332',
+    backgroundColor: '#1E2D3C',
     borderRadius: 12,
     padding: 14,
     gap: 12,

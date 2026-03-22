@@ -102,7 +102,7 @@ export default function OrdersPage() {
             Your transaction history will appear here once you make your first purchase or stake
           </Text>
           <TouchableOpacity style={styles.emptyButton} activeOpacity={0.8}>
-            <ShoppingBag size={18} color="#0A0E27" />
+            <ShoppingBag size={18} color="#0E1831" />
             <Text style={styles.emptyButtonText}>Browse Store</Text>
           </TouchableOpacity>
         </View>
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   emptyButtonText: {
     fontSize: 15,
     fontWeight: '700' as const,
-    color: '#0A0E27',
+    color: '#0E1831',
   },
   ordersList: {
     gap: 10,

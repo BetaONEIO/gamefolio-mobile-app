@@ -202,7 +202,7 @@ export default function TagScreen() {
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
       <LinearGradient
-        colors={['#0F1520', '#020617']}
+        colors={['#131F2A', '#061021']}
         style={StyleSheet.absoluteFill}
       />
 
@@ -242,7 +242,7 @@ export default function TagScreen() {
             onPress={() => handleContentTypeChange('clips')}
             activeOpacity={0.7}
           >
-            <Play size={16} color={contentType === 'clips' ? '#0F1520' : '#94A3B8'} />
+            <Play size={16} color={contentType === 'clips' ? '#131F2A' : '#94A3B8'} />
             <Text style={[styles.contentTypeTabText, contentType === 'clips' && styles.contentTypeTabTextActive]}>
               Clips
             </Text>
@@ -252,7 +252,7 @@ export default function TagScreen() {
             onPress={() => handleContentTypeChange('reels')}
             activeOpacity={0.7}
           >
-            <Play size={16} color={contentType === 'reels' ? '#0F1520' : '#94A3B8'} />
+            <Play size={16} color={contentType === 'reels' ? '#131F2A' : '#94A3B8'} />
             <Text style={[styles.contentTypeTabText, contentType === 'reels' && styles.contentTypeTabTextActive]}>
               Reels
             </Text>
@@ -262,7 +262,7 @@ export default function TagScreen() {
             onPress={() => handleContentTypeChange('screenshots')}
             activeOpacity={0.7}
           >
-            <Camera size={16} color={contentType === 'screenshots' ? '#0F1520' : '#94A3B8'} />
+            <Camera size={16} color={contentType === 'screenshots' ? '#131F2A' : '#94A3B8'} />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.settingsButton}
@@ -376,7 +376,7 @@ export default function TagScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   header: {
     paddingHorizontal: 16,
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
   },
   contentTypeTabTextActive: {
-    color: '#0F1520',
+    color: '#131F2A',
   },
   settingsButton: {
     width: 48,
@@ -539,7 +539,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   uploadButtonText: {
-    color: '#0F1520',
+    color: '#131F2A',
     fontSize: 16,
     fontWeight: '700' as const,
   },

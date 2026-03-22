@@ -69,7 +69,7 @@ export default function WalletPage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1520',
+    backgroundColor: '#131F2A',
   },
   content: {
     flex: 1,

@@ -30,7 +30,7 @@ export default function OnboardingGamesScreen() {
   const [showSelectionAlert, setShowSelectionAlert] = useState(false);
 
   const colors = {
-    background: '#0F1520', 
+    background: '#131F2A', 
     primary: '#4ADE80',    
     text: '#FFFFFF',
     textDim: '#94A3B8',
