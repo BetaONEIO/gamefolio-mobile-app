@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, TextInput, Animated, Keyboard, Platform, Modal, ScrollView, ActivityIndicator } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { BlurView } from 'expo-blur';
-import { Bell, Menu, Plus, Search, ChevronLeft, X, Hash, User, Gamepad2, BadgeCheck, Gift, Settings, Palette, Crown, HelpCircle, LogOut, ChevronRight } from 'lucide-react-native';
+import { Bell, Menu, Plus, Search, ChevronLeft, X, Hash, User, Gamepad2, BadgeCheck, Gift, Settings, Palette, Crown, HelpCircle, LogOut, ChevronRight, Trophy, Star, Shield, Flame } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRouter, useSegments } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
@@ -728,95 +728,134 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
           ]}
           pointerEvents="box-none"
         >
-          {/* User Info Header */}
-          <TouchableOpacity
-            style={styles.profileMenuHeader}
-            onPress={() => navigateFromProfileMenu('/(drawer)/(tabs)/profile')}
-            activeOpacity={0.7}
+          <ScrollView
+            bounces={false}
+            showsVerticalScrollIndicator={false}
+            style={{ maxHeight: 520 }}
           >
-            <ExpoImage
-              source={{ uri: getEffectiveAvatarUrl(selfProfile?.user) || getEffectiveAvatarUrl(user) || undefined }}
-              placeholder={{ uri: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=100&auto=format&fit=crop' }}
-              contentFit="cover"
-              style={styles.profileMenuAvatar}
-            />
-            <View style={styles.profileMenuUserInfo}>
-              <Text style={styles.profileMenuDisplayName} numberOfLines={1}>
-                {user?.displayName || user?.username || 'User'}
-              </Text>
-              <Text style={styles.profileMenuUsername} numberOfLines={1}>
-                @{user?.username || 'user'}
-              </Text>
-            </View>
-            <ChevronRight size={16} color="#64748B" />
-          </TouchableOpacity>
+            {/* User Info Header */}
+            <TouchableOpacity
+              style={styles.profileMenuHeader}
+              onPress={() => navigateFromProfileMenu('/(drawer)/(tabs)/profile')}
+              activeOpacity={0.7}
+            >
+              <ExpoImage
+                source={{ uri: getEffectiveAvatarUrl(selfProfile?.user) || getEffectiveAvatarUrl(user) || undefined }}
+                placeholder={{ uri: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=100&auto=format&fit=crop' }}
+                contentFit="cover"
+                style={styles.profileMenuAvatar}
+              />
+              <View style={styles.profileMenuUserInfo}>
+                <Text style={styles.profileMenuDisplayName} numberOfLines={1}>
+                  {user?.displayName || user?.username || 'User'}
+                </Text>
+                <Text style={styles.profileMenuUserSubtitle} numberOfLines={1}>
+                  {(user as any)?.userType || 'Gamer'}
+                </Text>
+                <Text style={styles.profileMenuUsername} numberOfLines={1}>
+                  @{user?.username || 'user'}
+                </Text>
+              </View>
+              <View style={styles.profileMenuStreakBadge}>
+                <Flame size={12} color="#FF6B35" fill="#FF6B35" />
+                <Text style={styles.profileMenuStreakText}>{user?.currentStreak || 0}</Text>
+              </View>
+            </TouchableOpacity>
 
-          <View style={styles.profileMenuDivider} />
+            <View style={styles.profileMenuDivider} />
 
-          {/* Menu Items */}
-          <TouchableOpacity
-            style={styles.profileMenuItem}
-            onPress={() => navigateFromProfileMenu('/account-settings')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.profileMenuItemIcon}>
-              <Settings size={18} color="#4ADE80" />
-            </View>
-            <Text style={styles.profileMenuItemLabel}>Account Settings</Text>
-            <ChevronRight size={14} color="#334155" />
-          </TouchableOpacity>
+            {/* View Gamefolio */}
+            <TouchableOpacity
+              style={styles.profileMenuItem}
+              onPress={() => navigateFromProfileMenu('/(drawer)/(tabs)/profile')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.profileMenuItemIcon}>
+                <User size={18} color="#94A3B8" strokeWidth={1.5} />
+              </View>
+              <Text style={styles.profileMenuItemLabel}>View Gamefolio</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.profileMenuItem}
-            onPress={() => navigateFromProfileMenu('/profile-appearance')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.profileMenuItemIcon}>
-              <Palette size={18} color="#4ADE80" />
-            </View>
-            <Text style={styles.profileMenuItemLabel}>Profile & Appearance</Text>
-            <ChevronRight size={14} color="#334155" />
-          </TouchableOpacity>
+            {/* Level Tracker */}
+            <TouchableOpacity
+              style={styles.profileMenuItem}
+              onPress={() => {
+                closeProfileMenu();
+                onOpenLevelTracker?.();
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.profileMenuItemIcon}>
+                <Trophy size={18} color="#94A3B8" strokeWidth={1.5} />
+              </View>
+              <Text style={styles.profileMenuItemLabel}>Level Tracker</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.profileMenuItem}
-            onPress={() => navigateFromProfileMenu(isPro ? '/manage-subscription' : '/(drawer)/(tabs)/profile')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.profileMenuItemIcon}>
-              <Crown size={18} color={isPro ? '#10B981' : '#4ADE80'} />
-            </View>
-            <Text style={[styles.profileMenuItemLabel, isPro && { color: '#10B981' }]}>
-              {isPro ? 'Pro Member' : 'Upgrade to Pro'}
-            </Text>
-            <ChevronRight size={14} color="#334155" />
-          </TouchableOpacity>
+            {/* Go Pro */}
+            <TouchableOpacity
+              style={styles.profileMenuItem}
+              onPress={() => navigateFromProfileMenu(isPro ? '/manage-subscription' : '/(drawer)/(tabs)/profile')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.profileMenuItemIcon}>
+                <Star size={18} color="#FACC15" fill={isPro ? '#FACC15' : 'transparent'} strokeWidth={1.5} />
+              </View>
+              <Text style={styles.profileMenuItemLabel}>Go Pro</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.profileMenuItem}
-            onPress={() => navigateFromProfileMenu('/(drawer)/help')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.profileMenuItemIcon}>
-              <HelpCircle size={18} color="#4ADE80" />
-            </View>
-            <Text style={styles.profileMenuItemLabel}>Help & Support</Text>
-            <ChevronRight size={14} color="#334155" />
-          </TouchableOpacity>
+            <View style={styles.profileMenuDivider} />
 
-          <View style={styles.profileMenuDivider} />
+            {/* Settings section label */}
+            <Text style={styles.profileMenuSectionTitle}>Settings</Text>
 
-          {/* Logout */}
-          <TouchableOpacity
-            style={[styles.profileMenuItem, styles.profileMenuLogout]}
-            onPress={handleProfileLogout}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.profileMenuItemIcon, styles.profileMenuLogoutIcon]}>
-              <LogOut size={18} color="#EF4444" />
-            </View>
-            <Text style={styles.profileMenuLogoutLabel}>Log Out</Text>
-          </TouchableOpacity>
+            {/* Account Settings */}
+            <TouchableOpacity
+              style={styles.profileMenuItem}
+              onPress={() => navigateFromProfileMenu('/account-settings')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.profileMenuItemIcon}>
+                <Settings size={18} color="#94A3B8" strokeWidth={1.5} />
+              </View>
+              <Text style={styles.profileMenuItemLabel}>Account Settings</Text>
+            </TouchableOpacity>
+
+            {/* Profile & Appearance */}
+            <TouchableOpacity
+              style={styles.profileMenuItem}
+              onPress={() => navigateFromProfileMenu('/profile-appearance')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.profileMenuItemIcon}>
+                <Palette size={18} color="#94A3B8" strokeWidth={1.5} />
+              </View>
+              <Text style={styles.profileMenuItemLabel}>Profile & Appearance</Text>
+            </TouchableOpacity>
+
+            {/* Admin Panel */}
+            <TouchableOpacity
+              style={styles.profileMenuItem}
+              onPress={closeProfileMenu}
+              activeOpacity={0.7}
+            >
+              <View style={styles.profileMenuItemIcon}>
+                <Shield size={18} color="#94A3B8" strokeWidth={1.5} />
+              </View>
+              <Text style={styles.profileMenuItemLabel}>Admin Panel</Text>
+            </TouchableOpacity>
+
+            {/* Logout */}
+            <TouchableOpacity
+              style={[styles.profileMenuItem, styles.profileMenuLogout]}
+              onPress={handleProfileLogout}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.profileMenuItemIcon, styles.profileMenuLogoutIcon]}>
+                <LogOut size={18} color="#EF4444" strokeWidth={1.5} />
+              </View>
+              <Text style={styles.profileMenuLogoutLabel}>Logout</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </Animated.View>
       </Modal>
     </>
@@ -1094,11 +1133,11 @@ const styles = StyleSheet.create({
   profileMenu: {
     position: 'absolute',
     right: 16,
-    width: 260,
-    backgroundColor: '#0D1117',
+    width: 280,
+    backgroundColor: '#131F2A',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#1E2D3C',
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -1111,50 +1150,79 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingTop: 16,
+    paddingBottom: 14,
     gap: 12,
   },
   profileMenuAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 2,
     borderColor: '#4ADE80',
   },
   profileMenuUserInfo: {
     flex: 1,
+    gap: 1,
   },
   profileMenuDisplayName: {
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
   },
-  profileMenuUsername: {
+  profileMenuUserSubtitle: {
     color: '#64748B',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  profileMenuUsername: {
+    color: '#94A3B8',
     fontSize: 13,
-    marginTop: 2,
+  },
+  profileMenuStreakBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2A1206',
+    borderWidth: 1,
+    borderColor: '#FF6B35',
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
+    gap: 3,
+  },
+  profileMenuStreakText: {
+    color: '#FF6B35',
+    fontSize: 12,
+    fontWeight: '700',
   },
   profileMenuDivider: {
     height: 1,
-    backgroundColor: '#1E293B',
-    marginHorizontal: 0,
+    backgroundColor: '#1E2D3C',
+  },
+  profileMenuSectionTitle: {
+    color: '#64748B',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 4,
   },
   profileMenuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 13,
-    gap: 12,
+    paddingVertical: 12,
+    gap: 14,
   },
   profileMenuItemIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    backgroundColor: 'rgba(74, 222, 128, 0.08)',
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'rgba(148, 163, 184, 0.06)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(74, 222, 128, 0.15)',
   },
   profileMenuItemLabel: {
     flex: 1,
@@ -1163,11 +1231,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   profileMenuLogout: {
-    marginBottom: 2,
+    marginBottom: 6,
   },
   profileMenuLogoutIcon: {
     backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    borderColor: 'rgba(239, 68, 68, 0.15)',
   },
   profileMenuLogoutLabel: {
     flex: 1,
