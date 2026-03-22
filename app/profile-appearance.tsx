@@ -142,7 +142,7 @@ export default function ProfileAppearance() {
   const isThemeDirty = currentTheme && user && (
     currentTheme.accentColor !== (user.accentColor || QUICK_THEMES[0].accentColor) || 
     currentTheme.backgroundColor !== (user.backgroundColor || QUICK_THEMES[0].backgroundColor) ||
-    currentTheme.primaryColor !== (user.primaryColor || QUICK_THEMES[0].primaryColor)
+    (user.primaryColor != null && currentTheme.primaryColor !== user.primaryColor)
   );
 
   const { data: avatarBordersData } = useQuery({
@@ -241,7 +241,11 @@ export default function ProfileAppearance() {
       setEpicUsername(user.epicUsername || '');
       setNintendoUsername(user.nintendoUsername || '');
       
-      const theme = QUICK_THEMES.find(t => t.accentColor === user.accentColor && t.backgroundColor === user.backgroundColor);
+      const theme = QUICK_THEMES.find(t =>
+        t.accentColor === user.accentColor &&
+        t.backgroundColor === user.backgroundColor &&
+        (user.primaryColor == null || t.primaryColor === user.primaryColor)
+      );
       setSelectedThemeId(theme ? theme.id : 'basic');
       setSelectedProfileTheme((user.profileTheme as ProfileThemeName) || null);
       
