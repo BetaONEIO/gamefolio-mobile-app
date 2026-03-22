@@ -279,8 +279,8 @@ declare global {
 // Simple in-memory tracking for unblocked users
 const unblockedUsers = new Map<string, Set<number>>();
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  const httpServer = createServer(app);
+export async function registerRoutes(app: Express, existingServer?: Server): Promise<Server> {
+  const httpServer = existingServer || createServer(app);
   
   app.use('/api', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -9108,14 +9108,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint
   app.get("/api/health", async (req, res) => {
     try {
-      // Test database connection
-      const testQuery = await storage.getClipStats();
-
+      // Simple database ping
+      await db.execute(sql`SELECT 1`);
       res.json({
         status: "healthy",
         timestamp: new Date().toISOString(),
         database: "connected",
-        clips: testQuery || "accessible"
       });
     } catch (error) {
       console.error("Health check failed:", error);

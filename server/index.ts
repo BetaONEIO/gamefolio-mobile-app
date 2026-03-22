@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { createServer } from "http";
 import { eq, sql } from 'drizzle-orm';
 import { db, pool } from './db';
 import { users } from '../shared/schema';
@@ -110,6 +111,18 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Open the port IMMEDIATELY so deployment health checks pass quickly.
+  // All other initialization happens after the port is open.
+  const port = 5000;
+  const server = createServer(app);
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
+    log(`serving on port ${port}`);
+  });
+
   try {
     // Run schema migrations to ensure new columns exist
     try {
@@ -140,7 +153,7 @@ app.use((req, res, next) => {
       console.warn('⚠️ hero_slides migration warning:', migrationErr?.message);
     }
 
-    const server = await registerRoutes(app);
+    await registerRoutes(app, server);
 
     // Serve static email assets
     app.use('/static/email-assets', express.static(path.join(process.cwd(), 'server/static/email-assets')));
@@ -267,19 +280,6 @@ app.use((req, res, next) => {
     if (app.get("env") !== "development") {
       serveStatic(app);
     }
-
-    // ALWAYS serve the app on port 5000
-    // this serves both the API and the client.
-    // It is the only port that is not firewalled.
-    // Open the port immediately so deployment health checks pass quickly.
-    const port = 5000;
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
-      log(`serving on port ${port}`);
-    });
 
     // Load XP settings and start leaderboard service in the background
     // so they don't delay port opening.
