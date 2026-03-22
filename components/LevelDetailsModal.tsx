@@ -7,9 +7,9 @@ import {
   Modal,
   ScrollView,
   Animated,
-  Clipboard,
   TextInput,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
 import {
   X,
   Zap,
@@ -536,7 +536,7 @@ export default function LevelDetailsModal({
           />
           <TouchableOpacity
             style={styles.copyBtn}
-            onPress={() => Clipboard.setString(referralLink)}
+            onPress={() => Clipboard.setStringAsync(referralLink)}
           >
             <Text style={styles.copyBtnText}>Copy</Text>
           </TouchableOpacity>
@@ -874,7 +874,6 @@ const styles = StyleSheet.create({
   countdownValue: {
     color: '#4ADE80',
     fontWeight: '700' as const,
-    fontVariant: ['tabular-nums'],
   },
   taskList: {
     gap: 2,
