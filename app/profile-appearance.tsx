@@ -17,10 +17,9 @@ import ImageEditorModal from '@/components/ImageEditorModal';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
 import ProfileBorderModal, { AvatarBorder } from '@/components/ProfileBorderModal';
 import CustomAlert from '@/components/CustomAlert';
-import AppearanceStudioModal from '@/components/AppearanceStudioModal';
 import { SELECTABLE_PROFILE_THEMES, type ProfileThemeName } from '@/constants/themes';
 
-type TabType = 'profile' | 'platform';
+type TabType = 'profile' | 'platform' | 'appearance';
 
 const USER_TYPE_OPTIONS = [
   { id: 'streamer', label: 'Streamer', description: 'I stream games live', icon: 'video' as const, color: '#A855F7' },
@@ -85,9 +84,6 @@ export default function ProfileAppearance() {
   // Profile Picture Tab State
   const [profilePictureTab, setProfilePictureTab] = useState<'uploaded' | 'nft'>('uploaded');
   
-  // Appearance Studio Modal State
-  const [appearanceStudioVisible, setAppearanceStudioVisible] = useState(false);
-
   // User Type State
   const [userType, setUserType] = useState<string>(user?.userType || '');
   const [showUserType, setShowUserType] = useState<boolean>(user?.showUserType !== false);
@@ -118,10 +114,8 @@ export default function ProfileAppearance() {
   };
 
   useEffect(() => {
-    if (tab && tab === 'profile') {
+    if (tab === 'profile' || tab === 'platform' || tab === 'appearance') {
       setActiveTab(tab as TabType);
-    } else if (tab === 'appearance' || tab === 'banner') {
-      setAppearanceStudioVisible(true);
     }
   }, [tab]);
 
@@ -137,20 +131,13 @@ export default function ProfileAppearance() {
     (user?.profileTheme as ProfileThemeName) || null
   );
 
+  // Appearance color state (Appearance tab)
+  const [accentColor, setAccentColor] = useState(user?.accentColor || '#4ADE80');
+  const [primaryColor, setPrimaryColor] = useState(user?.primaryColor || '#02172C');
+  const [backgroundColor, setBackgroundColor] = useState(user?.backgroundColor || '#0B2232');
+  const [avatarBorderColor, setAvatarBorderColor] = useState(user?.avatarBorderColor || user?.accentColor || '#4ADE80');
+
   // Calculate isDirty
-  const currentTheme = QUICK_THEMES.find(t => t.id === selectedThemeId);
-  // For legacy users with no stored primaryColor, derive baseline from the inferred theme
-  const inferredStoredTheme = user ? QUICK_THEMES.find(t =>
-    t.accentColor === user.accentColor && t.backgroundColor === user.backgroundColor
-  ) : null;
-  const storedPrimaryColor = user?.primaryColor ||
-    inferredStoredTheme?.primaryColor ||
-    QUICK_THEMES[0].primaryColor;
-  const isThemeDirty = currentTheme && user && (
-    currentTheme.accentColor !== (user.accentColor || QUICK_THEMES[0].accentColor) || 
-    currentTheme.backgroundColor !== (user.backgroundColor || QUICK_THEMES[0].backgroundColor) ||
-    currentTheme.primaryColor !== storedPrimaryColor
-  );
 
   const { data: avatarBordersData } = useQuery({
     queryKey: ['/api/profile-borders'],
@@ -159,8 +146,8 @@ export default function ProfileAppearance() {
       return api.profileBorders.getAll(token ?? undefined);
     },
   });
-  const currentUserBorderId = avatarBordersData?.selectedBorderId || null;
-  const isBorderDirty = selectedBorder?.id !== currentUserBorderId;
+  const currentUserBorderId = avatarBordersData?.selectedBorderId ?? null;
+  const isBorderDirty = (selectedBorder?.id ?? null) !== currentUserBorderId;
 
   console.log('[ProfileAppearance] Border state:', {
     selectedBorderId: selectedBorder?.id || null,
@@ -176,9 +163,12 @@ export default function ProfileAppearance() {
     (bio !== (user?.bio || '')) ||
     (avatar !== (user?.avatarUrl || null)) ||
     (banner !== (user?.bannerUrl || null)) ||
-    !!isThemeDirty ||
     isBorderDirty ||
     isProfileThemeDirty ||
+    (accentColor !== (user?.accentColor || '#4ADE80')) ||
+    (primaryColor !== (user?.primaryColor || '#02172C')) ||
+    (backgroundColor !== (user?.backgroundColor || '#0B2232')) ||
+    (avatarBorderColor !== (user?.avatarBorderColor || user?.accentColor || '#4ADE80')) ||
     (userType !== (user?.userType || '')) ||
     (showUserType !== (user?.showUserType !== false)) ||
     (steamUsername !== (user?.steamUsername || '')) ||
@@ -248,12 +238,21 @@ export default function ProfileAppearance() {
       setEpicUsername(user.epicUsername || '');
       setNintendoUsername(user.nintendoUsername || '');
       
+      const newAccent = user.accentColor || '#4ADE80';
+      const newPrimary = user.primaryColor || '#02172C';
+      const newBg = user.backgroundColor || '#0B2232';
+      const newBorderColor = user.avatarBorderColor || user.accentColor || '#4ADE80';
+      setAccentColor(newAccent);
+      setPrimaryColor(newPrimary);
+      setBackgroundColor(newBg);
+      setAvatarBorderColor(newBorderColor);
+
       const theme = QUICK_THEMES.find(t =>
-        t.accentColor === user.accentColor &&
-        t.backgroundColor === user.backgroundColor &&
-        (user.primaryColor == null || t.primaryColor === user.primaryColor)
+        t.accentColor === newAccent &&
+        t.backgroundColor === newBg &&
+        t.primaryColor === newPrimary
       );
-      setSelectedThemeId(theme ? theme.id : 'basic');
+      setSelectedThemeId(theme ? theme.id : '');
       setSelectedProfileTheme((user.profileTheme as ProfileThemeName) || null);
       
       if (avatarBordersData?.selectedBorderId) {
@@ -338,17 +337,16 @@ export default function ProfileAppearance() {
         return;
       }
       
-      const theme = QUICK_THEMES.find(t => t.id === selectedThemeId);
-      
       const updateData = {
         username: username || undefined,
         displayName,
         bio,
         avatarUrl: avatar || undefined,
         bannerUrl: banner || undefined,
-        accentColor: theme?.accentColor,
-        primaryColor: theme?.primaryColor,
-        backgroundColor: theme?.backgroundColor,
+        accentColor,
+        primaryColor,
+        backgroundColor,
+        avatarBorderColor,
         profileBorderId: selectedBorder?.id || null,
         profileTheme: selectedProfileTheme || undefined,
         userType: userType || null,
@@ -455,11 +453,11 @@ export default function ProfileAppearance() {
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={styles.tab} 
-              onPress={() => setAppearanceStudioVisible(true)}
+              style={[styles.tab, activeTab === 'appearance' && styles.activeTab]}
+              onPress={() => setActiveTab('appearance')}
             >
-              <Palette size={18} color="#94A3B8" />
-              <Text style={styles.tabText}>Appearance</Text>
+              <Palette size={18} color={activeTab === 'appearance' ? '#FFF' : '#94A3B8'} />
+              <Text style={[styles.tabText, activeTab === 'appearance' && styles.activeTabText]}>Appearance</Text>
             </TouchableOpacity>
 
           </ScrollView>
@@ -639,35 +637,6 @@ export default function ProfileAppearance() {
                   )}
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Profile Page Theme</Text>
-                  <Text style={styles.inputHelper}>Choose a design theme for your public profile page.</Text>
-                  <View style={styles.profileThemesRow}>
-                    {SELECTABLE_PROFILE_THEMES.map((t) => {
-                      const isActive = selectedProfileTheme === t.id;
-                      return (
-                        <TouchableOpacity
-                          key={t.id}
-                          style={[styles.profileThemeCard, isActive && styles.profileThemeCardActive]}
-                          onPress={() => setSelectedProfileTheme(isActive ? null : t.id)}
-                          activeOpacity={0.8}
-                        >
-                          <View style={[styles.profileThemeSwatch, { backgroundColor: t.bg }]}>
-                            <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[1] }]} />
-                            <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[2], marginLeft: 6 }]} />
-                          </View>
-                          <Text style={[styles.profileThemeLabel, isActive && styles.profileThemeLabelActive]}>{t.name}</Text>
-                          {isActive && (
-                            <View style={styles.profileThemeCheck}>
-                              <Check size={12} color="#FFF" />
-                            </View>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                </View>
-
                 {renderSaveButton(handleSaveProfile)}
               </View>
             )}
@@ -703,6 +672,161 @@ export default function ProfileAppearance() {
                     </View>
                   </View>
                 ))}
+
+                {renderSaveButton(handleSaveProfile)}
+              </View>
+            )}
+
+            {activeTab === 'appearance' && (
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Appearance Settings</Text>
+                <Text style={styles.inputHelper}>Customize how your profile looks with colors and themes.</Text>
+
+                <Text style={styles.inputLabel}>Quick Themes</Text>
+                <Text style={styles.inputHelper}>Pick a preset theme to set all colors at once.</Text>
+                <View style={styles.themesGrid}>
+                  {QUICK_THEMES.map((t) => {
+                    const isSelected = selectedThemeId === t.id;
+                    return (
+                      <TouchableOpacity
+                        key={t.id}
+                        style={[styles.themeOption, isSelected && styles.themeOptionSelected]}
+                        onPress={() => {
+                          setSelectedThemeId(t.id);
+                          setAccentColor(t.accentColor);
+                          setPrimaryColor(t.primaryColor);
+                          setBackgroundColor(t.backgroundColor);
+                          setAvatarBorderColor(t.accentColor);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[styles.themePreview, { backgroundColor: t.backgroundColor, borderColor: isSelected ? t.accentColor : '#334155', borderWidth: isSelected ? 2 : 1 }]}>
+                          <View style={[styles.themeAccent, { backgroundColor: t.accentColor }]} />
+                        </View>
+                        <Text style={[styles.themeName, isSelected && styles.themeNameSelected]}>{t.name}</Text>
+                        {isSelected && (
+                          <View style={{ position: 'absolute', top: 6, right: 6, width: 16, height: 16, borderRadius: 8, backgroundColor: t.accentColor, alignItems: 'center', justifyContent: 'center' }}>
+                            <Check size={10} color="#000" />
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Accent Color</Text>
+                  <Text style={styles.inputHelper}>Highlights, buttons, and interactive elements.</Text>
+                  <View style={styles.colorRow}>
+                    <View style={[styles.colorSwatch, { backgroundColor: accentColor }]} />
+                    <TextInput
+                      style={[styles.input, styles.colorInput]}
+                      value={accentColor}
+                      onChangeText={(v) => {
+                        setAccentColor(v);
+                        setSelectedThemeId('');
+                      }}
+                      placeholder="#4ADE80"
+                      placeholderTextColor="#64748B"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      maxLength={7}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Primary Color</Text>
+                  <Text style={styles.inputHelper}>Background elements and cards on your profile.</Text>
+                  <View style={styles.colorRow}>
+                    <View style={[styles.colorSwatch, { backgroundColor: primaryColor }]} />
+                    <TextInput
+                      style={[styles.input, styles.colorInput]}
+                      value={primaryColor}
+                      onChangeText={(v) => {
+                        setPrimaryColor(v);
+                        setSelectedThemeId('');
+                      }}
+                      placeholder="#02172C"
+                      placeholderTextColor="#64748B"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      maxLength={7}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Avatar Border Color</Text>
+                  <Text style={styles.inputHelper}>The border around your profile picture.</Text>
+                  <View style={styles.colorRow}>
+                    <View style={[styles.colorSwatch, { backgroundColor: avatarBorderColor }]} />
+                    <TextInput
+                      style={[styles.input, styles.colorInput]}
+                      value={avatarBorderColor}
+                      onChangeText={(v) => {
+                        setAvatarBorderColor(v);
+                        setSelectedThemeId('');
+                      }}
+                      placeholder="#4ADE80"
+                      placeholderTextColor="#64748B"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      maxLength={7}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Profile Picture Border</Text>
+                  <Text style={styles.inputHelper}>Select a border to customize the frame around your profile picture.</Text>
+                  <TouchableOpacity
+                    style={styles.borderButton}
+                    onPress={() => setBorderModalVisible(true)}
+                    activeOpacity={0.8}
+                  >
+                    {selectedBorder ? (
+                      <Image source={{ uri: selectedBorder.imageUrl }} style={styles.borderPreviewImage} />
+                    ) : (
+                      <View style={styles.borderNone}>
+                        <Text style={styles.borderNoneText}>No border selected</Text>
+                      </View>
+                    )}
+                    <View style={styles.borderButtonRight}>
+                      <Text style={styles.borderButtonLabel}>{selectedBorder ? selectedBorder.name : 'Choose Border'}</Text>
+                      <Text style={styles.borderButtonHint}>Tap to browse unlocked borders</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Profile Page Theme</Text>
+                  <Text style={styles.inputHelper}>Choose a design theme for your public profile page.</Text>
+                  <View style={styles.profileThemesRow}>
+                    {SELECTABLE_PROFILE_THEMES.map((t) => {
+                      const isActive = selectedProfileTheme === t.id;
+                      return (
+                        <TouchableOpacity
+                          key={t.id}
+                          style={[styles.profileThemeCard, isActive && styles.profileThemeCardActive]}
+                          onPress={() => setSelectedProfileTheme(isActive ? null : t.id)}
+                          activeOpacity={0.8}
+                        >
+                          <View style={[styles.profileThemeSwatch, { backgroundColor: t.bg }]}>
+                            <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[1] }]} />
+                            <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[2], marginLeft: 6 }]} />
+                          </View>
+                          <Text style={[styles.profileThemeLabel, isActive && styles.profileThemeLabelActive]}>{t.name}</Text>
+                          {isActive && (
+                            <View style={styles.profileThemeCheck}>
+                              <Check size={12} color="#FFF" />
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </View>
 
                 {renderSaveButton(handleSaveProfile)}
               </View>
@@ -761,13 +885,6 @@ export default function ProfileAppearance() {
         previewImageUrl={avatar || undefined}
       />
 
-      <AppearanceStudioModal
-        visible={appearanceStudioVisible}
-        onClose={() => setAppearanceStudioVisible(false)}
-        onSaved={() => {
-          setAppearanceStudioVisible(false);
-        }}
-      />
     </>
   );
 }
@@ -949,6 +1066,68 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 16,
     fontStyle: 'italic',
+  },
+  borderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#131F2A',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 8,
+    padding: 12,
+    gap: 14,
+  },
+  borderPreviewImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    resizeMode: 'cover',
+  },
+  borderNone: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderStyle: 'dashed',
+  },
+  borderNoneText: {
+    color: '#64748B',
+    fontSize: 9,
+    textAlign: 'center',
+  },
+  borderButtonRight: {
+    flex: 1,
+  },
+  borderButtonLabel: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  borderButtonHint: {
+    color: '#64748B',
+    fontSize: 12,
+  },
+  colorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  colorSwatch: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    flexShrink: 0,
+  },
+  colorInput: {
+    flex: 1,
+    marginBottom: 0,
   },
   themesGrid: {
     flexDirection: 'row',
