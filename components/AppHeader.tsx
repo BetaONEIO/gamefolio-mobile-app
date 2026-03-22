@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Image, TextInput, Animated, Keyboard, Platform, Modal, ScrollView, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, Image, TextInput, Animated, Keyboard, Platform, Modal, ScrollView, ActivityIndicator, Linking } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { Bell, Menu, Plus, Search, ChevronLeft, X, Hash, User, Gamepad2, BadgeCheck, Gift, Settings, Palette, Crown, HelpCircle, LogOut, ChevronRight, Trophy, Star, Shield, Flame } from 'lucide-react-native';
@@ -750,7 +750,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
                   {user?.displayName || user?.username || 'User'}
                 </Text>
                 <Text style={styles.profileMenuUserSubtitle} numberOfLines={1}>
-                  {(user as any)?.userType || 'Gamer'}
+                  {user?.userType || 'Gamer'}
                 </Text>
                 <Text style={styles.profileMenuUsername} numberOfLines={1}>
                   @{user?.username || 'user'}
@@ -794,7 +794,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
             {/* Go Pro */}
             <TouchableOpacity
               style={styles.profileMenuItem}
-              onPress={() => navigateFromProfileMenu(isPro ? '/manage-subscription' : '/(drawer)/(tabs)/profile')}
+              onPress={() => navigateFromProfileMenu('/manage-subscription')}
               activeOpacity={0.7}
             >
               <View style={styles.profileMenuItemIcon}>
@@ -832,17 +832,22 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
               <Text style={styles.profileMenuItemLabel}>Profile & Appearance</Text>
             </TouchableOpacity>
 
-            {/* Admin Panel */}
-            <TouchableOpacity
-              style={styles.profileMenuItem}
-              onPress={closeProfileMenu}
-              activeOpacity={0.7}
-            >
-              <View style={styles.profileMenuItemIcon}>
-                <Shield size={18} color="#94A3B8" strokeWidth={1.5} />
-              </View>
-              <Text style={styles.profileMenuItemLabel}>Admin Panel</Text>
-            </TouchableOpacity>
+            {/* Admin Panel — only visible to admin role users */}
+            {user?.role === 'admin' ? (
+              <TouchableOpacity
+                style={styles.profileMenuItem}
+                onPress={() => {
+                  closeProfileMenu();
+                  Linking.openURL('https://app.gamefolio.com/admin');
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.profileMenuItemIcon}>
+                  <Shield size={18} color="#94A3B8" strokeWidth={1.5} />
+                </View>
+                <Text style={styles.profileMenuItemLabel}>Admin Panel</Text>
+              </TouchableOpacity>
+            ) : null}
 
             {/* Logout */}
             <TouchableOpacity
