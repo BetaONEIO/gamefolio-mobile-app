@@ -70,6 +70,24 @@ import { contentFilterService } from "./services/content-filter";
 import { addPlayButtonOverlay } from "./og-thumbnail";
 import { getTokenBalance, getTokenInfo } from "./blockchain";
 import { TwoFactorService } from "./services/two-factor-service";
+// Production server URL for proxying content requests
+const PRODUCTION_API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://app.gamefolio.com';
+
+// Proxy a request to the production server and return the parsed JSON data
+async function proxyToProduction(path: string, query?: Record<string, string>): Promise<any[] | null> {
+  try {
+    const url = new URL(path, PRODUCTION_API_URL);
+    if (query) {
+      Object.entries(query).forEach(([k, v]) => { if (v !== undefined) url.searchParams.set(k, v); });
+    }
+    const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+    if (!response.ok) return null;
+    return response.json();
+  } catch (err) {
+    console.error(`[proxy] Failed to fetch ${path} from production:`, err);
+    return null;
+  }
+}
 
 // Import upload middlewares from upload router
 import multer from "multer";
@@ -3630,35 +3648,14 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Get user's clips
   app.get("/api/users/:username/clips", async (req, res) => {
     try {
-      // Remove leading @ from username if present
       const username = req.params.username.startsWith('@') ? req.params.username.slice(1) : req.params.username;
-      const user = await storage.getUserByUsername(username);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
 
-      // Check if profile is private and user is not following
-      const requesterId = req.user?.id;
-      const isOwnProfile = requesterId === user.id;
-
-      if (user.isPrivate && !isOwnProfile && requesterId) {
-        const isFollowing = await storage.isFollowing(requesterId, user.id);
-        if (!isFollowing) {
-          return res.status(403).json({ message: "This profile is private. Follow the user to see their content." });
-        }
-      } else if (user.isPrivate && !isOwnProfile && !requesterId) {
-        return res.status(403).json({ message: "This profile is private. Please log in and follow the user to see their content." });
-      }
-
-      // Get actual clips from database for all users including demo
-      const clips = await storage.getClipsByUserId(user.id);
-
-      // For demo user, also include the demo clips if no real clips exist
-      if (req.params.username === "demo" && clips.length === 0) {
+      if (username === "demo") {
         return res.json(getDemoClips());
       }
 
-      res.json(clips);
+      const data = await proxyToProduction(`/api/users/${encodeURIComponent(username)}/clips`);
+      return res.json(data || []);
     } catch (err) {
       console.error("Error fetching user clips:", err);
       return res.status(500).json({ message: "Error fetching user clips" });
@@ -4003,18 +4000,18 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Get all clips (latest first)
   app.get("/api/clips", async (req, res) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
-      const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
-      const currentUserId = (req.user as any)?.id;
-      console.log('🔍 Latest clips API: currentUserId =', currentUserId);
-      
-      // Force no caching for privacy-sensitive content
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      
-      const clips = await storage.getAllClips(limit, offset, currentUserId);
-      res.json(clips);
+
+      const query: Record<string, string> = {};
+      if (req.query.limit) query.limit = req.query.limit as string;
+      if (req.query.page) query.page = req.query.page as string;
+      if (req.query.gameId) query.gameId = req.query.gameId as string;
+      if (req.query.userId) query.userId = req.query.userId as string;
+
+      const data = await proxyToProduction('/api/clips', query);
+      return res.json(data || []);
     } catch (err) {
       console.error("Error fetching clips:", err);
       return res.status(500).json({ message: "Error fetching clips" });
@@ -4050,22 +4047,17 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Trending clips route
   app.get("/api/clips/trending", async (req, res) => {
     try {
-      const { period = 'all', limit = 10, gameId } = req.query;
-      const currentUserId = (req.user as any)?.id;
-      console.log('🔍 Trending clips API: currentUserId =', currentUserId, 'period =', period, 'session user:', req.user);
-      
-      // Force no caching for privacy-sensitive content
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
-      
-      const clips = await storage.getTrendingClips(
-        period as string,
-        parseInt(limit as string) || 10,
-        gameId ? parseInt(gameId as string) : undefined,
-        currentUserId
-      );
-      res.json(clips);
+
+      const query: Record<string, string> = {};
+      if (req.query.period) query.period = req.query.period as string;
+      if (req.query.limit) query.limit = req.query.limit as string;
+      if (req.query.gameId) query.gameId = req.query.gameId as string;
+
+      const data = await proxyToProduction('/api/clips/trending', query);
+      return res.json(data || []);
     } catch (err) {
       console.error("Error fetching trending clips:", err);
       res.status(500).json({ message: "Internal server error" });
@@ -4093,10 +4085,11 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Latest reels route (newest uploaded reels)
   app.get("/api/reels/latest", async (req, res) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 6;
-      const currentUserId = (req.user as any)?.id;
-      const reels = await storage.getLatestReels(limit, currentUserId);
-      res.json(reels);
+      const query: Record<string, string> = {};
+      if (req.query.limit) query.limit = req.query.limit as string;
+
+      const data = await proxyToProduction('/api/reels/latest', query);
+      return res.json(data || []);
     } catch (err) {
       console.error("Error fetching latest reels:", err);
       res.status(500).json({ message: "Internal server error" });
@@ -4196,16 +4189,16 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
-  // Trending screenshots (for now by views, will extend to likes/comments when schema supports it)
+  // Trending screenshots
   app.get("/api/trending/screenshots", async (req, res) => {
     try {
-      const { period = 'recent', limit = 20, gameId } = req.query;
-      const screenshots = await storage.getTrendingScreenshots(
-        period as string,
-        parseInt(limit as string) || 20,
-        gameId ? parseInt(gameId as string) : undefined
-      );
-      res.json(screenshots);
+      const query: Record<string, string> = {};
+      if (req.query.period) query.period = req.query.period as string;
+      if (req.query.limit) query.limit = req.query.limit as string;
+      if (req.query.gameId) query.gameId = req.query.gameId as string;
+
+      const data = await proxyToProduction('/api/trending/screenshots', query);
+      return res.json(data || []);
     } catch (err) {
       console.error("Error fetching trending screenshots:", err);
       res.status(500).json({ message: "Internal server error" });
@@ -4215,13 +4208,13 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // General screenshots endpoint (supports filtering by game and time period)
   app.get("/api/screenshots", async (req, res) => {
     try {
-      const { period = 'recent', limit = 20, gameId } = req.query;
-      const screenshots = await storage.getTrendingScreenshots(
-        period as string,
-        parseInt(limit as string) || 20,
-        gameId ? parseInt(gameId as string) : undefined
-      );
-      res.json(screenshots);
+      const query: Record<string, string> = {};
+      if (req.query.period) query.period = req.query.period as string;
+      if (req.query.limit) query.limit = req.query.limit as string;
+      if (req.query.gameId) query.gameId = req.query.gameId as string;
+
+      const data = await proxyToProduction('/api/screenshots', query);
+      return res.json(data || []);
     } catch (err) {
       console.error("Error fetching screenshots:", err);
       res.status(500).json({ message: "Internal server error" });
@@ -8149,28 +8142,8 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Get screenshots by user
   app.get("/api/users/:userId/screenshots", async (req, res) => {
     try {
-      const userId = parseInt(req.params.userId);
-      const user = await storage.getUser(userId);
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Check if profile is private and user is not following
-      const requesterId = req.user?.id;
-      const isOwnProfile = requesterId === user.id;
-
-      if (user.isPrivate && !isOwnProfile && requesterId) {
-        const isFollowing = await storage.isFollowing(requesterId, user.id);
-        if (!isFollowing) {
-          return res.status(403).json({ message: "This profile is private. Follow the user to see their content." });
-        }
-      } else if (user.isPrivate && !isOwnProfile && !requesterId) {
-        return res.status(403).json({ message: "This profile is private. Please log in and follow the user to see their content." });
-      }
-
-      const screenshots = await storage.getScreenshotsByUserId(userId);
-      res.json(screenshots);
+      const data = await proxyToProduction(`/api/users/${req.params.userId}/screenshots`);
+      return res.json(data || []);
     } catch (err) {
       console.error("Error fetching user screenshots:", err);
       return res.status(500).json({ message: "Error fetching screenshots" });
