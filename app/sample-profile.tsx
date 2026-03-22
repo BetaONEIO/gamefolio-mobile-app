@@ -827,6 +827,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFF',
+    marginTop: 10,
     marginBottom: 4,
   },
   handle: {
@@ -933,7 +934,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginBottom: 24,
+    marginTop: 16,
+    marginBottom: 32,
     justifyContent: 'flex-start',
   },
   platformTag: {
