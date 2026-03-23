@@ -690,6 +690,170 @@ router.post('/auth/mobile/google', async (req: Request, res: Response) => {
 });
 
 /**
+ * Initiate Google OAuth for mobile app
+ * Returns the Google OAuth URL that the mobile app should open in a browser
+ */
+router.get('/auth/mobile/google/init', (req: Request, res: Response) => {
+  const baseUrl = process.env.SITE_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  const redirectUri = `${baseUrl}/api/auth/mobile/google/callback`;
+
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!googleClientId || !googleClientSecret) {
+    console.error('[Google Mobile Init] Missing credentials:', { hasClientId: !!googleClientId, hasClientSecret: !!googleClientSecret });
+    return res.status(500).json({ message: 'Google OAuth is not configured on this server. Please contact support.' });
+  }
+
+  const state = generateSecureCode();
+  oauthStateStore.set(state, { createdAt: Date.now(), platform: 'google' });
+
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${googleClientId}&` +
+    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+    `response_type=code&` +
+    `scope=${encodeURIComponent('openid email profile')}&` +
+    `state=${state}&` +
+    `access_type=offline&` +
+    `prompt=select_account`;
+
+  console.log('[Google Mobile Init] Auth URL generated, redirectUri:', redirectUri);
+
+  res.json({
+    authUrl: googleAuthUrl,
+    redirectUri,
+    state
+  });
+});
+
+/**
+ * Google OAuth callback for mobile app
+ * Handles the OAuth code exchange and redirects to mobile app with a one-time auth code
+ */
+router.get('/auth/mobile/google/callback', async (req: Request, res: Response) => {
+  try {
+    const { code, error: oauthError, state } = req.query;
+
+    if (oauthError) {
+      console.error('[Google Mobile Callback] OAuth error:', oauthError);
+      return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent(String(oauthError))}`);
+    }
+
+    if (!code) {
+      return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('No authorization code received')}`);
+    }
+
+    if (!state || !oauthStateStore.has(String(state))) {
+      console.error('[Google Mobile Callback] Invalid or missing state parameter');
+      return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Invalid authentication state')}`);
+    }
+
+    const stateData = oauthStateStore.get(String(state));
+    oauthStateStore.delete(String(state));
+
+    if (stateData?.platform !== 'google') {
+      return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Invalid authentication state')}`);
+    }
+
+    const baseUrl = process.env.SITE_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    const redirectUri = `${baseUrl}/api/auth/mobile/google/callback`;
+
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID!,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        code: String(code),
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const errText = await tokenResponse.text();
+      console.error('[Google Mobile Callback] Token exchange failed:', errText);
+      return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Failed to exchange authorization code')}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+
+    if (!userInfoResponse.ok) {
+      return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Failed to fetch Google user info')}`);
+    }
+
+    const googleUser = await userInfoResponse.json();
+    const { id, email, name, picture } = googleUser;
+
+    if (!id || !email) {
+      return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Google account missing required info')}`);
+    }
+
+    let user = await storage.getUserByEmail?.(email);
+    let isNewUser = false;
+
+    if (!user) {
+      isNewUser = true;
+      const timestamp = Date.now().toString().slice(-6);
+      const tempUsername = `temp_${id.substring(0, 8)}_${timestamp}`;
+
+      user = await storage.createUser({
+        username: tempUsername.toLowerCase(),
+        displayName: name || email.split('@')[0],
+        email: email.toLowerCase(),
+        password: '',
+        emailVerified: true,
+        avatarUrl: picture || null,
+        bannerUrl: null,
+        authProvider: 'google',
+        externalId: id,
+        userType: null,
+        ageRange: null
+      });
+    }
+
+    const needsOnboarding = !user.userType || user.username.startsWith('temp_');
+
+    if (!isNewUser && !user.avatarUrl && picture) {
+      user = await storage.updateUser(user.id, {
+        avatarUrl: picture,
+        authProvider: 'google',
+        externalId: id
+      }) || user;
+    }
+
+    try {
+      await storage.updateUserLoginTime(user.id, 0);
+      await StreakService.updateLoginStreak(user.id);
+    } catch (error) {
+      console.error('[Google Mobile Callback] Error updating login time/streak:', error);
+    }
+
+    const tokens = JWTService.generateTokenPair(user);
+
+    const authCode = generateSecureCode();
+    mobileAuthCodes.set(authCode, {
+      createdAt: Date.now(),
+      tokens,
+      userId: user.id,
+      needsOnboarding,
+      isNewUser
+    });
+
+    console.log('[Google Mobile Callback] Success, redirecting to app. User:', user.username, 'isNew:', isNewUser);
+    return res.redirect(`${RORK_APP_SCHEME}auth/callback?code=${authCode}`);
+
+  } catch (error) {
+    console.error('[Google Mobile Callback] Error:', error);
+    return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Google authentication failed')}`);
+  }
+});
+
+/**
  * Initiate Discord OAuth for mobile app
  * Returns the Discord OAuth URL that the mobile app should open in a browser
  * Includes state parameter for CSRF protection
@@ -697,11 +861,12 @@ router.post('/auth/mobile/google', async (req: Request, res: Response) => {
 router.get('/auth/mobile/discord/init', (req: Request, res: Response) => {
   const baseUrl = process.env.SITE_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
   const redirectUri = `${baseUrl}/api/auth/mobile/discord/callback`;
-  
+
   const discordClientId = process.env.DISCORD_CLIENT_ID;
-  
+
   if (!discordClientId) {
-    return res.status(500).json({ message: 'Discord client ID not configured' });
+    console.error('[Discord Mobile Init] DISCORD_CLIENT_ID not configured');
+    return res.status(500).json({ message: 'Discord OAuth is not configured on this server. Please contact support.' });
   }
   
   // Generate state token for CSRF protection

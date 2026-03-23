@@ -941,6 +941,14 @@ export const api = {
       return mapAuthResponse(response);
     },
 
+    // Mobile OAuth flow - Google (backend-initiated)
+    googleMobileInit: async () => {
+      console.log('[API] 🔵 Initializing Google mobile OAuth...');
+      return apiFetch<{ authUrl: string }>('/api/auth/mobile/google/init', {
+        method: 'GET',
+      });
+    },
+
     // Mobile OAuth flow - Discord
     discordMobileInit: async () => {
       console.log('[API] 🔵 Initializing Discord mobile OAuth...');

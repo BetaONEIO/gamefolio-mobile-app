@@ -23,30 +23,13 @@ import { isUsernameAppropriate } from '@/lib/profanity-filter';
 import CustomAlert from '@/components/CustomAlert';
 import BirthdayModal from '@/components/BirthdayModal';
 import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
 import * as Linking from 'expo-linking';
-import { Env } from '@/constants/Env';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const IS_NATIVE = Platform.OS !== 'web';
 
-const GOOGLE_CLIENT_ID = IS_NATIVE ? (Platform.select({
-  ios: Env.GOOGLE_IOS_CLIENT_ID,
-  android: Env.GOOGLE_ANDROID_CLIENT_ID,
-  default: Env.GOOGLE_CLIENT_ID,
-}) || 'placeholder') : 'placeholder';
-
-const GOOGLE_REDIRECT_URI = IS_NATIVE ? (Platform.OS === 'ios' 
-  ? `com.googleusercontent.apps.203672150024-jiibs6emo1qkqmusjsfr8qnus8ut0raa:/oauth2redirect/google`
-  : 'rork-app://auth/google/callback') : 'https://placeholder.com';
-
-if (IS_NATIVE) {
-  console.log('[OAuth] Google Client ID:', GOOGLE_CLIENT_ID);
-  console.log('[OAuth] Google Redirect URI:', GOOGLE_REDIRECT_URI);
-}
-
-
+const AUTH_CALLBACK_URL = 'rork-app://auth/callback';
 
 const DiscordIcon = () => (
   <Image
@@ -63,8 +46,6 @@ const GoogleIcon = () => (
     contentFit="contain"
   />
 );
-
-const AUTH_CALLBACK_URL = 'rork-app://auth/callback';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -106,153 +87,135 @@ export default function LoginScreen() {
   const debouncedUsername = useDebounce(username, 300);
   const isProcessingOAuthRef = useRef(false);
 
-  // Google OAuth discovery
-  const googleDiscovery = {
-    authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-    tokenEndpoint: 'https://oauth2.googleapis.com/token',
-    revocationEndpoint: 'https://oauth2.googleapis.com/revoke',
-  };
-
-  // Google auth request
-  const [googleRequest, googleResponse, promptGoogleAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: GOOGLE_CLIENT_ID,
-      scopes: ['openid', 'profile', 'email'],
-      redirectUri: GOOGLE_REDIRECT_URI,
-      responseType: AuthSession.ResponseType.Token,
-    },
-    googleDiscovery
-  );
-
-  // Handle Discord OAuth callback from deep link
-  const handleDiscordCallback = useCallback(async (code: string) => {
+  // Shared OAuth callback handler - used by both Google and Discord
+  const handleOAuthCallback = useCallback(async (code: string, provider: 'google' | 'discord') => {
     if (isProcessingOAuthRef.current) {
-      console.log('[Discord OAuth] Already processing, skipping...');
+      console.log(`[${provider} OAuth] Already processing, skipping...`);
       return;
     }
-    
+
     isProcessingOAuthRef.current = true;
-    setIsDiscordLoading(true);
-    
+    if (provider === 'discord') {
+      setIsDiscordLoading(true);
+    } else {
+      setIsGoogleLoading(true);
+    }
+
     try {
-      console.log('[Discord OAuth] Exchanging code for tokens...');
+      console.log(`[${provider} OAuth] Exchanging auth code for tokens...`);
       const data = await api.auth.mobileExchange(code);
-      
-      console.log('[Discord OAuth] Got user:', data.user.username);
+
+      console.log(`[${provider} OAuth] Got user:`, data.user.username);
       await loginUser(data.user, data.accessToken, data.refreshToken, data.expiresIn || 7 * 24 * 60 * 60);
-      
-      const needsOnboarding = data.needsOnboarding || 
-        !data.user.userType || 
-        !data.user.ageRange || 
+
+      const needsOnboarding = data.needsOnboarding ||
+        !data.user.userType ||
+        !data.user.ageRange ||
         (data.user.username && data.user.username.startsWith('temp_'));
-      
+
       if (needsOnboarding) {
-        console.log('[Discord OAuth] User needs onboarding, redirecting...');
+        console.log(`[${provider} OAuth] User needs onboarding, redirecting...`);
         router.replace('/onboarding');
       } else {
-        console.log('[Discord OAuth] Login complete, redirecting to home...');
+        console.log(`[${provider} OAuth] Login complete, redirecting to home...`);
         router.replace('/(drawer)/(tabs)/home');
       }
     } catch (error: any) {
-      console.error('[Discord OAuth] Error:', error);
-      showAlert('Discord Login Failed', error.message || 'Failed to authenticate with Discord');
+      console.error(`[${provider} OAuth] Error:`, error);
+      const providerName = provider === 'google' ? 'Google' : 'Discord';
+      showAlert(`${providerName} Login Failed`, error.message || `Failed to authenticate with ${providerName}`);
     } finally {
       setIsDiscordLoading(false);
+      setIsGoogleLoading(false);
       isProcessingOAuthRef.current = false;
     }
   }, [loginUser, router]);
 
-  // Listen for deep link callbacks
+  // Listen for deep link callbacks (handles both Google and Discord OAuth)
+  // Only processes rork-app:// scheme URLs to avoid triggering on regular web navigation
   useEffect(() => {
     const handleDeepLink = (event: { url: string }) => {
-      console.log('[Deep Link] Received URL:', event.url);
-      
+      if (!event.url.startsWith('rork-app://')) return;
+      console.log('[Deep Link] Received OAuth URL:', event.url);
+
       try {
         const url = new URL(event.url);
         const code = url.searchParams.get('code');
-        
+        const errorMsg = url.searchParams.get('message');
+
+        if (event.url.includes('auth/error') && errorMsg) {
+          console.error('[Deep Link] OAuth error:', errorMsg);
+          showAlert('Login Failed', decodeURIComponent(errorMsg));
+          return;
+        }
+
         if (code && event.url.includes('auth/callback')) {
-          console.log('[Deep Link] Got OAuth code, processing...');
-          handleDiscordCallback(code);
+          console.log('[Deep Link] Got OAuth auth code, processing...');
+          const provider = isGoogleLoading ? 'google' : 'discord';
+          handleOAuthCallback(code, provider);
         }
       } catch (e) {
         console.error('[Deep Link] Error parsing URL:', e);
       }
     };
 
-    // Check if app was opened via deep link
     Linking.getInitialURL().then((url) => {
-      if (url) {
-        console.log('[Deep Link] Initial URL:', url);
+      if (url && url.startsWith('rork-app://')) {
+        console.log('[Deep Link] Initial OAuth URL:', url);
         handleDeepLink({ url });
       }
     });
 
-    // Listen for deep links while app is open
     const subscription = Linking.addEventListener('url', handleDeepLink);
-    
     return () => {
       subscription.remove();
     };
-  }, [handleDiscordCallback]);
+  }, [handleOAuthCallback, isGoogleLoading]);
 
-  // Handle Google OAuth response
-  useEffect(() => {
-    const handleGoogleAuth = async () => {
-      if (googleResponse?.type === 'success' && googleResponse.params.access_token) {
-        setIsGoogleLoading(true);
-        try {
-          console.log('[Google OAuth] Got access token, fetching user info...');
-          
-          const userResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-            headers: {
-              Authorization: `Bearer ${googleResponse.params.access_token}`,
-            },
-          });
+  // Google OAuth - Backend initiated flow (same as Discord)
+  const handleGoogleLogin = async () => {
+    if (!IS_NATIVE) {
+      showAlert('Mobile Only', 'Google login is only available on the mobile app');
+      return;
+    }
 
-          if (!userResponse.ok) {
-            throw new Error('Failed to fetch Google user info');
-          }
+    setIsGoogleLoading(true);
+    try {
+      console.log('[Google OAuth] Getting auth URL from backend...');
+      const { authUrl } = await api.auth.googleMobileInit();
 
-          const googleUser = await userResponse.json();
-          console.log('[Google OAuth] Got user info:', googleUser.email);
+      console.log('[Google OAuth] Opening browser with auth URL...');
 
-          // Send to mobile backend endpoint
-          const data = await api.auth.googleMobileLogin({
-            email: googleUser.email,
-            displayName: googleUser.name || googleUser.email.split('@')[0],
-            photoURL: googleUser.picture || null,
-            uid: googleUser.id,
-          });
-          
-          await loginUser(data.user, data.accessToken, data.refreshToken, data.expiresIn || 7 * 24 * 60 * 60);
-          
-          const needsOnboarding = data.needsOnboarding || 
-            !data.user.userType || 
-            !data.user.ageRange || 
-            (data.user.username && data.user.username.startsWith('temp_'));
-          
-          if (needsOnboarding) {
-            console.log('[Google OAuth] User needs onboarding, redirecting...');
-            router.replace('/onboarding');
-          } else {
-            console.log('[Google OAuth] Login complete, redirecting to home...');
-            router.replace('/(drawer)/(tabs)/home');
-          }
-        } catch (error: any) {
-          console.error('[Google OAuth] Error:', error);
-          showAlert('Google Login Failed', error.message || 'Failed to authenticate with Google');
-        } finally {
-          setIsGoogleLoading(false);
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        AUTH_CALLBACK_URL,
+        { showInRecents: true }
+      );
+
+      console.log('[Google OAuth] Browser result:', result.type);
+
+      if (result.type === 'success' && result.url) {
+        const url = new URL(result.url);
+        const code = url.searchParams.get('code');
+        const errorMsg = url.searchParams.get('message');
+
+        if (errorMsg) {
+          showAlert('Google Login Failed', decodeURIComponent(errorMsg));
+        } else if (code) {
+          await handleOAuthCallback(code, 'google');
+        } else {
+          showAlert('Google Login Failed', 'No authorization code received');
         }
-      } else if (googleResponse?.type === 'error') {
-        console.error('[Google OAuth] Error response:', googleResponse.error);
-        showAlert('Google Login Failed', googleResponse.error?.message || 'Authentication was cancelled or failed');
+      } else if (result.type === 'cancel') {
+        console.log('[Google OAuth] User cancelled');
       }
-    };
-
-    handleGoogleAuth();
-  }, [googleResponse, loginUser, router]);
+    } catch (error: any) {
+      console.error('[Google OAuth] Error:', error);
+      showAlert('Google Login Failed', error.message || 'Failed to start Google login');
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   // Discord OAuth - Backend initiated flow
   const handleDiscordLogin = async () => {
@@ -260,33 +223,32 @@ export default function LoginScreen() {
       showAlert('Mobile Only', 'Discord login is only available on the mobile app');
       return;
     }
-    
+
     setIsDiscordLoading(true);
     try {
       console.log('[Discord OAuth] Getting auth URL from backend...');
       const { authUrl } = await api.auth.discordMobileInit();
-      
+
       console.log('[Discord OAuth] Opening browser with auth URL...');
-      console.log('[Discord OAuth] Auth URL:', authUrl);
-      
-      // Open browser for OAuth - it will redirect back to rork-app://auth/callback
+
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
         AUTH_CALLBACK_URL,
         { showInRecents: true }
       );
-      
+
       console.log('[Discord OAuth] Browser result:', result.type);
-      
+
       if (result.type === 'success' && result.url) {
-        // Extract code from callback URL
         const url = new URL(result.url);
         const code = url.searchParams.get('code');
-        
-        if (code) {
-          await handleDiscordCallback(code);
+        const errorMsg = url.searchParams.get('message');
+
+        if (errorMsg) {
+          showAlert('Discord Login Failed', decodeURIComponent(errorMsg));
+        } else if (code) {
+          await handleOAuthCallback(code, 'discord');
         } else {
-          console.error('[Discord OAuth] No code in callback URL');
           showAlert('Discord Login Failed', 'No authorization code received');
         }
       } else if (result.type === 'cancel') {
@@ -942,18 +904,11 @@ export default function LoginScreen() {
             </View>
 
             {/* Google Login Button */}
-            <TouchableOpacity 
-              style={[styles.socialButton, styles.googleButton, (IS_NATIVE && (!googleRequest || isGoogleLoading)) && styles.mainButtonDisabled]}
-              onPress={() => {
-                if (!IS_NATIVE) {
-                  showAlert('Mobile Only', 'Google login is only available on the mobile app');
-                  return;
-                }
-                console.log('[Google OAuth] Starting auth flow...');
-                promptGoogleAsync();
-              }}
+            <TouchableOpacity
+              style={[styles.socialButton, styles.googleButton, isGoogleLoading && styles.mainButtonDisabled]}
+              onPress={handleGoogleLogin}
               activeOpacity={0.8}
-              disabled={IS_NATIVE && (!googleRequest || isGoogleLoading)}
+              disabled={isGoogleLoading}
             >
               {isGoogleLoading ? (
                 <ActivityIndicator size="small" color="#1F2937" />
