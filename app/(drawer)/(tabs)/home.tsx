@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronRight, Eye, Video, VideoOff, Film, X, Upload, Camera } from 'lucide-react-native';
@@ -111,7 +112,8 @@ export default function HomeScreen() {
   const [reelCommentText, setReelCommentText] = useState('');
   const [isTabFocused, setIsTabFocused] = useState(true);
   const [isLevelModalVisible, setIsLevelModalVisible] = useState(false);
-  
+  const [proPromoDismissed, setProPromoDismissed] = useState(false);
+
   const router = useRouter();
   const { getAccessToken, user } = useAuth();
   const { favoriteGames } = useUser();
@@ -150,6 +152,17 @@ export default function HomeScreen() {
       };
     }, [])
   );
+
+  useEffect(() => {
+    AsyncStorage.getItem('proPromoDismissed').then(value => {
+      if (value === 'true') setProPromoDismissed(true);
+    });
+  }, []);
+
+  const handleDismissProPromo = useCallback(async () => {
+    setProPromoDismissed(true);
+    await AsyncStorage.setItem('proPromoDismissed', 'true');
+  }, []);
 
   const { data: recommendedClips = [], isLoading: isLoadingRecommended } = useQuery<Clip[]>({
     queryKey: ['clips', 'recommended', favoriteGames.map(g => g.id).join(','), favoriteGames.length],
@@ -596,8 +609,8 @@ export default function HomeScreen() {
         {/* Hero Banner */}
         <HeroBanner />
 
-        {/* Join Pro Today — only for non-pro users */}
-        {(!user || !user.isPro) && (
+        {/* Join Pro Today — only for non-pro users who haven't dismissed it */}
+        {(!user || !user.isPro) && !proPromoDismissed ? (
           <TouchableOpacity
             style={styles.proPromoCard}
             onPress={() => router.push('/(drawer)/store')}
@@ -616,9 +629,16 @@ export default function HomeScreen() {
               <View style={styles.proPromoButton}>
                 <Text style={styles.proPromoButtonText}>Join Pro</Text>
               </View>
+              <TouchableOpacity
+                style={styles.proPromoDismiss}
+                onPress={(e) => { e.stopPropagation(); handleDismissProPromo(); }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <X size={16} color="rgba(255,255,255,0.8)" />
+              </TouchableOpacity>
             </LinearGradient>
           </TouchableOpacity>
-        )}
+        ) : null}
 
         {/* Recommended for You */}
         {user ? (
@@ -1537,6 +1557,10 @@ const styles = StyleSheet.create({
     color: '#065F46',
     fontSize: 14,
     fontWeight: '800' as const,
+  },
+  proPromoDismiss: {
+    marginLeft: 10,
+    padding: 4,
   },
 
   loginPromptCard: {
