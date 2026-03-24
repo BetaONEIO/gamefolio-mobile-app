@@ -209,13 +209,6 @@ export default function VerifyCodeScreen() {
         >
           <ChevronLeft size={24} color={colors.text} />
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={handleLogout}
-          style={styles.logoutHeaderButton}
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <LogOut size={20} color={colors.textDim} />
-        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView 
@@ -343,6 +336,15 @@ export default function VerifyCodeScreen() {
                 </>
               )}
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.logoutButton}
+              activeOpacity={0.7}
+              onPress={handleLogout}
+            >
+              <LogOut size={16} color={colors.textDim} />
+              <Text style={styles.logoutButtonText}>Log out</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -375,12 +377,6 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'flex-start',
-  },
-  logoutHeaderButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
   },
   scrollContent: {
     flexGrow: 1,
@@ -505,5 +501,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 24,
     textAlign: 'center',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  logoutButtonText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
 });
