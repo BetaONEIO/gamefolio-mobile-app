@@ -21,7 +21,7 @@ import { nanoid } from "nanoid";
 import jwt from "jsonwebtoken";
 import { eq, sql } from "drizzle-orm";
 import { db } from "./db";
-import { users, nameTags, profileBorders, verificationBadges, storeItems, heroSlides, previousAvatars } from "@shared/schema";
+import { users, nameTags, profileBorders, verificationBadges, storeItems, heroSlides, previousAvatars, profileThemes } from "@shared/schema";
 
 // Helper function to generate unique share code
 function generateShareCode(): string {
@@ -2261,14 +2261,89 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
-  // GET /api/themes - Public endpoint for available profile themes
+  // GET /api/themes - Public endpoint for available profile themes (served from DB)
   app.get("/api/themes", async (req, res) => {
     try {
-      const { SELECTABLE_PROFILE_THEMES } = await import('../constants/themes');
-      res.json(SELECTABLE_PROFILE_THEMES);
+      const rows = await db
+        .select()
+        .from(profileThemes)
+        .where(eq(profileThemes.isActive, true))
+        .orderBy(profileThemes.displayOrder);
+      res.json(rows);
     } catch (err) {
       console.error("Error fetching themes:", err);
       res.status(500).json({ message: "Error fetching themes" });
+    }
+  });
+
+  // GET /api/admin/themes - Admin: get all themes (including inactive)
+  app.get("/api/admin/themes", adminMiddleware, async (req, res) => {
+    try {
+      const rows = await db.select().from(profileThemes).orderBy(profileThemes.displayOrder);
+      res.json(rows);
+    } catch (err) {
+      console.error("Error fetching admin themes:", err);
+      res.status(500).json({ message: "Error fetching themes" });
+    }
+  });
+
+  // POST /api/admin/themes - Admin: create a new theme
+  app.post("/api/admin/themes", adminMiddleware, async (req, res) => {
+    try {
+      const { id, name, description, bg, accent, preview, displayOrder, isActive } = req.body;
+      if (!id || !name || !bg || !accent) {
+        return res.status(400).json({ message: "id, name, bg, and accent are required" });
+      }
+      const [theme] = await db.insert(profileThemes).values({
+        id,
+        name,
+        description: description || '',
+        bg,
+        accent,
+        preview: Array.isArray(preview) ? preview : [],
+        displayOrder: displayOrder ?? 0,
+        isActive: isActive !== false,
+      }).returning();
+      res.status(201).json(theme);
+    } catch (err: any) {
+      console.error("Error creating theme:", err);
+      if (err?.code === '23505') return res.status(409).json({ message: "A theme with this ID already exists" });
+      res.status(500).json({ message: "Error creating theme" });
+    }
+  });
+
+  // PATCH /api/admin/themes/:id - Admin: update a theme
+  app.patch("/api/admin/themes/:id", adminMiddleware, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, description, bg, accent, preview, displayOrder, isActive } = req.body;
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      if (name !== undefined) updates.name = name;
+      if (description !== undefined) updates.description = description;
+      if (bg !== undefined) updates.bg = bg;
+      if (accent !== undefined) updates.accent = accent;
+      if (preview !== undefined) updates.preview = Array.isArray(preview) ? preview : [];
+      if (displayOrder !== undefined) updates.displayOrder = displayOrder;
+      if (isActive !== undefined) updates.isActive = isActive;
+      const [theme] = await db.update(profileThemes).set(updates).where(eq(profileThemes.id, id)).returning();
+      if (!theme) return res.status(404).json({ message: "Theme not found" });
+      res.json(theme);
+    } catch (err) {
+      console.error("Error updating theme:", err);
+      res.status(500).json({ message: "Error updating theme" });
+    }
+  });
+
+  // DELETE /api/admin/themes/:id - Admin: delete a theme
+  app.delete("/api/admin/themes/:id", adminMiddleware, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const [deleted] = await db.delete(profileThemes).where(eq(profileThemes.id, id)).returning();
+      if (!deleted) return res.status(404).json({ message: "Theme not found" });
+      res.json({ message: "Theme deleted", id });
+    } catch (err) {
+      console.error("Error deleting theme:", err);
+      res.status(500).json({ message: "Error deleting theme" });
     }
   });
 

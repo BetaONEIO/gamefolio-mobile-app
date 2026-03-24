@@ -1491,6 +1491,24 @@ export const xpSettings = pgTable("xp_settings", {
 export const insertXpSettingsSchema = createInsertSchema(xpSettings).omit({ id: true, updatedAt: true });
 export type InsertXpSetting = z.infer<typeof insertXpSettingsSchema>;
 
+// Profile themes table — admin-managed, seeded from SELECTABLE_PROFILE_THEMES at startup
+export const profileThemes = pgTable("profile_themes", {
+  id: text("id").primaryKey(), // slug, e.g. 'none', 'zombie', 'cyberpunk'
+  name: text("name").notNull(),
+  description: text("description").notNull().default(""),
+  bg: text("bg").notNull(),
+  accent: text("accent").notNull(),
+  preview: text("preview").array().notNull().default([]),
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertProfileThemeSchema = createInsertSchema(profileThemes).omit({ createdAt: true, updatedAt: true });
+export type ProfileTheme = typeof profileThemes.$inferSelect;
+export type InsertProfileTheme = z.infer<typeof insertProfileThemeSchema>;
+
 export const userStaking = pgTable("user_staking", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id).unique(),

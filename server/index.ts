@@ -162,6 +162,41 @@ app.use((req, res, next) => {
       console.warn('⚠️ hero_slides migration warning:', migrationErr?.message);
     }
 
+    try {
+      await pool`
+        CREATE TABLE IF NOT EXISTS profile_themes (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          bg TEXT NOT NULL,
+          accent TEXT NOT NULL,
+          preview TEXT[] NOT NULL DEFAULT '{}',
+          display_order INTEGER NOT NULL DEFAULT 0,
+          is_active BOOLEAN NOT NULL DEFAULT true,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        )
+      `;
+      // Seed from hardcoded list if table is empty
+      const [{ count }] = await pool`SELECT COUNT(*)::int AS count FROM profile_themes`;
+      if (count === 0) {
+        const { SELECTABLE_PROFILE_THEMES } = await import('../constants/themes');
+        for (let i = 0; i < SELECTABLE_PROFILE_THEMES.length; i++) {
+          const t = SELECTABLE_PROFILE_THEMES[i];
+          await pool`
+            INSERT INTO profile_themes (id, name, description, bg, accent, preview, display_order)
+            VALUES (${t.id}, ${t.name}, ${t.description}, ${t.bg}, ${t.accent}, ${t.preview}, ${i})
+            ON CONFLICT (id) DO NOTHING
+          `;
+        }
+        console.log(`✅ Schema migration: profile_themes table seeded with ${SELECTABLE_PROFILE_THEMES.length} themes`);
+      } else {
+        console.log(`✅ Schema migration: profile_themes table ready (${count} themes)`);
+      }
+    } catch (migrationErr: any) {
+      console.warn('⚠️ profile_themes migration warning:', migrationErr?.message);
+    }
+
     await registerRoutes(app, server);
 
     // Serve static email assets
