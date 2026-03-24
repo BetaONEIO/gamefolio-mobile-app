@@ -14,6 +14,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useOnboarding } from '@/context/OnboardingContext';
 import { AtSign, Check, X, Info } from 'lucide-react-native';
 import { useDebounce } from '@/hooks/useDebounce';
+import { trpcClient } from '@/lib/trpc';
 
 export default function OnboardingUsernameScreen() {
   const router = useRouter();
@@ -81,9 +82,14 @@ export default function OnboardingUsernameScreen() {
       setError(null);
 
       try {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setIsAvailable(true);
-        setUsername(debouncedUsername.toLowerCase());
+        const result = await trpcClient.auth.checkUsername.query({ username: debouncedUsername });
+        if (result.available) {
+          setIsAvailable(true);
+          setUsername(debouncedUsername.toLowerCase());
+        } else {
+          setIsAvailable(false);
+          setError('Username is already taken');
+        }
       } catch (err) {
         console.error('[Username] Error checking availability:', err);
         setError('Failed to check availability');

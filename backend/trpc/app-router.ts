@@ -1,6 +1,7 @@
 import { createTRPCRouter } from "./create-context";
 import hiRoute from "./routes/example/hi/route";
 import registerRoute from "./routes/auth/register/route";
+import checkUsernameRoute from "./routes/auth/check-username/route";
 import loginRoute from "./routes/auth/login/route";
 import tokenLoginRoute from "./routes/auth/token-login/route";
 import tokenRegisterRoute from "./routes/auth/token-register/route";
@@ -75,6 +76,7 @@ export const appRouter = createTRPCRouter({
   }),
   auth: createTRPCRouter({
     register: registerRoute,
+    checkUsername: checkUsernameRoute,
     login: loginRoute,
     tokenLogin: tokenLoginRoute,
     tokenRegister: tokenRegisterRoute,
