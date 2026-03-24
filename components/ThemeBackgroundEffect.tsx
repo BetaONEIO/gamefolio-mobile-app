@@ -3,8 +3,6 @@ import { View, StyleSheet, Animated, Text, useWindowDimensions } from 'react-nat
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg';
 
-// ─── NEO / MATRIX ─────────────────────────────────────────────────────────────
-
 function NeoMatrixEffect() {
   const { width: W, height: H } = useWindowDimensions();
   const COL_W = 38;
@@ -101,8 +99,6 @@ function NeoMatrixEffect() {
     </View>
   );
 }
-
-// ─── ZOMBIE ───────────────────────────────────────────────────────────────────
 
 function ZombieFogBlob({
   cx, cy, rx, ry, color, opacity, anim, dX, dY,
@@ -226,8 +222,6 @@ function ZombieEffect() {
     </View>
   );
 }
-
-// ─── CYBERPUNK ────────────────────────────────────────────────────────────────
 
 function CyberpunkEffect() {
   const { width: W, height: H } = useWindowDimensions();
@@ -357,9 +351,6 @@ function CyberpunkEffect() {
   );
 }
 
-// ─── GOTHIC ───────────────────────────────────────────────────────────────────
-// Floating purple particles rising upward
-
 function GothicParticleEffect() {
   const particles = useMemo(() =>
     Array.from({ length: 10 }, (_, i) => ({
@@ -412,9 +403,6 @@ function GothicParticleEffect() {
   );
 }
 
-// ─── BLOCKS / MINECRAFT ───────────────────────────────────────────────────────
-// Rotating pixel blocks falling downward
-
 function BlocksPixelEffect() {
   const blocks = useMemo(() =>
     Array.from({ length: 9 }, (_, i) => ({
@@ -466,9 +454,6 @@ function BlocksPixelEffect() {
     </View>
   );
 }
-
-// ─── FOREST ───────────────────────────────────────────────────────────────────
-// Falling leaves with lateral drift
 
 function ForestLeafEffect() {
   const leaves = useMemo(() =>
@@ -524,9 +509,6 @@ function ForestLeafEffect() {
   );
 }
 
-// ─── WATERMELON ───────────────────────────────────────────────────────────────
-// Falling and spinning watermelon seeds
-
 function WatermelonSeedEffect() {
   const seeds = useMemo(() =>
     Array.from({ length: 10 }, (_, i) => ({
@@ -577,9 +559,6 @@ function WatermelonSeedEffect() {
     </View>
   );
 }
-
-// ─── CARTOON ──────────────────────────────────────────────────────────────────
-// Colourful dots that bob upward and scale
 
 function CartoonDotEffect() {
   const dots = useMemo(() =>
@@ -634,9 +613,6 @@ function CartoonDotEffect() {
   );
 }
 
-// ─── MAC ──────────────────────────────────────────────────────────────────────
-// Soft blue glow orbs pulsing at corners
-
 function MacGlowEffect() {
   const glowAnim = useRef(new Animated.Value(0)).current;
 
@@ -685,9 +661,6 @@ function MacGlowEffect() {
     </View>
   );
 }
-
-// ─── PINK ─────────────────────────────────────────────────────────────────────
-// Pink sparkles rising with rotation and scale pop
 
 function PinkSparkleEffect() {
   const sparkles = useMemo(() =>
@@ -742,8 +715,6 @@ function PinkSparkleEffect() {
   );
 }
 
-// ─── MAIN EXPORT ──────────────────────────────────────────────────────────────
-
 interface ThemeBackgroundEffectProps {
   themeId: string | null | undefined;
 }
@@ -774,8 +745,6 @@ export function ThemeBackgroundEffect({ themeId }: ThemeBackgroundEffectProps) {
       return null;
   }
 }
-
-// ─── SHARED STYLES ────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
   neoColumn: {
