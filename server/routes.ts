@@ -743,7 +743,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       // Check if username already exists (normalize to lowercase)
       const existingUser = await storage.getUserByUsername(username.toLowerCase());
       if (existingUser) {
-        return res.status(400).json({ message: "Username is already taken" });
+        return res.status(200).json({ available: false, message: "Username is already taken" });
       }
 
       res.status(200).json({ available: true, message: "Username is available" });
