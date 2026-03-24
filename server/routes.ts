@@ -8286,7 +8286,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         return res.json([]);
       }
 
-      const allClips = await storage.getClipsByGameId(gameId, limit * 2);
+      const allClips = await storage.getClipsByGameId(gameId, limit * 5);
       const reels = allClips.filter((c) => c.videoType === 'reel').slice(0, limit);
       res.json(reels);
     } catch (err) {
