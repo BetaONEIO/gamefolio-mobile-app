@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { View, StyleSheet, Animated, Text } from 'react-native';
+import { View, StyleSheet, Animated, Text, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Defs, RadialGradient, Stop, Ellipse, Rect } from 'react-native-svg';
 import { ProfileThemeName } from '@/constants/themes';
 
 // ─── NEO / MATRIX ─────────────────────────────────────────────────────────────
 // Web-app reference: canvas matrix rain + vignette + sweeping scanline
 
 function NeoMatrixEffect() {
-  const columns = 7;
+  const { width: W, height: H } = useWindowDimensions();
+  const COL_W = 38;
+  const columns = Math.ceil(W / COL_W) + 1;
   const chars = '01アイウエカキクケコサタナハマヤラワ'.split('');
 
   const cols = useMemo(() =>
@@ -16,9 +19,9 @@ function NeoMatrixEffect() {
       delay: i * 350,
       duration: 2200 + i * 200,
       chars: Array.from({ length: 9 }, () => chars[Math.floor(Math.random() * chars.length)]),
-      left: i * 38 + 6,
+      left: i * COL_W + 6,
     })),
-    []
+    [columns]
   );
 
   const scanlineAnim = useRef(new Animated.Value(0)).current;
@@ -44,15 +47,15 @@ function NeoMatrixEffect() {
       anims.forEach(a => a.stop());
       scanLoop.stop();
     };
-  }, []);
+  }, [cols]);
 
-  const scanlineY = scanlineAnim.interpolate({ inputRange: [0, 1], outputRange: [-4, 320] });
+  const scanlineY = scanlineAnim.interpolate({ inputRange: [0, 1], outputRange: [-4, H] });
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {/* Character rain */}
       {cols.map((col, i) => {
-        const translateY = col.anim.interpolate({ inputRange: [0, 1], outputRange: [-100, 200] });
+        const translateY = col.anim.interpolate({ inputRange: [0, 1], outputRange: [-100, H + 20] });
         return (
           <Animated.View key={i} style={[s.neoColumn, { left: col.left, transform: [{ translateY }] }]}>
             {col.chars.map((ch, j) => (
@@ -107,11 +110,52 @@ function NeoMatrixEffect() {
 // ─── ZOMBIE ───────────────────────────────────────────────────────────────────
 // Web-app reference: 3 fog radial-gradient layers + green grid pulse + diagonal sweep beam
 
+function ZombieFogBlob({
+  cx, cy, rx, ry, color, opacity, anim, dX, dY,
+}: {
+  cx: number; cy: number; rx: number; ry: number;
+  color: string; opacity: number;
+  anim: Animated.Value; dX: number; dY: number;
+}) {
+  const id = useMemo(() => `zfog_${Math.random().toString(36).slice(2)}`, []);
+  const tx = anim.interpolate({ inputRange: [0, 1], outputRange: [0, dX] });
+  const ty = anim.interpolate({ inputRange: [0, 1], outputRange: [0, dY] });
+
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left: cx - rx,
+        top: cy - ry,
+        width: rx * 2,
+        height: ry * 2,
+        opacity,
+        transform: [{ translateX: tx }, { translateY: ty }],
+      }}
+      pointerEvents="none"
+    >
+      <Svg width={rx * 2} height={ry * 2}>
+        <Defs>
+          <RadialGradient id={id} cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+            <Stop offset="0%" stopColor={color} stopOpacity="1" />
+            <Stop offset="60%" stopColor={color} stopOpacity="0.5" />
+            <Stop offset="100%" stopColor={color} stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Ellipse cx={rx} cy={ry} rx={rx} ry={ry} fill={`url(#${id})`} />
+      </Svg>
+    </Animated.View>
+  );
+}
+
 function ZombieEffect() {
+  const { width: W, height: H } = useWindowDimensions();
   const fog1 = useRef(new Animated.Value(0)).current;
   const fog2 = useRef(new Animated.Value(0)).current;
   const fog3 = useRef(new Animated.Value(0)).current;
   const sweepAnim = useRef(new Animated.Value(0)).current;
+
+  const sweepRange = W + 600;
 
   useEffect(() => {
     const loops = [
@@ -135,43 +179,39 @@ function ZombieEffect() {
     return () => loops.forEach(l => l.stop());
   }, []);
 
-  const f1TX = fog1.interpolate({ inputRange: [0, 1], outputRange: [0, 22] });
-  const f1TY = fog1.interpolate({ inputRange: [0, 1], outputRange: [0, -15] });
-  const f2TX = fog2.interpolate({ inputRange: [0, 1], outputRange: [0, -27] });
-  const f2TY = fog2.interpolate({ inputRange: [0, 1], outputRange: [0, 18] });
-  const f3TX = fog3.interpolate({ inputRange: [0, 1], outputRange: [0, 15] });
-  const f3TY = fog3.interpolate({ inputRange: [0, 1], outputRange: [0, 20] });
-  const sweepTX = sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-500, 500] });
+  const sweepTX = sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-sweepRange / 2, sweepRange / 2] });
+  const gridRows = Math.ceil(H / 48) + 1;
+  const gridCols = Math.ceil(W / 48) + 1;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {/* Fog layer 1 — dark green blobs (zombieFogDrift1: 28s in web) */}
-      <Animated.View style={{ position: 'absolute', left: '5%', top: '25%', width: '70%', height: '50%', borderRadius: 999, backgroundColor: '#1a2e0a', opacity: 0.55, transform: [{ translateX: f1TX }, { translateY: f1TY }] }} />
-      <Animated.View style={{ position: 'absolute', left: '60%', top: '58%', width: '45%', height: '52%', borderRadius: 999, backgroundColor: '#0d1a05', opacity: 0.47, transform: [{ translateX: f1TX }, { translateY: f1TY }] }} />
-      <Animated.View style={{ position: 'absolute', left: '30%', top: '82%', width: '58%', height: '28%', borderRadius: 999, backgroundColor: '#9ae600', opacity: 0.07, transform: [{ translateX: f1TX }, { translateY: f1TY }] }} />
+      {/* Fog layer 1 (zombieFogDrift1: 28s in web) — dark green with radial falloff */}
+      <ZombieFogBlob cx={W * 0.38} cy={H * 0.48} rx={W * 0.50} ry={H * 0.35} color="#1a2e0a" opacity={0.85} anim={fog1} dX={22} dY={-15} />
+      <ZombieFogBlob cx={W * 0.78} cy={H * 0.72} rx={W * 0.36} ry={H * 0.26} color="#0d1a05" opacity={0.75} anim={fog1} dX={22} dY={-15} />
+      <ZombieFogBlob cx={W * 0.55} cy={H * 0.90} rx={W * 0.38} ry={H * 0.14} color="#9ae600" opacity={0.18} anim={fog1} dX={22} dY={-15} />
 
-      {/* Fog layer 2 — (zombieFogDrift2: 35s in web) */}
-      <Animated.View style={{ position: 'absolute', left: '54%', top: '5%', width: '52%', height: '62%', borderRadius: 999, backgroundColor: '#9ae600', opacity: 0.055, transform: [{ translateX: f2TX }, { translateY: f2TY }] }} />
-      <Animated.View style={{ position: 'absolute', left: '-15%', top: '66%', width: '45%', height: '48%', borderRadius: 999, backgroundColor: '#1a2e0a', opacity: 0.40, transform: [{ translateX: f2TX }, { translateY: f2TY }] }} />
-      <Animated.View style={{ position: 'absolute', left: '20%', top: '43%', width: '72%', height: '28%', borderRadius: 999, backgroundColor: '#0d1a05', opacity: 0.27, transform: [{ translateX: f2TX }, { translateY: f2TY }] }} />
+      {/* Fog layer 2 (zombieFogDrift2: 35s in web) */}
+      <ZombieFogBlob cx={W * 0.78} cy={H * 0.36} rx={W * 0.40} ry={H * 0.32} color="#9ae600" opacity={0.12} anim={fog2} dX={-27} dY={18} />
+      <ZombieFogBlob cx={W * 0.10} cy={H * 0.80} rx={W * 0.36} ry={H * 0.24} color="#1a2e0a" opacity={0.70} anim={fog2} dX={-27} dY={18} />
+      <ZombieFogBlob cx={W * 0.50} cy={H * 0.55} rx={W * 0.48} ry={H * 0.16} color="#0d1a05" opacity={0.55} anim={fog2} dX={-27} dY={18} />
 
-      {/* Fog layer 3 — (zombieFogDrift3: 44s in web) */}
-      <Animated.View style={{ position: 'absolute', left: '70%', top: '30%', width: '40%', height: '65%', borderRadius: 999, backgroundColor: '#9ae600', opacity: 0.04, transform: [{ translateX: f3TX }, { translateY: f3TY }] }} />
-      <Animated.View style={{ position: 'absolute', left: '-5%', top: '50%', width: '63%', height: '36%', borderRadius: 999, backgroundColor: '#1a2e0a', opacity: 0.33, transform: [{ translateX: f3TX }, { translateY: f3TY }] }} />
+      {/* Fog layer 3 (zombieFogDrift3: 44s in web) */}
+      <ZombieFogBlob cx={W * 0.85} cy={H * 0.55} rx={W * 0.32} ry={H * 0.32} color="#9ae600" opacity={0.09} anim={fog3} dX={15} dY={20} />
+      <ZombieFogBlob cx={W * 0.22} cy={H * 0.65} rx={W * 0.42} ry={H * 0.20} color="#1a2e0a" opacity={0.60} anim={fog3} dX={15} dY={20} />
 
       {/* Green grid pulse — zombie-bg-pulse */}
       <View style={[StyleSheet.absoluteFill, { opacity: 0.22 }]}>
-        {Array.from({ length: 20 }).map((_, i) => (
+        {Array.from({ length: gridRows }).map((_, i) => (
           <View key={`h${i}`} style={{ position: 'absolute', left: 0, right: 0, top: i * 48, height: 1, backgroundColor: '#9ae600' }} />
         ))}
-        {Array.from({ length: 12 }).map((_, i) => (
+        {Array.from({ length: gridCols }).map((_, i) => (
           <View key={`v${i}`} style={{ position: 'absolute', top: 0, bottom: 0, left: i * 48, width: 1, backgroundColor: '#9ae600' }} />
         ))}
       </View>
 
       {/* Diagonal green sweep beam — zombieMeshSweep */}
       <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
-        <View style={{ position: 'absolute', top: -300, left: -300, width: 1000, height: 1000, transform: [{ rotate: '20deg' }] }}>
+        <View style={{ position: 'absolute', top: -H, left: -W, width: W * 3, height: H * 3, transform: [{ rotate: '20deg' }] }}>
           <Animated.View style={[StyleSheet.absoluteFillObject, { transform: [{ translateX: sweepTX }] }]}>
             <LinearGradient
               colors={[
@@ -197,23 +237,27 @@ function ZombieEffect() {
 //                    static scanlines + sporadic RGB chromatic-aberration glitch
 
 function CyberpunkEffect() {
+  const { width: W, height: H } = useWindowDimensions();
   const meshAnim = useRef(new Animated.Value(0)).current;
   const sweepAnim = useRef(new Animated.Value(0)).current;
   const glitchAnim = useRef(new Animated.Value(0)).current;
 
-  // Diamond mesh dots at 40px intervals (offset every other row for diamond pattern)
+  const GRID = 40;
+  // Diamond mesh dots spanning full screen with 1-cell overflow on each edge
   const dots = useMemo(() => {
     const result: { left: number; top: number }[] = [];
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 10; col++) {
+    const cols = Math.ceil(W / GRID) + 2;
+    const rows = Math.ceil(H / GRID) + 2;
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
         result.push({
-          left: col * 40 + (row % 2 === 1 ? 20 : 0),
-          top: row * 40,
+          left: col * GRID + (row % 2 === 1 ? GRID / 2 : 0) - GRID,
+          top: row * GRID - GRID,
         });
       }
     }
     return result;
-  }, []);
+  }, [W, H]);
 
   useEffect(() => {
     // Mesh pulse: 0.18→0.32 opacity + 1.012 scale, 4s loop (cyberNodePulse in web)
@@ -256,7 +300,7 @@ function CyberpunkEffect() {
 
   const meshOpacity = meshAnim.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.32] });
   const meshScale = meshAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.012] });
-  const sweepTX = sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-500, 500] });
+  const sweepTX = sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-W * 1.5, W * 1.5] });
   const glitchOpacity = glitchAnim.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 0.30, 0.45] });
   const redTX = glitchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 7] });
   const blueTX = glitchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
@@ -283,19 +327,19 @@ function CyberpunkEffect() {
             }}
           />
         ))}
-        {/* 45° cyan diagonals */}
-        {Array.from({ length: 13 }).map((_, i) => (
-          <View key={`c${i}`} style={{ position: 'absolute', left: i * 40 - 20, top: -200, width: 1, height: 700, backgroundColor: '#00b8db', opacity: 0.10, transform: [{ rotate: '45deg' }] }} />
+        {/* 45° cyan diagonals — span full screen diagonally */}
+        {Array.from({ length: Math.ceil(W / GRID) + 4 }).map((_, i) => (
+          <View key={`c${i}`} style={{ position: 'absolute', left: i * GRID - GRID, top: -H, width: 1, height: H * 3, backgroundColor: '#00b8db', opacity: 0.10, transform: [{ rotate: '45deg' }] }} />
         ))}
         {/* −45° magenta diagonals */}
-        {Array.from({ length: 13 }).map((_, i) => (
-          <View key={`m${i}`} style={{ position: 'absolute', left: i * 40 - 20, top: -200, width: 1, height: 700, backgroundColor: '#e12afb', opacity: 0.07, transform: [{ rotate: '-45deg' }] }} />
+        {Array.from({ length: Math.ceil(W / GRID) + 4 }).map((_, i) => (
+          <View key={`m${i}`} style={{ position: 'absolute', left: i * GRID - GRID, top: -H, width: 1, height: H * 3, backgroundColor: '#e12afb', opacity: 0.07, transform: [{ rotate: '-45deg' }] }} />
         ))}
       </Animated.View>
 
       {/* ── Diagonal scan sweep: cyan → magenta beam (cyberScanSweep) ── */}
       <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
-        <View style={{ position: 'absolute', top: -300, left: -300, width: 1000, height: 1000, transform: [{ rotate: '15deg' }] }}>
+        <View style={{ position: 'absolute', top: -H, left: -W, width: W * 3, height: H * 3, transform: [{ rotate: '15deg' }] }}>
           <Animated.View style={[StyleSheet.absoluteFillObject, { transform: [{ translateX: sweepTX }] }]}>
             <LinearGradient
               colors={[
@@ -315,7 +359,7 @@ function CyberpunkEffect() {
 
       {/* ── Static horizontal scanlines (cyber-scanlines) ── */}
       <View style={[StyleSheet.absoluteFill, { opacity: 0.05 }]}>
-        {Array.from({ length: 30 }).map((_, i) => (
+        {Array.from({ length: Math.ceil(H / 6) }).map((_, i) => (
           <View key={i} style={{ height: 1, borderBottomWidth: 0.5, borderBottomColor: '#000000', marginBottom: 5 }} />
         ))}
       </View>
