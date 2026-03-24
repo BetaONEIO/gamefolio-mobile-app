@@ -11,57 +11,16 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
-import { File } from 'expo-file-system';
 
 import ConfirmationModal from '@/components/ConfirmationModal';
 import ImageEditorModal from '@/components/ImageEditorModal';
 import ProfilePictureModal from '@/components/ProfilePictureModal';
 import ProfileBorderModal, { AvatarBorder } from '@/components/ProfileBorderModal';
 import CustomAlert from '@/components/CustomAlert';
+import AppearanceStudioModal from '@/components/AppearanceStudioModal';
 import { SELECTABLE_PROFILE_THEMES, type ProfileThemeName } from '@/constants/themes';
 
-type TabType = 'profile' | 'appearance' | 'banner' | 'platforms';
-type AppearanceSubTab = 'themes' | 'background' | 'fonts' | 'nametags' | 'badges';
-
-const FONT_OPTIONS = [
-  { value: 'default', label: 'Default' },
-  { value: 'inter', label: 'Inter' },
-  { value: 'roboto', label: 'Roboto' },
-  { value: 'poppins', label: 'Poppins' },
-  { value: 'montserrat', label: 'Montserrat' },
-  { value: 'oswald', label: 'Oswald' },
-  { value: 'playfair', label: 'Playfair Display' },
-  { value: 'raleway', label: 'Raleway' },
-  { value: 'space-grotesk', label: 'Space Grotesk' },
-  { value: 'orbitron', label: 'Orbitron' },
-  { value: 'press-start', label: 'Press Start 2P' },
-  { value: 'russo-one', label: 'Russo One' },
-  { value: 'bangers', label: 'Bangers' },
-  { value: 'fredoka', label: 'Fredoka' },
-  { value: 'creepster', label: 'Creepster' },
-  { value: 'permanent-marker', label: 'Permanent Marker' },
-];
-
-const FONT_ANIMATIONS = [
-  { value: 'none', label: 'None' },
-  { value: 'bounce', label: 'Bounce' },
-  { value: 'shake', label: 'Shake' },
-  { value: 'pulse', label: 'Pulse' },
-  { value: 'float', label: 'Float' },
-  { value: 'wave', label: 'Wave' },
-  { value: 'flicker', label: 'Flicker' },
-];
-
-const FONT_EFFECTS = [
-  { value: 'none', label: 'None' },
-  { value: 'drop-shadow', label: 'Drop Shadow' },
-  { value: 'hard-shadow', label: 'Hard Shadow' },
-  { value: 'neon-green', label: 'Neon Green' },
-  { value: 'neon-blue', label: 'Neon Blue' },
-  { value: 'neon-pink', label: 'Neon Pink' },
-  { value: 'outline', label: 'Outline' },
-  { value: 'gradient-gold', label: 'Gradient Gold' },
-];
+type TabType = 'profile' | 'platform';
 
 const USER_TYPE_OPTIONS = [
   { id: 'streamer', label: 'Streamer', description: 'I stream games live', icon: 'video' as const, color: '#A855F7' },
@@ -75,15 +34,15 @@ const USER_TYPE_OPTIONS = [
 ];
 
 const QUICK_THEMES = [
-  { id: 'basic', name: 'Basic', accentColor: '#4ADE80', primaryColor: '#02172C', backgroundColor: '#0B2232' },
-  { id: 'purple_night', name: 'Purple Night', accentColor: '#A855F7', primaryColor: '#13103A', backgroundColor: '#1E1B4B' },
-  { id: 'golden_yellow', name: 'Golden Yellow', accentColor: '#FACC15', primaryColor: '#4A2800', backgroundColor: '#713F12' },
-  { id: 'rose_gold', name: 'Rose Gold', accentColor: '#F472B6', primaryColor: '#32112D', backgroundColor: '#4C1D4D' },
-  { id: 'sunset_orange', name: 'Sunset Orange', accentColor: '#FB7185', primaryColor: '#2A0C03', backgroundColor: '#431407' },
-  { id: 'arctic_blue', name: 'Arctic Blue', accentColor: '#38BDF8', primaryColor: '#062B45', backgroundColor: '#0C4A6E' },
-  { id: 'midnight_black', name: 'Midnight Black', accentColor: '#FFFFFF', primaryColor: '#111111', backgroundColor: '#000000' },
-  { id: 'white', name: 'White', accentColor: '#CCCCCC', primaryColor: '#E8E8E8', backgroundColor: '#FFFFFF' },
-  { id: 'baby_pink', name: 'Baby Pink', accentColor: '#F9A8D4', primaryColor: '#8A1250', backgroundColor: '#E0218A' },
+  { id: 'basic', name: 'Basic', accentColor: '#4ADE80', backgroundColor: '#0B2232' },
+  { id: 'purple_night', name: 'Purple Night', accentColor: '#A855F7', backgroundColor: '#1E1B4B' },
+  { id: 'golden_yellow', name: 'Golden Yellow', accentColor: '#FACC15', backgroundColor: '#713F12' },
+  { id: 'rose_gold', name: 'Rose Gold', accentColor: '#F472B6', backgroundColor: '#4C1D4D' },
+  { id: 'sunset_orange', name: 'Sunset Orange', accentColor: '#FB7185', backgroundColor: '#431407' },
+  { id: 'arctic_blue', name: 'Arctic Blue', accentColor: '#38BDF8', backgroundColor: '#0C4A6E' },
+  { id: 'midnight_black', name: 'Midnight Black', accentColor: '#FFFFFF', backgroundColor: '#000000' },
+  { id: 'white', name: 'White', accentColor: '#FFFFFF', backgroundColor: '#FFFFFF' },
+  { id: 'baby_pink', name: 'Baby Pink', accentColor: '#F9A8D4', backgroundColor: '#E0218A' },
 ];
 
 
@@ -93,7 +52,6 @@ export default function ProfileAppearance() {
   const { tab } = useLocalSearchParams<{ tab: string }>();
   const { user, updateUser, getAccessToken } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('profile');
-  const [activeAppearanceSubTab, setActiveAppearanceSubTab] = useState<AppearanceSubTab>('themes');
   const isSavingRef = useRef(false);
 
 
@@ -127,6 +85,9 @@ export default function ProfileAppearance() {
   // Profile Picture Tab State
   const [profilePictureTab, setProfilePictureTab] = useState<'uploaded' | 'nft'>('uploaded');
   
+  // Appearance Studio Modal State
+  const [appearanceStudioVisible, setAppearanceStudioVisible] = useState(false);
+
   // User Type State
   const [userType, setUserType] = useState<string>(user?.userType || '');
   const [showUserType, setShowUserType] = useState<boolean>(user?.showUserType !== false);
@@ -135,27 +96,11 @@ export default function ProfileAppearance() {
   const [steamUsername, setSteamUsername] = useState(user?.steamUsername || '');
   const [xboxUsername, setXboxUsername] = useState(user?.xboxUsername || '');
   const [playstationUsername, setPlaystationUsername] = useState(user?.playstationUsername || '');
+  const [twitterUsername, setTwitterUsername] = useState(user?.twitterUsername || '');
+  const [youtubeUsername, setYoutubeUsername] = useState(user?.youtubeUsername || '');
   const [discordUsername, setDiscordUsername] = useState(user?.discordUsername || '');
   const [epicUsername, setEpicUsername] = useState(user?.epicUsername || '');
   const [nintendoUsername, setNintendoUsername] = useState(user?.nintendoUsername || '');
-
-  // Font State
-  const [profileFont, setProfileFont] = useState(user?.profileFont || 'default');
-  const [profileFontAnimation, setProfileFontAnimation] = useState(user?.profileFontAnimation || 'none');
-  const [profileFontEffect, setProfileFontEffect] = useState(user?.profileFontEffect || 'none');
-  const [profileFontColor, setProfileFontColor] = useState(user?.profileFontColor || '#FFFFFF');
-
-  // Background State
-  const [profileBackgroundImageUrl, setProfileBackgroundImageUrl] = useState(user?.profileBackgroundImageUrl || null);
-  const [isUploadingBackground, setIsUploadingBackground] = useState(false);
-
-  // Name Tag State
-  const [selectedNameTagId, setSelectedNameTagId] = useState<number | null>(user?.selectedNameTagId ?? null);
-  const [isUpdatingNameTag, setIsUpdatingNameTag] = useState(false);
-
-  // Badge State
-  const [selectedBadgeId, setSelectedBadgeId] = useState<number | null>(null);
-  const [isUpdatingBadge, setIsUpdatingBadge] = useState(false);
 
   // Save State
   const [isSaved, setIsSaved] = useState(false);
@@ -175,14 +120,14 @@ export default function ProfileAppearance() {
   };
 
   useEffect(() => {
-    if (tab === 'profile' || tab === 'appearance' || tab === 'banner' || tab === 'platforms' || tab === 'platform') {
-      setActiveTab(tab === 'platform' ? 'platforms' : tab as TabType);
+    if (tab && tab === 'profile') {
+      setActiveTab(tab as TabType);
+    } else if (tab === 'appearance' || tab === 'banner') {
+      setAppearanceStudioVisible(true);
     }
   }, [tab]);
 
   // Profile Form State
-  const [username, setUsername] = useState(user?.username || '');
-  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [avatar, setAvatar] = useState(user?.avatarUrl || null);
@@ -192,13 +137,12 @@ export default function ProfileAppearance() {
     (user?.profileTheme as ProfileThemeName) || null
   );
 
-  // Appearance color state (Appearance tab)
-  const [accentColor, setAccentColor] = useState(user?.accentColor || '#4ADE80');
-  const [primaryColor, setPrimaryColor] = useState(user?.primaryColor || '#02172C');
-  const [backgroundColor, setBackgroundColor] = useState(user?.backgroundColor || '#0B2232');
-  const [avatarBorderColor, setAvatarBorderColor] = useState(user?.avatarBorderColor || user?.accentColor || '#4ADE80');
-
   // Calculate isDirty
+  const currentTheme = QUICK_THEMES.find(t => t.id === selectedThemeId);
+  const isThemeDirty = currentTheme && user && (
+    currentTheme.accentColor !== (user.accentColor || QUICK_THEMES[0].accentColor) || 
+    currentTheme.backgroundColor !== (user.backgroundColor || QUICK_THEMES[0].backgroundColor)
+  );
 
   const { data: avatarBordersData } = useQuery({
     queryKey: ['/api/profile-borders'],
@@ -207,28 +151,8 @@ export default function ProfileAppearance() {
       return api.profileBorders.getAll(token ?? undefined);
     },
   });
-  const currentUserBorderId = avatarBordersData?.selectedBorderId ?? null;
-
-  const { data: userNameTags } = useQuery({
-    queryKey: ['/api/user/name-tags'],
-    queryFn: async () => {
-      const token = await getAccessToken();
-      if (!token) return [];
-      return api.nameTags.getUserNameTags(token);
-    },
-    enabled: activeTab === 'appearance' && activeAppearanceSubTab === 'nametags',
-  });
-
-  const { data: userBadges } = useQuery({
-    queryKey: ['/api/user/verification-badges'],
-    queryFn: async () => {
-      const token = await getAccessToken();
-      if (!token) return [];
-      return api.verificationBadges.getUserBadges(token);
-    },
-    enabled: activeTab === 'appearance' && activeAppearanceSubTab === 'badges',
-  });
-  const isBorderDirty = (selectedBorder?.id ?? null) !== currentUserBorderId;
+  const currentUserBorderId = avatarBordersData?.selectedBorderId || null;
+  const isBorderDirty = selectedBorder?.id !== currentUserBorderId;
 
   console.log('[ProfileAppearance] Border state:', {
     selectedBorderId: selectedBorder?.id || null,
@@ -239,27 +163,20 @@ export default function ProfileAppearance() {
   const isProfileThemeDirty = selectedProfileTheme !== ((user?.profileTheme as ProfileThemeName) || null);
 
   const isDirty = 
-    (username !== (user?.username || '')) ||
     (displayName !== (user?.displayName || '')) ||
     (bio !== (user?.bio || '')) ||
     (avatar !== (user?.avatarUrl || null)) ||
     (banner !== (user?.bannerUrl || null)) ||
+    !!isThemeDirty ||
     isBorderDirty ||
     isProfileThemeDirty ||
-    (accentColor !== (user?.accentColor || '#4ADE80')) ||
-    (primaryColor !== (user?.primaryColor || '#02172C')) ||
-    (backgroundColor !== (user?.backgroundColor || '#0B2232')) ||
-    (avatarBorderColor !== (user?.avatarBorderColor || user?.accentColor || '#4ADE80')) ||
-    (profileFont !== (user?.profileFont || 'default')) ||
-    (profileFontAnimation !== (user?.profileFontAnimation || 'none')) ||
-    (profileFontEffect !== (user?.profileFontEffect || 'none')) ||
-    (profileFontColor !== (user?.profileFontColor || '#FFFFFF')) ||
-    (profileBackgroundImageUrl !== (user?.profileBackgroundImageUrl || null)) ||
     (userType !== (user?.userType || '')) ||
     (showUserType !== (user?.showUserType !== false)) ||
     (steamUsername !== (user?.steamUsername || '')) ||
     (xboxUsername !== (user?.xboxUsername || '')) ||
     (playstationUsername !== (user?.playstationUsername || '')) ||
+    (twitterUsername !== (user?.twitterUsername || '')) ||
+    (youtubeUsername !== (user?.youtubeUsername || '')) ||
     (discordUsername !== (user?.discordUsername || '')) ||
     (epicUsername !== (user?.epicUsername || '')) ||
     (nintendoUsername !== (user?.nintendoUsername || ''));
@@ -310,7 +227,6 @@ export default function ProfileAppearance() {
   // Update state when user loads (only if not dirty)
   useEffect(() => {
     if (user && !isDirty) {
-      setUsername(user.username || '');
       setDisplayName(user.displayName || '');
       setBio(user.bio || '');
       setAvatar(user.avatarUrl || null);
@@ -320,32 +236,14 @@ export default function ProfileAppearance() {
       setSteamUsername(user.steamUsername || '');
       setXboxUsername(user.xboxUsername || '');
       setPlaystationUsername(user.playstationUsername || '');
+      setTwitterUsername(user.twitterUsername || '');
+      setYoutubeUsername(user.youtubeUsername || '');
       setDiscordUsername(user.discordUsername || '');
       setEpicUsername(user.epicUsername || '');
       setNintendoUsername(user.nintendoUsername || '');
       
-      const newAccent = user.accentColor || '#4ADE80';
-      const newPrimary = user.primaryColor || '#02172C';
-      const newBg = user.backgroundColor || '#0B2232';
-      const newBorderColor = user.avatarBorderColor || user.accentColor || '#4ADE80';
-      setAccentColor(newAccent);
-      setPrimaryColor(newPrimary);
-      setBackgroundColor(newBg);
-      setAvatarBorderColor(newBorderColor);
-
-      setProfileFont(user.profileFont || 'default');
-      setProfileFontAnimation(user.profileFontAnimation || 'none');
-      setProfileFontEffect(user.profileFontEffect || 'none');
-      setProfileFontColor(user.profileFontColor || '#FFFFFF');
-      setProfileBackgroundImageUrl(user.profileBackgroundImageUrl || null);
-      setSelectedNameTagId(user.selectedNameTagId ?? null);
-
-      const theme = QUICK_THEMES.find(t =>
-        t.accentColor === newAccent &&
-        t.backgroundColor === newBg &&
-        t.primaryColor === newPrimary
-      );
-      setSelectedThemeId(theme ? theme.id : '');
+      const theme = QUICK_THEMES.find(t => t.accentColor === user.accentColor && t.backgroundColor === user.backgroundColor);
+      setSelectedThemeId(theme ? theme.id : 'basic');
       setSelectedProfileTheme((user.profileTheme as ProfileThemeName) || null);
       
       if (avatarBordersData?.selectedBorderId) {
@@ -409,13 +307,15 @@ export default function ProfileAppearance() {
   
 
   const handleSave = async () => {
+    console.log('[ProfileAppearance] handleSave called');
+    console.log('[ProfileAppearance] user:', user);
+    console.log('[ProfileAppearance] user exists:', !!user);
+    console.log('[ProfileAppearance] user id:', user?.id);
+    console.log('[ProfileAppearance] user username:', user?.username);
+    
     if (!user) {
+      console.error('[ProfileAppearance] No user found - showing alert');
       showAlert('Error', 'You must be logged in to save changes', 'error');
-      return;
-    }
-
-    if (usernameError || !username || username.trim().length === 0) {
-      showAlert('Error', usernameError || 'Username is required', 'error');
       return;
     }
 
@@ -423,35 +323,38 @@ export default function ProfileAppearance() {
       isSavingRef.current = true;
       setIsSaving(true);
 
+      console.log('[ProfileAppearance] Getting access token...');
       let token = await getAccessToken();
+      console.log('[ProfileAppearance] Access token received:', !!token);
+      console.log('[ProfileAppearance] Token length:', token?.length);
       
       if (!token) {
+        console.error('[ProfileAppearance] No token received, checking authTokens...');
+        console.error('[ProfileAppearance] This might be a dev account or token refresh issue');
         showAlert('Error', 'Session expired. Please log out and log in again.', 'error');
         return;
       }
       
+      const theme = QUICK_THEMES.find(t => t.id === selectedThemeId);
+
+      console.log('[Profile] Saving profile:', { displayName, bio, avatar, banner, theme });
+      
       const updateData = {
-        username: username || undefined,
         displayName,
         bio,
         avatarUrl: avatar || undefined,
         bannerUrl: banner || undefined,
-        accentColor,
-        primaryColor,
-        backgroundColor,
-        avatarBorderColor,
+        accentColor: theme?.accentColor,
+        backgroundColor: theme?.backgroundColor,
         profileBorderId: selectedBorder?.id || null,
         profileTheme: selectedProfileTheme || undefined,
-        profileFont,
-        profileFontAnimation,
-        profileFontEffect,
-        profileFontColor,
-        profileBackgroundImageUrl: profileBackgroundImageUrl || null,
         userType: userType || null,
         showUserType,
         steamUsername: steamUsername || null,
         xboxUsername: xboxUsername || null,
         playstationUsername: playstationUsername || null,
+        twitterUsername: twitterUsername || null,
+        youtubeUsername: youtubeUsername || null,
         discordUsername: discordUsername || null,
         epicUsername: epicUsername || null,
         nintendoUsername: nintendoUsername || null,
@@ -475,103 +378,6 @@ export default function ProfileAppearance() {
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
-    }
-  };
-
-  const pickBannerImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: false,
-        quality: 1,
-      });
-      if (!result.canceled) {
-        setTempImageUri(result.assets[0].uri);
-        setTempImageDimensions({
-          width: result.assets[0].width,
-          height: result.assets[0].height,
-        });
-        setEditingType('banner');
-        setEditorVisible(true);
-      }
-    } catch (error) {
-      showAlert('Error', 'Failed to pick banner image', 'error');
-    }
-  };
-
-  const uploadBackgroundImage = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: false,
-        quality: 0.8,
-      });
-      if (!result.canceled) {
-        const token = await getAccessToken();
-        if (!token) return;
-        setIsUploadingBackground(true);
-        const formData = new FormData();
-        const file = new File(result.assets[0].uri);
-        formData.append('backgroundImage', file as any);
-        const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL || 'https://app.gamefolio.com'}/api/upload/profile-background`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        });
-        if (!response.ok) throw new Error('Upload failed');
-        const data = await response.json();
-        setProfileBackgroundImageUrl(data.url || data.imageUrl || data.backgroundImageUrl);
-      }
-    } catch (error) {
-      showAlert('Error', 'Failed to upload background image', 'error');
-    } finally {
-      setIsUploadingBackground(false);
-    }
-  };
-
-  const handleSelectNameTag = async (tagId: number | null) => {
-    const token = await getAccessToken();
-    if (!token) return;
-    setIsUpdatingNameTag(true);
-    try {
-      await api.nameTags.setSelectedNameTag(tagId, token);
-      setSelectedNameTagId(tagId);
-      if (user) updateUser({ ...user, selectedNameTagId: tagId });
-    } catch {
-      showAlert('Error', 'Failed to update name tag', 'error');
-    } finally {
-      setIsUpdatingNameTag(false);
-    }
-  };
-
-  const handleSelectBadge = async (badgeId: number | null) => {
-    const token = await getAccessToken();
-    if (!token) return;
-    setIsUpdatingBadge(true);
-    try {
-      await api.verificationBadges.setSelectedBadge(badgeId, token);
-      setSelectedBadgeId(badgeId);
-    } catch {
-      showAlert('Error', 'Failed to update badge', 'error');
-    } finally {
-      setIsUpdatingBadge(false);
-    }
-  };
-
-  const handleUsernameChange = (value: string) => {
-    setUsername(value);
-    if (value.length === 0) {
-      setUsernameError('Username is required');
-    } else if (!/^[a-zA-Z]/.test(value)) {
-      setUsernameError('Username must start with a letter');
-    } else if (value.length < 3) {
-      setUsernameError('Username must be at least 3 characters');
-    } else if (value.length > 20) {
-      setUsernameError('Username must be 20 characters or fewer');
-    } else if (!/^[a-zA-Z0-9_]+$/.test(value)) {
-      setUsernameError('Only letters, numbers, and underscores are allowed');
-    } else {
-      setUsernameError(null);
     }
   };
 
@@ -623,27 +429,19 @@ export default function ProfileAppearance() {
             </TouchableOpacity>
 
             <TouchableOpacity 
-              style={[styles.tab, activeTab === 'appearance' && styles.activeTab]}
-              onPress={() => setActiveTab('appearance')}
+              style={[styles.tab, activeTab === 'platform' && styles.activeTab]} 
+              onPress={() => setActiveTab('platform')}
             >
-              <Palette size={18} color={activeTab === 'appearance' ? '#FFF' : '#94A3B8'} />
-              <Text style={[styles.tabText, activeTab === 'appearance' && styles.activeTabText]}>Appearance</Text>
+              <Link size={18} color={activeTab === 'platform' ? '#FFF' : '#94A3B8'} />
+              <Text style={[styles.tabText, activeTab === 'platform' && styles.activeTabText]}>Platforms</Text>
             </TouchableOpacity>
-
+            
             <TouchableOpacity 
-              style={[styles.tab, activeTab === 'banner' && styles.activeTab]}
-              onPress={() => setActiveTab('banner')}
+              style={styles.tab} 
+              onPress={() => setAppearanceStudioVisible(true)}
             >
-              <ImageIcon size={18} color={activeTab === 'banner' ? '#FFF' : '#94A3B8'} />
-              <Text style={[styles.tabText, activeTab === 'banner' && styles.activeTabText]}>Banner Images</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'platforms' && styles.activeTab]} 
-              onPress={() => setActiveTab('platforms')}
-            >
-              <Link size={18} color={activeTab === 'platforms' ? '#FFF' : '#94A3B8'} />
-              <Text style={[styles.tabText, activeTab === 'platforms' && styles.activeTabText]}>Platforms</Text>
+              <Palette size={18} color="#94A3B8" />
+              <Text style={styles.tabText}>Appearance</Text>
             </TouchableOpacity>
 
           </ScrollView>
@@ -740,24 +538,6 @@ export default function ProfileAppearance() {
                 )}
 
                 <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Username</Text>
-                  <TextInput
-                    style={[styles.input, usernameError ? styles.inputError : null]}
-                    value={username}
-                    onChangeText={handleUsernameChange}
-                    placeholder="Enter username"
-                    placeholderTextColor="#64748B"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                  {usernameError ? (
-                    <Text style={styles.inputErrorText}>{usernameError}</Text>
-                  ) : (
-                    <Text style={styles.inputHelper}>3–20 characters. Letters, numbers, and underscores only.</Text>
-                  )}
-                </View>
-
-                <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Display Name</Text>
                   <TextInput
                     style={styles.input}
@@ -823,441 +603,40 @@ export default function ProfileAppearance() {
                   )}
                 </View>
 
-                {renderSaveButton(handleSaveProfile)}
-              </View>
-            )}
-
-            {activeTab === 'appearance' && (
-              <View>
-                {/* Appearance Sub-Tabs */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subTabsContent} style={styles.subTabsContainer}>
-                  {([
-                    { id: 'themes', label: 'Themes' },
-                    { id: 'background', label: 'Background' },
-                    { id: 'fonts', label: 'Fonts' },
-                    { id: 'nametags', label: 'Name Tags' },
-                    { id: 'badges', label: 'Badges' },
-                  ] as { id: AppearanceSubTab; label: string }[]).map((sub) => (
-                    <TouchableOpacity
-                      key={sub.id}
-                      style={[styles.subTab, activeAppearanceSubTab === sub.id && styles.subTabActive]}
-                      onPress={() => setActiveAppearanceSubTab(sub.id)}
-                    >
-                      <Text style={[styles.subTabText, activeAppearanceSubTab === sub.id && styles.subTabTextActive]}>{sub.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-
-                {/* Themes Sub-Tab */}
-                {activeAppearanceSubTab === 'themes' && (
-                  <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Themes</Text>
-                    <Text style={styles.inputHelper}>Customize how your profile looks with colors and themes.</Text>
-
-                    <Text style={styles.inputLabel}>Quick Themes</Text>
-                    <Text style={styles.inputHelper}>Pick a preset theme to set all colors at once.</Text>
-                    <View style={styles.themesGrid}>
-                      {QUICK_THEMES.map((t) => {
-                        const isSelected = selectedThemeId === t.id;
-                        return (
-                          <TouchableOpacity
-                            key={t.id}
-                            style={[styles.themeOption, isSelected && styles.themeOptionSelected]}
-                            onPress={() => {
-                              setSelectedThemeId(t.id);
-                              setAccentColor(t.accentColor);
-                              setPrimaryColor(t.primaryColor);
-                              setBackgroundColor(t.backgroundColor);
-                              setAvatarBorderColor(t.accentColor);
-                            }}
-                            activeOpacity={0.8}
-                          >
-                            <View style={[styles.themePreview, { backgroundColor: t.backgroundColor, borderColor: isSelected ? t.accentColor : '#334155', borderWidth: isSelected ? 2 : 1 }]}>
-                              <View style={[styles.themeAccent, { backgroundColor: t.accentColor }]} />
-                            </View>
-                            <Text style={[styles.themeName, isSelected && styles.themeNameSelected]}>{t.name}</Text>
-                            {isSelected && (
-                              <View style={{ position: 'absolute', top: 6, right: 6, width: 16, height: 16, borderRadius: 8, backgroundColor: t.accentColor, alignItems: 'center', justifyContent: 'center' }}>
-                                <Check size={10} color="#000" />
-                              </View>
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Accent Color</Text>
-                      <Text style={styles.inputHelper}>Highlights, buttons, and interactive elements.</Text>
-                      <View style={styles.colorRow}>
-                        <View style={[styles.colorSwatch, { backgroundColor: accentColor }]} />
-                        <TextInput
-                          style={[styles.input, styles.colorInput]}
-                          value={accentColor}
-                          onChangeText={(v) => { setAccentColor(v); setSelectedThemeId(''); }}
-                          placeholder="#4ADE80"
-                          placeholderTextColor="#64748B"
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          maxLength={7}
-                        />
-                      </View>
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Primary Color</Text>
-                      <Text style={styles.inputHelper}>Background elements and cards on your profile.</Text>
-                      <View style={styles.colorRow}>
-                        <View style={[styles.colorSwatch, { backgroundColor: primaryColor }]} />
-                        <TextInput
-                          style={[styles.input, styles.colorInput]}
-                          value={primaryColor}
-                          onChangeText={(v) => { setPrimaryColor(v); setSelectedThemeId(''); }}
-                          placeholder="#02172C"
-                          placeholderTextColor="#64748B"
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          maxLength={7}
-                        />
-                      </View>
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Avatar Border Color</Text>
-                      <Text style={styles.inputHelper}>The border around your profile picture.</Text>
-                      <View style={styles.colorRow}>
-                        <View style={[styles.colorSwatch, { backgroundColor: avatarBorderColor }]} />
-                        <TextInput
-                          style={[styles.input, styles.colorInput]}
-                          value={avatarBorderColor}
-                          onChangeText={(v) => { setAvatarBorderColor(v); setSelectedThemeId(''); }}
-                          placeholder="#4ADE80"
-                          placeholderTextColor="#64748B"
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          maxLength={7}
-                        />
-                      </View>
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Profile Picture Border</Text>
-                      <Text style={styles.inputHelper}>Select a border to customize the frame around your profile picture.</Text>
-                      <TouchableOpacity
-                        style={styles.borderButton}
-                        onPress={() => setBorderModalVisible(true)}
-                        activeOpacity={0.8}
-                      >
-                        {selectedBorder ? (
-                          <Image source={{ uri: selectedBorder.imageUrl }} style={styles.borderPreviewImage} />
-                        ) : (
-                          <View style={styles.borderNone}>
-                            <Text style={styles.borderNoneText}>No border selected</Text>
-                          </View>
-                        )}
-                        <View style={styles.borderButtonRight}>
-                          <Text style={styles.borderButtonLabel}>{selectedBorder ? selectedBorder.name : 'Choose Border'}</Text>
-                          <Text style={styles.borderButtonHint}>Tap to browse unlocked borders</Text>
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.inputGroup}>
-                      <Text style={styles.inputLabel}>Profile Page Theme</Text>
-                      <Text style={styles.inputHelper}>Choose a design theme for your public profile page.</Text>
-                      <View style={styles.profileThemesRow}>
-                        {SELECTABLE_PROFILE_THEMES.map((t) => {
-                          const isActive = selectedProfileTheme === t.id;
-                          return (
-                            <TouchableOpacity
-                              key={t.id}
-                              style={[styles.profileThemeCard, isActive && styles.profileThemeCardActive]}
-                              onPress={() => setSelectedProfileTheme(isActive ? null : t.id)}
-                              activeOpacity={0.8}
-                            >
-                              <View style={[styles.profileThemeSwatch, { backgroundColor: t.bg }]}>
-                                <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[1] }]} />
-                                <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[2], marginLeft: 6 }]} />
-                              </View>
-                              <Text style={[styles.profileThemeLabel, isActive && styles.profileThemeLabelActive]}>{t.name}</Text>
-                              {isActive && (
-                                <View style={styles.profileThemeCheck}>
-                                  <Check size={12} color="#FFF" />
-                                </View>
-                              )}
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
-
-                    {renderSaveButton(handleSaveProfile)}
-                  </View>
-                )}
-
-                {/* Background Sub-Tab */}
-                {activeAppearanceSubTab === 'background' && (
-                  <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Background</Text>
-                    <Text style={styles.inputHelper}>Set a custom background image for your profile page.</Text>
-
-                    {profileBackgroundImageUrl ? (
-                      <View style={styles.bannerPreviewContainer}>
-                        <Image source={{ uri: profileBackgroundImageUrl }} style={styles.previewBannerImage} resizeMode="cover" />
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Profile Page Theme</Text>
+                  <Text style={styles.inputHelper}>Choose a design theme for your public profile page.</Text>
+                  <View style={styles.profileThemesRow}>
+                    {SELECTABLE_PROFILE_THEMES.map((t) => {
+                      const isActive = selectedProfileTheme === t.id;
+                      return (
                         <TouchableOpacity
-                          style={styles.removeBannerButton}
-                          onPress={() => setProfileBackgroundImageUrl(null)}
+                          key={t.id}
+                          style={[styles.profileThemeCard, isActive && styles.profileThemeCardActive]}
+                          onPress={() => setSelectedProfileTheme(isActive ? null : t.id)}
+                          activeOpacity={0.8}
                         >
-                          <Text style={styles.removeBannerButtonText}>Remove Background</Text>
+                          <View style={[styles.profileThemeSwatch, { backgroundColor: t.bg }]}>
+                            <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[1] }]} />
+                            <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[2], marginLeft: 6 }]} />
+                          </View>
+                          <Text style={[styles.profileThemeLabel, isActive && styles.profileThemeLabelActive]}>{t.name}</Text>
+                          {isActive && (
+                            <View style={styles.profileThemeCheck}>
+                              <Check size={12} color="#FFF" />
+                            </View>
+                          )}
                         </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <View style={styles.bannerPlaceholder}>
-                        <ImageIcon size={36} color="#334155" />
-                        <Text style={styles.bannerPlaceholderText}>No background image set</Text>
-                        <Text style={styles.bannerPlaceholderSub}>Your profile will use the default background</Text>
-                      </View>
-                    )}
-
-                    <TouchableOpacity
-                      style={[styles.uploadButton, { marginTop: 16 }]}
-                      onPress={uploadBackgroundImage}
-                      disabled={isUploadingBackground}
-                    >
-                      {isUploadingBackground ? (
-                        <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
-                      ) : (
-                        <Camera size={18} color="#FFF" style={{ marginRight: 8 }} />
-                      )}
-                      <Text style={styles.uploadButtonText}>{isUploadingBackground ? 'Uploading...' : 'Upload Background'}</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.inputHelper}>Recommended: 1920x1080 or wider. Max 10MB. JPG, PNG.</Text>
-
-                    {renderSaveButton(handleSaveProfile)}
+                      );
+                    })}
                   </View>
-                )}
-
-                {/* Fonts Sub-Tab */}
-                {activeAppearanceSubTab === 'fonts' && (
-                  <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Fonts</Text>
-                    <Text style={styles.inputHelper}>Choose how your username appears on your profile page.</Text>
-
-                    <Text style={styles.inputLabel}>Font Family</Text>
-                    <Text style={styles.inputHelper}>This font will be applied to your username on your web profile.</Text>
-                    <View style={styles.fontList}>
-                      {FONT_OPTIONS.map((font) => {
-                        const isSelected = profileFont === font.value;
-                        return (
-                          <TouchableOpacity
-                            key={font.value}
-                            style={[styles.fontOption, isSelected && styles.fontOptionSelected]}
-                            onPress={() => setProfileFont(font.value)}
-                          >
-                            <Text style={[styles.fontOptionText, isSelected && styles.fontOptionTextSelected]}>{font.label}</Text>
-                            {isSelected && <Check size={16} color="#4ADE80" />}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-
-                    <Text style={[styles.inputLabel, { marginTop: 20 }]}>Font Color</Text>
-                    <View style={styles.colorRow}>
-                      <View style={[styles.colorSwatch, { backgroundColor: profileFontColor }]} />
-                      <TextInput
-                        style={[styles.input, styles.colorInput]}
-                        value={profileFontColor}
-                        onChangeText={setProfileFontColor}
-                        placeholder="#FFFFFF"
-                        placeholderTextColor="#64748B"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                        maxLength={7}
-                      />
-                    </View>
-
-                    <Text style={[styles.inputLabel, { marginTop: 20 }]}>Font Animation</Text>
-                    <Text style={styles.inputHelper}>Animate your username on your profile page.</Text>
-                    <View style={styles.fontList}>
-                      {FONT_ANIMATIONS.map((anim) => {
-                        const isSelected = profileFontAnimation === anim.value;
-                        return (
-                          <TouchableOpacity
-                            key={anim.value}
-                            style={[styles.fontOption, isSelected && styles.fontOptionSelected]}
-                            onPress={() => setProfileFontAnimation(anim.value)}
-                          >
-                            <Text style={[styles.fontOptionText, isSelected && styles.fontOptionTextSelected]}>{anim.label}</Text>
-                            {isSelected && <Check size={16} color="#4ADE80" />}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-
-                    <Text style={[styles.inputLabel, { marginTop: 20 }]}>Font Effect</Text>
-                    <Text style={styles.inputHelper}>Apply a visual effect to your username text.</Text>
-                    <View style={styles.fontList}>
-                      {FONT_EFFECTS.map((effect) => {
-                        const isSelected = profileFontEffect === effect.value;
-                        return (
-                          <TouchableOpacity
-                            key={effect.value}
-                            style={[styles.fontOption, isSelected && styles.fontOptionSelected]}
-                            onPress={() => setProfileFontEffect(effect.value)}
-                          >
-                            <Text style={[styles.fontOptionText, isSelected && styles.fontOptionTextSelected]}>{effect.label}</Text>
-                            {isSelected && <Check size={16} color="#4ADE80" />}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-
-                    {renderSaveButton(handleSaveProfile)}
-                  </View>
-                )}
-
-                {/* Name Tags Sub-Tab */}
-                {activeAppearanceSubTab === 'nametags' && (
-                  <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Name Tags</Text>
-                    <Text style={styles.inputHelper}>Choose a name tag to display on your profile. Name tags appear below your username.</Text>
-
-                    <TouchableOpacity
-                      style={[styles.nameTagOption, selectedNameTagId === null && styles.nameTagOptionSelected]}
-                      onPress={() => handleSelectNameTag(null)}
-                      disabled={isUpdatingNameTag}
-                    >
-                      <View style={[styles.nameTagIconPlaceholder, { backgroundColor: '#1E293B' }]}>
-                        <Text style={{ color: '#64748B', fontSize: 12 }}>None</Text>
-                      </View>
-                      <Text style={[styles.nameTagLabel, selectedNameTagId === null && styles.nameTagLabelSelected]}>No Name Tag</Text>
-                      {selectedNameTagId === null && <Check size={16} color="#4ADE80" />}
-                    </TouchableOpacity>
-
-                    {userNameTags && userNameTags.length > 0 ? (
-                      userNameTags.map((tag: { id: number; name: string; imageUrl: string; rarity: string }) => {
-                        const isSelected = selectedNameTagId === tag.id;
-                        return (
-                          <TouchableOpacity
-                            key={tag.id}
-                            style={[styles.nameTagOption, isSelected && styles.nameTagOptionSelected]}
-                            onPress={() => handleSelectNameTag(tag.id)}
-                            disabled={isUpdatingNameTag}
-                          >
-                            <Image source={{ uri: tag.imageUrl }} style={styles.nameTagImage} resizeMode="contain" />
-                            <View style={{ flex: 1 }}>
-                              <Text style={[styles.nameTagLabel, isSelected && styles.nameTagLabelSelected]}>{tag.name}</Text>
-                              <Text style={styles.nameTagRarity}>{tag.rarity}</Text>
-                            </View>
-                            {isSelected && <Check size={16} color="#4ADE80" />}
-                          </TouchableOpacity>
-                        );
-                      })
-                    ) : (
-                      <View style={styles.emptyState}>
-                        <Text style={styles.emptyStateText}>No name tags available</Text>
-                        <Text style={styles.emptyStateSubtext}>Visit the store to unlock name tags</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-
-                {/* Badges Sub-Tab */}
-                {activeAppearanceSubTab === 'badges' && (
-                  <View style={styles.card}>
-                    <Text style={styles.sectionTitle}>Badges</Text>
-                    <Text style={styles.inputHelper}>Display a verification badge on your profile.</Text>
-
-                    <TouchableOpacity
-                      style={[styles.nameTagOption, selectedBadgeId === null && styles.nameTagOptionSelected]}
-                      onPress={() => handleSelectBadge(null)}
-                      disabled={isUpdatingBadge}
-                    >
-                      <View style={[styles.nameTagIconPlaceholder, { backgroundColor: '#1E293B' }]}>
-                        <Text style={{ color: '#64748B', fontSize: 12 }}>None</Text>
-                      </View>
-                      <Text style={[styles.nameTagLabel, selectedBadgeId === null && styles.nameTagLabelSelected]}>No Badge</Text>
-                      {selectedBadgeId === null && <Check size={16} color="#4ADE80" />}
-                    </TouchableOpacity>
-
-                    {userBadges && userBadges.length > 0 ? (
-                      userBadges.map((badge: { id: number; name: string; imageUrl: string; rarity: string }) => {
-                        const isSelected = selectedBadgeId === badge.id;
-                        return (
-                          <TouchableOpacity
-                            key={badge.id}
-                            style={[styles.nameTagOption, isSelected && styles.nameTagOptionSelected]}
-                            onPress={() => handleSelectBadge(badge.id)}
-                            disabled={isUpdatingBadge}
-                          >
-                            <Image source={{ uri: badge.imageUrl }} style={styles.nameTagImage} resizeMode="contain" />
-                            <View style={{ flex: 1 }}>
-                              <Text style={[styles.nameTagLabel, isSelected && styles.nameTagLabelSelected]}>{badge.name}</Text>
-                              <Text style={styles.nameTagRarity}>{badge.rarity}</Text>
-                            </View>
-                            {isSelected && <Check size={16} color="#4ADE80" />}
-                          </TouchableOpacity>
-                        );
-                      })
-                    ) : (
-                      <View style={styles.emptyState}>
-                        <Text style={styles.emptyStateText}>No badges available</Text>
-                        <Text style={styles.emptyStateSubtext}>Visit the store to unlock badges</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-              </View>
-            )}
-
-            {/* Banner Images Tab */}
-            {activeTab === 'banner' && (
-              <View style={styles.card}>
-                <Text style={styles.sectionTitle}>Banner Images</Text>
-                <Text style={styles.inputHelper}>Upload a banner image to display at the top of your profile page.</Text>
-
-                <Text style={[styles.inputLabel, { marginTop: 8 }]}>Profile Banner</Text>
-                <Text style={styles.inputHelper}>Recommended size: 1500x500 pixels (3:1 ratio).</Text>
-
-                {banner ? (
-                  <View style={styles.bannerPreviewContainer}>
-                    <Image source={{ uri: banner }} style={styles.previewBannerImage} resizeMode="cover" />
-                    <TouchableOpacity
-                      style={styles.removeBannerButton}
-                      onPress={() => setBanner(null)}
-                    >
-                      <Text style={styles.removeBannerButtonText}>Remove Banner</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.bannerPlaceholder}>
-                    <ImageIcon size={36} color="#334155" />
-                    <Text style={styles.bannerPlaceholderText}>No banner image set</Text>
-                    <Text style={styles.bannerPlaceholderSub}>Upload a banner to personalize your profile header</Text>
-                  </View>
-                )}
-
-                <TouchableOpacity
-                  style={[styles.uploadButton, { marginTop: 16 }]}
-                  onPress={pickBannerImage}
-                >
-                  <Camera size={18} color="#FFF" style={{ marginRight: 8 }} />
-                  <Text style={styles.uploadButtonText}>Upload Banner</Text>
-                </TouchableOpacity>
-
-                <View style={styles.uploadRequirements}>
-                  <Text style={styles.requirementItem}>• Recommended: 1500x500 pixels</Text>
-                  <Text style={styles.requirementItem}>• Aspect ratio: 3:1</Text>
-                  <Text style={styles.requirementItem}>• Max size: 5MB</Text>
-                  <Text style={styles.requirementItem}>• JPG, PNG, GIF</Text>
                 </View>
 
                 {renderSaveButton(handleSaveProfile)}
               </View>
             )}
 
-            {/* Platforms Tab */}
-            {activeTab === 'platforms' && (
+            {activeTab === 'platform' && (
               <View style={styles.card}>
                 <Text style={styles.sectionTitle}>Platform Connections</Text>
                 <Text style={styles.inputHelper}>Connect your gaming accounts to display them on your profile.</Text>
@@ -1266,6 +645,8 @@ export default function ProfileAppearance() {
                   { key: 'steam', label: 'Steam', icon: 'steam', value: steamUsername, setter: setSteamUsername, placeholder: 'Steam username', color: '#1B2838' },
                   { key: 'xbox', label: 'Xbox', icon: 'microsoft-xbox', value: xboxUsername, setter: setXboxUsername, placeholder: 'Xbox gamertag', color: '#107C10' },
                   { key: 'playstation', label: 'PlayStation', icon: 'sony-playstation', value: playstationUsername, setter: setPlaystationUsername, placeholder: 'PSN username', color: '#003087' },
+                  { key: 'twitter', label: 'X / Twitter', icon: 'twitter', value: twitterUsername, setter: setTwitterUsername, placeholder: 'X username (without @)', color: '#000000' },
+                  { key: 'youtube', label: 'YouTube', icon: 'youtube', value: youtubeUsername, setter: setYoutubeUsername, placeholder: 'YouTube channel name', color: '#FF0000' },
                   { key: 'discord', label: 'Discord', icon: 'discord', value: discordUsername, setter: setDiscordUsername, placeholder: 'Discord username', color: '#5865F2' },
                   { key: 'epic', label: 'Epic Games', icon: 'controller-classic', value: epicUsername, setter: setEpicUsername, placeholder: 'Epic display name', color: '#313131' },
                   { key: 'nintendo', label: 'Nintendo Switch', icon: 'nintendo-switch', value: nintendoUsername, setter: setNintendoUsername, placeholder: 'Nintendo friend code', color: '#E4000F' },
@@ -1346,6 +727,13 @@ export default function ProfileAppearance() {
         previewImageUrl={avatar || undefined}
       />
 
+      <AppearanceStudioModal
+        visible={appearanceStudioVisible}
+        onClose={() => setAppearanceStudioVisible(false)}
+        onSaved={() => {
+          setAppearanceStudioVisible(false);
+        }}
+      />
     </>
   );
 }
@@ -1495,14 +883,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
   },
-  inputError: {
-    borderColor: '#EF4444',
-  },
-  inputErrorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    marginTop: 4,
-  },
   textArea: {
     minHeight: 100,
   },
@@ -1527,68 +907,6 @@ const styles = StyleSheet.create({
     color: '#64748B',
     fontSize: 16,
     fontStyle: 'italic',
-  },
-  borderButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#131F2A',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderRadius: 8,
-    padding: 12,
-    gap: 14,
-  },
-  borderPreviewImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-    resizeMode: 'cover',
-  },
-  borderNone: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-    backgroundColor: '#1E293B',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderStyle: 'dashed',
-  },
-  borderNoneText: {
-    color: '#64748B',
-    fontSize: 9,
-    textAlign: 'center',
-  },
-  borderButtonRight: {
-    flex: 1,
-  },
-  borderButtonLabel: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  borderButtonHint: {
-    color: '#64748B',
-    fontSize: 12,
-  },
-  colorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  colorSwatch: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-    flexShrink: 0,
-  },
-  colorInput: {
-    flex: 1,
-    marginBottom: 0,
   },
   themesGrid: {
     flexDirection: 'row',
@@ -1965,159 +1283,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     color: '#FFF',
     fontSize: 14,
-  },
-  subTabsContainer: {
-    marginBottom: 16,
-  },
-  subTabsContent: {
-    paddingHorizontal: 20,
-    gap: 4,
-  },
-  subTab: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    backgroundColor: '#1E293B',
-    marginRight: 8,
-  },
-  subTabActive: {
-    backgroundColor: '#3B82F6',
-  },
-  subTabText: {
-    color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  subTabTextActive: {
-    color: '#FFF',
-  },
-  bannerPreviewContainer: {
-    marginBottom: 12,
-  },
-  previewBannerImage: {
-    width: '100%',
-    height: 130,
-    borderRadius: 8,
-    backgroundColor: '#0F1923',
-  },
-  removeBannerButton: {
-    marginTop: 10,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#EF444422',
-    borderWidth: 1,
-    borderColor: '#EF4444',
-  },
-  removeBannerButtonText: {
-    color: '#EF4444',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  bannerPlaceholder: {
-    height: 130,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0F1923',
-    marginBottom: 8,
-    gap: 8,
-  },
-  bannerPlaceholderText: {
-    color: '#64748B',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  bannerPlaceholderSub: {
-    color: '#475569',
-    fontSize: 12,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-  },
-  fontList: {
-    gap: 2,
-  },
-  fontOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#131F2A',
-    borderWidth: 1,
-    borderColor: '#334155',
-    marginBottom: 8,
-  },
-  fontOptionSelected: {
-    borderColor: '#4ADE80',
-    backgroundColor: '#4ADE8011',
-  },
-  fontOptionText: {
-    color: '#94A3B8',
-    fontSize: 14,
-  },
-  fontOptionTextSelected: {
-    color: '#FFF',
-    fontWeight: '500',
-  },
-  nameTagOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 8,
-    backgroundColor: '#131F2A',
-    borderWidth: 1,
-    borderColor: '#334155',
-    marginBottom: 8,
-  },
-  nameTagOptionSelected: {
-    borderColor: '#4ADE80',
-    backgroundColor: '#4ADE8011',
-  },
-  nameTagImage: {
-    width: 48,
-    height: 28,
-    borderRadius: 4,
-  },
-  nameTagIconPlaceholder: {
-    width: 48,
-    height: 28,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nameTagLabel: {
-    color: '#94A3B8',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  nameTagLabelSelected: {
-    color: '#FFF',
-  },
-  nameTagRarity: {
-    color: '#64748B',
-    fontSize: 12,
-    textTransform: 'capitalize',
-    marginTop: 2,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    gap: 8,
-  },
-  emptyStateText: {
-    color: '#64748B',
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  emptyStateSubtext: {
-    color: '#475569',
-    fontSize: 13,
   },
   });
