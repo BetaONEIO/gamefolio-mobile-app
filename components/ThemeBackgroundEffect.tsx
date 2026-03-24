@@ -177,7 +177,7 @@ function ZombieEffect() {
     [sweepAnim, sweepRange]
   );
   const gridOpacity = useMemo(
-    () => gridAnim.interpolate({ inputRange: [0, 1], outputRange: [0.10, 0.28] }),
+    () => gridAnim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.60] }),
     [gridAnim]
   );
   const gridRows = Math.ceil(H / 48) + 1;
@@ -286,7 +286,7 @@ function CyberpunkEffect() {
   }, []);
 
   const meshOpacity = useMemo(
-    () => meshAnim.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.32] }),
+    () => meshAnim.interpolate({ inputRange: [0, 1], outputRange: [0.45, 0.70] }),
     [meshAnim]
   );
   const meshScale = useMemo(
@@ -331,10 +331,10 @@ function CyberpunkEffect() {
           />
         ))}
         {Array.from({ length: Math.ceil(W / GRID) + 4 }).map((_, i) => (
-          <View key={`c${i}`} style={{ position: 'absolute', left: i * GRID - GRID, top: -H, width: 1, height: H * 3, backgroundColor: '#00b8db', opacity: 0.10, transform: [{ rotate: '45deg' }] }} />
+          <View key={`c${i}`} style={{ position: 'absolute', left: i * GRID - GRID, top: -H, width: 1, height: H * 3, backgroundColor: '#00b8db', opacity: 0.25, transform: [{ rotate: '45deg' }] }} />
         ))}
         {Array.from({ length: Math.ceil(W / GRID) + 4 }).map((_, i) => (
-          <View key={`m${i}`} style={{ position: 'absolute', left: i * GRID - GRID, top: -H, width: 1, height: H * 3, backgroundColor: '#e12afb', opacity: 0.07, transform: [{ rotate: '-45deg' }] }} />
+          <View key={`m${i}`} style={{ position: 'absolute', left: i * GRID - GRID, top: -H, width: 1, height: H * 3, backgroundColor: '#e12afb', opacity: 0.18, transform: [{ rotate: '-45deg' }] }} />
         ))}
       </Animated.View>
 
@@ -373,6 +373,26 @@ function CyberpunkEffect() {
   );
 }
 
+function GothicParticle({ anim, left, size }: { anim: Animated.Value; left: number; size: number }) {
+  const translateY = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: [220, -20] }), [anim]);
+  const opacity = useMemo(() => anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 0.6, 0.5, 0] }), [anim]);
+  const scale = useMemo(() => anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.5, 1, 0.7] }), [anim]);
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: '#c27aff',
+        opacity,
+        transform: [{ translateY }, { scale }],
+      }}
+    />
+  );
+}
+
 function GothicParticleEffect() {
   const particles = useMemo(() =>
     Array.from({ length: 10 }, (_, i) => ({
@@ -401,27 +421,29 @@ function GothicParticleEffect() {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {particles.map((p, i) => {
-        const translateY = p.anim.interpolate({ inputRange: [0, 1], outputRange: [220, -20] });
-        const opacity = p.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 0.6, 0.5, 0] });
-        const scale = p.anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.5, 1, 0.7] });
-        return (
-          <Animated.View
-            key={i}
-            style={{
-              position: 'absolute',
-              left: p.left,
-              width: p.size,
-              height: p.size,
-              borderRadius: p.size / 2,
-              backgroundColor: '#c27aff',
-              opacity,
-              transform: [{ translateY }, { scale }],
-            }}
-          />
-        );
-      })}
+      {particles.map((p, i) => (
+        <GothicParticle key={i} anim={p.anim} left={p.left} size={p.size} />
+      ))}
     </View>
+  );
+}
+
+function BlocksBlock({ anim, left, size, color }: { anim: Animated.Value; left: number; size: number; color: string }) {
+  const translateY = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: [-20, 230] }), [anim]);
+  const opacity = useMemo(() => anim.interpolate({ inputRange: [0, 0.1, 0.85, 1], outputRange: [0, 0.5, 0.4, 0] }), [anim]);
+  const rotate = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] }), [anim]);
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left,
+        width: size,
+        height: size,
+        backgroundColor: color,
+        opacity,
+        transform: [{ translateY }, { rotate }],
+      }}
+    />
   );
 }
 
@@ -454,26 +476,32 @@ function BlocksPixelEffect() {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {blocks.map((b, i) => {
-        const translateY = b.anim.interpolate({ inputRange: [0, 1], outputRange: [-20, 230] });
-        const opacity = b.anim.interpolate({ inputRange: [0, 0.1, 0.85, 1], outputRange: [0, 0.5, 0.4, 0] });
-        const rotate = b.anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] });
-        return (
-          <Animated.View
-            key={i}
-            style={{
-              position: 'absolute',
-              left: b.left,
-              width: b.size,
-              height: b.size,
-              backgroundColor: b.color,
-              opacity,
-              transform: [{ translateY }, { rotate }],
-            }}
-          />
-        );
-      })}
+      {blocks.map((b, i) => (
+        <BlocksBlock key={i} anim={b.anim} left={b.left} size={b.size} color={b.color} />
+      ))}
     </View>
+  );
+}
+
+function ForestLeaf({ anim, startX, driftX }: { anim: Animated.Value; startX: number; driftX: number }) {
+  const translateY = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: [-10, 230] }), [anim]);
+  const translateX = useMemo(() => anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, driftX, driftX * 0.5] }), [anim, driftX]);
+  const opacity = useMemo(() => anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 0.55, 0.45, 0] }), [anim]);
+  const rotate = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] }), [anim]);
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left: startX,
+        width: 7,
+        height: 10,
+        borderRadius: 7,
+        borderTopRightRadius: 0,
+        backgroundColor: '#4ade80',
+        opacity,
+        transform: [{ translateY }, { translateX }, { rotate }],
+      }}
+    />
   );
 }
 
@@ -505,29 +533,30 @@ function ForestLeafEffect() {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {leaves.map((l, i) => {
-        const translateY = l.anim.interpolate({ inputRange: [0, 1], outputRange: [-10, 230] });
-        const translateX = l.anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, l.driftX, l.driftX * 0.5] });
-        const opacity = l.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 0.55, 0.45, 0] });
-        const rotate = l.anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
-        return (
-          <Animated.View
-            key={i}
-            style={{
-              position: 'absolute',
-              left: l.startX,
-              width: 7,
-              height: 10,
-              borderRadius: 7,
-              borderTopRightRadius: 0,
-              backgroundColor: '#4ade80',
-              opacity,
-              transform: [{ translateY }, { translateX }, { rotate }],
-            }}
-          />
-        );
-      })}
+      {leaves.map((l, i) => (
+        <ForestLeaf key={i} anim={l.anim} startX={l.startX} driftX={l.driftX} />
+      ))}
     </View>
+  );
+}
+
+function WatermelonSeed({ anim, left }: { anim: Animated.Value; left: number }) {
+  const translateY = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: [-10, 240] }), [anim]);
+  const rotate = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }), [anim]);
+  const opacity = useMemo(() => anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 0.6, 0.5, 0] }), [anim]);
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left,
+        width: 5,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#0d1a12',
+        opacity,
+        transform: [{ translateY }, { rotate }],
+      }}
+    />
   );
 }
 
@@ -558,27 +587,30 @@ function WatermelonSeedEffect() {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {seeds.map((s, i) => {
-        const translateY = s.anim.interpolate({ inputRange: [0, 1], outputRange: [-10, 240] });
-        const rotate = s.anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-        const opacity = s.anim.interpolate({ inputRange: [0, 0.1, 0.8, 1], outputRange: [0, 0.6, 0.5, 0] });
-        return (
-          <Animated.View
-            key={i}
-            style={{
-              position: 'absolute',
-              left: s.left,
-              width: 5,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: '#0d1a12',
-              opacity,
-              transform: [{ translateY }, { rotate }],
-            }}
-          />
-        );
-      })}
+      {seeds.map((s, i) => (
+        <WatermelonSeed key={i} anim={s.anim} left={s.left} />
+      ))}
     </View>
+  );
+}
+
+function CartoonDot({ anim, left, size, color }: { anim: Animated.Value; left: number; size: number; color: string }) {
+  const translateY = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: [230, -10] }), [anim]);
+  const opacity = useMemo(() => anim.interpolate({ inputRange: [0, 0.15, 0.8, 1], outputRange: [0, 0.5, 0.45, 0] }), [anim]);
+  const scale = useMemo(() => anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.5, 1.2, 0.8] }), [anim]);
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: color,
+        opacity,
+        transform: [{ translateY }, { scale }],
+      }}
+    />
   );
 }
 
@@ -611,26 +643,9 @@ function CartoonDotEffect() {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {dots.map((d, i) => {
-        const translateY = d.anim.interpolate({ inputRange: [0, 1], outputRange: [230, -10] });
-        const opacity = d.anim.interpolate({ inputRange: [0, 0.15, 0.8, 1], outputRange: [0, 0.5, 0.45, 0] });
-        const scale = d.anim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.5, 1.2, 0.8] });
-        return (
-          <Animated.View
-            key={i}
-            style={{
-              position: 'absolute',
-              left: d.left,
-              width: d.size,
-              height: d.size,
-              borderRadius: d.size / 2,
-              backgroundColor: d.color,
-              opacity,
-              transform: [{ translateY }, { scale }],
-            }}
-          />
-        );
-      })}
+      {dots.map((d, i) => (
+        <CartoonDot key={i} anim={d.anim} left={d.left} size={d.size} color={d.color} />
+      ))}
     </View>
   );
 }
@@ -684,6 +699,27 @@ function MacGlowEffect() {
   );
 }
 
+function PinkSparkle({ anim, left, size }: { anim: Animated.Value; left: number; size: number }) {
+  const translateY = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: [230, -10] }), [anim]);
+  const opacity = useMemo(() => anim.interpolate({ inputRange: [0, 0.1, 0.7, 1], outputRange: [0, 0.8, 0.7, 0] }), [anim]);
+  const scale = useMemo(() => anim.interpolate({ inputRange: [0, 0.4, 0.8, 1], outputRange: [0, 1.2, 0.9, 0] }), [anim]);
+  const rotate = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] }), [anim]);
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        left,
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: '#ff2056',
+        opacity,
+        transform: [{ translateY }, { scale }, { rotate }],
+      }}
+    />
+  );
+}
+
 function PinkSparkleEffect() {
   const sparkles = useMemo(() =>
     Array.from({ length: 12 }, (_, i) => ({
@@ -712,27 +748,9 @@ function PinkSparkleEffect() {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {sparkles.map((sp, i) => {
-        const translateY = sp.anim.interpolate({ inputRange: [0, 1], outputRange: [230, -10] });
-        const opacity = sp.anim.interpolate({ inputRange: [0, 0.1, 0.7, 1], outputRange: [0, 0.8, 0.7, 0] });
-        const scale = sp.anim.interpolate({ inputRange: [0, 0.4, 0.8, 1], outputRange: [0, 1.2, 0.9, 0] });
-        const rotate = sp.anim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
-        return (
-          <Animated.View
-            key={i}
-            style={{
-              position: 'absolute',
-              left: sp.left,
-              width: sp.size,
-              height: sp.size,
-              borderRadius: sp.size / 2,
-              backgroundColor: '#ff2056',
-              opacity,
-              transform: [{ translateY }, { scale }, { rotate }],
-            }}
-          />
-        );
-      })}
+      {sparkles.map((sp, i) => (
+        <PinkSparkle key={i} anim={sp.anim} left={sp.left} size={sp.size} />
+      ))}
     </View>
   );
 }

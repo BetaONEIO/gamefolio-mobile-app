@@ -1056,7 +1056,7 @@ export default function PublicProfileScreen() {
           <TouchableOpacity style={styles.bannerContainer} onPress={() => setIsBannerModalVisible(true)} activeOpacity={0.9}>
             <Image source={{ uri: bannerUrl }} style={styles.bannerImage} resizeMode="cover" />
             {activeThemeId && (
-              <View style={[StyleSheet.absoluteFill, { opacity: 0.55 }]} pointerEvents="none">
+              <View style={[StyleSheet.absoluteFill, { opacity: 0.85 }]} pointerEvents="none">
                 <ThemeBackgroundEffect themeId={activeThemeId} />
               </View>
             )}
