@@ -1049,23 +1049,12 @@ export default function PublicProfileScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40, backgroundColor: 'transparent' }}>
-
-        {activeThemeId && (
-          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: windowHeight }} pointerEvents="none">
-            <ThemeBackgroundEffect themeId={activeThemeId} />
-          </View>
-        )}
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
 
         {/* Banner with Avatar */}
         <View style={styles.bannerSection}>
           <TouchableOpacity style={styles.bannerContainer} onPress={() => setIsBannerModalVisible(true)} activeOpacity={0.9}>
             <Image source={{ uri: bannerUrl }} style={styles.bannerImage} resizeMode="cover" />
-            {activeThemeId && (
-              <View style={[StyleSheet.absoluteFill, { opacity: 0.85 }]} pointerEvents="none">
-                <ThemeBackgroundEffect themeId={activeThemeId} />
-              </View>
-            )}
             <LinearGradient
               colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.5)']}
               style={styles.bannerTopGradient}
@@ -1502,6 +1491,12 @@ export default function PublicProfileScreen() {
           )}
         </View>
       </ScrollView>
+
+      {activeThemeId && (
+        <View style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} pointerEvents="none">
+          <ThemeBackgroundEffect themeId={activeThemeId} />
+        </View>
+      )}
 
       <ProfilePictureModal
         visible={isProfileModalVisible}
