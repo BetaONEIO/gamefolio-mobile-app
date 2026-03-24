@@ -8287,7 +8287,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       }
 
       const allClips = await storage.getClipsByGameId(gameId, limit * 2);
-      const reels = allClips.filter((c: any) => c.videoType === 'reel').slice(0, limit);
+      const reels = allClips.filter((c) => c.videoType === 'reel').slice(0, limit);
       res.json(reels);
     } catch (err) {
       console.error("Error fetching game reels:", err);
