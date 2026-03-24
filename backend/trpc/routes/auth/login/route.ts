@@ -174,8 +174,16 @@ export default publicProcedure
     const gamefolioResult = await authenticateWithGamefolioAPI(username, password);
 
     if (gamefolioResult.outcome === 'success') {
-      // Production auth succeeded — look up (or create) the user in local Supabase
-      // to obtain a full profile, then issue local JWT tokens.
+      // Strip internal `outcome` field before exposing to clients
+      const gamefolioTokens = {
+        accessToken: gamefolioResult.accessToken,
+        refreshToken: gamefolioResult.refreshToken,
+        expiresIn: gamefolioResult.expiresIn,
+      };
+
+      // Production auth succeeded — look up local Supabase for the user profile.
+      // Use the Gamefolio tokens as the primary tokens so mobile can call
+      // the production API directly for subsequent requests.
       const { data: localUser } = await supabaseAdmin
         .from('users')
         .select('*')
@@ -183,16 +191,6 @@ export default publicProcedure
         .maybeSingle();
 
       if (localUser) {
-        const accessToken = jwt.sign(
-          { userId: localUser.id, username: localUser.username, role: localUser.role },
-          JWT_SECRET,
-          { expiresIn: '7d' }
-        );
-        const refreshToken = jwt.sign(
-          { userId: localUser.id },
-          JWT_REFRESH_SECRET,
-          { expiresIn: '30d' }
-        );
         console.log('[AUTH] Gamefolio API login successful (local user found):', localUser.username);
         return {
           user: {
@@ -212,10 +210,10 @@ export default publicProcedure
             messagingEnabled: localUser.messaging_enabled,
             isPrivate: localUser.is_private,
           },
-          accessToken,
-          refreshToken,
-          expiresIn: 7 * 24 * 60 * 60,
-          gamefolioTokens: gamefolioResult,
+          accessToken: gamefolioTokens.accessToken,
+          refreshToken: gamefolioTokens.refreshToken,
+          expiresIn: gamefolioTokens.expiresIn,
+          gamefolioTokens,
         };
       }
 
@@ -223,10 +221,10 @@ export default publicProcedure
       console.log('[AUTH] Gamefolio API login OK (no local user), returning production tokens');
       return {
         user: null,
-        accessToken: gamefolioResult.accessToken,
-        refreshToken: gamefolioResult.refreshToken,
-        expiresIn: gamefolioResult.expiresIn,
-        gamefolioTokens: gamefolioResult,
+        accessToken: gamefolioTokens.accessToken,
+        refreshToken: gamefolioTokens.refreshToken,
+        expiresIn: gamefolioTokens.expiresIn,
+        gamefolioTokens,
       };
     }
 
