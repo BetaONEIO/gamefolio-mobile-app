@@ -357,7 +357,7 @@ function CyberpunkEffect() {
         </View>
       </View>
 
-      <View style={[StyleSheet.absoluteFill, { opacity: 0.05 }]}>
+      <View style={[StyleSheet.absoluteFill, { opacity: 0.12 }]}>
         {Array.from({ length: Math.ceil(H / 6) }).map((_, i) => (
           <View key={i} style={{ height: 1, borderBottomWidth: 0.5, borderBottomColor: '#000000', marginBottom: 5 }} />
         ))}
