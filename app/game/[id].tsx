@@ -7,7 +7,7 @@ import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { api, Clip, TwitchGame } from '@/lib/api';
+import { api, Clip, Screenshot, TwitchGame } from '@/lib/api';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppHeader from '@/components/AppHeader';
 import ReelViewer from '@/components/ReelViewer';
@@ -90,49 +90,60 @@ export default function GameDetailScreen() {
     enabled: !!gameId,
   });
 
+  const applySortToClips = (items: Clip[], sort: SortOption): Clip[] => {
+    const sorted = [...items];
+    if (sort === 'latest') {
+      sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (sort === 'most-viewed') {
+      sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
+    } else if (sort === 'trending') {
+      sorted.sort((a, b) => ((b._count?.likes || 0) + (b._count?.fires || 0)) - ((a._count?.likes || 0) + (a._count?.fires || 0)));
+    }
+    return sorted;
+  };
+
   const { data: clips = [], isLoading: isLoadingClips } = useQuery<Clip[]>({
-    queryKey: ['clips', 'game', gameId, sortOption, contentType],
+    queryKey: ['game-clips', gameId, sortOption],
     queryFn: async () => {
       const token = await getAccessToken();
-      console.log('[GameDetail] Fetching content for game:', gameId, contentType, sortOption);
-      
       try {
-        let result: Clip[] = [];
-        
-        if (contentType === 'clips') {
-          result = await api.clips.getFeed(token || undefined, {
-            page: 1,
-            limit: 50,
-            gameId: parseInt(gameId || '0'),
-          });
-        } else if (contentType === 'reels') {
-          result = await api.reels.getLatest(token || undefined);
-        } else if (contentType === 'screenshots') {
-          result = [];
-        }
-
-        const filtered = result.filter(item => 
-          item.game?.id === parseInt(gameId || '0') || 
-          item.gameId === parseInt(gameId || '0')
-        );
-
-        let sorted = [...filtered];
-        if (sortOption === 'latest') {
-          sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        } else if (sortOption === 'most-viewed') {
-          sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
-        } else if (sortOption === 'trending') {
-          sorted.sort((a, b) => ((b._count.likes || 0) + (b._count.fires || 0)) - ((a._count.likes || 0) + (a._count.fires || 0)));
-        }
-
-        console.log('[GameDetail] Found', sorted.length, contentType);
-        return sorted;
+        const result = await api.games.getGameClips(gameId!, token || undefined, 50);
+        return applySortToClips(result, sortOption);
       } catch (error) {
-        console.log('[GameDetail] Error fetching content:', error);
+        console.log('[GameDetail] Error fetching clips:', error);
         return [];
       }
     },
-    enabled: !!gameId,
+    enabled: !!gameId && contentType === 'clips',
+  });
+
+  const { data: reels = [], isLoading: isLoadingReels } = useQuery<Clip[]>({
+    queryKey: ['game-reels', gameId, sortOption],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      try {
+        const result = await api.games.getGameReels(gameId!, token || undefined, 50);
+        return applySortToClips(result, sortOption);
+      } catch (error) {
+        console.log('[GameDetail] Error fetching reels:', error);
+        return [];
+      }
+    },
+    enabled: !!gameId && contentType === 'reels',
+  });
+
+  const { data: screenshots = [], isLoading: isLoadingScreenshots } = useQuery<Screenshot[]>({
+    queryKey: ['game-screenshots', gameId],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      try {
+        return await api.games.getGameScreenshots(gameId!, token || undefined, 50);
+      } catch (error) {
+        console.log('[GameDetail] Error fetching screenshots:', error);
+        return [];
+      }
+    },
+    enabled: !!gameId && contentType === 'screenshots',
   });
 
   const handleContentTypeChange = (type: ContentType) => {
@@ -296,30 +307,6 @@ export default function GameDetailScreen() {
   ), [activeReelIndex, showReelsModal, isMuted, toggleMute, handleUserPress, showReelComments, toggleReelComments, localReelComments, reelCommentText, handleReelCommentSubmit, isLoadingReelComments, isTabFocused]);
 
   const renderContentItem = ({ item, index }: { item: Clip; index: number }) => {
-    if (contentType === 'screenshots') {
-      return (
-        <TouchableOpacity
-          style={styles.screenshotGridCard}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            console.log('Open screenshot:', item.id);
-          }}
-          activeOpacity={0.8}
-        >
-          <ImageBackground 
-            source={{ uri: item.videoType === 'reel' ? getReelThumbnail(item) : getClipThumbnail(item) }} 
-            style={styles.screenshotGridThumbnail} 
-            imageStyle={{ borderRadius: 8 }}
-          >
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.6)']}
-              style={styles.screenshotGridGradient}
-            />
-          </ImageBackground>
-        </TouchableOpacity>
-      );
-    }
-    
     if (contentType === 'reels') {
       return (
         <TouchableOpacity
@@ -408,7 +395,8 @@ export default function GameDetailScreen() {
     name: gameName,
     boxArt: gameBoxArt,
   } as TwitchGame : null);
-  const isLoading = isLoadingGame || isLoadingClips;
+  const isLoading = isLoadingGame || (contentType === 'clips' && isLoadingClips) || (contentType === 'reels' && isLoadingReels) || (contentType === 'screenshots' && isLoadingScreenshots);
+  const activeCount = contentType === 'clips' ? clips.length : contentType === 'reels' ? reels.length : screenshots.length;
 
   return (
     <View style={styles.container}>
@@ -431,7 +419,7 @@ export default function GameDetailScreen() {
               Browse clips from the {game?.name || 'game'} community
             </Text>
             <Text style={styles.clipsCount}>
-              {clips.length} {contentType} available
+              {activeCount} {contentType} available
             </Text>
           </View>
         </View>
@@ -517,7 +505,7 @@ export default function GameDetailScreen() {
           <ActivityIndicator size="large" color="#4ADE80" />
           <Text style={styles.loadingText}>Loading {contentType}...</Text>
         </View>
-      ) : clips.length === 0 ? (
+      ) : activeCount === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyStateIcon}>
             {contentType === 'reels' ? (
@@ -546,9 +534,26 @@ export default function GameDetailScreen() {
         </View>
       ) : contentType === 'screenshots' ? (
         <FlatList
-          data={clips}
-          renderItem={renderContentItem}
-          keyExtractor={(item) => `${contentType}-${item.id}`}
+          data={screenshots}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.screenshotGridCard}
+              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              activeOpacity={0.8}
+            >
+              <ImageBackground
+                source={{ uri: getScreenshotThumbnail(item) }}
+                style={styles.screenshotGridThumbnail}
+                imageStyle={{ borderRadius: 8 }}
+              >
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.6)']}
+                  style={styles.screenshotGridGradient}
+                />
+              </ImageBackground>
+            </TouchableOpacity>
+          )}
+          keyExtractor={(item) => `screenshot-${item.id}`}
           numColumns={3}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.screenshotsGridContent}
@@ -556,9 +561,9 @@ export default function GameDetailScreen() {
         />
       ) : contentType === 'reels' ? (
         <FlatList
-          data={clips}
+          data={reels}
           renderItem={renderContentItem}
-          keyExtractor={(item) => `${contentType}-${item.id}`}
+          keyExtractor={(item) => `reel-${item.id}`}
           numColumns={2}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.reelsGridContent}
@@ -568,7 +573,7 @@ export default function GameDetailScreen() {
         <FlatList
           data={clips}
           renderItem={renderContentItem}
-          keyExtractor={(item) => `${contentType}-${item.id}`}
+          keyExtractor={(item) => `clip-${item.id}`}
           showsVerticalScrollIndicator={false}
           snapToInterval={SCREEN_WIDTH * (9/16) + 80}
           decelerationRate="fast"
@@ -590,9 +595,9 @@ export default function GameDetailScreen() {
           <StatusBar barStyle="light-content" />
           <FlatList
             ref={reelsFlatListRef}
-            data={clips}
+            data={reels}
             renderItem={renderReelItem}
-            keyExtractor={(item) => `reel-${item.id}`}
+            keyExtractor={(item) => `reel-viewer-${item.id}`}
             pagingEnabled
             showsVerticalScrollIndicator={false}
             snapToInterval={SCREEN_HEIGHT}

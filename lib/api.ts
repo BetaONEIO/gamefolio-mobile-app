@@ -1575,8 +1575,20 @@ export const api = {
         token,
       }),
 
-    getGameClips: (id: number | string, token?: string) =>
-      apiFetch<Clip[]>(`/api/games/${id}/clips`, {
+    getGameClips: (id: number | string, token?: string, limit: number = 50) =>
+      apiFetch<Clip[]>(`/api/games/${id}/clips?limit=${limit}`, {
+        method: 'GET',
+        token,
+      }),
+
+    getGameReels: (id: number | string, token?: string, limit: number = 50) =>
+      apiFetch<Clip[]>(`/api/games/${id}/reels?limit=${limit}`, {
+        method: 'GET',
+        token,
+      }),
+
+    getGameScreenshots: (id: number | string, token?: string, limit: number = 50) =>
+      apiFetch<Screenshot[]>(`/api/games/${id}/screenshots?limit=${limit}`, {
         method: 'GET',
         token,
       }),

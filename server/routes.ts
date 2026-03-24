@@ -8228,13 +8228,70 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Get screenshots by game
   app.get("/api/games/:gameId/screenshots", async (req, res) => {
     try {
-      const gameId = parseInt(req.params.gameId);
+      const gameIdParam = req.params.gameId;
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+
+      let gameId: number | null = null;
+
+      const parsedId = parseInt(gameIdParam);
+      if (!isNaN(parsedId)) {
+        const game = await storage.getGame(parsedId);
+        if (game) {
+          gameId = parsedId;
+        }
+      }
+
+      if (gameId === null) {
+        const gameByTwitchId = await storage.getGameByTwitchId(gameIdParam);
+        if (gameByTwitchId) {
+          gameId = gameByTwitchId.id;
+        }
+      }
+
+      if (gameId === null) {
+        return res.json([]);
+      }
+
       const screenshots = await storage.getScreenshotsByGameId(gameId, limit);
       res.json(screenshots);
     } catch (err) {
       console.error("Error fetching game screenshots:", err);
       return res.status(500).json({ message: "Error fetching screenshots" });
+    }
+  });
+
+  app.get("/api/games/:id/reels", async (req, res) => {
+    try {
+      const gameIdParam = req.params.id;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+
+      let gameId: number | null = null;
+
+      const parsedId = parseInt(gameIdParam);
+      if (!isNaN(parsedId)) {
+        const game = await storage.getGame(parsedId);
+        if (game) {
+          gameId = parsedId;
+        }
+      }
+
+      if (gameId === null) {
+        const gameByTwitchId = await storage.getGameByTwitchId(gameIdParam);
+        if (gameByTwitchId) {
+          gameId = gameByTwitchId.id;
+        }
+      }
+
+      if (gameId === null) {
+        return res.json([]);
+      }
+
+      const allClips = await storage.getClipsByGameId(gameId, limit * 2);
+      const reels = allClips.filter((c: any) => c.videoType === 'reel').slice(0, limit);
+      res.json(reels);
+    } catch (err) {
+      console.error("Error fetching game reels:", err);
+      return res.status(500).json({ message: "Error fetching reels" });
     }
   });
 
