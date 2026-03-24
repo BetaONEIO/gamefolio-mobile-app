@@ -1237,16 +1237,23 @@ export default function PublicProfileScreen() {
           {/* Platform chips */}
           {platforms.length > 0 && (
             <View style={styles.platformsRow}>
-              {platforms.map((p, i) => (
-                <View key={i} style={[styles.platformChip, { backgroundColor: `${p.color}22` }]}>
-                  {p.type === 'xbox' && <Gamepad2 size={10} color={p.color} />}
-                  {p.type === 'ps' && <Gamepad2 size={10} color={p.color} />}
-                  {p.type === 'pc' && <Monitor size={10} color={p.color} />}
-                  {p.type === 'nintendo' && <Gamepad2 size={10} color={p.color} />}
-                  {p.type === 'epic' && <Gamepad2 size={10} color={p.color} />}
-                  <Text style={[styles.platformText, { color: p.color }]}>{p.name}</Text>
-                </View>
-              ))}
+              {platforms.map((p, i) => {
+                const isOutlined = theme.platformTagStyle === 'outlined';
+                const chipBg = isOutlined ? 'transparent' : `${p.color}22`;
+                const chipBorder = isOutlined ? (theme.platformTagBorderColor || theme.accent) : 'transparent';
+                const iconColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : p.color;
+                const textColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : p.color;
+                return (
+                  <View key={i} style={[styles.platformChip, { backgroundColor: chipBg, borderColor: chipBorder, borderWidth: isOutlined ? 1.5 : 0 }]}>
+                    {p.type === 'xbox' && <Gamepad2 size={10} color={iconColor} />}
+                    {p.type === 'ps' && <Gamepad2 size={10} color={iconColor} />}
+                    {p.type === 'pc' && <Monitor size={10} color={iconColor} />}
+                    {p.type === 'nintendo' && <Gamepad2 size={10} color={iconColor} />}
+                    {p.type === 'epic' && <Gamepad2 size={10} color={iconColor} />}
+                    <Text style={[styles.platformText, { color: textColor }]}>{p.name}</Text>
+                  </View>
+                );
+              })}
             </View>
           )}
 

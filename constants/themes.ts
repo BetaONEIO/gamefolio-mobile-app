@@ -85,6 +85,10 @@ export interface ProfileThemeTokens {
 
   displayNameSize: number;
   displayNameUppercase: boolean;
+  displayNameFontId?: string;
+  displayNameEffectId?: string;
+  platformTagStyle?: 'solid' | 'outlined';
+  platformTagBorderColor?: string;
 }
 
 const DEFAULT_THEME: ProfileThemeTokens = {
@@ -205,6 +209,10 @@ const ZOMBIE_THEME: ProfileThemeTokens = {
   collectionGradient: ['#5ee9b5', '#fff085', '#ffb86a'],
   displayNameSize: 22,
   displayNameUppercase: true,
+  displayNameFontId: 'impact',
+  displayNameEffectId: 'toxic',
+  platformTagStyle: 'outlined',
+  platformTagBorderColor: '#9ae600',
 };
 
 const CYBERPUNK_THEME: ProfileThemeTokens = {

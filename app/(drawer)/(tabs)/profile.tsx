@@ -154,6 +154,14 @@ function createHeaderStyles(theme: ProfileThemeTokens) {
     cardBorder: theme.cardBorder,
     cardBorderRadius: theme.cardBorderRadius,
     statNumberSize: theme.statNumberFontSize,
+    statLabels: theme.statLabels,
+    statAlign: theme.statAlign,
+    statLabelPill: theme.statLabelPill,
+    displayNameFontId: theme.displayNameFontId,
+    displayNameEffectId: theme.displayNameEffectId,
+    displayNameUppercase: theme.displayNameUppercase,
+    platformTagStyle: theme.platformTagStyle || 'solid',
+    platformTagBorderColor: theme.platformTagBorderColor,
     tabActiveBorder: theme.tabActiveBorder,
     tabActiveText: theme.tabActiveText,
     tabBg: theme.tabInactiveBg,
@@ -162,6 +170,7 @@ function createHeaderStyles(theme: ProfileThemeTokens) {
     accentMuted: theme.accentMuted,
     dividerColor: theme.dividerColor,
     isLight: theme.isLight,
+    accent: theme.accent,
   };
 }
 
@@ -484,8 +493,13 @@ export default function ProfileScreen() {
             <View style={styles.nameRow}>
               <View style={styles.nameRowLeft}>
                 <StyledUsername 
-                  username={profileData.name} 
-                  textStyleId={(user as any)?.textStyleId || 'default'}
+                  username={h.displayNameUppercase ? profileData.name.toUpperCase() : profileData.name}
+                  textStyleConfig={h.displayNameFontId || h.displayNameEffectId ? {
+                    fontId: h.displayNameFontId || 'default',
+                    effectId: h.displayNameEffectId || 'none',
+                    customColor: h.namePrimary,
+                  } : undefined}
+                  textStyleId={(!h.displayNameFontId && !h.displayNameEffectId) ? ((user as any)?.textStyleId || 'default') : undefined}
                   fontSize={h.isLight ? 22 : 26}
                   style={{ color: h.namePrimary }}
                 />
@@ -545,19 +559,27 @@ export default function ProfileScreen() {
 
             {profileSectionTab === 'stats' ? (
               <View style={[styles.infoBorderInner, { paddingTop: 8, paddingBottom: 16 }]}>
-                <View style={[styles.statsRowCompact, { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 }]}>
-                  <View style={styles.statColumn}>
-                    <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.uploads}</Text>
-                    <Text style={[styles.statLabel, { color: h.statLabelColor }]}>UPLOADS</Text>
-                  </View>
-                  <View style={styles.statColumn}>
-                    <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.followers}</Text>
-                    <Text style={[styles.statLabel, { color: h.statLabelColor }]}>FOLLOWERS</Text>
-                  </View>
-                  <View style={styles.statColumn}>
-                    <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{profileData.stats.following}</Text>
-                    <Text style={[styles.statLabel, { color: h.statLabelColor }]}>FOLLOWING</Text>
-                  </View>
+                <View style={[
+                  styles.statsRowCompact,
+                  { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 },
+                  h.statAlign === 'flex-start' && { justifyContent: 'flex-start', gap: 24 },
+                ]}>
+                  {([
+                    { value: profileData.stats.uploads, label: h.statLabels[0] },
+                    { value: profileData.stats.followers, label: h.statLabels[1] },
+                    { value: profileData.stats.following, label: h.statLabels[2] },
+                  ] as { value: number; label: string }[]).map((stat, i) => (
+                    <View key={i} style={[styles.statColumn, h.statAlign === 'flex-start' && { alignItems: 'flex-start' }]}>
+                      <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{stat.value}</Text>
+                      {h.statLabelPill ? (
+                        <View style={[styles.statLabelPill, { borderColor: h.accent, backgroundColor: h.accentMuted }]}>
+                          <Text style={[styles.statLabelPillText, { color: h.accent }]}>{stat.label.toUpperCase()}</Text>
+                        </View>
+                      ) : (
+                        <Text style={[styles.statLabel, { color: h.statLabelColor }]}>{stat.label.toUpperCase()}</Text>
+                      )}
+                    </View>
+                  ))}
                 </View>
               </View>
             ) : (
@@ -591,14 +613,28 @@ export default function ProfileScreen() {
 
         {profileSectionTab === 'stats' && profileData.platforms.length > 0 ? (
           <View style={[styles.platformsRow, { marginTop: 12, paddingHorizontal: 4 }]}>
-            {profileData.platforms.map((platform, index) => (
-              <View key={index} style={[styles.platformTag, { backgroundColor: platform.color }]}>
-                {platform.type === 'xbox' && <Gamepad2 size={12} color="#FFF" />}
-                {platform.type === 'ps' && <Gamepad2 size={12} color="#FFF" />}
-                {platform.type === 'pc' && <Monitor size={12} color="#FFF" />}
-                <Text style={styles.platformText}>{platform.name}</Text>
-              </View>
-            ))}
+            {profileData.platforms.map((platform, index) => {
+              const isOutlined = h.platformTagStyle === 'outlined';
+              const tagBg = isOutlined ? 'transparent' : platform.color;
+              const tagBorder = isOutlined ? (h.platformTagBorderColor || h.accent) : 'transparent';
+              const tagTextColor = isOutlined ? (h.platformTagBorderColor || h.accent) : '#FFF';
+              const iconColor = isOutlined ? (h.platformTagBorderColor || h.accent) : '#FFF';
+              return (
+                <View key={index} style={[
+                  styles.platformTag,
+                  {
+                    backgroundColor: tagBg,
+                    borderColor: tagBorder,
+                    borderWidth: isOutlined ? 1.5 : 0,
+                  }
+                ]}>
+                  {platform.type === 'xbox' && <Gamepad2 size={12} color={iconColor} />}
+                  {platform.type === 'ps' && <Gamepad2 size={12} color={iconColor} />}
+                  {platform.type === 'pc' && <Monitor size={12} color={iconColor} />}
+                  <Text style={[styles.platformText, { color: tagTextColor }]}>{platform.name}</Text>
+                </View>
+              );
+            })}
           </View>
         ) : null}
 
@@ -1128,6 +1164,18 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  statLabelPill: {
+    borderWidth: 1,
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginTop: 4,
+  },
+  statLabelPillText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.8,
   },
   engagementToggle: {
     flexDirection: 'row',
