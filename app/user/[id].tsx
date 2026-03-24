@@ -20,6 +20,7 @@ import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getProfileTheme, ProfileThemeTokens } from '@/constants/themes';
+import { ThemeBackgroundEffect } from '@/components/ThemeBackgroundEffect';
 
 const { width } = Dimensions.get('window');
 
@@ -890,7 +891,8 @@ export default function PublicProfileScreen() {
   const user = profileData;
   const userId = user?.id;
 
-  const theme = getProfileTheme(themePreview ?? user?.profileTheme);
+  const activeThemeId = themePreview ?? user?.profileTheme ?? null;
+  const theme = getProfileTheme(activeThemeId);
   const styles = useMemo(() => createStyles(theme), [themePreview, user?.profileTheme]);
   const accentColor = theme.accent;
 
@@ -1005,6 +1007,7 @@ export default function PublicProfileScreen() {
 
   return (
     <View style={styles.container}>
+      <ThemeBackgroundEffect themeId={activeThemeId} />
       {/* Top Nav */}
       <View style={[styles.navBar, { paddingTop: insets.top + 8 }]}>
         <View style={styles.navLeft}>

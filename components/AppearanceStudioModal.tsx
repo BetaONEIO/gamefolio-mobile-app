@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ThemeBackgroundEffect } from './ThemeBackgroundEffect';
 import {
   View,
   Text,
@@ -425,6 +426,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
     const followBtnTextColor = accentColor === '#FFFFFF' ? '#000' : '#FFF';
     return (
       <View style={[styles.previewCard, { backgroundColor: bgColor }]}>
+        <ThemeBackgroundEffect themeId={selectedProfileTheme} />
         <View style={styles.pvBannerSection}>
           <View style={styles.pvBanner}>
             {banner ? (
