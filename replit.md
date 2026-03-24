@@ -66,7 +66,7 @@ Preferred communication style: Simple, everyday language.
 - **Themes**: 11 themes: `none` (Default), `zombie`, `cyberpunk`, `neo`, `gothic`, `blocks`, `forest`, `watermelon`, `cartoon`, `mac`, `pink`
 - **Definition**: `constants/themes.ts` exports `ProfileThemeTokens` interface with 20+ tokens, `PROFILE_THEMES` map, `SELECTABLE_PROFILE_THEMES` array, and `getProfileTheme(name)` helper
 - **Database Table**: `profile_themes` — admin-managed. Columns: `id` (text PK/slug), `name`, `description`, `bg`, `accent`, `preview` (text[]), `display_order`, `is_active`. Created and seeded from `SELECTABLE_PROFILE_THEMES` at startup if empty.
-- **Admin API**: `GET/POST /api/admin/themes`, `PATCH/DELETE /api/admin/themes/:id` — all protected by `adminMiddleware`
+- **Admin API**: `GET /api/admin/themes` — read-only view of all themes (protected by `adminMiddleware`). Themes are predefined; to add/change one, update `SELECTABLE_PROFILE_THEMES` in `constants/themes.ts` and clear the `profile_themes` DB table to re-seed.
 - **Public API**: `GET /api/themes` — returns active themes ordered by `display_order` from the DB
 - **Key Tokens**: `bg`, `accent`, `secondary`, `textPrimary`, `textHandle`, `statNumberColor`, `bioTextColor`, `nametagGradient`, `collectionGradient`, `cardBorderRadius`, `avatarBg`, `isLight`, etc.
 - **Profile Page**: `app/user/[id].tsx` uses `getProfileTheme(user?.profileTheme)` and passes tokens to `createStyles()`. Supports `?previewTheme=pink` URL param for previewing without DB change.
