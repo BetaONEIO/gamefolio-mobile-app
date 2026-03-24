@@ -209,7 +209,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
     refetchOnWindowFocus: false,
   });
 
-  const { data: themesData, isLoading: themesLoading } = useQuery<ProfileThemeEntry[]>({
+  const { data: themesData, isLoading: themesLoading, isError: themesError } = useQuery<ProfileThemeEntry[]>({
     queryKey: ['/api/themes'],
     queryFn: async () => {
       const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
@@ -860,6 +860,10 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
           <View style={styles.themesLoadingContainer}>
             <Text style={styles.themesLoadingText}>Loading themes...</Text>
           </View>
+        ) : themesError || themes.length === 0 ? (
+          <View style={styles.themesLoadingContainer}>
+            <Text style={styles.themesLoadingText}>{themesError ? 'Could not load themes' : 'No themes available'}</Text>
+          </View>
         ) : (
           <View style={styles.profileThemesGrid}>
             {themes.map((t) => {
@@ -868,7 +872,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
                 <TouchableOpacity
                   key={t.id}
                   style={[styles.profileThemeCard, isActive && styles.profileThemeCardActive]}
-                  onPress={() => setSelectedProfileTheme(t.id === 'none' ? null : t.id as ProfileThemeName)}
+                  onPress={() => setSelectedProfileTheme(isActive ? null : t.id as ProfileThemeName)}
                   activeOpacity={0.8}
                 >
                   <View style={[styles.profileThemeSwatch, { backgroundColor: t.bg }]}>
