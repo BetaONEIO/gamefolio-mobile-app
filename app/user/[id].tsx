@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getProfileTheme, ProfileThemeTokens } from '@/constants/themes';
 import { ThemeBackgroundEffect } from '@/components/ThemeBackgroundEffect';
 
-const { width } = Dimensions.get('window');
+const { width, height: windowHeight } = Dimensions.get('window');
 
 const TABS = ['Clips', 'Reels', 'Screenshots', 'Favorites'];
 
@@ -1008,7 +1008,6 @@ export default function PublicProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <ThemeBackgroundEffect themeId={activeThemeId} />
       {/* Top Nav */}
       <View style={[styles.navBar, { paddingTop: insets.top + 8 }]}>
         <View style={styles.navLeft}>
@@ -1050,7 +1049,13 @@ export default function PublicProfileScreen() {
         </View>
       </View>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40, backgroundColor: 'transparent' }}>
+
+        {activeThemeId && (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: windowHeight }} pointerEvents="none">
+            <ThemeBackgroundEffect themeId={activeThemeId} />
+          </View>
+        )}
 
         {/* Banner with Avatar */}
         <View style={styles.bannerSection}>

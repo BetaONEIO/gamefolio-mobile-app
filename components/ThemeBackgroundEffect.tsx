@@ -177,7 +177,7 @@ function ZombieEffect() {
     [sweepAnim, sweepRange]
   );
   const gridOpacity = useMemo(
-    () => gridAnim.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.60] }),
+    () => gridAnim.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.85] }),
     [gridAnim]
   );
   const gridRows = Math.ceil(H / 48) + 1;
@@ -185,23 +185,23 @@ function ZombieEffect() {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <ZombieFogBlob cx={W * 0.38} cy={H * 0.48} rx={W * 0.50} ry={H * 0.35} color="#1a2e0a" opacity={0.85} anim={fog1} dX={22} dY={-15} />
-      <ZombieFogBlob cx={W * 0.78} cy={H * 0.72} rx={W * 0.36} ry={H * 0.26} color="#0d1a05" opacity={0.75} anim={fog1} dX={22} dY={-15} />
-      <ZombieFogBlob cx={W * 0.55} cy={H * 0.90} rx={W * 0.38} ry={H * 0.14} color="#9ae600" opacity={0.18} anim={fog1} dX={22} dY={-15} />
+      <ZombieFogBlob cx={W * 0.38} cy={H * 0.48} rx={W * 0.50} ry={H * 0.35} color="#1a4008" opacity={0.90} anim={fog1} dX={22} dY={-15} />
+      <ZombieFogBlob cx={W * 0.78} cy={H * 0.72} rx={W * 0.36} ry={H * 0.26} color="#0d2505" opacity={0.80} anim={fog1} dX={22} dY={-15} />
+      <ZombieFogBlob cx={W * 0.55} cy={H * 0.90} rx={W * 0.38} ry={H * 0.14} color="#9ae600" opacity={0.40} anim={fog1} dX={22} dY={-15} />
 
-      <ZombieFogBlob cx={W * 0.78} cy={H * 0.36} rx={W * 0.40} ry={H * 0.32} color="#9ae600" opacity={0.12} anim={fog2} dX={-27} dY={18} />
-      <ZombieFogBlob cx={W * 0.10} cy={H * 0.80} rx={W * 0.36} ry={H * 0.24} color="#1a2e0a" opacity={0.70} anim={fog2} dX={-27} dY={18} />
-      <ZombieFogBlob cx={W * 0.50} cy={H * 0.55} rx={W * 0.48} ry={H * 0.16} color="#0d1a05" opacity={0.55} anim={fog2} dX={-27} dY={18} />
+      <ZombieFogBlob cx={W * 0.78} cy={H * 0.36} rx={W * 0.40} ry={H * 0.32} color="#9ae600" opacity={0.30} anim={fog2} dX={-27} dY={18} />
+      <ZombieFogBlob cx={W * 0.10} cy={H * 0.80} rx={W * 0.36} ry={H * 0.24} color="#1a4008" opacity={0.75} anim={fog2} dX={-27} dY={18} />
+      <ZombieFogBlob cx={W * 0.50} cy={H * 0.55} rx={W * 0.48} ry={H * 0.16} color="#0d2505" opacity={0.60} anim={fog2} dX={-27} dY={18} />
 
-      <ZombieFogBlob cx={W * 0.85} cy={H * 0.55} rx={W * 0.32} ry={H * 0.32} color="#9ae600" opacity={0.09} anim={fog3} dX={15} dY={20} />
-      <ZombieFogBlob cx={W * 0.22} cy={H * 0.65} rx={W * 0.42} ry={H * 0.20} color="#1a2e0a" opacity={0.60} anim={fog3} dX={15} dY={20} />
+      <ZombieFogBlob cx={W * 0.85} cy={H * 0.55} rx={W * 0.32} ry={H * 0.32} color="#9ae600" opacity={0.25} anim={fog3} dX={15} dY={20} />
+      <ZombieFogBlob cx={W * 0.22} cy={H * 0.65} rx={W * 0.42} ry={H * 0.20} color="#1a4008" opacity={0.65} anim={fog3} dX={15} dY={20} />
 
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: gridOpacity }]}>
         {Array.from({ length: gridRows }).map((_, i) => (
-          <View key={`h${i}`} style={{ position: 'absolute', left: 0, right: 0, top: i * 48, height: 1, backgroundColor: '#9ae600' }} />
+          <View key={`h${i}`} style={{ position: 'absolute', left: 0, right: 0, top: i * 48, height: 1.5, backgroundColor: '#9ae600' }} />
         ))}
         {Array.from({ length: gridCols }).map((_, i) => (
-          <View key={`v${i}`} style={{ position: 'absolute', top: 0, bottom: 0, left: i * 48, width: 1, backgroundColor: '#9ae600' }} />
+          <View key={`v${i}`} style={{ position: 'absolute', top: 0, bottom: 0, left: i * 48, width: 1.5, backgroundColor: '#9ae600' }} />
         ))}
       </Animated.View>
 
@@ -211,8 +211,8 @@ function ZombieEffect() {
             <LinearGradient
               colors={[
                 'transparent', 'transparent',
-                'rgba(154,230,0,0.03)', 'rgba(154,230,0,0.33)', 'rgba(154,230,0,0.73)',
-                'rgba(154,230,0,0.33)', 'rgba(154,230,0,0.03)',
+                'rgba(154,230,0,0.05)', 'rgba(154,230,0,0.45)', 'rgba(154,230,0,0.90)',
+                'rgba(154,230,0,0.45)', 'rgba(154,230,0,0.05)',
                 'transparent', 'transparent',
               ]}
               locations={[0, 0.40, 0.45, 0.48, 0.50, 0.52, 0.55, 0.60, 1.0]}
