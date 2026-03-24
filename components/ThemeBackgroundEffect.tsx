@@ -4,23 +4,30 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg';
 
 function NeoMatrixEffect() {
-  const { width: W, height: H } = useWindowDimensions();
   const COL_W = 38;
-  const columns = Math.ceil(W / COL_W) + 1;
+  const MAX_COLS = 20;
   const chars = '01アイウエカキクケコサタナハマヤラワ'.split('');
 
   const cols = useMemo(() =>
-    Array.from({ length: columns }, (_, i) => ({
-      anim: new Animated.Value(0),
-      delay: i * 350,
-      duration: 2200 + i * 200,
-      chars: Array.from({ length: 9 }, () => chars[Math.floor(Math.random() * chars.length)]),
-      left: i * COL_W + 6,
-    })),
-    [columns]
+    Array.from({ length: MAX_COLS }, (_, i) => {
+      const anim = new Animated.Value(0);
+      return {
+        anim,
+        translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [-100, 1200] }),
+        delay: i * 350,
+        duration: 2200 + i * 200,
+        chars: Array.from({ length: 9 }, () => chars[Math.floor(Math.random() * chars.length)]),
+        left: i * COL_W + 6,
+      };
+    }),
+    []
   );
 
   const scanlineAnim = useRef(new Animated.Value(0)).current;
+  const scanlineY = useMemo(
+    () => scanlineAnim.interpolate({ inputRange: [0, 1], outputRange: [-4, 900] }),
+    []
+  );
 
   useEffect(() => {
     const anims = cols.map(col =>
@@ -43,22 +50,17 @@ function NeoMatrixEffect() {
       anims.forEach(a => a.stop());
       scanLoop.stop();
     };
-  }, [cols]);
-
-  const scanlineY = scanlineAnim.interpolate({ inputRange: [0, 1], outputRange: [-4, H] });
+  }, []);
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {cols.map((col, i) => {
-        const translateY = col.anim.interpolate({ inputRange: [0, 1], outputRange: [-100, H + 20] });
-        return (
-          <Animated.View key={i} style={[s.neoColumn, { left: col.left, transform: [{ translateY }] }]}>
-            {col.chars.map((ch, j) => (
-              <Text key={j} style={[s.neoChar, { opacity: 1 - j * 0.1 }]}>{ch}</Text>
-            ))}
-          </Animated.View>
-        );
-      })}
+      {cols.map((col, i) => (
+        <Animated.View key={i} style={[s.neoColumn, { left: col.left, transform: [{ translateY: col.translateY }] }]}>
+          {col.chars.map((ch, j) => (
+            <Text key={j} style={[s.neoChar, { opacity: 1 - j * 0.1 }]}>{ch}</Text>
+          ))}
+        </Animated.View>
+      ))}
 
       <Animated.View
         style={{
@@ -74,27 +76,23 @@ function NeoMatrixEffect() {
 
       <LinearGradient
         colors={['rgba(0,0,0,0.65)', 'transparent']}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 70 }}
-        pointerEvents="none"
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 70, pointerEvents: 'none' }}
       />
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.65)']}
-        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 70 }}
-        pointerEvents="none"
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 70, pointerEvents: 'none' }}
       />
       <LinearGradient
         colors={['rgba(0,0,0,0.45)', 'transparent']}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
-        style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 45 }}
-        pointerEvents="none"
+        style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 45, pointerEvents: 'none' }}
       />
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.45)']}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
-        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 45 }}
-        pointerEvents="none"
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 45, pointerEvents: 'none' }}
       />
     </View>
   );
@@ -108,8 +106,8 @@ function ZombieFogBlob({
   anim: Animated.Value; dX: number; dY: number;
 }) {
   const id = useMemo(() => `zfog_${Math.random().toString(36).slice(2)}`, []);
-  const tx = anim.interpolate({ inputRange: [0, 1], outputRange: [0, dX] });
-  const ty = anim.interpolate({ inputRange: [0, 1], outputRange: [0, dY] });
+  const tx = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: [0, dX] }), [anim, dX]);
+  const ty = useMemo(() => anim.interpolate({ inputRange: [0, 1], outputRange: [0, dY] }), [anim, dY]);
 
   return (
     <Animated.View
@@ -121,8 +119,8 @@ function ZombieFogBlob({
         height: ry * 2,
         opacity,
         transform: [{ translateX: tx }, { translateY: ty }],
+        pointerEvents: 'none',
       }}
-      pointerEvents="none"
     >
       <Svg width={rx * 2} height={ry * 2}>
         <Defs>
@@ -174,8 +172,14 @@ function ZombieEffect() {
     return () => loops.forEach(l => l.stop());
   }, []);
 
-  const sweepTX = sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-sweepRange / 2, sweepRange / 2] });
-  const gridOpacity = gridAnim.interpolate({ inputRange: [0, 1], outputRange: [0.10, 0.28] });
+  const sweepTX = useMemo(
+    () => sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-sweepRange / 2, sweepRange / 2] }),
+    [sweepAnim, sweepRange]
+  );
+  const gridOpacity = useMemo(
+    () => gridAnim.interpolate({ inputRange: [0, 1], outputRange: [0.10, 0.28] }),
+    [gridAnim]
+  );
   const gridRows = Math.ceil(H / 48) + 1;
   const gridCols = Math.ceil(W / 48) + 1;
 
@@ -281,12 +285,30 @@ function CyberpunkEffect() {
     };
   }, []);
 
-  const meshOpacity = meshAnim.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.32] });
-  const meshScale = meshAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.012] });
-  const sweepTX = sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-W * 1.5, W * 1.5] });
-  const glitchOpacity = glitchAnim.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 0.30, 0.45] });
-  const redTX = glitchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 7] });
-  const blueTX = glitchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -7] });
+  const meshOpacity = useMemo(
+    () => meshAnim.interpolate({ inputRange: [0, 1], outputRange: [0.18, 0.32] }),
+    [meshAnim]
+  );
+  const meshScale = useMemo(
+    () => meshAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.012] }),
+    [meshAnim]
+  );
+  const sweepTX = useMemo(
+    () => sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-W * 1.5, W * 1.5] }),
+    [sweepAnim, W]
+  );
+  const glitchOpacity = useMemo(
+    () => glitchAnim.interpolate({ inputRange: [0, 0.6, 1], outputRange: [0, 0.30, 0.45] }),
+    [glitchAnim]
+  );
+  const redTX = useMemo(
+    () => glitchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 7] }),
+    [glitchAnim]
+  );
+  const blueTX = useMemo(
+    () => glitchAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -7] }),
+    [glitchAnim]
+  );
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
