@@ -169,7 +169,7 @@ export default publicProcedure
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('*')
-      .or(`username.eq.${username},email.eq.${username}`)
+      .or(`username.ilike.${username},email.ilike.${username}`)
       .maybeSingle();
 
     if (userError) {

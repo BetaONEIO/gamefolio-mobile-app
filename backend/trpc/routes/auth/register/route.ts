@@ -29,14 +29,14 @@ export default publicProcedure
     const { data: existingUser } = await supabaseAdmin
       .from('users')
       .select('username, email')
-      .or(`username.eq.${username},email.eq.${email}`)
+      .or(`username.ilike.${username},email.ilike.${email}`)
       .maybeSingle();
 
     if (existingUser) {
-      if (existingUser.username === username) {
+      if (existingUser.username?.toLowerCase() === username.toLowerCase()) {
         throw new Error('Username already taken');
       }
-      if (existingUser.email === email) {
+      if (existingUser.email?.toLowerCase() === email.toLowerCase()) {
         throw new Error('Email already registered');
       }
     }

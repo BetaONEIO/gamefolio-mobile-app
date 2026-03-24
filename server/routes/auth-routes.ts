@@ -50,7 +50,7 @@ async function syncProductionUser(prodUser: any): Promise<any | null> {
   try {
     const userId = prodUser.id;
     const username = prodUser.username || null;
-    const displayName = prodUser.displayName || prodUser.display_name || username || null;
+    const displayName = prodUser.displayName || prodUser.display_name || username || '';
     const avatarUrl = prodUser.avatarUrl || prodUser.avatar_url || null;
     const bannerUrl = prodUser.bannerUrl || prodUser.banner_url || null;
 
@@ -100,34 +100,24 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
-    // Find user by username (case-insensitive).
-    // Note: the local users table has no email column — emails live in Supabase Auth.
-    // Email-based logins are handled via the production proxy fallback below.
-    const rawResult = await db.execute(sql`
-      SELECT * FROM users
-      WHERE LOWER(username) = LOWER(${username})
-    `);
-    const rows = (rawResult as any).rows || rawResult || [];
-    let user = rows[0] as any;
+    // ── Step 1: Try the Gamefolio production API first ──────────────────────
+    // This handles:
+    //   • All accounts created on the web app (https://app.gamefolio.com)
+    //   • Email-based logins (local users table has no email column)
+    //   • Case-insensitive username/email on the production side
+    const prodResult = await proxyLoginToGamefolio(username, password);
 
-    if (!user) {
-      // Not in local DB — proxy to Gamefolio web app (handles all web-created accounts)
-      console.log(`[auth-routes] User "${username}" not found locally, trying production...`);
-      const prodResult = await proxyLoginToGamefolio(username, password);
-      if (!prodResult || !prodResult.user) {
-        return res.status(401).json({ message: 'Invalid username or password' });
-      }
-
-      // Sync user into local DB so future requests work
+    if (prodResult && prodResult.user) {
+      // Production auth succeeded — sync the user into the local DB and issue
+      // local JWT tokens so the mobile server can authorise subsequent requests.
       const syncedUser = await syncProductionUser(prodResult.user);
       if (!syncedUser) {
         return res.status(500).json({ message: 'Failed to sync account. Please try again.' });
       }
-
       const accessToken = generateAccessToken(syncedUser.id);
       const refreshToken = generateRefreshToken(syncedUser.id);
       const { password: _pw, ...userWithoutPassword } = syncedUser as any;
-      console.log(`[auth-routes] Production login successful for "${username}" (id: ${syncedUser.id})`);
+      console.log(`[auth-routes] Production login OK for "${username}" (id: ${syncedUser.id})`);
       return res.status(200).json({
         accessToken,
         refreshToken,
@@ -136,25 +126,24 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
       });
     }
 
-    // Production-synced placeholder — always proxy to verify the real password
-    if (user.password?.startsWith('PRODUCTION_SYNCED')) {
-      console.log(`[auth-routes] Production-synced user "${username}", proxying to production...`);
-      const prodResult = await proxyLoginToGamefolio(username, password);
-      if (!prodResult || !prodResult.user) {
-        return res.status(401).json({ message: 'Invalid username or password' });
-      }
+    // ── Step 2: Fall back to local DB verification ──────────────────────────
+    // Covers mobile-registered accounts and the case where production is
+    // temporarily unreachable.  Local users table has no email column, so only
+    // username matching is possible here.
+    const rawResult = await db.execute(sql`
+      SELECT * FROM users WHERE LOWER(username) = LOWER(${username})
+    `);
+    const rows = (rawResult as any).rows || rawResult || [];
+    const user = rows[0] as any;
 
-      const syncedUser = await syncProductionUser(prodResult.user) || user;
-      const accessToken = generateAccessToken(syncedUser.id);
-      const refreshToken = generateRefreshToken(syncedUser.id);
-      const { password: _pw, ...userWithoutPassword } = syncedUser as any;
-      console.log(`[auth-routes] Production proxy login successful for "${username}"`);
-      return res.status(200).json({
-        accessToken,
-        refreshToken,
-        expiresIn: 604800,
-        user: userWithoutPassword,
-      });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+
+    // PRODUCTION_SYNCED users have no real local password — if production
+    // already failed above, there is nothing more to try.
+    if (user.password?.startsWith('PRODUCTION_SYNCED')) {
+      return res.status(401).json({ message: 'Invalid username or password' });
     }
 
     // Verify password locally — support both bcrypt ($2b$/$2a$) and scrypt (hash.salt) formats
@@ -176,7 +165,7 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
 
-    // Build full user response using real DB values
+    // Build full user response from raw DB row
     const userResponse = {
       id: user.id,
       username: user.username,
@@ -218,6 +207,7 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
       updatedAt: user.updated_at ? new Date(user.updated_at).toISOString() : new Date().toISOString(),
     };
 
+    console.log(`[auth-routes] Local login OK for "${username}" (id: ${user.id})`);
     return res.status(200).json({
       accessToken,
       refreshToken,
