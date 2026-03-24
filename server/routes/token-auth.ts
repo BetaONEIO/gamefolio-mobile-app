@@ -10,7 +10,10 @@ import { supabaseStorage } from '../supabase-storage';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 
-const PRODUCTION_API_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://app.gamefolio.com';
+// IMPORTANT: This must always point to the Gamefolio web app, NOT the mobile backend.
+// EXPO_PUBLIC_BACKEND_URL is this server's own URL — using it here would cause the
+// production proxy to call itself, breaking login for all web-created accounts.
+const PRODUCTION_API_URL = process.env.GAMEFOLIO_WEB_URL || 'https://app.gamefolio.com';
 
 // Sync a user from production to the local DB (upsert by production userId)
 async function syncUserFromProduction(prodUser: any): Promise<any> {

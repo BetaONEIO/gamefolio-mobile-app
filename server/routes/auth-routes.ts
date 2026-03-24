@@ -20,6 +20,72 @@ import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '.
 // Scrypt promisification for password hashing
 const scryptAsync = promisify(scrypt);
 
+// Gamefolio web app production URL.
+// IMPORTANT: Must NOT use EXPO_PUBLIC_BACKEND_URL here — that is this server's own URL.
+// Using it would cause the proxy to call itself, breaking login for all web-created accounts.
+const GAMEFOLIO_API_URL = process.env.GAMEFOLIO_WEB_URL || 'https://app.gamefolio.com';
+
+/** Proxy a username/password login to the Gamefolio production web app. */
+async function proxyLoginToGamefolio(username: string, password: string): Promise<any | null> {
+  try {
+    const response = await fetch(`${GAMEFOLIO_API_URL}/api/auth/token/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    if (!response.ok) return null;
+    return response.json();
+  } catch (err) {
+    console.error('[auth-routes] Production proxy failed:', err);
+    return null;
+  }
+}
+
+/**
+ * Upsert a production user into the local DB so subsequent requests work.
+ * Stores a PRODUCTION_SYNCED placeholder password so local verification is
+ * never attempted — the proxy is always used for these accounts.
+ */
+async function syncProductionUser(prodUser: any): Promise<any | null> {
+  try {
+    const userId = prodUser.id;
+    const username = prodUser.username || null;
+    const displayName = prodUser.displayName || prodUser.display_name || username || null;
+    const avatarUrl = prodUser.avatarUrl || prodUser.avatar_url || null;
+    const bannerUrl = prodUser.bannerUrl || prodUser.banner_url || null;
+
+    // Rename any different local user who already has this username to avoid conflict
+    if (username) {
+      await db.execute(sql`
+        UPDATE users SET username = CONCAT(username, '_web')
+        WHERE LOWER(username) = LOWER(${username}) AND id != ${userId}
+      `);
+    }
+
+    // Upsert: insert the user if new, update profile fields if already exists.
+    // Note: local users table has no email column — emails live in Supabase Auth only.
+    await db.execute(sql`
+      INSERT INTO users (
+        id, username, password, display_name, avatar_url, banner_url, created_at, updated_at
+      ) VALUES (
+        ${userId}, ${username}, 'PRODUCTION_SYNCED.notavalidhash',
+        ${displayName}, ${avatarUrl}, ${bannerUrl}, NOW(), NOW()
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        username     = EXCLUDED.username,
+        display_name = EXCLUDED.display_name,
+        avatar_url   = EXCLUDED.avatar_url,
+        banner_url   = EXCLUDED.banner_url,
+        updated_at   = NOW()
+    `);
+
+    return await storage.getUserById(userId);
+  } catch (err) {
+    console.error('[auth-routes] Failed to sync production user:', err);
+    return null;
+  }
+}
+
 const router = Router();
 
 /**
@@ -34,19 +100,64 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Username and password are required' });
     }
 
-    // Find user by username — fetch all columns for a complete response
-    // Note: production DB may only have id, username, password, profile_theme
+    // Find user by username (case-insensitive).
+    // Note: the local users table has no email column — emails live in Supabase Auth.
+    // Email-based logins are handled via the production proxy fallback below.
     const rawResult = await db.execute(sql`
-      SELECT * FROM users WHERE LOWER(username) = LOWER(${username})
+      SELECT * FROM users
+      WHERE LOWER(username) = LOWER(${username})
     `);
     const rows = (rawResult as any).rows || rawResult || [];
-    const user = rows[0] as any;
+    let user = rows[0] as any;
 
     if (!user) {
-      return res.status(401).json({ message: 'Invalid username or password' });
+      // Not in local DB — proxy to Gamefolio web app (handles all web-created accounts)
+      console.log(`[auth-routes] User "${username}" not found locally, trying production...`);
+      const prodResult = await proxyLoginToGamefolio(username, password);
+      if (!prodResult || !prodResult.user) {
+        return res.status(401).json({ message: 'Invalid username or password' });
+      }
+
+      // Sync user into local DB so future requests work
+      const syncedUser = await syncProductionUser(prodResult.user);
+      if (!syncedUser) {
+        return res.status(500).json({ message: 'Failed to sync account. Please try again.' });
+      }
+
+      const accessToken = generateAccessToken(syncedUser.id);
+      const refreshToken = generateRefreshToken(syncedUser.id);
+      const { password: _pw, ...userWithoutPassword } = syncedUser as any;
+      console.log(`[auth-routes] Production login successful for "${username}" (id: ${syncedUser.id})`);
+      return res.status(200).json({
+        accessToken,
+        refreshToken,
+        expiresIn: 604800,
+        user: userWithoutPassword,
+      });
     }
 
-    // Verify password — support both bcrypt ($2b$/$2a$) and legacy scrypt (hash.salt) formats
+    // Production-synced placeholder — always proxy to verify the real password
+    if (user.password?.startsWith('PRODUCTION_SYNCED')) {
+      console.log(`[auth-routes] Production-synced user "${username}", proxying to production...`);
+      const prodResult = await proxyLoginToGamefolio(username, password);
+      if (!prodResult || !prodResult.user) {
+        return res.status(401).json({ message: 'Invalid username or password' });
+      }
+
+      const syncedUser = await syncProductionUser(prodResult.user) || user;
+      const accessToken = generateAccessToken(syncedUser.id);
+      const refreshToken = generateRefreshToken(syncedUser.id);
+      const { password: _pw, ...userWithoutPassword } = syncedUser as any;
+      console.log(`[auth-routes] Production proxy login successful for "${username}"`);
+      return res.status(200).json({
+        accessToken,
+        refreshToken,
+        expiresIn: 604800,
+        user: userWithoutPassword,
+      });
+    }
+
+    // Verify password locally — support both bcrypt ($2b$/$2a$) and scrypt (hash.salt) formats
     let passwordMatch = false;
     if (user.password && (user.password.startsWith('$2b$') || user.password.startsWith('$2a$'))) {
       passwordMatch = await bcrypt.compare(password, user.password);
