@@ -18,6 +18,7 @@ import LevelBadge from '@/components/LevelBadge';
 import LevelDetailsModal from '@/components/LevelDetailsModal';
 import UserTypeBadge from '@/components/UserTypeBadge';
 import StyledUsername from '@/components/StyledUsername';
+import { ThemeBackgroundEffect } from '@/components/ThemeBackgroundEffect';
 import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 
@@ -171,6 +172,8 @@ function createHeaderStyles(theme: ProfileThemeTokens) {
     dividerColor: theme.dividerColor,
     isLight: theme.isLight,
     accent: theme.accent,
+    bioBg: theme.bioBg,
+    bioBorderColor: theme.bioBorderColor,
   };
 }
 
@@ -492,17 +495,29 @@ export default function ProfileScreen() {
           <View style={styles.userInfoSection}>
             <View style={styles.nameRow}>
               <View style={styles.nameRowLeft}>
-                <StyledUsername 
-                  username={h.displayNameUppercase ? profileData.name.toUpperCase() : profileData.name}
-                  textStyleConfig={h.displayNameFontId || h.displayNameEffectId ? {
-                    fontId: h.displayNameFontId || 'default',
-                    effectId: h.displayNameEffectId || 'none',
-                    customColor: h.namePrimary,
-                  } : undefined}
-                  textStyleId={(!h.displayNameFontId && !h.displayNameEffectId) ? ((user as any)?.textStyleId || 'default') : undefined}
-                  fontSize={h.isLight ? 22 : 26}
-                  style={{ color: h.namePrimary }}
-                />
+                {(() => {
+                  const userFontId = (user as any)?.profileFont;
+                  const userEffectId = (user as any)?.profileFontEffect;
+                  const userFontColor = (user as any)?.profileFontColor;
+                  const hasUserFont = userFontId && userFontId !== 'default';
+                  const hasUserEffect = userEffectId && userEffectId !== 'none';
+                  const resolvedFontId = hasUserFont ? userFontId : (h.displayNameFontId || 'default');
+                  const resolvedEffectId = hasUserEffect ? userEffectId : (h.displayNameEffectId || 'none');
+                  const hasAnyOverride = hasUserFont || hasUserEffect || h.displayNameFontId || h.displayNameEffectId;
+                  return (
+                    <StyledUsername 
+                      username={h.displayNameUppercase ? profileData.name.toUpperCase() : profileData.name}
+                      textStyleConfig={hasAnyOverride ? {
+                        fontId: resolvedFontId,
+                        effectId: resolvedEffectId,
+                        customColor: userFontColor || h.namePrimary,
+                      } : undefined}
+                      textStyleId={!hasAnyOverride ? ((user as any)?.textStyleId || 'default') : undefined}
+                      fontSize={h.isLight ? 22 : 26}
+                      style={{ color: h.namePrimary }}
+                    />
+                  );
+                })()}
                 {profileData.verified && (
                   <View style={[styles.verifiedBadge, { backgroundColor: h.verifiedBg, borderWidth: 1, borderColor: h.verifiedBorder }]}>
                     <Check size={10} color={h.isLight ? '#ff2056' : '#FFF'} strokeWidth={4} />
@@ -519,7 +534,16 @@ export default function ProfileScreen() {
             </View>
             <Text style={[styles.handle, { color: h.handleColor }]}>{profileData.handle}</Text>
             {profileData.bio ? (
-              <Text style={[styles.bio, { color: h.bioColor, marginTop: 6 }]}>{profileData.bio}</Text>
+              <View style={[
+                styles.bioContainer,
+                {
+                  backgroundColor: h.bioBg,
+                  borderColor: h.bioBorderColor,
+                  borderWidth: h.bioBg && h.bioBg !== 'transparent' ? 1 : 0,
+                }
+              ]}>
+                <Text style={[styles.bio, { color: h.bioColor }]}>{profileData.bio}</Text>
+              </View>
             ) : null}
             <UserTypeBadge 
               userType={user?.userType} 
@@ -797,6 +821,12 @@ export default function ProfileScreen() {
         )}
       </View>
       </ScrollView>
+
+      {(user as any)?.profileTheme && (
+        <View style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} pointerEvents="none">
+          <ThemeBackgroundEffect themeId={(user as any).profileTheme} />
+        </View>
+      )}
 
       <AddGamesModal 
         visible={isAddGamesModalVisible} 
@@ -1265,8 +1295,14 @@ const styles = StyleSheet.create({
   bio: {
     color: '#E2E8F0',
     fontSize: 14,
-    marginBottom: 12,
     textAlign: 'left',
+  },
+  bioContainer: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 6,
+    marginBottom: 12,
   },
   platformsRow: {
     flexDirection: 'row',
