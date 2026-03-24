@@ -2261,6 +2261,17 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
+  // GET /api/themes - Public endpoint for available profile themes
+  app.get("/api/themes", async (req, res) => {
+    try {
+      const { SELECTABLE_PROFILE_THEMES } = await import('../constants/themes');
+      res.json(SELECTABLE_PROFILE_THEMES);
+    } catch (err) {
+      console.error("Error fetching themes:", err);
+      res.status(500).json({ message: "Error fetching themes" });
+    }
+  });
+
   // Helper to sign avatar URLs for leaderboard entries
   async function signLeaderboardAvatars<T extends { user: { avatarUrl?: string | null } }>(entries: T[]): Promise<T[]> {
     return Promise.all(

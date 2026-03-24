@@ -47,7 +47,7 @@ import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { useQuery } from '@tanstack/react-query';
 import ImageEditorModal from '@/components/ImageEditorModal';
-import { SELECTABLE_PROFILE_THEMES, type ProfileThemeName } from '@/constants/themes';
+import { type ProfileThemeName } from '@/constants/themes';
 import ProfileBorderModal, { AvatarBorder } from '@/components/ProfileBorderModal';
 import CustomAlert from '@/components/CustomAlert';
 import StyledUsername, { FONT_STYLES, EFFECT_STYLES, TextStyleConfig } from '@/components/StyledUsername';
@@ -62,17 +62,14 @@ interface AppearanceStudioModalProps {
   onSaved?: () => void;
 }
 
-const QUICK_THEMES = [
-  { id: 'basic', name: 'Basic', accentColor: '#4ADE80', backgroundColor: '#0B2232' },
-  { id: 'purple_night', name: 'Purple Night', accentColor: '#A855F7', backgroundColor: '#1E1B4B' },
-  { id: 'golden_yellow', name: 'Golden Yellow', accentColor: '#FACC15', backgroundColor: '#713F12' },
-  { id: 'rose_gold', name: 'Rose Gold', accentColor: '#F472B6', backgroundColor: '#4C1D4D' },
-  { id: 'sunset_orange', name: 'Sunset Orange', accentColor: '#FB7185', backgroundColor: '#431407' },
-  { id: 'arctic_blue', name: 'Arctic Blue', accentColor: '#38BDF8', backgroundColor: '#0C4A6E' },
-  { id: 'midnight_black', name: 'Midnight Black', accentColor: '#FFFFFF', backgroundColor: '#000000' },
-  { id: 'white', name: 'White', accentColor: '#FFFFFF', backgroundColor: '#FFFFFF' },
-  { id: 'baby_pink', name: 'Baby Pink', accentColor: '#F9A8D4', backgroundColor: '#E0218A' },
-];
+type ProfileThemeEntry = {
+  id: string;
+  name: string;
+  description: string;
+  bg: string;
+  accent: string;
+  preview: string[];
+};
 
 
 const VERIFICATION_BADGES = [
@@ -170,7 +167,6 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
   const [bio, setBio] = useState(user?.bio || '');
   const [avatar, setAvatar] = useState(user?.avatarUrl || null);
   const [banner, setBanner] = useState(user?.bannerUrl || null);
-  const [selectedThemeId, setSelectedThemeId] = useState<string>('basic');
   const [selectedBorder, setSelectedBorder] = useState<AvatarBorder | null>(null);
   const [displayNameColor, setDisplayNameColor] = useState<string>('#FFFFFF');
   const [selectedTextStyleId, setSelectedTextStyleId] = useState<string>('default');
@@ -213,6 +209,20 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
     refetchOnWindowFocus: false,
   });
 
+  const { data: themesData, isLoading: themesLoading } = useQuery<ProfileThemeEntry[]>({
+    queryKey: ['/api/themes'],
+    queryFn: async () => {
+      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const res = await fetch(`${backendUrl}/api/themes`);
+      if (!res.ok) throw new Error('Failed to fetch themes');
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+
+  const themes: ProfileThemeEntry[] = themesData || [];
+
   useEffect(() => {
     if (avatarBordersError) {
       console.log('[AppearanceStudio] Avatar borders fetch failed (non-blocking):', avatarBordersError?.message);
@@ -232,9 +242,6 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
       setBio(user.bio || '');
       setAvatar(user.avatarUrl || null);
       setBanner(user.bannerUrl || null);
-
-      const theme = QUICK_THEMES.find(t => t.accentColor === user.accentColor && t.backgroundColor === user.backgroundColor);
-      setSelectedThemeId(theme ? theme.id : 'basic');
 
       if (avatarBordersData?.selectedBorderId) {
         const border = avatarBordersData.borders.find((b: AvatarBorder) => b.id === avatarBordersData.selectedBorderId);
@@ -264,9 +271,9 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
     }
   }, [activeSection]);
 
-
-
-  const currentTheme = QUICK_THEMES.find(t => t.id === selectedThemeId);
+  const activeThemeData = themes.find(t => t.id === (selectedProfileTheme || 'none'));
+  const themeBg = activeThemeData?.bg || '#131F2A';
+  const themeAccent = activeThemeData?.accent || '#4ADE80';
 
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
@@ -283,8 +290,6 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
     (bio !== (user?.bio || '')) ||
     (avatar !== (user?.avatarUrl || null)) ||
     (banner !== (user?.bannerUrl || null)) ||
-    (currentTheme && (currentTheme.accentColor !== (user?.accentColor || QUICK_THEMES[0].accentColor) ||
-      currentTheme.backgroundColor !== (user?.backgroundColor || QUICK_THEMES[0].backgroundColor))) ||
     (selectedBorder?.id !== avatarBordersData?.selectedBorderId) ||
     (displayNameColor !== (user?.displayNameColor || '#FFFFFF')) ||
     (selectedTextStyleId !== ((user as any)?.textStyleId || 'default')) ||
@@ -381,15 +386,11 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
         return;
       }
 
-      const theme = QUICK_THEMES.find(t => t.id === selectedThemeId);
-
       const updateData = {
         displayName,
         bio,
         avatarUrl: avatar || undefined,
         bannerUrl: banner || undefined,
-        accentColor: theme?.accentColor,
-        backgroundColor: theme?.backgroundColor,
         displayNameColor,
         textStyleId: selectedTextStyleId,
         textFontId: selectedFontId,
@@ -422,7 +423,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
       <Text style={styles.sectionSubtitle}>Customize your Gamefolio presence</Text>
 
       <View style={styles.previewCard}>
-        <View style={[styles.previewBanner, { backgroundColor: currentTheme?.backgroundColor || '#131F2A' }]}>
+        <View style={[styles.previewBanner, { backgroundColor: themeBg }]}>
           {banner ? (
             <Image source={{ uri: banner }} style={styles.previewBannerImage} />
           ) : (
@@ -432,9 +433,9 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
             />
           )}
         </View>
-        <View style={[styles.previewContent, { backgroundColor: currentTheme?.backgroundColor || '#131F2A' }]}>
+        <View style={[styles.previewContent, { backgroundColor: themeBg }]}>
           <View style={styles.previewAvatarWrapper}>
-            <View style={[styles.previewAvatar, { borderColor: currentTheme?.backgroundColor || '#131F2A' }]}>
+            <View style={[styles.previewAvatar, { borderColor: themeBg }]}>
               {avatar ? (
                 <Image source={{ uri: avatar }} style={styles.previewAvatarImage} />
               ) : (
@@ -449,8 +450,8 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
           </View>
           <Text style={[styles.previewName, { color: displayNameColor }]}>{displayName || user?.username || 'Your Name'}</Text>
           <Text style={styles.previewHandle}>@{user?.username || 'username'}</Text>
-          <TouchableOpacity style={[styles.previewButton, { backgroundColor: currentTheme?.accentColor || '#4ADE80' }]}>
-            <Text style={[styles.previewButtonText, { color: currentTheme?.accentColor === '#FFFFFF' ? '#000' : '#FFF' }]}>
+          <TouchableOpacity style={[styles.previewButton, { backgroundColor: themeAccent }]}>
+            <Text style={[styles.previewButtonText, { color: themeAccent === '#FFFFFF' ? '#000' : '#FFF' }]}>
               Follow
             </Text>
           </TouchableOpacity>
@@ -810,71 +811,87 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
     </View>
   );
 
-  const renderThemes = () => (
-    <View style={styles.sectionContent}>
-      <Text style={styles.sectionTitle}>Profile Theme</Text>
-      <Text style={styles.sectionSubtitle}>Choose your profile color scheme</Text>
+  const renderThemes = () => {
+    const previewBg = themeBg;
+    const previewAccent = themeAccent;
 
-      <Text style={styles.subsectionTitle}>Quick Themes</Text>
-      <View style={styles.themesGrid}>
-        {QUICK_THEMES.map((theme) => (
-          <TouchableOpacity
-            key={theme.id}
-            style={styles.themeItem}
-            onPress={() => setSelectedThemeId(theme.id)}
-          >
-            <View style={[
-              styles.themePreview,
-              { backgroundColor: theme.backgroundColor },
-              selectedThemeId === theme.id && styles.themePreviewSelected
-            ]}>
-              <View style={[styles.themeAccent, { backgroundColor: theme.accentColor }]} />
-              {selectedThemeId === theme.id && (
-                <View style={styles.themeCheckmark}>
-                  <Check size={12} color="#FFF" />
-                </View>
+    return (
+      <View style={styles.sectionContent}>
+        <Text style={styles.sectionTitle}>Profile Theme</Text>
+        <Text style={styles.sectionSubtitle}>Choose a themed design for your public profile</Text>
+
+        <View style={styles.previewCard}>
+          <View style={[styles.previewBanner, { backgroundColor: previewBg }]}>
+            {banner ? (
+              <Image source={{ uri: banner }} style={styles.previewBannerImage} />
+            ) : (
+              <LinearGradient
+                colors={[previewBg, previewAccent + '44']}
+                style={styles.previewBannerPlaceholder}
+              />
+            )}
+          </View>
+          <View style={[styles.previewContent, { backgroundColor: previewBg }]}>
+            <View style={styles.previewAvatarWrapper}>
+              <View style={[styles.previewAvatar, { borderColor: previewBg }]}>
+                {avatar ? (
+                  <Image source={{ uri: avatar }} style={styles.previewAvatarImage} />
+                ) : (
+                  <View style={styles.previewAvatarPlaceholder}>
+                    <User size={24} color="#64748B" />
+                  </View>
+                )}
+              </View>
+              {selectedBorder?.imageUrl && (
+                <Image source={{ uri: selectedBorder.imageUrl }} style={styles.previewBorderOverlay} />
               )}
             </View>
-            <Text style={[styles.themeName, selectedThemeId === theme.id && styles.themeNameSelected]}>
-              {theme.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <View style={styles.premiumSection}>
-        <View style={styles.premiumHeader}>
-          <Palette size={20} color="#F472B6" />
-          <Text style={styles.premiumTitle}>Profile Page Themes</Text>
+            <Text style={[styles.previewName, { color: displayNameColor }]}>{displayName || user?.username || 'Your Name'}</Text>
+            <Text style={styles.previewHandle}>@{user?.username || 'username'}</Text>
+            <TouchableOpacity style={[styles.previewButton, { backgroundColor: previewAccent }]}>
+              <Text style={[styles.previewButtonText, { color: previewAccent === '#FFFFFF' ? '#000' : '#FFF' }]}>
+                Follow
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <Text style={styles.premiumSubtitle}>Full themed designs for your public profile page</Text>
 
-        <View style={styles.profileThemesGrid}>
-          {SELECTABLE_PROFILE_THEMES.map((t) => {
-            const isActive = selectedProfileTheme === t.id;
-            return (
-              <TouchableOpacity
-                key={t.id}
-                style={[styles.profileThemeCard, isActive && styles.profileThemeCardActive]}
-                onPress={() => setSelectedProfileTheme(isActive ? null : t.id as ProfileThemeName)}
-                activeOpacity={0.8}
-              >
-                <View style={[styles.profileThemeSwatch, { backgroundColor: t.bg }]}>
-                  <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[1] }]} />
-                  <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[2], marginLeft: 4 }]} />
-                  {isActive && (
-                    <View style={styles.profileThemeCheck}>
-                      <Check size={10} color="#FFF" />
-                    </View>
-                  )}
-                </View>
-                <Text style={[styles.profileThemeLabel, isActive && styles.profileThemeLabelActive]} numberOfLines={1}>
-                  {t.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        {themesLoading ? (
+          <View style={styles.themesLoadingContainer}>
+            <Text style={styles.themesLoadingText}>Loading themes...</Text>
+          </View>
+        ) : (
+          <View style={styles.profileThemesGrid}>
+            {themes.map((t) => {
+              const isActive = selectedProfileTheme === t.id || (t.id === 'none' && !selectedProfileTheme);
+              return (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[styles.profileThemeCard, isActive && styles.profileThemeCardActive]}
+                  onPress={() => setSelectedProfileTheme(t.id === 'none' ? null : t.id as ProfileThemeName)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.profileThemeSwatch, { backgroundColor: t.bg }]}>
+                    {t.preview.length > 1 && (
+                      <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[1] }]} />
+                    )}
+                    {t.preview.length > 2 && (
+                      <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[2], marginLeft: 4 }]} />
+                    )}
+                    {isActive && (
+                      <View style={styles.profileThemeCheck}>
+                        <Check size={10} color="#FFF" />
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[styles.profileThemeLabel, isActive && styles.profileThemeLabelActive]} numberOfLines={1}>
+                    {t.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         <View style={styles.backgroundImageHints}>
           <View style={styles.hintRow}>
@@ -883,12 +900,12 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
           </View>
           <View style={styles.hintRow}>
             <Palette size={14} color="#94A3B8" />
-            <Text style={styles.hintText}>Tap the active theme again to remove it</Text>
+            <Text style={styles.hintText}>Tap a theme to preview it live above</Text>
           </View>
         </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderBorder = () => {
     const allBorders = [...(avatarBordersData?.borders || []), ...SAMPLE_BORDERS];
@@ -2342,10 +2359,20 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginBottom: 16,
   },
+  themesLoadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    marginTop: 16,
+  },
+  themesLoadingText: {
+    fontSize: 14,
+    color: '#64748B',
+  },
   profileThemesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    marginTop: 16,
   },
   profileThemeCard: {
     width: (SCREEN_WIDTH - 88) / 3,
