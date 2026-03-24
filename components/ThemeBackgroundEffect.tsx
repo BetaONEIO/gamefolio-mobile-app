@@ -1,11 +1,9 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { View, StyleSheet, Animated, Text, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Defs, RadialGradient, Stop, Ellipse, Rect } from 'react-native-svg';
-import { ProfileThemeName } from '@/constants/themes';
+import Svg, { Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg';
 
 // ─── NEO / MATRIX ─────────────────────────────────────────────────────────────
-// Web-app reference: canvas matrix rain + vignette + sweeping scanline
 
 function NeoMatrixEffect() {
   const { width: W, height: H } = useWindowDimensions();
@@ -53,7 +51,6 @@ function NeoMatrixEffect() {
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {/* Character rain */}
       {cols.map((col, i) => {
         const translateY = col.anim.interpolate({ inputRange: [0, 1], outputRange: [-100, H + 20] });
         return (
@@ -65,7 +62,6 @@ function NeoMatrixEffect() {
         );
       })}
 
-      {/* Sweeping scanline */}
       <Animated.View
         style={{
           position: 'absolute',
@@ -78,7 +74,6 @@ function NeoMatrixEffect() {
         }}
       />
 
-      {/* Vignette — dark edges matching web app's radial-gradient vignette */}
       <LinearGradient
         colors={['rgba(0,0,0,0.65)', 'transparent']}
         style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 70 }}
@@ -108,7 +103,6 @@ function NeoMatrixEffect() {
 }
 
 // ─── ZOMBIE ───────────────────────────────────────────────────────────────────
-// Web-app reference: 3 fog radial-gradient layers + green grid pulse + diagonal sweep beam
 
 function ZombieFogBlob({
   cx, cy, rx, ry, color, opacity, anim, dX, dY,
@@ -154,6 +148,7 @@ function ZombieEffect() {
   const fog2 = useRef(new Animated.Value(0)).current;
   const fog3 = useRef(new Animated.Value(0)).current;
   const sweepAnim = useRef(new Animated.Value(0)).current;
+  const gridAnim = useRef(new Animated.Value(0)).current;
 
   const sweepRange = W + 600;
 
@@ -174,42 +169,42 @@ function ZombieEffect() {
       Animated.loop(
         Animated.timing(sweepAnim, { toValue: 1, duration: 7000, useNativeDriver: true })
       ),
+      Animated.loop(Animated.sequence([
+        Animated.timing(gridAnim, { toValue: 1, duration: 3500, useNativeDriver: true }),
+        Animated.timing(gridAnim, { toValue: 0, duration: 3500, useNativeDriver: true }),
+      ])),
     ];
     loops.forEach(l => l.start());
     return () => loops.forEach(l => l.stop());
   }, []);
 
   const sweepTX = sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-sweepRange / 2, sweepRange / 2] });
+  const gridOpacity = gridAnim.interpolate({ inputRange: [0, 1], outputRange: [0.10, 0.28] });
   const gridRows = Math.ceil(H / 48) + 1;
   const gridCols = Math.ceil(W / 48) + 1;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {/* Fog layer 1 (zombieFogDrift1: 28s in web) — dark green with radial falloff */}
       <ZombieFogBlob cx={W * 0.38} cy={H * 0.48} rx={W * 0.50} ry={H * 0.35} color="#1a2e0a" opacity={0.85} anim={fog1} dX={22} dY={-15} />
       <ZombieFogBlob cx={W * 0.78} cy={H * 0.72} rx={W * 0.36} ry={H * 0.26} color="#0d1a05" opacity={0.75} anim={fog1} dX={22} dY={-15} />
       <ZombieFogBlob cx={W * 0.55} cy={H * 0.90} rx={W * 0.38} ry={H * 0.14} color="#9ae600" opacity={0.18} anim={fog1} dX={22} dY={-15} />
 
-      {/* Fog layer 2 (zombieFogDrift2: 35s in web) */}
       <ZombieFogBlob cx={W * 0.78} cy={H * 0.36} rx={W * 0.40} ry={H * 0.32} color="#9ae600" opacity={0.12} anim={fog2} dX={-27} dY={18} />
       <ZombieFogBlob cx={W * 0.10} cy={H * 0.80} rx={W * 0.36} ry={H * 0.24} color="#1a2e0a" opacity={0.70} anim={fog2} dX={-27} dY={18} />
       <ZombieFogBlob cx={W * 0.50} cy={H * 0.55} rx={W * 0.48} ry={H * 0.16} color="#0d1a05" opacity={0.55} anim={fog2} dX={-27} dY={18} />
 
-      {/* Fog layer 3 (zombieFogDrift3: 44s in web) */}
       <ZombieFogBlob cx={W * 0.85} cy={H * 0.55} rx={W * 0.32} ry={H * 0.32} color="#9ae600" opacity={0.09} anim={fog3} dX={15} dY={20} />
       <ZombieFogBlob cx={W * 0.22} cy={H * 0.65} rx={W * 0.42} ry={H * 0.20} color="#1a2e0a" opacity={0.60} anim={fog3} dX={15} dY={20} />
 
-      {/* Green grid pulse — zombie-bg-pulse */}
-      <View style={[StyleSheet.absoluteFill, { opacity: 0.22 }]}>
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: gridOpacity }]}>
         {Array.from({ length: gridRows }).map((_, i) => (
           <View key={`h${i}`} style={{ position: 'absolute', left: 0, right: 0, top: i * 48, height: 1, backgroundColor: '#9ae600' }} />
         ))}
         {Array.from({ length: gridCols }).map((_, i) => (
           <View key={`v${i}`} style={{ position: 'absolute', top: 0, bottom: 0, left: i * 48, width: 1, backgroundColor: '#9ae600' }} />
         ))}
-      </View>
+      </Animated.View>
 
-      {/* Diagonal green sweep beam — zombieMeshSweep */}
       <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
         <View style={{ position: 'absolute', top: -H, left: -W, width: W * 3, height: H * 3, transform: [{ rotate: '20deg' }] }}>
           <Animated.View style={[StyleSheet.absoluteFillObject, { transform: [{ translateX: sweepTX }] }]}>
@@ -233,8 +228,6 @@ function ZombieEffect() {
 }
 
 // ─── CYBERPUNK ────────────────────────────────────────────────────────────────
-// Web-app reference: pulsing diamond mesh + diagonal cyan→magenta scan sweep +
-//                    static scanlines + sporadic RGB chromatic-aberration glitch
 
 function CyberpunkEffect() {
   const { width: W, height: H } = useWindowDimensions();
@@ -243,7 +236,6 @@ function CyberpunkEffect() {
   const glitchAnim = useRef(new Animated.Value(0)).current;
 
   const GRID = 40;
-  // Diamond mesh dots spanning full screen with 1-cell overflow on each edge
   const dots = useMemo(() => {
     const result: { left: number; top: number }[] = [];
     const cols = Math.ceil(W / GRID) + 2;
@@ -260,7 +252,6 @@ function CyberpunkEffect() {
   }, [W, H]);
 
   useEffect(() => {
-    // Mesh pulse: 0.18→0.32 opacity + 1.012 scale, 4s loop (cyberNodePulse in web)
     const meshLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(meshAnim, { toValue: 1, duration: 4000, useNativeDriver: true }),
@@ -268,12 +259,10 @@ function CyberpunkEffect() {
       ])
     );
 
-    // Diagonal sweep: 9s linear loop (cyberScanSweep in web)
     const sweepLoop = Animated.loop(
       Animated.timing(sweepAnim, { toValue: 1, duration: 9000, useNativeDriver: true })
     );
 
-    // RGB glitch: ~8s cycle — off for 6.2s, two quick bursts (cyberRGBR/B in web)
     const glitchLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(glitchAnim, { toValue: 0, duration: 6200, useNativeDriver: true }),
@@ -308,11 +297,9 @@ function CyberpunkEffect() {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
 
-      {/* ── Diamond mesh: dots + 45°/−45° crosshatch (cyber-bg-mesh) ── */}
       <Animated.View
         style={[StyleSheet.absoluteFill, { opacity: meshOpacity, transform: [{ scale: meshScale }] }]}
       >
-        {/* Dot grid */}
         {dots.map((d, i) => (
           <View
             key={i}
@@ -327,17 +314,14 @@ function CyberpunkEffect() {
             }}
           />
         ))}
-        {/* 45° cyan diagonals — span full screen diagonally */}
         {Array.from({ length: Math.ceil(W / GRID) + 4 }).map((_, i) => (
           <View key={`c${i}`} style={{ position: 'absolute', left: i * GRID - GRID, top: -H, width: 1, height: H * 3, backgroundColor: '#00b8db', opacity: 0.10, transform: [{ rotate: '45deg' }] }} />
         ))}
-        {/* −45° magenta diagonals */}
         {Array.from({ length: Math.ceil(W / GRID) + 4 }).map((_, i) => (
           <View key={`m${i}`} style={{ position: 'absolute', left: i * GRID - GRID, top: -H, width: 1, height: H * 3, backgroundColor: '#e12afb', opacity: 0.07, transform: [{ rotate: '-45deg' }] }} />
         ))}
       </Animated.View>
 
-      {/* ── Diagonal scan sweep: cyan → magenta beam (cyberScanSweep) ── */}
       <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
         <View style={{ position: 'absolute', top: -H, left: -W, width: W * 3, height: H * 3, transform: [{ rotate: '15deg' }] }}>
           <Animated.View style={[StyleSheet.absoluteFillObject, { transform: [{ translateX: sweepTX }] }]}>
@@ -357,19 +341,15 @@ function CyberpunkEffect() {
         </View>
       </View>
 
-      {/* ── Static horizontal scanlines (cyber-scanlines) ── */}
       <View style={[StyleSheet.absoluteFill, { opacity: 0.05 }]}>
         {Array.from({ length: Math.ceil(H / 6) }).map((_, i) => (
           <View key={i} style={{ height: 1, borderBottomWidth: 0.5, borderBottomColor: '#000000', marginBottom: 5 }} />
         ))}
       </View>
 
-      {/* ── RGB chromatic aberration — red channel (cyberRGBR) ── */}
       <Animated.View style={{ position: 'absolute', top: '15%', left: 0, right: 0, height: 1.5, backgroundColor: '#ff0044', opacity: glitchOpacity, transform: [{ translateX: redTX }] }} />
       <Animated.View style={{ position: 'absolute', top: '48%', left: 0, right: 0, height: 1.5, backgroundColor: '#ff0033', opacity: glitchOpacity, transform: [{ translateX: redTX }] }} />
       <Animated.View style={{ position: 'absolute', top: '72%', left: 0, right: 0, height: 1.5, backgroundColor: '#ff0055', opacity: glitchOpacity, transform: [{ translateX: redTX }] }} />
-
-      {/* ── RGB chromatic aberration — blue channel (cyberRGBB) ── */}
       <Animated.View style={{ position: 'absolute', top: '15%', left: 0, right: 0, height: 1.5, backgroundColor: '#0055ff', opacity: glitchOpacity, transform: [{ translateX: blueTX }] }} />
       <Animated.View style={{ position: 'absolute', top: '48%', left: 0, right: 0, height: 1.5, backgroundColor: '#0033ff', opacity: glitchOpacity, transform: [{ translateX: blueTX }] }} />
       <Animated.View style={{ position: 'absolute', top: '72%', left: 0, right: 0, height: 1.5, backgroundColor: '#0077ff', opacity: glitchOpacity, transform: [{ translateX: blueTX }] }} />
