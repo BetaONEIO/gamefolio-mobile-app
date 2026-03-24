@@ -51,6 +51,7 @@ import { type ProfileThemeName } from '@/constants/themes';
 import ProfileBorderModal, { AvatarBorder } from '@/components/ProfileBorderModal';
 import CustomAlert from '@/components/CustomAlert';
 import StyledUsername, { FONT_STYLES, EFFECT_STYLES, TextStyleConfig } from '@/components/StyledUsername';
+import { Env } from '@/constants/Env';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -212,7 +213,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
   const { data: themesData, isLoading: themesLoading, isError: themesError } = useQuery<ProfileThemeEntry[]>({
     queryKey: ['/api/themes'],
     queryFn: async () => {
-      const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+      const backendUrl = Env.BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : '');
       const res = await fetch(`${backendUrl}/api/themes`);
       if (!res.ok) throw new Error('Failed to fetch themes');
       return res.json();
@@ -417,46 +418,76 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
     }
   };
 
+  const renderProfilePreviewCard = (bgColor: string, accentColor: string, nameColor: string) => {
+    const followerCount = (user as any)?._count?.followers || 0;
+    const followingCount = (user as any)?._count?.following || 0;
+    const uploadsCount = (user as any)?._count?.clips || 0;
+    const followBtnTextColor = accentColor === '#FFFFFF' ? '#000' : '#FFF';
+    return (
+      <View style={[styles.previewCard, { backgroundColor: bgColor }]}>
+        <View style={styles.pvBannerSection}>
+          <View style={styles.pvBanner}>
+            {banner ? (
+              <Image source={{ uri: banner }} style={styles.pvBannerImage} />
+            ) : (
+              <LinearGradient colors={[bgColor, accentColor + '44']} style={StyleSheet.absoluteFill} />
+            )}
+          </View>
+          <View style={[styles.pvAvatarContainer, { borderColor: bgColor, backgroundColor: bgColor }]}>
+            {avatar ? (
+              <Image source={{ uri: avatar }} style={styles.pvAvatarImage} />
+            ) : (
+              <View style={styles.pvAvatarPlaceholder}>
+                <User size={18} color="#64748B" />
+              </View>
+            )}
+            {selectedBorder?.imageUrl && (
+              <Image source={{ uri: selectedBorder.imageUrl }} style={styles.pvBorderOverlay} />
+            )}
+          </View>
+        </View>
+
+        <View style={styles.pvIdentity}>
+          <Text style={[styles.pvName, { color: nameColor }]} numberOfLines={1}>
+            {displayName || user?.username || 'Your Name'}
+          </Text>
+          <Text style={styles.pvHandle}>@{user?.username || 'username'}</Text>
+        </View>
+
+        <View style={styles.pvStatsCard}>
+          <View style={styles.pvStatsRow}>
+            <View style={styles.pvStatCol}>
+              <Text style={[styles.pvStatNum, { color: nameColor }]}>{uploadsCount}</Text>
+              <Text style={[styles.pvStatLabel, { color: accentColor }]}>Videos</Text>
+            </View>
+            <View style={styles.pvStatDivider} />
+            <View style={styles.pvStatCol}>
+              <Text style={[styles.pvStatNum, { color: nameColor }]}>{followerCount}</Text>
+              <Text style={[styles.pvStatLabel, { color: accentColor }]}>Followers</Text>
+            </View>
+            <View style={styles.pvStatDivider} />
+            <View style={styles.pvStatCol}>
+              <Text style={[styles.pvStatNum, { color: nameColor }]}>{followingCount}</Text>
+              <Text style={[styles.pvStatLabel, { color: accentColor }]}>Following</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.pvFollowRow}>
+          <TouchableOpacity style={[styles.pvFollowBtn, { backgroundColor: accentColor }]}>
+            <Text style={[styles.pvFollowBtnText, { color: followBtnTextColor }]}>Follow</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
   const renderOverview = () => (
     <View style={styles.sectionContent}>
       <Text style={styles.sectionTitle}>Profile Studio</Text>
       <Text style={styles.sectionSubtitle}>Customize your Gamefolio presence</Text>
 
-      <View style={styles.previewCard}>
-        <View style={[styles.previewBanner, { backgroundColor: themeBg }]}>
-          {banner ? (
-            <Image source={{ uri: banner }} style={styles.previewBannerImage} />
-          ) : (
-            <LinearGradient
-              colors={['#334155', '#1E293B']}
-              style={styles.previewBannerPlaceholder}
-            />
-          )}
-        </View>
-        <View style={[styles.previewContent, { backgroundColor: themeBg }]}>
-          <View style={styles.previewAvatarWrapper}>
-            <View style={[styles.previewAvatar, { borderColor: themeBg }]}>
-              {avatar ? (
-                <Image source={{ uri: avatar }} style={styles.previewAvatarImage} />
-              ) : (
-                <View style={styles.previewAvatarPlaceholder}>
-                  <User size={24} color="#64748B" />
-                </View>
-              )}
-            </View>
-            {selectedBorder?.imageUrl && (
-              <Image source={{ uri: selectedBorder.imageUrl }} style={styles.previewBorderOverlay} />
-            )}
-          </View>
-          <Text style={[styles.previewName, { color: displayNameColor }]}>{displayName || user?.username || 'Your Name'}</Text>
-          <Text style={styles.previewHandle}>@{user?.username || 'username'}</Text>
-          <TouchableOpacity style={[styles.previewButton, { backgroundColor: themeAccent }]}>
-            <Text style={[styles.previewButtonText, { color: themeAccent === '#FFFFFF' ? '#000' : '#FFF' }]}>
-              Follow
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      {renderProfilePreviewCard(themeBg, themeAccent, displayNameColor)}
 
       <View style={styles.quickActions}>
         <Text style={styles.quickActionsTitle}>Quick Actions</Text>
@@ -820,41 +851,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
         <Text style={styles.sectionTitle}>Profile Theme</Text>
         <Text style={styles.sectionSubtitle}>Choose a themed design for your public profile</Text>
 
-        <View style={styles.previewCard}>
-          <View style={[styles.previewBanner, { backgroundColor: previewBg }]}>
-            {banner ? (
-              <Image source={{ uri: banner }} style={styles.previewBannerImage} />
-            ) : (
-              <LinearGradient
-                colors={[previewBg, previewAccent + '44']}
-                style={styles.previewBannerPlaceholder}
-              />
-            )}
-          </View>
-          <View style={[styles.previewContent, { backgroundColor: previewBg }]}>
-            <View style={styles.previewAvatarWrapper}>
-              <View style={[styles.previewAvatar, { borderColor: previewBg }]}>
-                {avatar ? (
-                  <Image source={{ uri: avatar }} style={styles.previewAvatarImage} />
-                ) : (
-                  <View style={styles.previewAvatarPlaceholder}>
-                    <User size={24} color="#64748B" />
-                  </View>
-                )}
-              </View>
-              {selectedBorder?.imageUrl && (
-                <Image source={{ uri: selectedBorder.imageUrl }} style={styles.previewBorderOverlay} />
-              )}
-            </View>
-            <Text style={[styles.previewName, { color: displayNameColor }]}>{displayName || user?.username || 'Your Name'}</Text>
-            <Text style={styles.previewHandle}>@{user?.username || 'username'}</Text>
-            <TouchableOpacity style={[styles.previewButton, { backgroundColor: previewAccent }]}>
-              <Text style={[styles.previewButtonText, { color: previewAccent === '#FFFFFF' ? '#000' : '#FFF' }]}>
-                Follow
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        {renderProfilePreviewCard(previewBg, previewAccent, displayNameColor)}
 
         {themesLoading ? (
           <View style={styles.themesLoadingContainer}>
@@ -1889,6 +1886,109 @@ const styles = StyleSheet.create({
   previewButtonText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  pvBannerSection: {
+    position: 'relative',
+    marginBottom: 28,
+  },
+  pvBanner: {
+    height: 80,
+    width: '100%',
+    overflow: 'hidden',
+  },
+  pvBannerImage: {
+    width: '100%',
+    height: '100%',
+  },
+  pvAvatarContainer: {
+    position: 'absolute',
+    bottom: -26,
+    left: 12,
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    borderWidth: 2,
+    overflow: 'hidden',
+  },
+  pvAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  pvAvatarPlaceholder: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#334155',
+  },
+  pvBorderOverlay: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    top: -2,
+    left: -2,
+  },
+  pvIdentity: {
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  pvName: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  pvHandle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  pvStatsCard: {
+    marginHorizontal: 12,
+    marginBottom: 10,
+    borderRadius: 10,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  pvStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  pvStatCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  pvStatDivider: {
+    width: 0.5,
+    height: 28,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  pvStatNum: {
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    marginBottom: 2,
+  },
+  pvStatLabel: {
+    fontSize: 8,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  pvFollowRow: {
+    alignItems: 'center',
+    paddingBottom: 14,
+  },
+  pvFollowBtn: {
+    paddingVertical: 7,
+    paddingHorizontal: 28,
+    borderRadius: 100,
+  },
+  pvFollowBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   quickActions: {
     marginTop: 8,
