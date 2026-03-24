@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Modal, Image, ActivityIndicator } from 'react-native';
 import ThemedScrollView from '@/components/ThemedScrollView';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { MaterialCommunityIcons, FontAwesome6 } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Shield, Gamepad2, Check, User, Ticket, Lock, Globe, X, QrCode, KeyRound, CheckCircle2 } from 'lucide-react-native';
+import { Shield, Check, User, Ticket, Lock, Globe, X, QrCode, KeyRound, CheckCircle2 } from 'lucide-react-native';
 import AppHeader from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -12,7 +12,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import UserTypeBadge, { USER_TYPES } from '@/components/UserTypeBadge';
 import RedeemCodeModal from '@/components/RedeemCodeModal';
 
-type TabType = 'platforms' | 'security' | 'profile';
+type TabType = 'security' | 'profile';
 
 export default function AccountSettings() {
   const { tab } = useLocalSearchParams<{ tab: string }>();
@@ -32,7 +32,7 @@ export default function AccountSettings() {
   });
 
   useEffect(() => {
-    if (tab && ['platforms', 'security', 'profile'].includes(tab)) {
+    if (tab && ['security', 'profile'].includes(tab)) {
       setActiveTab(tab as TabType);
     }
   }, [tab]);
@@ -137,16 +137,6 @@ export default function AccountSettings() {
     }
   };
 
-  // Platform State (from previous implementation)
-  const [steamId, setSteamId] = useState('');
-  const [xboxGamertag, setXboxGamertag] = useState('');
-  const [psnId, setPsnId] = useState('');
-  const [discordId, setDiscordId] = useState('');
-  const [epicId, setEpicId] = useState('');
-  const [nintendoId, setNintendoId] = useState('');
-  const [xId, setXId] = useState('');
-  const [youtubeId, setYoutubeId] = useState('');
-
   // Validation checks for Password
   const hasMinLength = newPassword.length >= 8;
   const hasUppercase = /[A-Z]/.test(newPassword);
@@ -205,46 +195,6 @@ export default function AccountSettings() {
     }
   };
   
-  const handleSavePlatforms = () => {
-    console.log('Saving platforms');
-    // Save logic here
-  };
-
-  const renderPlatformInput = (platform: any) => (
-    <View key={platform.id} style={styles.platformItem}>
-      <View style={styles.platformHeader}>
-        {platform.iconLibrary === 'FontAwesome6' ? (
-          <FontAwesome6 name={platform.icon} size={24} color={platform.iconColor} style={styles.platformIcon} />
-        ) : (
-          <MaterialCommunityIcons name={platform.icon} size={24} color={platform.iconColor} style={styles.platformIcon} />
-        )}
-        <Text style={styles.platformName}>{platform.name}</Text>
-      </View>
-      <TextInput
-        style={styles.input}
-        placeholder={platform.placeholder}
-        placeholderTextColor="#64748B"
-        value={platform.value}
-        onChangeText={platform.onChange}
-      />
-      <Text style={styles.helperText}>{platform.helperText}</Text>
-    </View>
-  );
-
-  const platformsList = [
-    { id: 'steam', name: 'Steam', icon: 'steam', iconColor: '#66c0f4', placeholder: 'Enter your Steam username', helperText: 'Your Steam profile username', value: steamId, onChange: setSteamId },
-    { id: 'xbox', name: 'Xbox', icon: 'microsoft-xbox', iconColor: '#107C10', placeholder: 'Enter your Xbox gamertag', helperText: 'Your Xbox Live gamertag', value: xboxGamertag, onChange: setXboxGamertag },
-    { id: 'playstation', name: 'PlayStation', icon: 'sony-playstation', iconColor: '#00439C', placeholder: 'Enter your PlayStation ID', helperText: 'Your PlayStation Network ID', value: psnId, onChange: setPsnId },
-    { id: 'discord', name: 'Discord', icon: 'discord', iconColor: '#5865F2', placeholder: 'Enter your Discord username', helperText: 'Your Discord username', value: discordId, onChange: setDiscordId },
-    { id: 'epic', name: 'Epic Games', icon: 'alpha-e-box', iconColor: '#343434', placeholder: 'Enter your Epic Games username', helperText: 'Your Epic Games Store username', value: epicId, onChange: setEpicId },
-    { id: 'nintendo', name: 'Nintendo', icon: 'nintendo-switch', iconColor: '#E60012', placeholder: 'Enter your Nintendo username', helperText: 'Your Nintendo Switch username', value: nintendoId, onChange: setNintendoId },
-  ];
-
-  const socialMediaList = [
-    { id: 'x', name: 'X', icon: 'x-twitter', iconColor: '#000000', placeholder: 'Enter your X username', helperText: 'Your X username', value: xId, onChange: setXId, iconLibrary: 'FontAwesome6' },
-    { id: 'youtube', name: 'YouTube', icon: 'youtube', iconColor: '#FF0000', placeholder: 'Enter your YouTube username', helperText: 'Your YouTube channel username', value: youtubeId, onChange: setYoutubeId },
-  ];
-
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
@@ -263,14 +213,6 @@ export default function AccountSettings() {
             >
               <User size={18} color={activeTab === 'profile' ? '#FFF' : '#94A3B8'} />
               <Text style={[styles.tabText, activeTab === 'profile' && styles.activeTabText]}>Profile</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.tab, activeTab === 'platforms' && styles.activeTab]} 
-              onPress={() => setActiveTab('platforms')}
-            >
-              <Gamepad2 size={18} color={activeTab === 'platforms' ? '#FFF' : '#94A3B8'} />
-              <Text style={[styles.tabText, activeTab === 'platforms' && styles.activeTabText]}>Platforms</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -573,28 +515,6 @@ export default function AccountSettings() {
               </View>
             )}
 
-            {activeTab === 'platforms' && (
-              <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <Text style={styles.cardTitle}>Platform Connections</Text>
-                  <Text style={styles.cardSubtitle}>Connect your gaming accounts and social media profiles.</Text>
-                </View>
-
-                <Text style={styles.sectionHeader}>Gaming Platforms</Text>
-                <View style={styles.platformsGrid}>
-                  {platformsList.map(renderPlatformInput)}
-                </View>
-
-                <Text style={[styles.sectionHeader, { marginTop: 24 }]}>Social Media</Text>
-                <View style={styles.platformsGrid}>
-                  {socialMediaList.map(renderPlatformInput)}
-                </View>
-
-                <TouchableOpacity style={styles.saveButton} onPress={handleSavePlatforms}>
-                  <Text style={styles.saveButtonText}>Save Platform Connections</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </ThemedScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

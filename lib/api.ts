@@ -389,6 +389,12 @@ export interface User {
   profileFont?: string;
   profileFontEffect?: string;
   profileFontAnimation?: string;
+  profileFontColor?: string;
+  profileBackgroundImageUrl?: string | null;
+  profileBackgroundPositionX?: string;
+  profileBackgroundPositionY?: string;
+  profileBackgroundZoom?: string;
+  selectedNameTagId?: number | null;
   profileTheme?: string | null;
   _count?: {
     followers: number;
@@ -2053,6 +2059,38 @@ export const api = {
       return apiFetch<{ selectedBorderId: number | null }>('/api/user/selected-border', {
         method: 'PATCH',
         body: JSON.stringify({ borderId }),
+        token,
+      });
+    },
+  },
+
+  nameTags: {
+    getUserNameTags: async (token: string) => {
+      return apiFetch<{ id: number; name: string; imageUrl: string; rarity: string; isDefault: boolean }[]>('/api/user/name-tags', {
+        method: 'GET',
+        token,
+      });
+    },
+    setSelectedNameTag: async (nameTagId: number | null, token: string) => {
+      return apiFetch<{ message: string }>('/api/user/name-tag', {
+        method: 'PUT',
+        body: JSON.stringify({ nameTagId }),
+        token,
+      });
+    },
+  },
+
+  verificationBadges: {
+    getUserBadges: async (token: string) => {
+      return apiFetch<{ id: number; name: string; imageUrl: string; rarity: string; isDefault: boolean }[]>('/api/user/verification-badges', {
+        method: 'GET',
+        token,
+      });
+    },
+    setSelectedBadge: async (badgeId: number | null, token: string) => {
+      return apiFetch<{ message: string }>('/api/user/verification-badge', {
+        method: 'PUT',
+        body: JSON.stringify({ badgeId }),
         token,
       });
     },
