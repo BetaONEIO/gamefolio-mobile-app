@@ -25,19 +25,31 @@ const scryptAsync = promisify(scrypt);
 // Using it would cause the proxy to call itself, breaking login for all web-created accounts.
 const GAMEFOLIO_API_URL = process.env.GAMEFOLIO_WEB_URL || 'https://app.gamefolio.com';
 
+type ProxyLoginResult =
+  | { outcome: 'success'; data: any }
+  | { outcome: 'not_found' }      // production returned 404 — user doesn't exist there
+  | { outcome: 'unauthorized' }   // production returned 401 — wrong password
+  | { outcome: 'error' };         // network or server error
+
 /** Proxy a username/password login to the Gamefolio production web app. */
-async function proxyLoginToGamefolio(username: string, password: string): Promise<any | null> {
+async function proxyLoginToGamefolio(username: string, password: string): Promise<ProxyLoginResult> {
   try {
     const response = await fetch(`${GAMEFOLIO_API_URL}/api/auth/token/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
-    if (!response.ok) return null;
-    return response.json();
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.user) return { outcome: 'success', data };
+      return { outcome: 'error' };
+    }
+    if (response.status === 404) return { outcome: 'not_found' };
+    if (response.status === 401) return { outcome: 'unauthorized' };
+    return { outcome: 'error' };
   } catch (err) {
     console.error('[auth-routes] Production proxy failed:', err);
-    return null;
+    return { outcome: 'error' };
   }
 }
 
@@ -101,16 +113,14 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
     }
 
     // ── Step 1: Try the Gamefolio production API first ──────────────────────
-    // This handles:
-    //   • All accounts created on the web app (https://app.gamefolio.com)
-    //   • Email-based logins (local users table has no email column)
-    //   • Case-insensitive username/email on the production side
-    const prodResult = await proxyLoginToGamefolio(username, password);
+    // This handles all web-created accounts and email-based logins
+    // (the local users table has no email column).
+    const proxyResult = await proxyLoginToGamefolio(username, password);
 
-    if (prodResult && prodResult.user) {
+    if (proxyResult.outcome === 'success') {
       // Production auth succeeded — sync the user into the local DB and issue
       // local JWT tokens so the mobile server can authorise subsequent requests.
-      const syncedUser = await syncProductionUser(prodResult.user);
+      const syncedUser = await syncProductionUser(proxyResult.data.user);
       if (!syncedUser) {
         return res.status(500).json({ message: 'Failed to sync account. Please try again.' });
       }
@@ -126,10 +136,19 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
       });
     }
 
-    // ── Step 2: Fall back to local DB verification ──────────────────────────
-    // Covers mobile-registered accounts and the case where production is
-    // temporarily unreachable.  Local users table has no email column, so only
-    // username matching is possible here.
+    // Wrong password on production — don't try local; the account belongs to production.
+    if (proxyResult.outcome === 'unauthorized') {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+
+    // Production server error — also fail fast; we cannot safely fall back.
+    if (proxyResult.outcome === 'error') {
+      return res.status(401).json({ message: 'Invalid username or password' });
+    }
+
+    // ── Step 2: Fall back to local DB (only when production returned 404) ───
+    // production returned 404 ↔ user does not exist on the web app.
+    // This covers mobile-registered accounts that were never on the web app.
     const rawResult = await db.execute(sql`
       SELECT * FROM users WHERE LOWER(username) = LOWER(${username})
     `);
@@ -140,8 +159,8 @@ router.post('/auth/token/login', async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Invalid username or password' });
     }
 
-    // PRODUCTION_SYNCED users have no real local password — if production
-    // already failed above, there is nothing more to try.
+    // PRODUCTION_SYNCED users have no real local password — production is the
+    // only auth source and it already returned 404, so fail.
     if (user.password?.startsWith('PRODUCTION_SYNCED')) {
       return res.status(401).json({ message: 'Invalid username or password' });
     }

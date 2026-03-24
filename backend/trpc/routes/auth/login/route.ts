@@ -9,36 +9,39 @@ import { Env } from '@/constants/Env';
 
 const GAMEFOLIO_API_URL = 'https://app.gamefolio.com/api';
 
-async function authenticateWithGamefolioAPI(username: string, password: string): Promise<{
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-} | null> {
+type GamefolioAuthResult =
+  | { outcome: 'success'; accessToken: string; refreshToken: string; expiresIn: number }
+  | { outcome: 'not_found' }    // 404: user does not exist on the web app
+  | { outcome: 'unauthorized' } // 401: user exists but wrong password
+  | { outcome: 'error' };       // network or server error
+
+async function authenticateWithGamefolioAPI(username: string, password: string): Promise<GamefolioAuthResult> {
   try {
     console.log('[AUTH] Authenticating with Gamefolio API...');
     const response = await fetch(`${GAMEFOLIO_API_URL}/auth/token/login`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
 
-    if (!response.ok) {
-      console.log('[AUTH] Gamefolio API auth failed:', response.status);
-      return null;
+    if (response.ok) {
+      const data = await response.json();
+      console.log('[AUTH] Gamefolio API auth successful');
+      return {
+        outcome: 'success',
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
+        expiresIn: data.expiresIn || 3600,
+      };
     }
 
-    const data = await response.json();
-    console.log('[AUTH] Gamefolio API auth successful');
-    return {
-      accessToken: data.accessToken,
-      refreshToken: data.refreshToken,
-      expiresIn: data.expiresIn || 3600,
-    };
+    console.log('[AUTH] Gamefolio API auth failed:', response.status);
+    if (response.status === 404) return { outcome: 'not_found' };
+    if (response.status === 401) return { outcome: 'unauthorized' };
+    return { outcome: 'error' };
   } catch (error) {
     console.error('[AUTH] Gamefolio API auth error:', error);
-    return null;
+    return { outcome: 'error' };
   }
 }
 
@@ -166,6 +169,75 @@ export default publicProcedure
       };
     }
 
+    // ── Step 1: Try Gamefolio production API first ──────────────────────────
+    console.log('[AUTH] Trying Gamefolio API first...');
+    const gamefolioResult = await authenticateWithGamefolioAPI(username, password);
+
+    if (gamefolioResult.outcome === 'success') {
+      // Production auth succeeded — look up (or create) the user in local Supabase
+      // to obtain a full profile, then issue local JWT tokens.
+      const { data: localUser } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .or(`username.ilike.${username},email.ilike.${username}`)
+        .maybeSingle();
+
+      if (localUser) {
+        const accessToken = jwt.sign(
+          { userId: localUser.id, username: localUser.username, role: localUser.role },
+          JWT_SECRET,
+          { expiresIn: '7d' }
+        );
+        const refreshToken = jwt.sign(
+          { userId: localUser.id },
+          JWT_REFRESH_SECRET,
+          { expiresIn: '30d' }
+        );
+        console.log('[AUTH] Gamefolio API login successful (local user found):', localUser.username);
+        return {
+          user: {
+            id: localUser.id,
+            username: localUser.username,
+            displayName: localUser.display_name,
+            email: localUser.email,
+            emailVerified: localUser.email_verified,
+            role: localUser.role,
+            totalXP: localUser.total_xp ?? 0,
+            level: localUser.level ?? 1,
+            currentStreak: localUser.current_streak ?? 0,
+            longestStreak: localUser.longest_streak ?? 0,
+            avatarUrl: await generateSignedUrl(localUser.avatar_url),
+            bannerUrl: await generateSignedUrl(localUser.banner_url),
+            bio: localUser.bio,
+            messagingEnabled: localUser.messaging_enabled,
+            isPrivate: localUser.is_private,
+          },
+          accessToken,
+          refreshToken,
+          expiresIn: 7 * 24 * 60 * 60,
+          gamefolioTokens: gamefolioResult,
+        };
+      }
+
+      // Verified on production but no local profile — return production tokens
+      console.log('[AUTH] Gamefolio API login OK (no local user), returning production tokens');
+      return {
+        user: null,
+        accessToken: gamefolioResult.accessToken,
+        refreshToken: gamefolioResult.refreshToken,
+        expiresIn: gamefolioResult.expiresIn,
+        gamefolioTokens: gamefolioResult,
+      };
+    }
+
+    // Wrong password or server error on production — fail immediately.
+    // Only fall back to local when the user is simply not found on production (404).
+    if (gamefolioResult.outcome === 'unauthorized' || gamefolioResult.outcome === 'error') {
+      throw new Error('Invalid username or password');
+    }
+
+    // ── Step 2: Fall back to local Supabase (only when production returned 404) ─
+    // This covers mobile-registered accounts not present on the web app.
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('*')
@@ -196,10 +268,7 @@ export default publicProcedure
       { expiresIn: '30d' }
     );
 
-    console.log('[AUTH] Login successful:', userData.username);
-
-    // Also authenticate with Gamefolio API for uploads
-    const gamefolioAuth = await authenticateWithGamefolioAPI(username, password);
+    console.log('[AUTH] Local login successful:', userData.username);
 
     return {
       user: {
@@ -222,6 +291,5 @@ export default publicProcedure
       accessToken,
       refreshToken,
       expiresIn: 7 * 24 * 60 * 60,
-      gamefolioTokens: gamefolioAuth,
     };
   });
