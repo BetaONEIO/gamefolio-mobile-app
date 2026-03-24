@@ -67,6 +67,7 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     scrollView: {
       flex: 1,
+      backgroundColor: 'transparent',
     },
 
     navBar: {
@@ -139,7 +140,7 @@ function createStyles(theme: ProfileThemeTokens) {
       borderRadius: 10,
       borderWidth: 1.5,
       borderColor: theme.isLight ? theme.verifiedBorderColor : (theme.accent + '80'),
-      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.8)' : '#1d293d',
+      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.8)' : 'rgba(29,41,61,0.7)',
       overflow: 'hidden',
       alignItems: 'center',
       justifyContent: 'center',
@@ -437,7 +438,7 @@ function createStyles(theme: ProfileThemeTokens) {
       elevation: 3,
     },
     followingBtn: {
-      backgroundColor: '#1d293d',
+      backgroundColor: theme.iconBtnBg,
     },
     followBtnText: {
       color: theme.followBtnTextColor,
@@ -538,7 +539,7 @@ function createStyles(theme: ProfileThemeTokens) {
       borderColor: theme.cardBorder,
       overflow: 'hidden',
       height: 190,
-      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.15)' : '#0a1628',
+      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.15)' : theme.cardBg,
       shadowColor: theme.shadowColor,
       shadowOffset: { width: 0, height: 8 },
       shadowOpacity: 0.15,
@@ -741,7 +742,7 @@ function createStyles(theme: ProfileThemeTokens) {
       aspectRatio: 16 / 9,
       borderRadius: 14,
       overflow: 'hidden',
-      backgroundColor: '#0a1628',
+      backgroundColor: theme.cardBg,
       position: 'relative',
     },
     clipImage: {
@@ -805,7 +806,7 @@ function createStyles(theme: ProfileThemeTokens) {
       aspectRatio: 9 / 16,
       borderRadius: 14,
       overflow: 'hidden',
-      backgroundColor: '#0a1628',
+      backgroundColor: theme.cardBg,
       position: 'relative',
     },
     reelImage: {
@@ -818,7 +819,7 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     screenshotCard: {
       flexDirection: 'row',
-      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.5)' : '#0a1628',
+      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.5)' : theme.cardBg,
       borderRadius: 14,
       borderWidth: 0.5,
       borderColor: theme.cardBorder,
