@@ -158,7 +158,7 @@ export default function GameDetailScreen() {
     setShowSortDropdown(false);
   };
 
-  const activeReelId = contentType === 'reels' ? clips[activeReelIndex]?.id : null;
+  const activeReelId = contentType === 'reels' ? reels[activeReelIndex]?.id : null;
   const { data: reelCommentsData, isLoading: isLoadingReelComments } = useQuery({
     queryKey: ['clips', 'comments', activeReelId],
     queryFn: async () => {
