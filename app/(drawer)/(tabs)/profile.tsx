@@ -508,7 +508,13 @@ export default function ProfileScreen() {
       <View style={styles.content}>
         {/* Profile picture and action buttons row below banner */}
         <View style={styles.topRowWithActions}>
-          <View style={styles.avatarWrapper}>
+          <View style={[styles.avatarWrapper, {
+            shadowColor: theme.shadowColor,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: theme.avatarGlowOpacity,
+            shadowRadius: theme.avatarGlowRadius,
+            elevation: 12,
+          }]}>
             <TouchableOpacity onPress={() => setIsProfileModalVisible(true)}>
                 <Image 
                   source={{ uri: profileData.avatar }} 
@@ -593,6 +599,11 @@ export default function ProfileScreen() {
                 borderColor: h.cardBorder,
                 overflow: theme.hasDripEffect ? 'visible' : 'hidden',
                 marginBottom: theme.hasDripEffect ? 28 : 0,
+                shadowColor: theme.shadowColor,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.55,
+                shadowRadius: 16,
+                elevation: 10,
               }
             ]}
           >
@@ -699,7 +710,7 @@ export default function ProfileScreen() {
         ) : null}
 
         {/* Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor }]} contentContainerStyle={styles.tabsContent}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg }]} contentContainerStyle={[styles.tabsContent, { paddingHorizontal: 8 }]}>
           {TABS.map((tab) => {
             const countMap: Record<string, number> = {
               Clips: clips.length,
@@ -709,13 +720,18 @@ export default function ProfileScreen() {
             };
             const count = countMap[tab];
             const label = `${tab} · ${count}`;
+            const isActive = activeTab === tab;
             return (
               <TouchableOpacity 
                 key={tab} 
-                style={[styles.tab, activeTab === tab && { borderBottomColor: h.tabActiveBorder }]}
+                style={[
+                  styles.tab,
+                  isActive && { borderBottomColor: h.tabActiveBorder },
+                  isActive && { backgroundColor: theme.tabActiveBg, borderRadius: 8, paddingHorizontal: 12 },
+                ]}
                 onPress={() => setActiveTab(tab)}
               >
-                <Text style={[styles.tabText, { color: h.statLabelColor }, activeTab === tab && { color: h.tabActiveText }]}>{label}</Text>
+                <Text style={[styles.tabText, { color: h.statLabelColor }, isActive && { color: h.tabActiveText }]}>{label}</Text>
               </TouchableOpacity>
             );
           })}
