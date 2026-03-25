@@ -222,15 +222,15 @@ function createStyles(theme: ProfileThemeTokens) {
     statsCard: {
       marginBottom: theme.hasDripEffect ? 28 : 4,
       backgroundColor: theme.cardBg,
-      borderWidth: theme.hasDripEffect ? 1.5 : 0.5,
+      borderWidth: 0.5,
       borderColor: theme.cardBorder,
       borderRadius: theme.cardBorderRadius,
       overflow: theme.hasDripEffect ? 'visible' : 'hidden',
       shadowColor: theme.shadowColor,
       shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: theme.hasDripEffect ? 0.6 : 0.15,
-      shadowRadius: theme.hasDripEffect ? 16 : 12,
-      elevation: theme.hasDripEffect ? 8 : 3,
+      shadowOpacity: 0.55,
+      shadowRadius: 16,
+      elevation: 10,
     },
     collectionButtonFloat: {
       position: 'absolute',
@@ -366,14 +366,14 @@ function createStyles(theme: ProfileThemeTokens) {
     platformChip: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
-      borderRadius: 6,
-      paddingVertical: 4,
-      paddingHorizontal: 8,
+      gap: 6,
+      borderRadius: 16,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
     },
     platformText: {
-      fontSize: 11,
-      fontWeight: '700',
+      fontSize: 13,
+      fontWeight: '600',
     },
     actionsRow: {
       flexDirection: 'row',
@@ -560,7 +560,7 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     profileTopRow: {
       flexDirection: 'row',
-      alignItems: 'flex-end',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
       marginTop: -90,
       paddingHorizontal: 16,
@@ -1363,7 +1363,7 @@ export default function PublicProfileScreen() {
                     style={styles.statsGradientBar}
                   />
                 )}
-                <View style={[styles.statsRowCompact, theme.statAlign !== 'flex-start' && { justifyContent: 'flex-start', gap: 24 }]}>
+                <View style={[styles.statsRowCompact, theme.statAlign === 'flex-start' && { justifyContent: 'flex-start', gap: 24 }]}>
                   {([
                     { value: clips.length + reels.length + screenshots.length, label: statUploads },
                     { value: user._count?.followers || 0, label: statFollowers },
@@ -1410,26 +1410,6 @@ export default function PublicProfileScreen() {
             )}
           </View>
         </View>
-
-        {/* Nametag below stats card — pink theme */}
-        {currentGame && theme.statsCardIncludesBio && (
-          <View style={[styles.nametagSection, { alignItems: 'center', marginHorizontal: 16, marginBottom: 8 }]}>
-            <Text style={[styles.nametagLabel, { textAlign: 'center', letterSpacing: 2.1 }]}>NAMETAG</Text>
-            <LinearGradient
-              colors={theme.nametagGradient}
-              start={{ x: 1, y: 0.5 }}
-              end={{ x: 0, y: 0.5 }}
-              style={styles.nametagCard}
-            >
-              {currentGame.imageUrl ? (
-                <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagGameImg} />
-              ) : (
-                <Gamepad2 size={20} color="#fff" />
-              )}
-              <Text style={styles.nametagGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
-            </LinearGradient>
-          </View>
-        )}
 
         {/* Profile Info — platform chips */}
         {platforms.length > 0 && (
