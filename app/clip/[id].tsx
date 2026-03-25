@@ -1442,7 +1442,7 @@ export default function ClipDetailScreen() {
             <View style={styles.userRowContainer}>
               <TouchableOpacity 
                 style={styles.userRow}
-                onPress={() => router.push({ pathname: '/user/[id]', params: { id: clipItem.user.id.toString() } })}
+                onPress={() => router.push({ pathname: '/user/[id]', params: { id: clipItem.user.username } })}
               >
                 <Image source={{ uri: clipItem.user.avatarUrl }} style={styles.avatar} />
                 <Text style={styles.username}>@{clipItem.user.username}</Text>
@@ -1937,7 +1937,7 @@ export default function ClipDetailScreen() {
           <View style={styles.userRowContainer}>
             <TouchableOpacity 
               style={styles.userRow}
-              onPress={() => router.push({ pathname: '/user/[id]', params: { id: clip.user.id.toString() } })}
+              onPress={() => router.push({ pathname: '/user/[id]', params: { id: clip.user.username } })}
             >
               <Image source={{ uri: clip.user.avatarUrl }} style={styles.avatar} />
               <Text style={styles.username}>@{clip.user.username}</Text>
