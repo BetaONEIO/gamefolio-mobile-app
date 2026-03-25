@@ -87,16 +87,31 @@ function createStyles(theme: ProfileThemeTokens) {
       borderColor: 'rgba(255, 255, 255, 0.2)',
     },
 
-    identitySection: {
+    content: {
       paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 4,
+      marginTop: -90,
+    },
+    header: {
+      marginBottom: 12,
+      marginTop: 0,
+    },
+    userInfoSection: {
+      alignItems: 'flex-start',
+      width: '100%',
     },
     nameRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
+      justifyContent: 'space-between',
       marginBottom: 2,
+      width: '100%',
+    },
+    nameRowLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+      flex: 1,
     },
     displayName: {
       color: theme.textPrimary,
@@ -106,31 +121,12 @@ function createStyles(theme: ProfileThemeTokens) {
       textTransform: theme.displayNameUppercase ? 'uppercase' : 'none',
     },
     verifiedBadge: {
-      backgroundColor: theme.verifiedBg,
-      borderRadius: 100,
-      borderWidth: 0.5,
-      borderColor: theme.verifiedBorderColor,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-      gap: 5,
-    },
-    verifiedBadgeIcon: {
       backgroundColor: '#3B82F6',
-      width: 16,
-      height: 16,
-      borderRadius: 8,
+      width: 18,
+      height: 18,
+      borderRadius: 9,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    verifiedBadgeText: {
-      color: theme.verifiedText,
-      fontSize: theme.isLight ? 10 : 8,
-      fontWeight: '900',
-      letterSpacing: theme.isLight ? -0.5 : 0.8,
-      textTransform: 'uppercase',
     },
     handle: {
       color: theme.textHandle,
@@ -216,21 +212,18 @@ function createStyles(theme: ProfileThemeTokens) {
 
     infoSection: {
       position: 'relative',
-      marginHorizontal: 16,
-      marginTop: 14,
+      marginTop: 8,
+      alignItems: 'flex-start',
     },
-    statsCard: {
-      marginBottom: theme.hasDripEffect ? 28 : 4,
-      backgroundColor: theme.cardBg,
-      borderWidth: 0.5,
-      borderColor: theme.cardBorder,
-      borderRadius: theme.cardBorderRadius,
-      overflow: theme.hasDripEffect ? 'visible' : 'hidden',
-      shadowColor: theme.shadowColor,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.55,
-      shadowRadius: 16,
-      elevation: 10,
+    infoBorderContainer: {
+      width: '100%',
+      borderRadius: 16,
+      backgroundColor: 'transparent',
+      position: 'relative',
+    },
+    infoBorderInner: {
+      padding: 16,
+      paddingTop: 36,
     },
     collectionButtonFloat: {
       position: 'absolute',
@@ -558,14 +551,11 @@ function createStyles(theme: ProfileThemeTokens) {
       bottom: 0,
       height: 100,
     },
-    profileTopRow: {
+    topRowWithActions: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
-      marginTop: -90,
-      paddingHorizontal: 16,
-      marginBottom: 4,
-      zIndex: 10,
+      marginBottom: 8,
     },
     avatarWrapper: {
       position: 'relative',
@@ -1160,8 +1150,9 @@ export default function PublicProfileScreen() {
           </View>
         </View>
 
+        <View style={styles.content}>
         {/* Profile Top Row: large avatar + action buttons */}
-        <View style={styles.profileTopRow}>
+        <View style={styles.topRowWithActions}>
           <TouchableOpacity style={styles.avatarWrapper} onPress={() => setIsProfileModalVisible(true)} activeOpacity={0.95}>
             <View style={[styles.avatarBorder, {
               shadowColor: theme.shadowColor,
@@ -1260,8 +1251,10 @@ export default function PublicProfileScreen() {
         )}
 
         {/* User Name / Handle / Badge */}
-        <View style={styles.identitySection}>
+        <View style={styles.header}>
+          <View style={styles.userInfoSection}>
           <View style={styles.nameRow}>
+            <View style={styles.nameRowLeft}>
             {(() => {
               const userFontId = user?.profileFont;
               const userEffectId = user?.profileFontEffect;
@@ -1286,18 +1279,13 @@ export default function PublicProfileScreen() {
               );
             })()}
             {user.emailVerified && (
-              theme.verifiedLabel.length > 0 ? (
-                <View style={styles.verifiedBadge}>
-                  <Text style={styles.verifiedBadgeText}>{theme.verifiedLabel}</Text>
-                </View>
-              ) : (
-                <View style={[styles.verifiedBadgeIcon, { backgroundColor: theme.accentMuted, borderWidth: 1, borderColor: theme.accent }]}>
-                  <Check size={9} color={theme.isLight ? theme.accent : '#FFF'} strokeWidth={4} />
-                </View>
-              )
+              <View style={[styles.verifiedBadge, { backgroundColor: theme.verifiedBg, borderWidth: 1, borderColor: theme.verifiedBorderColor }]}>
+                <Check size={10} color={theme.isLight ? '#ff2056' : '#FFF'} strokeWidth={4} />
+              </View>
             )}
+            </View>
           </View>
-          <Text style={styles.handle}>{handle}</Text>
+          <Text style={[styles.handle, { color: theme.textHandle }]}>{handle}</Text>
           <UserTypeBadge userType={user.userType} showUserType={user.showUserType !== false} />
           {user.bio ? (
             <Text style={[styles.bio, { marginTop: 6 }]} numberOfLines={3}>{user.bio}</Text>
@@ -1317,6 +1305,7 @@ export default function PublicProfileScreen() {
             )}
           </View>
 
+          </View>
         </View>
 
         {/* Stats card with floating Collection button */}
@@ -1339,11 +1328,26 @@ export default function PublicProfileScreen() {
             </LinearGradient>
           </TouchableOpacity>
           <View
-            style={styles.statsCard}
+            style={[
+              styles.infoBorderContainer,
+              {
+                backgroundColor: theme.cardBg,
+                borderRadius: theme.cardBorderRadius,
+                borderWidth: 0.5,
+                borderColor: theme.cardBorder,
+                overflow: theme.hasDripEffect ? 'visible' : 'hidden',
+                marginBottom: theme.hasDripEffect ? 28 : 4,
+                shadowColor: theme.shadowColor,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.55,
+                shadowRadius: 16,
+                elevation: 10,
+              }
+            ]}
             onLayout={e => setStatsCardWidth(e.nativeEvent.layout.width)}
           >
             {profileSectionTab === 'stats' ? (
-              <>
+              <View style={[styles.infoBorderInner, { paddingTop: 14, paddingBottom: 22 }]}>
                 {theme.hasStatsGradientBar && (
                   <LinearGradient
                     colors={theme.statsTopGradient}
@@ -1352,20 +1356,24 @@ export default function PublicProfileScreen() {
                     style={styles.statsGradientBar}
                   />
                 )}
-                <View style={[styles.statsRowCompact, theme.statAlign === 'flex-start' && { justifyContent: 'flex-start', gap: 24 }]}>
+                <View style={[
+                  styles.statsRowCompact,
+                  { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 },
+                  theme.statAlign === 'flex-start' ? { justifyContent: 'flex-start', gap: 24 } : undefined,
+                ]}>
                   {([
                     { value: clips.length + reels.length + screenshots.length, label: statUploads },
                     { value: user._count?.followers || 0, label: statFollowers },
                     { value: user._count?.following || 0, label: statFollowing },
                   ] as { value: number; label: string }[]).map((stat, i) => (
-                    <View key={i} style={styles.statColumn}>
-                      <Text style={styles.statNumber}>{stat.value}</Text>
+                    <View key={i} style={[styles.statColumn, theme.statAlign === 'flex-start' ? { alignItems: 'flex-start' } : undefined]}>
+                      <Text style={[styles.statNumber, { color: theme.statNumberColor, fontSize: theme.statNumberFontSize }]}>{stat.value}</Text>
                       {theme.statLabelPill ? (
-                        <View style={styles.statLabelPillStyle}>
-                          <Text style={styles.statLabelPillText}>{stat.label.toUpperCase()}</Text>
+                        <View style={[styles.statLabelPillStyle, { borderColor: theme.accent, backgroundColor: theme.accentMuted }]}>
+                          <Text style={[styles.statLabelPillText, { color: theme.accent }]}>{stat.label.toUpperCase()}</Text>
                         </View>
                       ) : (
-                        <Text style={styles.statLabel}>{stat.label.toUpperCase()}</Text>
+                        <Text style={[styles.statLabel, { color: theme.muted }]}>{stat.label.toUpperCase()}</Text>
                       )}
                     </View>
                   ))}
@@ -1378,7 +1386,7 @@ export default function PublicProfileScreen() {
                     <Text style={styles.followingLabel}>FOLLOWING</Text>
                   </View>
                 )}
-              </>
+              </View>
             ) : (
               <View style={styles.collectionEmptyState}>
                 <FolderHeart size={32} color={theme.muted} strokeWidth={1.5} />
@@ -1386,6 +1394,7 @@ export default function PublicProfileScreen() {
               </View>
             )}
           </View>
+        </View>
         </View>
 
         {/* Profile Info — platform chips */}
