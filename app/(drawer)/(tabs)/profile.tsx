@@ -503,6 +503,14 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
+          <View style={styles.nametagTopColumn}>
+            <Image
+              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/8i8wqbkgai6khk845s60z' }}
+              style={styles.nametagImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.nametagLabel}>NAMETAG</Text>
+          </View>
         </View>
 
         {/* Profile Header */}
@@ -539,22 +547,15 @@ export default function ProfileScreen() {
                   </View>
                 )}
               </View>
-              <View style={styles.nametagContainer}>
-                <Image 
-                  source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/8i8wqbkgai6khk845s60z' }} 
-                  style={styles.nametagImage}
-                  resizeMode="contain"
-                />
-              </View>
             </View>
             <Text style={[styles.handle, { color: h.handleColor }]}>{profileData.handle}</Text>
-            {profileData.bio ? (
-              <Text style={[styles.bio, { color: h.bioColor }]}>{profileData.bio}</Text>
-            ) : null}
             <UserTypeBadge 
               userType={user?.userType} 
               showUserType={user?.showUserType !== false} 
             />
+            {profileData.bio ? (
+              <Text style={[styles.bio, { color: h.bioColor }]}>{profileData.bio}</Text>
+            ) : null}
           </View>
         </View>
 
@@ -1753,8 +1754,21 @@ const styles = StyleSheet.create({
   nametagContainer: {
     marginLeft: 8,
   },
+  nametagTopColumn: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    paddingTop: 10,
+  },
+  nametagLabel: {
+    color: '#6b7a8a',
+    fontSize: 10,
+    fontWeight: '500',
+    letterSpacing: 1.2,
+    marginTop: 4,
+  },
   nametagImage: {
-    width: 120,
-    height: 60,
+    width: 130,
+    height: 50,
   },
 });
