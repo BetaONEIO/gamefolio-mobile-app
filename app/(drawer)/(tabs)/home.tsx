@@ -686,7 +686,7 @@ export default function HomeScreen() {
               ) : (
                 activeClips.map((clip, index) => (
                   <TouchableOpacity 
-                    key={clip.id} 
+                    key={`recommended-${clip.id}`} 
                     style={activeTab === 'clips'
                       ? [styles.featuredClipCard, { width: clipCardWidth, height: clipCardHeight }]
                       : [styles.featuredReelCard, { width: reelCardWidth, height: reelCardHeight }]}
@@ -729,7 +729,7 @@ export default function HomeScreen() {
                           <Text style={activeTab === 'clips' ? styles.latestClipTitle : styles.reelTitle} numberOfLines={1} ellipsizeMode="tail">{truncateTitle(clip.title)}</Text>
                           <TouchableOpacity onPress={(e) => {
                             e.stopPropagation();
-                            router.push({ pathname: '/user/[id]', params: { id: clip.user.id.toString() } });
+                            router.push({ pathname: '/user/[id]', params: { id: clip.user.username } });
                           }}>
                             <Text style={styles.latestClipUser}>@{clip.user.username}</Text>
                           </TouchableOpacity>
@@ -799,7 +799,7 @@ export default function HomeScreen() {
         >
           {isLoadingLatest ? renderLoadingState() : latestClips.length === 0 ? renderEmptyState('No clips uploaded yet') : latestClips.map((clip) => (
             <TouchableOpacity 
-              key={clip.id} 
+              key={`latest-${clip.id}`} 
               style={[styles.latestClipCard, { width: clipCardWidth, height: clipCardHeight }]}
               onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString() } })}
             >
@@ -834,7 +834,7 @@ export default function HomeScreen() {
                     <Text style={styles.latestClipTitle} numberOfLines={1} ellipsizeMode="tail">{truncateTitle(clip.title)}</Text>
                     <TouchableOpacity onPress={(e) => {
                       e.stopPropagation();
-                      router.push({ pathname: '/user/[id]', params: { id: clip.user.id.toString() } });
+                      router.push({ pathname: '/user/[id]', params: { id: clip.user.username } });
                     }}>
                       <Text style={styles.latestClipUser}>@{clip.user.username}</Text>
                     </TouchableOpacity>
@@ -911,7 +911,7 @@ export default function HomeScreen() {
                     <Text style={styles.reelTitle} numberOfLines={1} ellipsizeMode="tail">{truncateTitle(reel.title)}</Text>
                     <TouchableOpacity onPress={(e) => {
                       e.stopPropagation();
-                      router.push({ pathname: '/user/[id]', params: { id: reel.user.id.toString() } });
+                      router.push({ pathname: '/user/[id]', params: { id: reel.user.username } });
                     }}>
                       <Text style={styles.latestClipUser}>@{reel.user.username}</Text>
                     </TouchableOpacity>
