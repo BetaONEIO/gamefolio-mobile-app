@@ -21,6 +21,7 @@ import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getProfileTheme, ProfileThemeTokens } from '@/constants/themes';
 import { ThemeBackgroundEffect } from '@/components/ThemeBackgroundEffect';
+import StyledUsername from '@/components/StyledUsername';
 
 const { width, height: windowHeight } = Dimensions.get('window');
 
@@ -1098,7 +1099,29 @@ export default function PublicProfileScreen() {
         {/* User Name / Handle / Badge */}
         <View style={styles.identitySection}>
           <View style={styles.nameRow}>
-            <Text style={styles.displayName}>{displayName}</Text>
+            {(() => {
+              const userFontId = user?.profileFont;
+              const userEffectId = user?.profileFontEffect;
+              const userFontColor = user?.profileFontColor;
+              const hasUserFont = userFontId && userFontId !== 'default';
+              const hasUserEffect = userEffectId && userEffectId !== 'none';
+              const resolvedFontId = hasUserFont ? userFontId : (theme.displayNameFontId || 'default');
+              const resolvedEffectId = hasUserEffect ? userEffectId : (theme.displayNameEffectId || 'none');
+              const hasAnyOverride = hasUserFont || hasUserEffect || theme.displayNameFontId || theme.displayNameEffectId;
+              return (
+                <StyledUsername
+                  username={theme.displayNameUppercase ? displayName.toUpperCase() : displayName}
+                  textStyleConfig={hasAnyOverride ? {
+                    fontId: resolvedFontId,
+                    effectId: resolvedEffectId,
+                    customColor: userFontColor || theme.textPrimary,
+                  } : undefined}
+                  textStyleId={!hasAnyOverride ? ((user as any)?.textStyleId || 'default') : undefined}
+                  fontSize={theme.displayNameSize}
+                  style={{ color: theme.textPrimary }}
+                />
+              );
+            })()}
             {/* Badge inline with name only for dark themes */}
             {!theme.isLight && user.emailVerified && (
               theme.verifiedLabel.length > 0 ? (
@@ -1351,15 +1374,25 @@ export default function PublicProfileScreen() {
 
         {/* Content Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
-          {TABS.map((tab) => (
-            <TouchableOpacity
-              key={tab}
-              style={[styles.tabPill, activeTab === tab && styles.tabPillActive]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabPillText, activeTab === tab && styles.tabPillTextActive]}>{tab}</Text>
-            </TouchableOpacity>
-          ))}
+          {TABS.map((tab) => {
+            const countMap: Record<string, number> = {
+              Clips: clips.length,
+              Reels: reels.length,
+              Screenshots: screenshots.length,
+              Favorites: favoriteGames.length,
+            };
+            const count = countMap[tab];
+            const label = count > 0 ? `${tab} · ${count}` : tab;
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabPill, activeTab === tab && styles.tabPillActive]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text style={[styles.tabPillText, activeTab === tab && styles.tabPillTextActive]}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Tab Content */}

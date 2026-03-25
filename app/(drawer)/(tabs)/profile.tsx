@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Pressable } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import ScrollView from '@/components/ThemedScrollView';
 import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
@@ -139,6 +140,34 @@ const ScreenshotItem = ({ screenshot, onPress, onDelete, handle }: { screenshot:
   );
 };
 
+function ZombieDrip({ cardWidth, color = '#9ae600' }: { cardWidth: number; color?: string }) {
+  const drips = [
+    { x: 32, h: 22, r: 5.5 },
+    { x: 72, h: 14, r: 4 },
+    { x: 118, h: 28, r: 6.5 },
+    { x: 162, h: 17, r: 4.5 },
+    { x: 210, h: 24, r: 5 },
+    { x: 256, h: 13, r: 3.5 },
+    { x: 300, h: 20, r: 5.5 },
+  ].filter(d => d.x + d.r < cardWidth - 4);
+  const svgH = 36;
+  return (
+    <Svg width={cardWidth} height={svgH} style={{ position: 'absolute', bottom: -svgH + 2, left: 0 }}>
+      {drips.map((d, i) => {
+        const colH = Math.max(0, d.h - d.r);
+        return (
+          <Path
+            key={i}
+            d={`M ${d.x - d.r} 0 L ${d.x - d.r} ${colH} Q ${d.x - d.r} ${d.h} ${d.x} ${d.h} Q ${d.x + d.r} ${d.h} ${d.x + d.r} ${colH} L ${d.x + d.r} 0 Z`}
+            fill={color}
+            opacity={0.9}
+          />
+        );
+      })}
+    </Svg>
+  );
+}
+
 function createHeaderStyles(theme: ProfileThemeTokens) {
   return {
     containerBg: theme.bg,
@@ -181,6 +210,7 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState('Clips');
   const [isAddGamesModalVisible, setIsAddGamesModalVisible] = useState(false);
   const [profileSectionTab, setProfileSectionTab] = useState<'stats' | 'collection'>('stats');
+  const [statsCardWidth, setStatsCardWidth] = useState(0);
   const router = useRouter();
   const { user, getAccessToken } = useAuth();
   const theme = useMemo(() => getProfileTheme((user as any)?.profileTheme), [user]);
@@ -539,16 +569,7 @@ export default function ProfileScreen() {
             </View>
             <Text style={[styles.handle, { color: h.handleColor }]}>{profileData.handle}</Text>
             {profileData.bio ? (
-              <View style={[
-                styles.bioContainer,
-                {
-                  backgroundColor: h.bioBg,
-                  borderColor: h.bioBorderColor,
-                  borderWidth: h.bioBg && h.bioBg !== 'transparent' ? 1 : 0,
-                }
-              ]}>
-                <Text style={[styles.bio, { color: h.bioColor }]}>{profileData.bio}</Text>
-              </View>
+              <Text style={[styles.bio, { color: h.bioColor }]}>{profileData.bio}</Text>
             ) : null}
             <UserTypeBadge 
               userType={user?.userType} 
@@ -557,17 +578,20 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.infoSection}>
-          <View style={[
-            styles.infoBorderContainer,
-            {
-              backgroundColor: h.cardBg,
-              borderRadius: h.cardBorderRadius,
-              borderWidth: 0.5,
-              borderColor: h.cardBorder,
-              overflow: 'hidden',
-            }
-          ]}>
+        <View style={[styles.infoSection, theme.hasDripEffect && { marginBottom: 28 }]}>
+          <View
+            onLayout={(e) => setStatsCardWidth(e.nativeEvent.layout.width)}
+            style={[
+              styles.infoBorderContainer,
+              {
+                backgroundColor: h.cardBg,
+                borderRadius: h.cardBorderRadius,
+                borderWidth: 0.5,
+                borderColor: h.cardBorder,
+                overflow: theme.hasDripEffect ? 'visible' : 'hidden',
+              }
+            ]}
+          >
             {/* Top row with Collection toggle button */}
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingTop: 12, marginBottom: 4 }}>
               <TouchableOpacity 
@@ -637,6 +661,9 @@ export default function ProfileScreen() {
                 )}
               </View>
             )}
+            {theme.hasDripEffect && statsCardWidth > 0 && (
+              <ZombieDrip cardWidth={statsCardWidth} color={theme.accent} />
+            )}
           </View>
         </View>
 
@@ -669,15 +696,25 @@ export default function ProfileScreen() {
 
         {/* Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor }]} contentContainerStyle={styles.tabsContent}>
-          {TABS.map((tab) => (
-            <TouchableOpacity 
-              key={tab} 
-              style={[styles.tab, activeTab === tab && { borderBottomColor: h.tabActiveBorder }]}
-              onPress={() => setActiveTab(tab)}
-            >
-              <Text style={[styles.tabText, { color: h.statLabelColor }, activeTab === tab && { color: h.tabActiveText }]}>{tab}</Text>
-            </TouchableOpacity>
-          ))}
+          {TABS.map((tab) => {
+            const countMap: Record<string, number> = {
+              Clips: clips.length,
+              Reels: reels.length,
+              Screenshots: screenshots.length,
+              Favorites: favoriteGames.length,
+            };
+            const count = countMap[tab];
+            const label = count > 0 ? `${tab} · ${count}` : tab;
+            return (
+              <TouchableOpacity 
+                key={tab} 
+                style={[styles.tab, activeTab === tab && { borderBottomColor: h.tabActiveBorder }]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text style={[styles.tabText, { color: h.statLabelColor }, activeTab === tab && { color: h.tabActiveText }]}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* Content based on active tab */}
@@ -1295,13 +1332,6 @@ const styles = StyleSheet.create({
     color: '#E2E8F0',
     fontSize: 14,
     textAlign: 'left',
-  },
-  bioContainer: {
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginTop: 6,
-    marginBottom: 12,
   },
   platformsRow: {
     flexDirection: 'row',
