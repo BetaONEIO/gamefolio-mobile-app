@@ -1285,15 +1285,14 @@ export default function PublicProfileScreen() {
                 />
               );
             })()}
-            {/* Badge inline with name only for dark themes */}
-            {!theme.isLight && user.emailVerified && (
+            {user.emailVerified && (
               theme.verifiedLabel.length > 0 ? (
                 <View style={styles.verifiedBadge}>
                   <Text style={styles.verifiedBadgeText}>{theme.verifiedLabel}</Text>
                 </View>
               ) : (
-                <View style={styles.verifiedBadgeIcon}>
-                  <Check size={9} color="#FFF" strokeWidth={4} />
+                <View style={[styles.verifiedBadgeIcon, { backgroundColor: theme.accentMuted, borderWidth: 1, borderColor: theme.accent }]}>
+                  <Check size={9} color={theme.isLight ? theme.accent : '#FFF'} strokeWidth={4} />
                 </View>
               )
             )}
@@ -1303,14 +1302,6 @@ export default function PublicProfileScreen() {
           {user.bio ? (
             <Text style={[styles.bio, { marginTop: 6 }]} numberOfLines={3}>{user.bio}</Text>
           ) : null}
-
-          {/* Pill badge below handle for light/pink theme */}
-          {theme.isLight && user.emailVerified && theme.verifiedLabel.length > 0 && (
-            <View style={[styles.verifiedBadge, { marginBottom: 8, alignSelf: 'flex-start' }]}>
-              <Check size={9} color={theme.verifiedText} strokeWidth={4} />
-              <Text style={styles.verifiedBadgeText}>{theme.verifiedLabel}</Text>
-            </View>
-          )}
 
           <View style={styles.badgesRow}>
             {user.isPro && (
@@ -1330,25 +1321,23 @@ export default function PublicProfileScreen() {
 
         {/* Stats card with floating Collection button */}
         <View style={styles.infoSection}>
-          {!theme.statsCardIncludesBio && (
-            <TouchableOpacity
-              style={[styles.collectionButtonFloat, { borderColor: theme.accent }]}
-              onPress={() => setProfileSectionTab(profileSectionTab === 'collection' ? 'stats' : 'collection')}
-              activeOpacity={0.8}
+          <TouchableOpacity
+            style={[styles.collectionButtonFloat, { borderColor: theme.accent }]}
+            onPress={() => setProfileSectionTab(profileSectionTab === 'collection' ? 'stats' : 'collection')}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={theme.collectionGradient as [string, string, ...string[]]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.collectionButtonGradient}
             >
-              <LinearGradient
-                colors={theme.collectionGradient as [string, string, ...string[]]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={styles.collectionButtonGradient}
-              >
-                <FolderHeart size={14} color='#0f172b' />
-                <Text style={styles.collectionButtonText}>
-                  {profileSectionTab === 'collection' ? 'Stats' : 'Collection'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          )}
+              <FolderHeart size={14} color='#0f172b' />
+              <Text style={styles.collectionButtonText}>
+                {profileSectionTab === 'collection' ? 'Stats' : 'Collection'}
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
           <View
             style={styles.statsCard}
             onLayout={e => setStatsCardWidth(e.nativeEvent.layout.width)}
@@ -1387,18 +1376,6 @@ export default function PublicProfileScreen() {
                 {isFollowing && (
                   <View style={styles.followingBar}>
                     <Text style={styles.followingLabel}>FOLLOWING</Text>
-                  </View>
-                )}
-                {theme.statsCardIncludesBio && (
-                  <View style={styles.statsCardBioSection}>
-                    <LinearGradient
-                      colors={theme.collectionGradient}
-                      start={{ x: 0, y: 0.5 }}
-                      end={{ x: 1, y: 0.5 }}
-                      style={styles.statsCardCollectionBtn}
-                    >
-                      <Text style={styles.statsCardCollectionText}>Collection</Text>
-                    </LinearGradient>
                   </View>
                 )}
               </>
