@@ -1,5 +1,4 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Pressable } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import ScrollView from '@/components/ThemedScrollView';
 import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
@@ -140,33 +139,6 @@ const ScreenshotItem = ({ screenshot, onPress, onDelete, handle }: { screenshot:
   );
 };
 
-function ZombieDrip({ cardWidth, color = '#9ae600' }: { cardWidth: number; color?: string }) {
-  const drips = [
-    { x: 32, h: 22, r: 5.5 },
-    { x: 72, h: 14, r: 4 },
-    { x: 118, h: 28, r: 6.5 },
-    { x: 162, h: 17, r: 4.5 },
-    { x: 210, h: 24, r: 5 },
-    { x: 256, h: 13, r: 3.5 },
-    { x: 300, h: 20, r: 5.5 },
-  ].filter(d => d.x + d.r < cardWidth - 4);
-  const svgH = 36;
-  return (
-    <Svg width={cardWidth} height={svgH} style={{ position: 'absolute', bottom: -svgH + 2, left: 0 }}>
-      {drips.map((d, i) => {
-        const colH = Math.max(0, d.h - d.r);
-        return (
-          <Path
-            key={i}
-            d={`M ${d.x - d.r} 0 L ${d.x - d.r} ${colH} Q ${d.x - d.r} ${d.h} ${d.x} ${d.h} Q ${d.x + d.r} ${d.h} ${d.x + d.r} ${colH} L ${d.x + d.r} 0 Z`}
-            fill={color}
-            opacity={0.9}
-          />
-        );
-      })}
-    </Svg>
-  );
-}
 
 function createHeaderStyles(theme: ProfileThemeTokens) {
   return {
@@ -210,7 +182,6 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState('Clips');
   const [isAddGamesModalVisible, setIsAddGamesModalVisible] = useState(false);
   const [profileSectionTab, setProfileSectionTab] = useState<'stats' | 'collection'>('stats');
-  const [statsCardWidth, setStatsCardWidth] = useState(0);
   const router = useRouter();
   const { user, getAccessToken } = useAuth();
   const theme = useMemo(() => getProfileTheme((user as any)?.profileTheme), [user]);
@@ -589,7 +560,6 @@ export default function ProfileScreen() {
 
         <View style={styles.infoSection}>
           <View
-            onLayout={(e) => setStatsCardWidth(e.nativeEvent.layout.width)}
             style={[
               styles.infoBorderContainer,
               {
@@ -597,8 +567,7 @@ export default function ProfileScreen() {
                 borderRadius: h.cardBorderRadius,
                 borderWidth: 0.5,
                 borderColor: h.cardBorder,
-                overflow: theme.hasDripEffect ? 'visible' : 'hidden',
-                marginBottom: theme.hasDripEffect ? 28 : 0,
+                overflow: 'hidden',
                 shadowColor: theme.shadowColor,
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: 0.55,
@@ -675,9 +644,6 @@ export default function ProfileScreen() {
                   </View>
                 )}
               </View>
-            )}
-            {theme.hasDripEffect && statsCardWidth > 0 && (
-              <ZombieDrip cardWidth={statsCardWidth} color={theme.accent} />
             )}
           </View>
         </View>
