@@ -161,10 +161,23 @@ app.use((req, res, next) => {
       const [{ count: slideCount }] = await pool`SELECT COUNT(*)::int AS count FROM hero_slides`;
       if (slideCount === 0) {
         try {
-          const prodUrl = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://app.gamefolio.com';
-          const resp = await fetch(`${prodUrl}/api/hero-slides`, { headers: { Accept: 'application/json' } });
+          interface HeroSlideSeed {
+            title: string;
+            subtitle?: string | null;
+            buttonText?: string | null;
+            buttonLink?: string | null;
+            imageUrl?: string;
+            displayOrder?: number;
+            isActive?: boolean;
+            visibility?: string;
+            textAlign?: string;
+          }
+          const resp = await fetch('https://app.gamefolio.com/api/hero-slides', { headers: { Accept: 'application/json' } });
           if (resp.ok) {
-            const prodSlides = await resp.json() as any[];
+            const raw: unknown = await resp.json();
+            const prodSlides: HeroSlideSeed[] = Array.isArray(raw) ? raw.filter(
+              (s): s is HeroSlideSeed => s !== null && typeof s === 'object' && typeof (s as HeroSlideSeed).title === 'string'
+            ) : [];
             for (let i = 0; i < prodSlides.length; i++) {
               const s = prodSlides[i];
               await pool`
