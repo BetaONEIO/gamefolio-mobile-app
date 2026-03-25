@@ -305,7 +305,7 @@ export default function ProfileScreen() {
       streak: user?.currentStreak || 0
     },
     joined: formatJoinDate(user?.createdAt),
-    bio: user?.bio || '',
+    bio: (profileStats as any)?.bio || user?.bio || '',
     platforms: buildPlatforms()
   };
 
