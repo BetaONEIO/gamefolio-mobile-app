@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
 import { useMemo } from 'react';
 import Svg, { Path, Ellipse } from 'react-native-svg';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, Mail, Play, Camera, Flag, ChevronLeft, Bell, Upload, UserX } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, Mail, Play, Camera, Flag, ChevronLeft, Bell, Upload, UserX, FolderHeart } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -294,9 +294,12 @@ function createStyles(theme: ProfileThemeTokens) {
       maxWidth: 120,
     },
 
-    statsCard: {
+    infoSection: {
+      position: 'relative',
       marginHorizontal: 16,
       marginTop: 14,
+    },
+    statsCard: {
       marginBottom: theme.hasDripEffect ? 28 : 4,
       backgroundColor: theme.cardBg,
       borderWidth: theme.hasDripEffect ? 1.5 : 0.5,
@@ -308,6 +311,38 @@ function createStyles(theme: ProfileThemeTokens) {
       shadowOpacity: theme.hasDripEffect ? 0.6 : 0.15,
       shadowRadius: theme.hasDripEffect ? 16 : 12,
       elevation: theme.hasDripEffect ? 8 : 3,
+    },
+    collectionButtonFloat: {
+      position: 'absolute',
+      top: -17,
+      right: 0,
+      zIndex: 10,
+      borderWidth: 1.5,
+      borderRadius: 100,
+      overflow: 'hidden',
+    },
+    collectionButtonGradient: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      gap: 6,
+    },
+    collectionButtonText: {
+      color: '#0f172b',
+      fontSize: 13,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    collectionEmptyState: {
+      alignItems: 'center',
+      paddingVertical: 24,
+      gap: 8,
+    },
+    collectionEmptyText: {
+      fontSize: 13,
+      fontWeight: '600',
     },
     statsGradientBar: {
       height: 3,
@@ -485,25 +520,6 @@ function createStyles(theme: ProfileThemeTokens) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    collectionBtn: {
-      borderRadius: 100,
-      paddingVertical: 9,
-      paddingHorizontal: 24,
-      alignSelf: 'flex-start',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.1,
-      shadowRadius: 6,
-      elevation: 2,
-    },
-    collectionBtnText: {
-      color: theme.isLight ? '#fff' : '#0f172b',
-      fontSize: 9,
-      fontWeight: '900',
-      letterSpacing: 0.9,
-      textTransform: 'uppercase',
-    },
-
     featuredSection: {
       paddingHorizontal: 16,
       paddingTop: 16,
@@ -706,7 +722,6 @@ function createStyles(theme: ProfileThemeTokens) {
 
     tabsScroll: {
       marginTop: 24,
-      paddingHorizontal: 16,
     },
     tabsContent: {
       paddingHorizontal: 16,
@@ -734,6 +749,64 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     tabPillTextActive: {
       color: theme.tabActiveText,
+    },
+
+    zombieTabsContainer: {
+      borderBottomWidth: 1,
+      borderBottomColor: theme.dividerColor,
+      backgroundColor: theme.bg,
+      marginTop: 24,
+      paddingHorizontal: 16,
+      paddingVertical: 4,
+      marginBottom: 0,
+    },
+    zombieTab: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 6,
+    },
+    zombieTabPill: {
+      borderRadius: 100,
+      paddingHorizontal: 18,
+      paddingVertical: 11,
+      alignItems: 'center',
+      backgroundColor: theme.accent,
+    },
+    zombieTabPillLabel: {
+      color: '#0f172b',
+      fontFamily: 'Impact',
+      fontSize: 13,
+      fontWeight: 'bold',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+    },
+    zombieTabPillCount: {
+      color: '#0f172b',
+      fontFamily: 'Impact',
+      fontSize: 12,
+      fontWeight: 'bold',
+      letterSpacing: 0.5,
+      marginTop: 1,
+    },
+    zombieTabLabel: {
+      fontFamily: 'Impact',
+      fontSize: 12,
+      fontWeight: 'bold',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+    },
+    zombieTabCount: {
+      fontFamily: 'Impact',
+      fontSize: 12,
+      fontWeight: 'bold',
+      letterSpacing: 0.5,
+      marginTop: 1,
+    },
+    zombieScreenshotsBtn: {
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 6,
     },
 
     tabContent: {
@@ -955,6 +1028,7 @@ export default function PublicProfileScreen() {
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const [onlineTooltipVisible, setOnlineTooltipVisible] = useState(false);
   const [statsCardWidth, setStatsCardWidth] = useState(0);
+  const [profileSectionTab, setProfileSectionTab] = useState<'stats' | 'collection'>('stats');
 
   const submitReportMutation = useMutation({
     mutationFn: async (reportData: Record<string, unknown>) => {
@@ -1253,56 +1327,85 @@ export default function PublicProfileScreen() {
           )}
         </View>
 
-        {/* Stats Card */}
-        <View
-          style={styles.statsCard}
-          onLayout={e => setStatsCardWidth(e.nativeEvent.layout.width)}
-        >
-          {theme.hasStatsGradientBar && (
-            <LinearGradient
-              colors={theme.statsTopGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.statsGradientBar}
-            />
-          )}
-          <View style={[styles.statsRow, theme.statsCardIncludesBio && { paddingHorizontal: 16 }]}>
-            <View style={styles.statCol}>
-              <Text style={styles.statNumber}>{clips.length + reels.length + screenshots.length}</Text>
-              <Text style={styles.statLabel}>{statUploads}</Text>
-            </View>
-            {!theme.statsCardIncludesBio && <View style={styles.statDivider} />}
-            <View style={styles.statCol}>
-              <Text style={styles.statNumber}>{user._count?.followers || 0}</Text>
-              <Text style={styles.statLabel}>{statFollowers}</Text>
-            </View>
-            {!theme.statsCardIncludesBio && <View style={styles.statDivider} />}
-            <View style={styles.statCol}>
-              <Text style={styles.statNumber}>{user._count?.following || 0}</Text>
-              <Text style={styles.statLabel}>{statFollowing}</Text>
-            </View>
-          </View>
-          {theme.hasDripEffect && statsCardWidth > 0 && (
-            <ZombieDrip cardWidth={statsCardWidth} color={theme.accent} />
-          )}
-          {isFollowing && (
-            <View style={styles.followingBar}>
-              <Text style={styles.followingLabel}>FOLLOWING</Text>
-            </View>
-          )}
-          {/* Collection button inside card for pink theme */}
-          {theme.statsCardIncludesBio && (
-            <View style={styles.statsCardBioSection}>
+        {/* Stats card with floating Collection button */}
+        <View style={styles.infoSection}>
+          {!theme.statsCardIncludesBio && (
+            <TouchableOpacity
+              style={[styles.collectionButtonFloat, { borderColor: theme.accent }]}
+              onPress={() => setProfileSectionTab(profileSectionTab === 'collection' ? 'stats' : 'collection')}
+              activeOpacity={0.8}
+            >
               <LinearGradient
-                colors={theme.collectionGradient}
+                colors={theme.collectionGradient as [string, string, ...string[]]}
                 start={{ x: 0, y: 0.5 }}
                 end={{ x: 1, y: 0.5 }}
-                style={styles.statsCardCollectionBtn}
+                style={styles.collectionButtonGradient}
               >
-                <Text style={styles.statsCardCollectionText}>Collection</Text>
+                <FolderHeart size={14} color='#0f172b' />
+                <Text style={styles.collectionButtonText}>
+                  {profileSectionTab === 'collection' ? 'Stats' : 'Collection'}
+                </Text>
               </LinearGradient>
-            </View>
+            </TouchableOpacity>
           )}
+          <View
+            style={styles.statsCard}
+            onLayout={e => setStatsCardWidth(e.nativeEvent.layout.width)}
+          >
+            {profileSectionTab === 'stats' ? (
+              <>
+                {theme.hasStatsGradientBar && (
+                  <LinearGradient
+                    colors={theme.statsTopGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.statsGradientBar}
+                  />
+                )}
+                <View style={[styles.statsRow, theme.statsCardIncludesBio && { paddingHorizontal: 16 }]}>
+                  <View style={styles.statCol}>
+                    <Text style={styles.statNumber}>{clips.length + reels.length + screenshots.length}</Text>
+                    <Text style={styles.statLabel}>{statUploads}</Text>
+                  </View>
+                  {!theme.statsCardIncludesBio && <View style={styles.statDivider} />}
+                  <View style={styles.statCol}>
+                    <Text style={styles.statNumber}>{user._count?.followers || 0}</Text>
+                    <Text style={styles.statLabel}>{statFollowers}</Text>
+                  </View>
+                  {!theme.statsCardIncludesBio && <View style={styles.statDivider} />}
+                  <View style={styles.statCol}>
+                    <Text style={styles.statNumber}>{user._count?.following || 0}</Text>
+                    <Text style={styles.statLabel}>{statFollowing}</Text>
+                  </View>
+                </View>
+                {theme.hasDripEffect && statsCardWidth > 0 && (
+                  <ZombieDrip cardWidth={statsCardWidth} color={theme.accent} />
+                )}
+                {isFollowing && (
+                  <View style={styles.followingBar}>
+                    <Text style={styles.followingLabel}>FOLLOWING</Text>
+                  </View>
+                )}
+                {theme.statsCardIncludesBio && (
+                  <View style={styles.statsCardBioSection}>
+                    <LinearGradient
+                      colors={theme.collectionGradient}
+                      start={{ x: 0, y: 0.5 }}
+                      end={{ x: 1, y: 0.5 }}
+                      style={styles.statsCardCollectionBtn}
+                    >
+                      <Text style={styles.statsCardCollectionText}>Collection</Text>
+                    </LinearGradient>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.collectionEmptyState}>
+                <FolderHeart size={32} color={theme.muted} strokeWidth={1.5} />
+                <Text style={[styles.collectionEmptyText, { color: theme.muted }]}>No collection yet</Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Nametag below stats card — pink theme */}
@@ -1325,10 +1428,9 @@ export default function PublicProfileScreen() {
           </View>
         )}
 
-        {/* Profile Info */}
-        <View style={styles.profileInfoSection}>
-          {/* Platform chips */}
-          {platforms.length > 0 && (
+        {/* Profile Info — platform chips */}
+        {platforms.length > 0 && (
+          <View style={styles.profileInfoSection}>
             <View style={styles.platformsRow}>
               {platforms.map((p, i) => {
                 const isOutlined = theme.platformTagStyle === 'outlined';
@@ -1348,20 +1450,8 @@ export default function PublicProfileScreen() {
                 );
               })}
             </View>
-          )}
-
-          {/* Collection button — only shown outside the stats card for default/zombie themes */}
-          {!theme.statsCardIncludesBio && (
-            <LinearGradient
-              colors={theme.collectionGradient}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.collectionBtn}
-            >
-              <Text style={styles.collectionBtnText}>COLLECTION</Text>
-            </LinearGradient>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Featured Clip */}
         {featuredClip && (
@@ -1402,27 +1492,73 @@ export default function PublicProfileScreen() {
         )}
 
         {/* Content Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
-          {TABS.map((tab) => {
-            const countMap: Record<string, number> = {
-              Clips: clips.length,
-              Reels: reels.length,
-              Screenshots: screenshots.length,
-              Favorites: favoriteGames.length,
-            };
-            const count = countMap[tab];
-            const label = `${tab} · ${count}`;
-            return (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.tabPill, activeTab === tab && styles.tabPillActive]}
-                onPress={() => setActiveTab(tab)}
-              >
-                <Text style={[styles.tabPillText, activeTab === tab && styles.tabPillTextActive]}>{label}</Text>
+        {theme.displayNameFontId === 'impact' ? (
+          <View style={styles.zombieTabsContainer}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
+                {activeTab === 'Clips' ? (
+                  <View style={styles.zombieTabPill}>
+                    <Text style={styles.zombieTabPillLabel}>CLIPS</Text>
+                    <Text style={styles.zombieTabPillCount}>{clips.length}</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>CLIPS</Text>
+                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{clips.length}</Text>
+                  </>
+                )}
               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
+                {activeTab === 'Reels' ? (
+                  <View style={styles.zombieTabPill}>
+                    <Text style={styles.zombieTabPillLabel}>REELS</Text>
+                    <Text style={styles.zombieTabPillCount}>{reels.length}</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>REELS</Text>
+                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{reels.length}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
+                {activeTab === 'Favorites' ? (
+                  <View style={styles.zombieTabPill}>
+                    <Text style={styles.zombieTabPillLabel}>GAMES</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>GAMES</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.zombieTab, styles.zombieScreenshotsBtn]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
+                <Camera size={18} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
+                <Text style={[styles.zombieTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
+            {TABS.map((tab) => {
+              const countMap: Record<string, number> = {
+                Clips: clips.length,
+                Reels: reels.length,
+                Screenshots: screenshots.length,
+                Favorites: favoriteGames.length,
+              };
+              const count = countMap[tab];
+              const label = `${tab} · ${count}`;
+              return (
+                <TouchableOpacity
+                  key={tab}
+                  style={[styles.tabPill, activeTab === tab && styles.tabPillActive]}
+                  onPress={() => setActiveTab(tab)}
+                >
+                  <Text style={[styles.tabPillText, activeTab === tab && styles.tabPillTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* Tab Content */}
         <View style={styles.tabContent}>
