@@ -623,6 +623,13 @@ function createStyles(theme: ProfileThemeTokens) {
       right: 0,
       bottom: 0,
     },
+    bannerBottomFade: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: 90,
+    },
     avatarContainer: {
       position: 'absolute',
       bottom: -48,
@@ -1057,8 +1064,13 @@ export default function PublicProfileScreen() {
           <TouchableOpacity style={styles.bannerContainer} onPress={() => setIsBannerModalVisible(true)} activeOpacity={0.9}>
             <Image source={{ uri: bannerUrl }} style={styles.bannerImage} resizeMode="cover" />
             <LinearGradient
-              colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.5)']}
+              colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)']}
               style={styles.bannerTopGradient}
+            />
+            <LinearGradient
+              colors={['transparent', theme.bg]}
+              locations={[0.25, 1]}
+              style={styles.bannerBottomFade}
             />
           </TouchableOpacity>
 

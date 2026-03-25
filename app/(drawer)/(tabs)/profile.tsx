@@ -481,14 +481,17 @@ export default function ProfileScreen() {
         {profileData.banner ? (
           <>
             <Image source={{ uri: profileData.banner }} style={styles.banner} resizeMode="cover" />
-            <View style={[styles.bannerLine, { backgroundColor: h.containerBg }]} />
           </>
         ) : (
           <>
             <View style={[styles.banner, { backgroundColor: h.accentMuted }]} />
-            <View style={[styles.bannerLine, { backgroundColor: h.containerBg }]} />
           </>
         )}
+        <LinearGradient
+          colors={['transparent', h.containerBg]}
+          locations={[0.3, 1]}
+          style={styles.bannerFadeGradient}
+        />
         
         <TouchableOpacity 
           style={styles.bannerShareButton} 
@@ -983,13 +986,12 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#00B8A9',
   },
-  bannerLine: {
+  bannerFadeGradient: {
     position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,
-    height: 6,
-    backgroundColor: '#1E1033',
+    height: 100,
   },
   scrollContent: {
     paddingBottom: 120,
