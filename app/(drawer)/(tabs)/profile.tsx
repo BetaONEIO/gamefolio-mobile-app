@@ -1208,7 +1208,8 @@ const styles = StyleSheet.create({
   statNumber: {
     color: '#FFF',
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '900',
+    letterSpacing: -0.5,
     marginBottom: 2,
   },
   statLabel: {
@@ -1219,15 +1220,15 @@ const styles = StyleSheet.create({
   },
   statLabelPill: {
     borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 5,
+    borderRadius: 100,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     marginTop: 6,
   },
   statLabelPillText: {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.8,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.2,
   },
   engagementToggle: {
     flexDirection: 'row',
