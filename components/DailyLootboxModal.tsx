@@ -370,7 +370,7 @@ export default function DailyLootboxModal({ visible, onClose, onClaimed }: Daily
                         style={styles.claimButtonGradient}
                       >
                         <Text style={[styles.claimButtonText, !canOpen && styles.claimButtonTextDisabled]}>
-                          {canOpen ? 'Open Lootbox' : 'Not Available'}
+                          {canOpen ? 'Claim Lootbox' : 'Not Available'}
                         </Text>
                       </LinearGradient>
                     </TouchableOpacity>
