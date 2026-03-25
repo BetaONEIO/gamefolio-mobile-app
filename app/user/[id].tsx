@@ -169,7 +169,7 @@ function createStyles(theme: ProfileThemeTokens) {
 
     identitySection: {
       paddingHorizontal: 16,
-      paddingTop: 16,
+      paddingTop: 8,
       paddingBottom: 4,
     },
     nameRow: {
@@ -603,42 +603,41 @@ function createStyles(theme: ProfileThemeTokens) {
 
     bannerSection: {
       position: 'relative',
-      marginBottom: 60,
     },
     bannerContainer: {
-      height: 160,
+      height: 180,
       width: '100%',
       overflow: 'hidden',
-      borderBottomWidth: 1.5,
-      borderBottomColor: theme.accentMuted,
     },
     bannerImage: {
       width: '100%',
       height: '100%',
-    },
-    bannerTopGradient: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
     },
     bannerBottomFade: {
       position: 'absolute',
       left: 0,
       right: 0,
       bottom: 0,
-      height: 90,
+      height: 100,
     },
-    avatarContainer: {
-      position: 'absolute',
-      bottom: -48,
-      left: 20,
+    profileTopRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      marginTop: -90,
+      paddingHorizontal: 16,
+      marginBottom: 4,
+      zIndex: 10,
+    },
+    avatarWrapper: {
+      position: 'relative',
+      width: 156,
+      height: 156,
     },
     avatarBorder: {
-      width: 96,
-      height: 96,
-      borderRadius: theme.avatarBorderRadius,
+      width: 156,
+      height: 156,
+      borderRadius: 78,
       borderWidth: theme.avatarBorderWidth,
       borderColor: theme.avatarBorderColor,
       backgroundColor: theme.isLight ? '#fdf2f8' : '#0a0c0a',
@@ -652,24 +651,30 @@ function createStyles(theme: ProfileThemeTokens) {
       elevation: Math.round(theme.avatarGlowRadius),
     },
     avatar: {
-      width: 92,
-      height: 92,
-      borderRadius: Math.max(0, theme.avatarBorderRadius - 2),
+      width: 148,
+      height: 148,
+      borderRadius: 74,
     },
     levelBadge: {
       position: 'absolute',
-      bottom: -10,
-      right: -10,
+      bottom: -12,
+      left: '50%',
+      marginLeft: -16,
+    },
+    rightColumn: {
+      flex: 1,
+      marginLeft: 12,
+      marginBottom: 12,
     },
     onlineIndicator: {
       position: 'absolute',
-      top: 6,
-      right: 6,
-      width: 18,
-      height: 18,
-      borderRadius: 9,
+      top: 8,
+      right: 8,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
       backgroundColor: theme.bg,
-      borderWidth: 2,
+      borderWidth: 3,
       borderColor: theme.bg,
       alignItems: 'center',
       justifyContent: 'center',
@@ -1053,44 +1058,44 @@ export default function PublicProfileScreen() {
           <TouchableOpacity style={styles.navIconBtn} onPress={() => setIsShareModalVisible(true)}>
             <Share2 size={18} color={theme.textPrimary} />
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navGreenBtn}
-            onPress={() => router.push('/(drawer)/(tabs)/create')}
-          >
-            <Upload size={16} color={theme.followBtnTextColor} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navAvatarChip}
-            onPress={() => setIsProfileModalVisible(true)}
-          >
-            <Image source={{ uri: avatarUrl }} style={styles.navAvatar} />
-          </TouchableOpacity>
+          {isMe && (
+            <TouchableOpacity
+              style={styles.navGreenBtn}
+              onPress={() => router.push('/(drawer)/(tabs)/create')}
+            >
+              <Upload size={16} color={theme.followBtnTextColor} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
 
-        {/* Banner with Avatar */}
+        {/* Banner */}
         <View style={styles.bannerSection}>
-          <TouchableOpacity style={styles.bannerContainer} onPress={() => setIsBannerModalVisible(true)} activeOpacity={0.9}>
+          <View style={styles.bannerContainer}>
             <Image source={{ uri: bannerUrl }} style={styles.bannerImage} resizeMode="cover" />
             <LinearGradient
-              colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.3)']}
-              style={styles.bannerTopGradient}
-            />
-            <LinearGradient
               colors={['transparent', theme.bg]}
-              locations={[0.25, 1]}
+              locations={[0.3, 1]}
               style={styles.bannerBottomFade}
             />
-          </TouchableOpacity>
+          </View>
+        </View>
 
-          <TouchableOpacity style={styles.avatarContainer} onPress={() => setIsProfileModalVisible(true)}>
-            <View style={styles.avatarBorder}>
+        {/* Profile Top Row: large avatar + action buttons */}
+        <View style={styles.profileTopRow}>
+          <TouchableOpacity style={styles.avatarWrapper} onPress={() => setIsProfileModalVisible(true)} activeOpacity={0.95}>
+            <View style={[styles.avatarBorder, {
+              shadowColor: theme.shadowColor,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: theme.avatarGlowOpacity,
+              shadowRadius: theme.avatarGlowRadius,
+            }]}>
               <Image source={{ uri: avatarUrl }} style={styles.avatar} />
             </View>
             <View style={styles.levelBadge}>
-              <LevelBadge level={user.level || 1} size={28} thickness={2} />
+              <LevelBadge level={user.level || 1} currentXP={user.totalXP} size={32} thickness={3} />
             </View>
             {user.isOnline && !isMe && (
               <TouchableOpacity
@@ -1110,6 +1115,48 @@ export default function PublicProfileScreen() {
               </TouchableOpacity>
             )}
           </TouchableOpacity>
+
+          {!isMe ? (
+            <View style={styles.rightColumn}>
+              <TouchableOpacity
+                style={[styles.followBtn, isFollowing && styles.followingBtn]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setIsFollowing(f => !f);
+                }}
+              >
+                {isFollowing ? (
+                  <Text style={styles.followBtnTextActive}>Following</Text>
+                ) : (
+                  <>
+                    <UserPlus size={14} color={theme.followBtnTextColor} />
+                    <Text style={styles.followBtnText}>Follow</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                <TouchableOpacity
+                  style={styles.iconActionBtn}
+                  onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
+                >
+                  <Mail size={16} color={theme.memberSinceColor} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.blockBtn, isBlocked && styles.blockBtnActive]}
+                  onPress={handleToggleBlock}
+                  disabled={blockMutation.isPending}
+                >
+                  <UserX size={14} color={isBlocked ? '#FFFFFF' : '#F97316'} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.reportBtn}
+                  onPress={() => setIsReportModalVisible(true)}
+                >
+                  <Flag size={14} color="#EF4444" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {isBirthdayToday(user?.birthday) && (
@@ -1300,47 +1347,6 @@ export default function PublicProfileScreen() {
                   </View>
                 );
               })}
-            </View>
-          )}
-
-          {/* Action buttons */}
-          {!isMe && (
-            <View style={styles.actionsRow}>
-              <TouchableOpacity
-                style={[styles.followBtn, isFollowing && styles.followingBtn]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setIsFollowing(f => !f);
-                }}
-              >
-                {isFollowing ? (
-                  <Text style={styles.followBtnTextActive}>Following</Text>
-                ) : (
-                  <>
-                    <UserPlus size={14} color={theme.followBtnTextColor} />
-                    <Text style={styles.followBtnText}>Follow</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.iconActionBtn}
-                onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
-              >
-                <Mail size={16} color={theme.memberSinceColor} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.blockBtn, isBlocked && styles.blockBtnActive]}
-                onPress={handleToggleBlock}
-                disabled={blockMutation.isPending}
-              >
-                <UserX size={14} color={isBlocked ? '#FFFFFF' : '#F97316'} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.reportBtn}
-                onPress={() => setIsReportModalVisible(true)}
-              >
-                <Flag size={14} color="#EF4444" />
-              </TouchableOpacity>
             </View>
           )}
 
