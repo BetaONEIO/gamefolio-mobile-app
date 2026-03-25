@@ -165,7 +165,7 @@ const ZOMBIE_THEME: ProfileThemeTokens = {
   cardBorder: '#9ae600',
   cardBorderRadius: 12,
   statsTopGradient: ['#84cc16', '#000'],
-  statLabels: ['Bio-Data', 'Survivors', 'Tracking'],
+  statLabels: ['Uploads', 'Followers', 'Following'],
   hasStatsGradientBar: false,
   statsCardIncludesBio: false,
   statAlign: 'flex-start',

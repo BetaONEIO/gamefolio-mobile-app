@@ -17,7 +17,7 @@ import ShareProfileModal from '@/components/ShareProfileModal';
 import LevelBadge from '@/components/LevelBadge';
 import LevelDetailsModal from '@/components/LevelDetailsModal';
 import UserTypeBadge from '@/components/UserTypeBadge';
-import StyledUsername from '@/components/StyledUsername';
+import StyledUsername, { FONT_STYLES } from '@/components/StyledUsername';
 import { ThemeBackgroundEffect } from '@/components/ThemeBackgroundEffect';
 import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
@@ -186,6 +186,7 @@ export default function ProfileScreen() {
   const { user, getAccessToken } = useAuth();
   const theme = useMemo(() => getProfileTheme((user as any)?.profileTheme), [user]);
   const h = useMemo(() => createHeaderStyles(theme), [theme]);
+  const displayFont = useMemo(() => FONT_STYLES.find(f => f.id === (theme.displayNameFontId || 'default')), [theme]);
   
   // Fetch profile stats (clips count, followers, following) using REST
   const { data: profileStats } = useQuery({
@@ -567,17 +568,24 @@ export default function ProfileScreen() {
               top: -17,
               right: 0,
               zIndex: 10,
-              backgroundColor: profileSectionTab === 'collection' ? theme.accent : 'transparent',
               borderColor: theme.accent,
               borderWidth: 1.5,
+              overflow: 'hidden',
             }]}
             onPress={() => setProfileSectionTab(profileSectionTab === 'collection' ? 'stats' : 'collection')}
             activeOpacity={0.8}
           >
-            <FolderHeart size={14} color={profileSectionTab === 'collection' ? '#FFF' : theme.accent} />
-            <Text style={[styles.collectionButtonText, { color: profileSectionTab === 'collection' ? '#FFF' : theme.accent }]}>
-              {profileSectionTab === 'collection' ? 'Stats' : 'Collection'}
-            </Text>
+            <LinearGradient
+              colors={theme.collectionGradient as [string, string, ...string[]]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.collectionButtonGradient}
+            >
+              <FolderHeart size={14} color='#0f172b' />
+              <Text style={[styles.collectionButtonText, { color: '#0f172b', fontFamily: displayFont?.fontFamily }]}>
+                {profileSectionTab === 'collection' ? 'Stats' : 'Collection'}
+              </Text>
+            </LinearGradient>
           </TouchableOpacity>
           <View
             style={[
@@ -1075,17 +1083,19 @@ const styles = StyleSheet.create({
     marginTop: 13,
   },
   collectionButton: {
+    borderRadius: 100,
+  },
+  collectionButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 100,
     gap: 6,
   },
   collectionButtonText: {
-    color: '#FFF',
+    color: '#0f172b',
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
