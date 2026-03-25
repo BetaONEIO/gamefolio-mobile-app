@@ -89,6 +89,18 @@ async function proxyToProduction(path: string, query?: Record<string, string>): 
   }
 }
 
+async function proxyToProductionSingle(path: string): Promise<any | null> {
+  try {
+    const url = new URL(path, PRODUCTION_API_URL);
+    const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+    if (!response.ok) return null;
+    return response.json();
+  } catch (err) {
+    console.error(`[proxy] Failed to fetch ${path} from production:`, err);
+    return null;
+  }
+}
+
 // Import upload middlewares from upload router
 import multer from "multer";
 
@@ -4282,6 +4294,11 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const clip = await storage.getClipById(parseInt(id));
 
       if (!clip) {
+        const prodClip = await proxyToProductionSingle(`/api/clips/${id}`);
+        if (prodClip && !prodClip.error) {
+          console.log(`✅ Clips API: Found clip ${id} from production`);
+          return res.json(prodClip);
+        }
         console.log(`❌ Clips API: Clip ${id} not found`);
         return res.status(404).json({ error: "Clip not found" });
       }
