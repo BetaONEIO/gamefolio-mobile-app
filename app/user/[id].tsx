@@ -1123,9 +1123,9 @@ export default function PublicProfileScreen() {
   return (
     <View style={styles.container}>
       <AppHeader showBackButton={true} />
-      {activeThemeId ? (
+      {(user as any)?.profileTheme ? (
         <View style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} pointerEvents="none">
-          <ThemeBackgroundEffect themeId={activeThemeId} />
+          <ThemeBackgroundEffect themeId={(user as any).profileTheme} />
         </View>
       ) : null}
 
