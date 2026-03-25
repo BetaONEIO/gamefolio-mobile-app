@@ -17,6 +17,7 @@ import ReportModal from '@/components/ReportModal';
 import ShareProfileModal from '@/components/ShareProfileModal';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
+import UserTypeBadge from '@/components/UserTypeBadge';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getProfileTheme, ProfileThemeTokens } from '@/constants/themes';
@@ -751,62 +752,37 @@ function createStyles(theme: ProfileThemeTokens) {
       color: theme.tabActiveText,
     },
 
-    zombieTabsContainer: {
-      borderBottomWidth: 1,
-      borderBottomColor: theme.dividerColor,
-      backgroundColor: theme.bg,
-      marginTop: 24,
-      paddingHorizontal: 16,
-      paddingVertical: 4,
-      marginBottom: 0,
+    nametagTopColumn: {
+      alignItems: 'flex-end',
+      marginBottom: 8,
     },
-    zombieTab: {
-      flex: 1,
+    nametagTopCard: {
+      flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
+      gap: 6,
+      borderRadius: 8,
       paddingVertical: 6,
-    },
-    zombieTabPill: {
-      borderRadius: 100,
-      paddingHorizontal: 18,
-      paddingVertical: 11,
-      alignItems: 'center',
-      backgroundColor: theme.accent,
-    },
-    zombieTabPillLabel: {
-      color: '#0f172b',
-      fontFamily: 'Impact',
-      fontSize: 13,
-      fontWeight: 'bold',
-      letterSpacing: 1,
-      textTransform: 'uppercase',
-    },
-    zombieTabPillCount: {
-      color: '#0f172b',
-      fontFamily: 'Impact',
-      fontSize: 12,
-      fontWeight: 'bold',
-      letterSpacing: 0.5,
-      marginTop: 1,
-    },
-    zombieTabLabel: {
-      fontFamily: 'Impact',
-      fontSize: 12,
-      fontWeight: 'bold',
-      letterSpacing: 1,
-      textTransform: 'uppercase',
-    },
-    zombieTabCount: {
-      fontFamily: 'Impact',
-      fontSize: 12,
-      fontWeight: 'bold',
-      letterSpacing: 0.5,
-      marginTop: 1,
-    },
-    zombieScreenshotsBtn: {
-      alignItems: 'center',
       paddingHorizontal: 8,
-      paddingVertical: 6,
+      width: 130,
+      overflow: 'hidden',
+    },
+    nametagTopImg: {
+      width: 28,
+      height: 28,
+    },
+    nametagTopGameName: {
+      color: theme.isLight ? '#1a1a1a' : '#FFFFFF',
+      fontSize: 8,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      flex: 1,
+    },
+    nametagTopLabel: {
+      color: '#6b7a8a',
+      fontSize: 9,
+      fontWeight: '500',
+      letterSpacing: 1.2,
+      marginTop: 3,
     },
 
     tabContent: {
@@ -1192,6 +1168,22 @@ export default function PublicProfileScreen() {
 
           {!isMe ? (
             <View style={styles.rightColumn}>
+              {currentGame ? (
+                <View style={styles.nametagTopColumn}>
+                  <LinearGradient
+                    colors={theme.nametagGradient}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={styles.nametagTopCard}
+                  >
+                    {currentGame.imageUrl ? (
+                      <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
+                    ) : null}
+                    <Text style={styles.nametagTopGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
+                  </LinearGradient>
+                  <Text style={styles.nametagTopLabel}>NAMETAG</Text>
+                </View>
+              ) : null}
               <TouchableOpacity
                 style={[styles.followBtn, isFollowing && styles.followingBtn]}
                 onPress={() => {
@@ -1280,6 +1272,7 @@ export default function PublicProfileScreen() {
             )}
           </View>
           <Text style={styles.handle}>{handle}</Text>
+          <UserTypeBadge userType={user.userType} showUserType={user.showUserType !== false} />
           {user.bio ? (
             <Text style={[styles.bio, { marginTop: 6, textTransform: 'none', fontSize: 13, fontWeight: '400', letterSpacing: 0 }]} numberOfLines={3}>{user.bio}</Text>
           ) : null}
@@ -1492,73 +1485,27 @@ export default function PublicProfileScreen() {
         )}
 
         {/* Content Tabs */}
-        {theme.displayNameFontId === 'impact' ? (
-          <View style={styles.zombieTabsContainer}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
-                {activeTab === 'Clips' ? (
-                  <View style={styles.zombieTabPill}>
-                    <Text style={styles.zombieTabPillLabel}>CLIPS</Text>
-                    <Text style={styles.zombieTabPillCount}>{clips.length}</Text>
-                  </View>
-                ) : (
-                  <>
-                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>CLIPS</Text>
-                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{clips.length}</Text>
-                  </>
-                )}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
+          {TABS.map((tab) => {
+            const countMap: Record<string, number> = {
+              Clips: clips.length,
+              Reels: reels.length,
+              Screenshots: screenshots.length,
+              Favorites: favoriteGames.length,
+            };
+            const count = countMap[tab];
+            const label = `${tab} · ${count}`;
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabPill, activeTab === tab && styles.tabPillActive]}
+                onPress={() => setActiveTab(tab)}
+              >
+                <Text style={[styles.tabPillText, activeTab === tab && styles.tabPillTextActive]}>{label}</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
-                {activeTab === 'Reels' ? (
-                  <View style={styles.zombieTabPill}>
-                    <Text style={styles.zombieTabPillLabel}>REELS</Text>
-                    <Text style={styles.zombieTabPillCount}>{reels.length}</Text>
-                  </View>
-                ) : (
-                  <>
-                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>REELS</Text>
-                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{reels.length}</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
-                {activeTab === 'Favorites' ? (
-                  <View style={styles.zombieTabPill}>
-                    <Text style={styles.zombieTabPillLabel}>GAMES</Text>
-                  </View>
-                ) : (
-                  <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>GAMES</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.zombieTab, styles.zombieScreenshotsBtn]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
-                <Camera size={18} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
-                <Text style={[styles.zombieTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
-            {TABS.map((tab) => {
-              const countMap: Record<string, number> = {
-                Clips: clips.length,
-                Reels: reels.length,
-                Screenshots: screenshots.length,
-                Favorites: favoriteGames.length,
-              };
-              const count = countMap[tab];
-              const label = `${tab} · ${count}`;
-              return (
-                <TouchableOpacity
-                  key={tab}
-                  style={[styles.tabPill, activeTab === tab && styles.tabPillActive]}
-                  onPress={() => setActiveTab(tab)}
-                >
-                  <Text style={[styles.tabPillText, activeTab === tab && styles.tabPillTextActive]}>{label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        )}
+            );
+          })}
+        </ScrollView>
 
         {/* Tab Content */}
         <View style={styles.tabContent}>
