@@ -129,10 +129,10 @@ function createStyles(theme: ProfileThemeTokens) {
       justifyContent: 'center',
     },
     handle: {
+      fontSize: 15,
       color: theme.textHandle,
-      fontSize: 13,
-      fontWeight: '700',
-      marginBottom: 10,
+      marginBottom: 4,
+      textAlign: 'left',
     },
     badgesRow: {
       flexDirection: 'row',
@@ -560,31 +560,17 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     avatarWrapper: {
       position: 'relative',
-      width: 156,
-      height: 156,
-    },
-    avatarBorder: {
-      width: 156,
-      height: 156,
-      borderRadius: 78,
-      borderWidth: theme.avatarBorderWidth,
-      borderColor: theme.avatarBorderColor,
-      backgroundColor: theme.isLight ? '#fdf2f8' : '#0a0c0a',
-      overflow: 'hidden',
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: theme.shadowColor,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: theme.avatarGlowOpacity,
-      shadowRadius: theme.avatarGlowRadius,
-      elevation: Math.round(theme.avatarGlowRadius),
     },
     avatar: {
       width: 148,
       height: 148,
       borderRadius: 74,
+      borderWidth: 4,
     },
-    levelBadge: {
+    badgesContainer: {
+      position: 'relative',
+    },
+    levelBadgeContainer: {
       position: 'absolute',
       bottom: -12,
       left: '50%',
@@ -1123,9 +1109,9 @@ export default function PublicProfileScreen() {
   return (
     <View style={styles.container}>
       <AppHeader showBackButton={true} />
-      {(user as any)?.profileTheme ? (
+      {activeThemeId ? (
         <View style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} pointerEvents="none">
-          <ThemeBackgroundEffect themeId={(user as any).profileTheme} />
+          <ThemeBackgroundEffect themeId={activeThemeId} />
         </View>
       ) : null}
 
@@ -1153,36 +1139,39 @@ export default function PublicProfileScreen() {
         <View style={styles.content}>
         {/* Profile Top Row: large avatar + action buttons */}
         <View style={styles.topRowWithActions}>
-          <TouchableOpacity style={styles.avatarWrapper} onPress={() => setIsProfileModalVisible(true)} activeOpacity={0.95}>
-            <View style={[styles.avatarBorder, {
-              shadowColor: theme.shadowColor,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: theme.avatarGlowOpacity,
-              shadowRadius: theme.avatarGlowRadius,
-            }]}>
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+          <View style={[styles.avatarWrapper, {
+            borderRadius: 74,
+            shadowColor: theme.shadowColor,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: theme.avatarGlowOpacity,
+            shadowRadius: theme.avatarGlowRadius,
+          }]}>
+            <TouchableOpacity onPress={() => setIsProfileModalVisible(true)}>
+              <Image source={{ uri: avatarUrl }} style={[styles.avatar, { borderColor: theme.avatarBorderColor }]} />
+              {user.isOnline && !isMe && (
+                <TouchableOpacity
+                  style={[styles.onlineIndicator, { borderColor: theme.bg }]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setOnlineTooltipVisible(true);
+                    setTimeout(() => setOnlineTooltipVisible(false), 2000);
+                  }}
+                >
+                  <View style={styles.onlineDotLg} />
+                  {onlineTooltipVisible && (
+                    <View style={styles.onlineTooltip}>
+                      <Text style={styles.onlineTooltipText}>{handle} is online</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+            </TouchableOpacity>
+            <View style={styles.badgesContainer}>
+              <View style={styles.levelBadgeContainer}>
+                <LevelBadge level={user.level || 1} currentXP={user.totalXP} size={32} thickness={3} />
+              </View>
             </View>
-            <View style={styles.levelBadge}>
-              <LevelBadge level={user.level || 1} currentXP={user.totalXP} size={32} thickness={3} />
-            </View>
-            {user.isOnline && !isMe && (
-              <TouchableOpacity
-                style={styles.onlineIndicator}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setOnlineTooltipVisible(true);
-                  setTimeout(() => setOnlineTooltipVisible(false), 2000);
-                }}
-              >
-                <View style={styles.onlineDotLg} />
-                {onlineTooltipVisible && (
-                  <View style={styles.onlineTooltip}>
-                    <Text style={styles.onlineTooltipText}>{handle} is online</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            )}
-          </TouchableOpacity>
+          </View>
 
           {!isMe ? (
             <View style={styles.rightColumn}>
