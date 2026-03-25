@@ -5622,10 +5622,15 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
       const userId = req.user!.id;
       
-      // Check if the clip exists
-      const clip = await storage.getClip(clipId);
+      // Check if the clip exists locally, fall back to production proxy if not found
+      let clip = await storage.getClip(clipId);
       if (!clip) {
-        return res.status(404).json({ message: "Clip not found" });
+        const prodClip = await proxyToProductionSingle(`/api/clips/${clipId}`);
+        if (prodClip && !prodClip.error) {
+          clip = prodClip;
+        } else {
+          return res.status(404).json({ message: "Clip not found" });
+        }
       }
 
       // Prevent users from liking their own content
@@ -5743,10 +5748,15 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const userId = req.user!.id;
       const emoji = req.body.emoji;
 
-      // Check if the clip exists
-      const clip = await storage.getClip(clipId);
+      // Check if the clip exists locally, fall back to production proxy if not found
+      let clip = await storage.getClip(clipId);
       if (!clip) {
-        return res.status(404).json({ message: "Clip not found" });
+        const prodClip = await proxyToProductionSingle(`/api/clips/${clipId}`);
+        if (prodClip && !prodClip.error) {
+          clip = prodClip;
+        } else {
+          return res.status(404).json({ message: "Clip not found" });
+        }
       }
 
       // Prevent users from reacting to their own content
