@@ -970,8 +970,8 @@ export default function HomeScreen() {
                 key={shot.id}
                 style={[styles.screenshotCard, { width: screenshotCardWidth, height: screenshotCardHeight }]}
                 onPress={() => {
-                  if (shot.user?.id) {
-                    router.push({ pathname: '/user/[id]', params: { id: shot.user.id.toString() } });
+                  if (shot.user?.username) {
+                    router.push({ pathname: '/user/[id]', params: { id: shot.user.username } });
                   }
                 }}
               >

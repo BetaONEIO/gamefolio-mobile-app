@@ -183,7 +183,7 @@ export default function TagScreen() {
                   style={styles.userRow}
                   onPress={(e) => {
                     e.stopPropagation();
-                    router.push({ pathname: '/user/[id]', params: { id: item.user.id.toString() } });
+                    router.push({ pathname: '/user/[id]', params: { id: item.user.username } });
                   }}
                 >
                   <Image source={{ uri: item.user.avatarUrl }} style={styles.userAvatar} />

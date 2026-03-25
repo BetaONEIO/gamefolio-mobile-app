@@ -986,10 +986,21 @@ export default function PublicProfileScreen() {
     return url.replace('{width}', '600').replace('{height}', '800');
   };
 
-  if (isProfileLoading || !user) {
+  if (isProfileLoading) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
         <ActivityIndicator size="large" color="#4ADE80" />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', gap: 12 }]}>
+        <Text style={{ color: '#94A3B8', fontSize: 18, fontWeight: '600' }}>User not found</Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={{ color: '#4ADE80', fontSize: 15 }}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }

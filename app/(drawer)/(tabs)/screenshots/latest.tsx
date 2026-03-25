@@ -112,7 +112,7 @@ export default function LatestScreenshotsPage() {
           style={styles.avatarContainer}
           onPress={(e) => {
             e.stopPropagation();
-            router.push({ pathname: '/user/[id]', params: { id: item.userId.toString() } });
+            router.push({ pathname: '/user/[id]', params: { id: item.user?.username || item.userId.toString() } });
           }}
         >
           <Image

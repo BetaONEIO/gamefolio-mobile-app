@@ -50,7 +50,7 @@ export default function BlockedUsersScreen() {
     <View style={styles.userRow}>
       <TouchableOpacity
         style={styles.userInfo}
-        onPress={() => router.push({ pathname: '/user/[id]', params: { id: item.id.toString() } })}
+        onPress={() => router.push({ pathname: '/user/[id]', params: { id: item.username } })}
         activeOpacity={0.7}
       >
         <Image

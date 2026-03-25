@@ -65,6 +65,7 @@ interface Screenshot {
   title: string;
   description?: string;
   thumbnailUrl: string;
+  imageUrl?: string;
   createdAt?: string;
   userId?: number;
   user?: {
@@ -288,8 +289,8 @@ export default function ScreenshotViewerModal({
 
   const handleUserPress = useCallback(() => {
     onClose();
-    if (currentScreenshot?.user?.id) {
-      router.push({ pathname: '/user/[id]', params: { id: currentScreenshot.user.id.toString() } });
+    if (currentScreenshot?.user?.username) {
+      router.push({ pathname: '/user/[id]', params: { id: currentScreenshot.user.username } });
     }
   }, [router, currentScreenshot, onClose]);
 
@@ -337,7 +338,7 @@ export default function ScreenshotViewerModal({
   const renderScreenshotItem = useCallback(({ item }: { item: Screenshot }) => (
     <View style={styles.screenshotItemContainer}>
       <Image
-        source={{ uri: item.thumbnailUrl }}
+        source={{ uri: item.imageUrl || item.thumbnailUrl }}
         style={styles.image}
         resizeMode="contain"
       />
@@ -449,7 +450,7 @@ export default function ScreenshotViewerModal({
           ) : (
             <View style={styles.imageContainer}>
               <Image
-                source={{ uri: currentScreenshot.thumbnailUrl }}
+                source={{ uri: currentScreenshot.imageUrl || currentScreenshot.thumbnailUrl }}
                 style={styles.image}
                 resizeMode="contain"
               />
