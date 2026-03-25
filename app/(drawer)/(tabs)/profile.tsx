@@ -595,7 +595,7 @@ export default function ProfileScreen() {
             </View>
 
             {profileSectionTab === 'stats' ? (
-              <View style={[styles.infoBorderInner, { paddingTop: 8, paddingBottom: 16 }]}>
+              <View style={[styles.infoBorderInner, { paddingTop: 18, paddingBottom: 22 }]}>
                 <View style={[
                   styles.statsRowCompact,
                   { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 },
@@ -1220,8 +1220,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 4,
     paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginTop: 4,
+    paddingVertical: 5,
+    marginTop: 6,
   },
   statLabelPillText: {
     fontSize: 9,
