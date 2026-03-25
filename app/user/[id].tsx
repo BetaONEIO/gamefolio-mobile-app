@@ -264,12 +264,14 @@ function createStyles(theme: ProfileThemeTokens) {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 32,
-      paddingVertical: 16,
-      paddingHorizontal: 16,
+      marginBottom: 16,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(148, 163, 184, 0.2)',
     },
     statColumn: {
       flexDirection: 'column',
-      alignItems: theme.statAlign as 'flex-start' | 'center',
+      alignItems: 'flex-start',
     },
     statNumber: {
       color: theme.statNumberColor,
@@ -284,14 +286,12 @@ function createStyles(theme: ProfileThemeTokens) {
       fontWeight: '600',
       letterSpacing: 0.5,
     },
-    statLabelPillStyle: {
+    statLabelPill: {
       borderWidth: 1,
-      borderColor: theme.accent,
       borderRadius: 100,
       paddingHorizontal: 10,
       paddingVertical: 4,
-      marginTop: 4,
-      backgroundColor: theme.accentMuted,
+      marginTop: 6,
     },
     statLabelPillText: {
       color: theme.accent,
@@ -353,16 +353,17 @@ function createStyles(theme: ProfileThemeTokens) {
     platformsRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
-      gap: 6,
-      marginBottom: 14,
+      gap: 8,
+      marginTop: 16,
+      marginBottom: 16,
     },
-    platformChip: {
+    platformTag: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 6,
-      borderRadius: 16,
       paddingVertical: 6,
       paddingHorizontal: 12,
+      borderRadius: 16,
+      gap: 6,
     },
     platformText: {
       fontSize: 13,
@@ -592,7 +593,6 @@ function createStyles(theme: ProfileThemeTokens) {
     rightColumn: {
       flex: 1,
       marginLeft: 12,
-      marginBottom: 12,
     },
     onlineIndicator: {
       position: 'absolute',
@@ -1369,7 +1369,7 @@ export default function PublicProfileScreen() {
                     <View key={i} style={[styles.statColumn, theme.statAlign === 'flex-start' ? { alignItems: 'flex-start' } : undefined]}>
                       <Text style={[styles.statNumber, { color: theme.statNumberColor, fontSize: theme.statNumberFontSize }]}>{stat.value}</Text>
                       {theme.statLabelPill ? (
-                        <View style={[styles.statLabelPillStyle, { borderColor: theme.accent, backgroundColor: theme.accentMuted }]}>
+                        <View style={[styles.statLabelPill, { borderColor: theme.accent, backgroundColor: theme.accentMuted }]}>
                           <Text style={[styles.statLabelPillText, { color: theme.accent }]}>{stat.label.toUpperCase()}</Text>
                         </View>
                       ) : (
@@ -1398,29 +1398,27 @@ export default function PublicProfileScreen() {
         </View>
 
         {/* Profile Info — platform chips */}
-        {platforms.length > 0 && (
-          <View style={styles.profileInfoSection}>
-            <View style={styles.platformsRow}>
-              {platforms.map((p, i) => {
-                const isOutlined = theme.platformTagStyle === 'outlined';
-                const chipBg = isOutlined ? 'transparent' : p.color;
-                const chipBorder = isOutlined ? (theme.platformTagBorderColor || theme.accent) : 'transparent';
-                const iconColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : '#FFF';
-                const textColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : '#FFF';
-                return (
-                  <View key={i} style={[styles.platformChip, { backgroundColor: chipBg, borderColor: chipBorder, borderWidth: isOutlined ? 1.5 : 0 }]}>
-                    {p.type === 'xbox' && <Gamepad2 size={12} color={iconColor} />}
-                    {p.type === 'ps' && <Gamepad2 size={12} color={iconColor} />}
-                    {p.type === 'pc' && <Monitor size={12} color={iconColor} />}
-                    {p.type === 'nintendo' && <Gamepad2 size={12} color={iconColor} />}
-                    {p.type === 'epic' && <Gamepad2 size={12} color={iconColor} />}
-                    <Text style={[styles.platformText, { color: textColor }]}>{p.name}</Text>
-                  </View>
-                );
-              })}
-            </View>
+        {platforms.length > 0 ? (
+          <View style={[styles.platformsRow, { marginTop: 12, paddingHorizontal: 4 }]}>
+            {platforms.map((p, i) => {
+              const isOutlined = theme.platformTagStyle === 'outlined';
+              const tagBg = isOutlined ? 'transparent' : p.color;
+              const tagBorder = isOutlined ? (theme.platformTagBorderColor || theme.accent) : 'transparent';
+              const iconColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : '#FFF';
+              const tagTextColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : '#FFF';
+              return (
+                <View key={i} style={[styles.platformTag, { backgroundColor: tagBg, borderColor: tagBorder, borderWidth: isOutlined ? 1.5 : 0 }]}>
+                  {p.type === 'xbox' && <Gamepad2 size={12} color={iconColor} />}
+                  {p.type === 'ps' && <Gamepad2 size={12} color={iconColor} />}
+                  {p.type === 'pc' && <Monitor size={12} color={iconColor} />}
+                  {p.type === 'nintendo' && <Gamepad2 size={12} color={iconColor} />}
+                  {p.type === 'epic' && <Gamepad2 size={12} color={iconColor} />}
+                  <Text style={[styles.platformText, { color: tagTextColor }]}>{p.name}</Text>
+                </View>
+              );
+            })}
           </View>
-        )}
+        ) : null}
 
         {/* Featured Clip */}
         {featuredClip && (
