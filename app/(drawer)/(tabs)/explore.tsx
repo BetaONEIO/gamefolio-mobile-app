@@ -644,7 +644,7 @@ export default function ExploreScreen() {
                           <TouchableOpacity
                             key={clip.id}
                             style={styles.mediaCard}
-                            onPress={() => router.push({ pathname: '/clips/[id]', params: { id: clip.id.toString() } })}
+                            onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString() } })}
                             activeOpacity={0.7}
                           >
                             <Image
@@ -677,7 +677,7 @@ export default function ExploreScreen() {
                           <TouchableOpacity
                             key={reel.id}
                             style={styles.mediaCard}
-                            onPress={() => router.push({ pathname: '/clips/[id]', params: { id: reel.id.toString() } })}
+                            onPress={() => router.push({ pathname: '/clip/[id]', params: { id: reel.id.toString() } })}
                             activeOpacity={0.7}
                           >
                             <Image
@@ -710,7 +710,7 @@ export default function ExploreScreen() {
                           <TouchableOpacity
                             key={shot.id}
                             style={styles.mediaCard}
-                            onPress={() => router.push({ pathname: '/screenshot/[id]', params: { id: shot.id.toString() } })}
+                            onPress={() => router.push('/(drawer)/(tabs)/screenshots/latest')}
                             activeOpacity={0.7}
                           >
                             <Image
