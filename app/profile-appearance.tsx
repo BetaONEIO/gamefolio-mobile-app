@@ -339,9 +339,8 @@ export default function ProfileAppearance() {
 
       console.log('[Profile] Saving profile:', { displayName, bio, avatar, banner, theme });
       
-      const updateData = {
+      const updateData: Record<string, unknown> = {
         displayName,
-        bio,
         avatarUrl: avatar || undefined,
         bannerUrl: banner || undefined,
         accentColor: theme?.accentColor,
@@ -359,6 +358,10 @@ export default function ProfileAppearance() {
         epicUsername: epicUsername || null,
         nintendoUsername: nintendoUsername || null,
       };
+
+      if (bio !== (user?.bio || '')) {
+        updateData.bio = bio;
+      }
 
       console.log('[Profile] Sending update via REST API:', updateData);
       const response = await api.users.updateProfile(user?.id || 0, updateData, token);
