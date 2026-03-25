@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Image, ScrollView, ActivityIndicator, Dimensions } from 'react-native';
-import { X, Gift, Star, Coins, Zap, Clock, Sparkles, Award } from 'lucide-react-native';
+import { X, Gift, Star, Coins, Zap, Clock, Sparkles, Award, AlertCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/context/AuthContext';
 import { useLootboxCollection } from '@/context/LootboxCollectionContext';
@@ -54,6 +54,20 @@ export default function DailyLootboxModal({ visible, onClose, onClaimed }: Daily
   const [wasConsumed, setWasConsumed] = useState(false);
   const [rewardMessage, setRewardMessage] = useState('');
   const [timeLeft, setTimeLeft] = useState('');
+  const [errorText, setErrorText] = useState('');
+  const [openingWaiting, setOpeningWaiting] = useState(false);
+
+  const apiDoneRef = useRef(false);
+  const videoDoneRef = useRef(false);
+  const onClaimedRef = useRef(onClaimed);
+  onClaimedRef.current = onClaimed;
+
+  const advanceToReveal = () => {
+    setPhase('reveal');
+    if (onClaimedRef.current) {
+      onClaimedRef.current();
+    }
+  };
 
   const player = useVideoPlayer(lootboxVideoAsset, p => {
     p.loop = false;
@@ -62,9 +76,11 @@ export default function DailyLootboxModal({ visible, onClose, onClaimed }: Daily
   });
 
   useEventListener(player, 'playToEnd', () => {
-    setPhase('reveal');
-    if (onClaimed) {
-      onClaimed();
+    videoDoneRef.current = true;
+    if (apiDoneRef.current) {
+      advanceToReveal();
+    } else {
+      setOpeningWaiting(true);
     }
   });
 
@@ -101,19 +117,32 @@ export default function DailyLootboxModal({ visible, onClose, onClaimed }: Daily
       }]);
 
       statusQuery.refetch();
+      apiDoneRef.current = true;
+
+      if (videoDoneRef.current) {
+        advanceToReveal();
+      }
     },
     onError: (error: Error) => {
-      console.error('[DailyLootbox] Failed to open:', error);
-      let errorMessage = 'Unknown error';
+      try {
+        player.pause();
+        player.currentTime = 0;
+      } catch {
+      }
+      apiDoneRef.current = false;
+      videoDoneRef.current = false;
+      setPhase('idle');
+      setOpeningWaiting(false);
+
+      let msg = 'Failed to open lootbox. Please try again.';
       if (error?.message) {
         if (error.message.includes('<!DOCTYPE') || error.message.includes('Unexpected token')) {
-          errorMessage = 'Server connection error. Please try again later.';
-        } else {
-          errorMessage = error.message;
+          msg = 'Server error. Please check your connection and try again.';
+        } else if (error.message !== 'Not authenticated') {
+          msg = error.message;
         }
       }
-      setPhase('idle');
-      console.warn(`Lootbox error: ${errorMessage}`);
+      setErrorText(msg);
     },
   });
 
@@ -159,6 +188,10 @@ export default function DailyLootboxModal({ visible, onClose, onClaimed }: Daily
       setIsDuplicate(false);
       setWasConsumed(false);
       setRewardMessage('');
+      setErrorText('');
+      setOpeningWaiting(false);
+      apiDoneRef.current = false;
+      videoDoneRef.current = false;
       try {
         player.pause();
         player.currentTime = 0;
@@ -169,6 +202,10 @@ export default function DailyLootboxModal({ visible, onClose, onClaimed }: Daily
 
   const handleOpenLootbox = () => {
     if (!canOpen || phase !== 'idle') return;
+    setErrorText('');
+    apiDoneRef.current = false;
+    videoDoneRef.current = false;
+    setOpeningWaiting(false);
     setPhase('opening');
     try {
       player.currentTime = 0;
@@ -184,6 +221,10 @@ export default function DailyLootboxModal({ visible, onClose, onClaimed }: Daily
     setIsDuplicate(false);
     setWasConsumed(false);
     setRewardMessage('');
+    setErrorText('');
+    setOpeningWaiting(false);
+    apiDoneRef.current = false;
+    videoDoneRef.current = false;
     try {
       player.pause();
       player.currentTime = 0;
@@ -234,13 +275,22 @@ export default function DailyLootboxModal({ visible, onClose, onClaimed }: Daily
               colors={['#0A0F1A', '#1A0D2E', '#0A0F1A']}
               style={StyleSheet.absoluteFillObject}
             />
-            <VideoView
-              player={player}
-              style={styles.openingVideo}
-              nativeControls={false}
-              contentFit="contain"
-            />
-            <Text style={styles.openingText}>Opening Lootbox...</Text>
+            {openingWaiting ? (
+              <View style={styles.openingWaitingInner}>
+                <ActivityIndicator size="large" color="#A855F7" />
+                <Text style={styles.openingText}>Preparing your reward...</Text>
+              </View>
+            ) : (
+              <>
+                <VideoView
+                  player={player}
+                  style={styles.openingVideo}
+                  nativeControls={false}
+                  contentFit="contain"
+                />
+                <Text style={styles.openingText}>Opening Lootbox...</Text>
+              </>
+            )}
           </View>
         ) : (
           <>
@@ -270,6 +320,13 @@ export default function DailyLootboxModal({ visible, onClose, onClaimed }: Daily
                 </View>
               ) : phase === 'idle' ? (
                 <>
+                  {errorText.length > 0 ? (
+                    <View style={styles.errorBanner}>
+                      <AlertCircle size={16} color="#EF4444" />
+                      <Text style={styles.errorText}>{errorText}</Text>
+                    </View>
+                  ) : null}
+
                   {timeLeft.length > 0 && !canOpen ? (
                     <View style={styles.timerBanner}>
                       <Clock size={16} color="#F59E0B" />
@@ -418,7 +475,7 @@ export default function DailyLootboxModal({ visible, onClose, onClaimed }: Daily
                 ) : (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color="#A855F7" />
-                    <Text style={styles.loadingText}>Calculating your reward...</Text>
+                    <Text style={styles.loadingText}>Preparing your reward...</Text>
                   </View>
                 )
               ) : null}
@@ -440,6 +497,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#0A0F1A',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  openingWaitingInner: {
+    alignItems: 'center',
+    gap: 24,
   },
   openingVideo: {
     width: '100%',
@@ -490,6 +551,24 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#94A3B8',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2D1A1A',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    gap: 8,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#EF4444',
+    fontWeight: '500' as const,
   },
   timerBanner: {
     flexDirection: 'row',
