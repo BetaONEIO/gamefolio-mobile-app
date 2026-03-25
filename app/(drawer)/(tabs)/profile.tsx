@@ -710,7 +710,7 @@ export default function ProfileScreen() {
         ) : null}
 
         {/* Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg }]} contentContainerStyle={[styles.tabsContent, { paddingHorizontal: 8 }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg }]} contentContainerStyle={[styles.tabsContent, { paddingHorizontal: 16 }]}>
           {TABS.map((tab) => {
             const countMap: Record<string, number> = {
               Clips: clips.length,

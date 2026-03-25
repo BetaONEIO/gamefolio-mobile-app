@@ -229,24 +229,24 @@ function ZombieEffect() {
       </View>
 
       <LinearGradient
-        colors={['rgba(13,26,10,0.85)', 'transparent']}
-        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 100, pointerEvents: 'none' }}
+        colors={['rgba(13,26,10,0.80)', 'transparent']}
+        style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 80, pointerEvents: 'none' }}
       />
       <LinearGradient
-        colors={['transparent', 'rgba(13,26,10,0.85)']}
-        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 100, pointerEvents: 'none' }}
+        colors={['transparent', 'rgba(13,26,10,0.80)']}
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, pointerEvents: 'none' }}
       />
       <LinearGradient
-        colors={['rgba(13,26,10,0.65)', 'transparent']}
+        colors={['rgba(13,26,10,0.60)', 'transparent']}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
-        style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 55, pointerEvents: 'none' }}
+        style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: 50, pointerEvents: 'none' }}
       />
       <LinearGradient
-        colors={['transparent', 'rgba(13,26,10,0.65)']}
+        colors={['transparent', 'rgba(13,26,10,0.60)']}
         start={{ x: 0, y: 0.5 }}
         end={{ x: 1, y: 0.5 }}
-        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 55, pointerEvents: 'none' }}
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 50, pointerEvents: 'none' }}
       />
     </View>
   );
