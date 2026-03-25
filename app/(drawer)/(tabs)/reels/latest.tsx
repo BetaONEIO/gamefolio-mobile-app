@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronDown, Eye, Heart, Flame, Gamepad2, X, ArrowLeft, Search, Check } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { shortenGameName } from '@/constants/formatters';
 import { useAuth } from '@/context/AuthContext';
@@ -129,17 +129,19 @@ export default function LatestReelsPage() {
 
   const [gameSearchQuery, setGameSearchQuery] = useState('');
 
-  const topGamesQuery = useQuery({
+  const topGamesQuery = useInfiniteQuery({
     queryKey: ['/api/twitch/games/top', 30],
-    queryFn: async () => {
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) => {
       const token = await getAccessToken();
-      return api.games.getTopGames(30, token ?? undefined);
+      return api.games.getTopGames(30, token ?? undefined, pageParam);
     },
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    initialPageParam: undefined as string | undefined,
   });
 
   const topGamesData = React.useMemo(() => {
-    if (!topGamesQuery.data?.games) return { games: [] };
-    return { games: topGamesQuery.data.games };
+    if (!topGamesQuery.data?.pages) return { games: [] };
+    return { games: topGamesQuery.data.pages.flatMap(page => page.games) };
   }, [topGamesQuery.data]);
 
   const searchGamesQuery = useQuery({
