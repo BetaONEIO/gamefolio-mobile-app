@@ -376,11 +376,10 @@ function createStyles(theme: ProfileThemeTokens) {
       fontWeight: '900',
       textTransform: 'uppercase',
       letterSpacing: theme.isLight ? 0.8 : 1.2,
-      backgroundColor: theme.isLight ? 'transparent' : (theme.accent + 'e6'),
-      paddingHorizontal: theme.statLabelPill ? 10 : (theme.isLight ? 0 : 6),
-      paddingVertical: theme.statLabelPill ? 4 : (theme.isLight ? 0 : 2),
-      borderRadius: theme.statLabelPill ? 100 : 4,
-      overflow: 'hidden',
+      backgroundColor: theme.statLabelPill ? (theme.accent + 'e6') : 'transparent',
+      paddingHorizontal: theme.statLabelPill ? 10 : 0,
+      paddingVertical: theme.statLabelPill ? 4 : 0,
+      borderRadius: theme.statLabelPill ? 100 : 0,
     },
     statsCardBioSection: {
       borderTopWidth: 0.5,
@@ -460,12 +459,11 @@ function createStyles(theme: ProfileThemeTokens) {
       marginBottom: 14,
     },
     followBtn: {
-      flex: 1,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       backgroundColor: theme.followBtnBg,
-      paddingVertical: 10,
+      height: 44,
       borderRadius: 10,
       gap: 6,
       shadowColor: theme.followBtnBg,
@@ -1427,10 +1425,10 @@ export default function PublicProfileScreen() {
             <View style={styles.platformsRow}>
               {platforms.map((p, i) => {
                 const isOutlined = theme.platformTagStyle === 'outlined';
-                const chipBg = isOutlined ? 'transparent' : `${p.color}22`;
+                const chipBg = isOutlined ? 'transparent' : p.color;
                 const chipBorder = isOutlined ? (theme.platformTagBorderColor || theme.accent) : 'transparent';
-                const iconColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : p.color;
-                const textColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : p.color;
+                const iconColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : '#FFF';
+                const textColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : '#FFF';
                 return (
                   <View key={i} style={[styles.platformChip, { backgroundColor: chipBg, borderColor: chipBorder, borderWidth: isOutlined ? 1.5 : 0 }]}>
                     {p.type === 'xbox' && <Gamepad2 size={10} color={iconColor} />}

@@ -87,3 +87,7 @@ SITE_URL = "https://app.gamefolio.com"
 GOOGLE_CLIENT_ID = "203672150024-ho8qvof9qr1is1htfcl7ekojldllps4n.apps.googleusercontent.com"
 GOOGLE_IOS_CLIENT_ID = "203672150024-jiibs6emo1qkqmusjsfr8qnus8ut0raa.apps.googleusercontent.com"
 GOOGLE_ANDROID_CLIENT_ID = "203672150024-9o57aovsdgim84jisgatn004korgtrr9.apps.googleusercontent.com"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 60000
