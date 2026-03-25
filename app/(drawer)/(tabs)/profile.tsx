@@ -305,7 +305,7 @@ export default function ProfileScreen() {
       streak: user?.currentStreak || 0
     },
     joined: formatJoinDate(user?.createdAt),
-    bio: user?.bio || 'Just joined Gamefolio!',
+    bio: user?.bio || '',
     platforms: buildPlatforms()
   };
 
@@ -1035,6 +1035,7 @@ const styles = StyleSheet.create({
     height: 100,
   },
   scrollContent: {
+    paddingTop: 16,
     paddingBottom: 120,
   },
   content: {
