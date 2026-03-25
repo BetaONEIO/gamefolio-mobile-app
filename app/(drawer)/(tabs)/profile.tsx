@@ -726,10 +726,9 @@ export default function ProfileScreen() {
                   <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>GAMES</Text>
                 )}
               </TouchableOpacity>
-              <View style={{ flex: 1 }} />
               {/* Screenshots indicator — camera icon + count */}
-              <TouchableOpacity style={styles.zombieScreenshotsBtn} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
-                <Camera size={16} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
+              <TouchableOpacity style={[styles.zombieTab, styles.zombieScreenshotsBtn]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
+                <Camera size={18} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
                 <Text style={[styles.zombieTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
               </TouchableOpacity>
             </View>
@@ -1151,8 +1150,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   zombieTab: {
-    marginRight: 16,
-    alignItems: 'flex-start',
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 6,
   },
