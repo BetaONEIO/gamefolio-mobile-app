@@ -206,7 +206,7 @@ const ZOMBIE_THEME: ProfileThemeTokens = {
   followingBarBorder: '#7ccf0033',
   followingLabelColor: '#9ae600',
   nametagGradient: ['#0f172b', '#441306', '#0f172b'],
-  collectionGradient: ['#5ee9b5', '#fff085', '#ffb86a'],
+  collectionGradient: ['#9ae600', '#84cc16', '#9ae600'],
   displayNameSize: 22,
   displayNameUppercase: true,
   displayNameFontId: 'impact',
