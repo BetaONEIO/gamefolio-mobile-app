@@ -157,7 +157,31 @@ app.use((req, res, next) => {
           created_at TIMESTAMP DEFAULT NOW() NOT NULL
         )
       `;
-      console.log('✅ Schema migration: hero_slides table ready');
+      // Seed from production if table is empty
+      const [{ count: slideCount }] = await pool`SELECT COUNT(*)::int AS count FROM hero_slides`;
+      if (slideCount === 0) {
+        try {
+          const prodUrl = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://app.gamefolio.com';
+          const resp = await fetch(`${prodUrl}/api/hero-slides`, { headers: { Accept: 'application/json' } });
+          if (resp.ok) {
+            const prodSlides = await resp.json() as any[];
+            for (let i = 0; i < prodSlides.length; i++) {
+              const s = prodSlides[i];
+              await pool`
+                INSERT INTO hero_slides (title, subtitle, button_text, button_link, image_url, display_order, is_active, visibility, text_align)
+                VALUES (${s.title}, ${s.subtitle ?? null}, ${s.buttonText ?? null}, ${s.buttonLink ?? null}, ${s.imageUrl ?? ''}, ${s.displayOrder ?? i}, ${s.isActive ?? true}, ${s.visibility ?? 'everyone'}, ${s.textAlign ?? 'left'})
+              `;
+            }
+            console.log(`✅ Schema migration: hero_slides seeded with ${prodSlides.length} slides from production`);
+          } else {
+            console.log('✅ Schema migration: hero_slides table ready (no production slides available)');
+          }
+        } catch (seedErr: any) {
+          console.warn('⚠️ hero_slides seed warning:', seedErr?.message);
+        }
+      } else {
+        console.log(`✅ Schema migration: hero_slides table ready (${slideCount} slides)`);
+      }
     } catch (migrationErr: any) {
       console.warn('⚠️ hero_slides migration warning:', migrationErr?.message);
     }

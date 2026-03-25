@@ -62,7 +62,7 @@ export default function HeroBanner({ contentPadding = 16 }: HeroBannerProps) {
       if (!res.ok) throw new Error('Failed to fetch hero slides');
       return res.json();
     },
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60,
     retry: 1,
   });
 
