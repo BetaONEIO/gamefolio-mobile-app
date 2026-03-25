@@ -559,7 +559,26 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={styles.infoSection}>
+        <View style={[styles.infoSection, { paddingTop: 17 }]}>
+          {/* Floating Collection button — overlaps card top border */}
+          <TouchableOpacity
+            style={[styles.collectionButton, {
+              position: 'absolute',
+              top: 0,
+              right: 0,
+              zIndex: 10,
+              backgroundColor: profileSectionTab === 'collection' ? theme.accent : 'transparent',
+              borderColor: theme.accent,
+              borderWidth: 1.5,
+            }]}
+            onPress={() => setProfileSectionTab(profileSectionTab === 'collection' ? 'stats' : 'collection')}
+            activeOpacity={0.8}
+          >
+            <FolderHeart size={14} color={profileSectionTab === 'collection' ? '#FFF' : theme.accent} />
+            <Text style={[styles.collectionButtonText, { color: profileSectionTab === 'collection' ? '#FFF' : theme.accent }]}>
+              {profileSectionTab === 'collection' ? 'Stats' : 'Collection'}
+            </Text>
+          </TouchableOpacity>
           <View
             style={[
               styles.infoBorderContainer,
@@ -577,26 +596,8 @@ export default function ProfileScreen() {
               }
             ]}
           >
-            {/* Top row with Collection toggle button */}
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingTop: 12, marginBottom: 4 }}>
-              <TouchableOpacity 
-                style={[styles.collectionButton, {
-                  backgroundColor: profileSectionTab === 'collection' ? theme.accent : 'transparent',
-                  borderColor: theme.accent,
-                  borderWidth: 1.5,
-                }]}
-                onPress={() => setProfileSectionTab(profileSectionTab === 'collection' ? 'stats' : 'collection')}
-                activeOpacity={0.8}
-              >
-                <FolderHeart size={14} color={profileSectionTab === 'collection' ? '#FFF' : theme.accent} />
-                <Text style={[styles.collectionButtonText, { color: profileSectionTab === 'collection' ? '#FFF' : theme.accent }]}>
-                  {profileSectionTab === 'collection' ? 'Stats' : 'Collection'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
             {profileSectionTab === 'stats' ? (
-              <View style={[styles.infoBorderInner, { paddingTop: 18, paddingBottom: 22 }]}>
+              <View style={[styles.infoBorderInner, { paddingTop: 14, paddingBottom: 22 }]}>
                 <View style={[
                   styles.statsRowCompact,
                   { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 },
@@ -1080,13 +1081,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 100,
     gap: 6,
   },
   collectionButtonText: {
     color: '#FFF',
     fontSize: 13,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   nftCollectionContainer: {
     paddingHorizontal: 12,
