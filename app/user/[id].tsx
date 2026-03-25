@@ -800,9 +800,9 @@ function createStyles(theme: ProfileThemeTokens) {
     clipCard: {
       width: '100%',
       aspectRatio: 16 / 9,
-      borderRadius: 14,
+      borderRadius: 12,
       overflow: 'hidden',
-      backgroundColor: theme.cardBg,
+      backgroundColor: '#1E293B',
       position: 'relative',
     },
     clipImage: {
@@ -814,7 +814,7 @@ function createStyles(theme: ProfileThemeTokens) {
       left: 0,
       right: 0,
       bottom: 0,
-      height: '65%',
+      height: '70%',
     },
     clipBadges: {
       position: 'absolute',
@@ -826,28 +826,49 @@ function createStyles(theme: ProfileThemeTokens) {
     metaBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 3,
-      backgroundColor: 'rgba(0,0,0,0.75)',
+      gap: 4,
+      backgroundColor: 'rgba(0,0,0,0.8)',
       paddingHorizontal: 6,
       paddingVertical: 3,
       borderRadius: 6,
     },
     metaBadgeText: {
       color: '#FFF',
-      fontSize: 9,
-      fontWeight: '700',
+      fontSize: 10,
+      fontWeight: 'bold',
     },
     clipInfo: {
       position: 'absolute',
       bottom: 8,
-      left: 10,
-      right: 10,
+      left: 8,
+      right: 8,
     },
     clipTitle: {
       color: '#FFF',
-      fontSize: 13,
-      fontWeight: '800',
-      marginBottom: 4,
+      fontSize: 14,
+      fontWeight: 'bold',
+      marginBottom: 2,
+      textShadowColor: 'rgba(0,0,0,0.5)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
+    },
+    clipHandle: {
+      color: '#E2E8F0',
+      fontSize: 12,
+      marginBottom: 6,
+      opacity: 0.9,
+    },
+    clipGameTag: {
+      backgroundColor: '#22C55E',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 4,
+      alignSelf: 'flex-start',
+    },
+    clipGameTagText: {
+      color: '#FFF',
+      fontSize: 10,
+      fontWeight: 'bold',
     },
     gameChip: {
       borderRadius: 6,
@@ -862,57 +883,169 @@ function createStyles(theme: ProfileThemeTokens) {
       letterSpacing: 0.3,
     },
     reelCard: {
-      width: (width - 32 - 10) / 2,
+      width: (width - 32 - 12) / 2,
       aspectRatio: 9 / 16,
-      borderRadius: 14,
+      borderRadius: 16,
       overflow: 'hidden',
-      backgroundColor: theme.cardBg,
+      backgroundColor: '#1E293B',
       position: 'relative',
     },
     reelImage: {
       width: '100%',
       height: '100%',
     },
+    reelGradient: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: '50%',
+    },
+    reelTopRight: {
+      position: 'absolute',
+      top: 8,
+      right: 8,
+      flexDirection: 'row',
+      gap: 4,
+    },
+    reelBadge: {
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      paddingHorizontal: 6,
+      paddingVertical: 3,
+      borderRadius: 6,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+    },
+    reelBadgeText: {
+      color: '#FFF',
+      fontSize: 10,
+      fontWeight: '600',
+    },
+    reelBottom: {
+      position: 'absolute',
+      bottom: 12,
+      left: 12,
+      right: 12,
+    },
+    reelTitle: {
+      color: '#FFF',
+      fontSize: 16,
+      fontWeight: 'bold',
+      marginBottom: 2,
+    },
+    reelHandle: {
+      color: '#CBD5E1',
+      fontSize: 12,
+      marginBottom: 8,
+    },
+    gameTag: {
+      backgroundColor: '#22C55E',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 4,
+      alignSelf: 'flex-start',
+    },
+    gameTagText: {
+      color: '#FFF',
+      fontSize: 10,
+      fontWeight: 'bold',
+    },
     screenshotsList: {
       gap: 10,
       paddingBottom: 20,
     },
     screenshotCard: {
-      flexDirection: 'row',
-      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.5)' : theme.cardBg,
-      borderRadius: 14,
-      borderWidth: 0.5,
-      borderColor: theme.cardBorder,
+      backgroundColor: '#1E293B',
+      borderRadius: 12,
       overflow: 'hidden',
+      borderWidth: 1,
+      borderColor: '#334155',
     },
     screenshotImage: {
-      width: 100,
-      height: 80,
+      width: '100%',
+      height: 200,
     },
-    screenshotInfo: {
-      flex: 1,
-      padding: 10,
-      justifyContent: 'center',
-      gap: 4,
+    screenshotContent: {
+      padding: 12,
+      paddingTop: 20,
     },
     screenshotTitle: {
-      color: theme.isLight ? theme.textPrimary : '#FFF',
-      fontSize: 13,
-      fontWeight: '700',
+      color: '#FFF',
+      fontSize: 16,
+      fontWeight: 'bold',
+      marginBottom: 4,
+    },
+    screenshotHandle: {
+      color: '#CBD5E1',
+      fontSize: 14,
+      marginBottom: 8,
+    },
+    screenshotFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
     },
     screenshotStats: {
       flexDirection: 'row',
-      gap: 12,
-      marginTop: 4,
+      alignItems: 'center',
+      gap: 16,
     },
     statItem: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
+      gap: 6,
     },
     statVal: {
-      color: '#62748e',
-      fontSize: 11,
+      color: '#94A3B8',
+      fontSize: 13,
+    },
+    zombieTab: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 6,
+    },
+    zombieTabPill: {
+      borderRadius: 100,
+      paddingHorizontal: 18,
+      paddingVertical: 11,
+      alignItems: 'center',
+    },
+    zombieTabPillLabel: {
+      color: '#0f172b',
+      fontFamily: 'Impact',
+      fontSize: 13,
+      fontWeight: 'bold',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+    },
+    zombieTabPillCount: {
+      color: '#0f172b',
+      fontFamily: 'Impact',
+      fontSize: 12,
+      fontWeight: 'bold',
+      letterSpacing: 0.5,
+      marginTop: 1,
+    },
+    zombieTabLabel: {
+      fontSize: 12,
+      fontFamily: 'Impact',
+      fontWeight: 'bold',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+    },
+    zombieTabCount: {
+      fontSize: 12,
+      fontFamily: 'Impact',
+      fontWeight: 'bold',
+      letterSpacing: 0.5,
+      marginTop: 1,
+    },
+    zombieScreenshotsBtn: {
+      alignItems: 'center',
+      paddingHorizontal: 8,
+      paddingVertical: 6,
     },
     emptyState: {
       paddingVertical: 48,
@@ -1483,27 +1616,75 @@ export default function PublicProfileScreen() {
         )}
 
         {/* Content Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
-          {TABS.map((tab) => {
-            const countMap: Record<string, number> = {
-              Clips: clips.length,
-              Reels: reels.length,
-              Screenshots: screenshots.length,
-              Favorites: favoriteGames.length,
-            };
-            const count = countMap[tab];
-            const label = `${tab} · ${count}`;
-            return (
-              <TouchableOpacity
-                key={tab}
-                style={[styles.tabPill, activeTab === tab && styles.tabPillActive]}
-                onPress={() => setActiveTab(tab)}
-              >
-                <Text style={[styles.tabPillText, activeTab === tab && styles.tabPillTextActive]}>{label}</Text>
+        {theme.displayNameFontId === 'impact' ? (
+          <View style={[styles.tabsScroll, { paddingHorizontal: 16, paddingVertical: 4 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
+                {activeTab === 'Clips' ? (
+                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.zombieTabPillLabel}>CLIPS</Text>
+                    <Text style={styles.zombieTabPillCount}>{clips.length}/15</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>CLIPS</Text>
+                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{clips.length}/15</Text>
+                  </>
+                )}
               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
+                {activeTab === 'Reels' ? (
+                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.zombieTabPillLabel}>REELS</Text>
+                    <Text style={styles.zombieTabPillCount}>{reels.length}/15</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>REELS</Text>
+                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{reels.length}/15</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
+                {activeTab === 'Favorites' ? (
+                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.zombieTabPillLabel}>GAMES</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>GAMES</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.zombieTab, styles.zombieScreenshotsBtn]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
+                <Camera size={18} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
+                <Text style={[styles.zombieTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>
+                  {screenshots.length}/10
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
+            {TABS.map((tab) => {
+              const countMap: Record<string, number> = {
+                Clips: clips.length,
+                Reels: reels.length,
+                Screenshots: screenshots.length,
+                Favorites: favoriteGames.length,
+              };
+              const count = countMap[tab];
+              const label = `${tab} · ${count}`;
+              return (
+                <TouchableOpacity
+                  key={tab}
+                  style={[styles.tabPill, activeTab === tab && styles.tabPillActive]}
+                  onPress={() => setActiveTab(tab)}
+                >
+                  <Text style={[styles.tabPillText, activeTab === tab && styles.tabPillTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* Tab Content */}
         <View style={styles.tabContent}>
@@ -1534,11 +1715,12 @@ export default function PublicProfileScreen() {
                     </View>
                     <View style={styles.clipInfo}>
                       <Text style={styles.clipTitle} numberOfLines={1}>{truncateTitle(clip.title)}</Text>
-                      {clip.game && (
-                        <View style={[styles.gameChip, { backgroundColor: `${accentColor}33` }]}>
-                          <Text style={[styles.gameChipText, { color: accentColor }]}>{clip.game.name}</Text>
+                      <Text style={styles.clipHandle}>{clip.user?.username ? `@${clip.user.username}` : ''}</Text>
+                      {clip.game ? (
+                        <View style={styles.clipGameTag}>
+                          <Text style={styles.clipGameTagText}>{clip.game.name}</Text>
                         </View>
-                      )}
+                      ) : null}
                     </View>
                   </TouchableOpacity>
                 ))
@@ -1561,14 +1743,24 @@ export default function PublicProfileScreen() {
                     onPress={() => router.push({ pathname: '/clip/[id]', params: { id: reel.id.toString(), fromUser: username, contentType: 'reel' } })}
                   >
                     <Image source={{ uri: getReelThumbnail(reel) }} style={styles.reelImage} />
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.clipGradient} />
-                    <View style={styles.clipBadges}>
-                      <View style={styles.metaBadge}>
-                        <Text style={styles.metaBadgeText}>{formatDuration(reel.duration)}</Text>
+                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.88)']} style={styles.reelGradient} />
+                    <View style={styles.reelTopRight}>
+                      <View style={styles.reelBadge}>
+                        <Text style={styles.reelBadgeText}>{formatDuration(reel.duration)}</Text>
+                      </View>
+                      <View style={styles.reelBadge}>
+                        <Eye size={10} color="#FFF" />
+                        <Text style={styles.reelBadgeText}>{reel.views ?? 0}</Text>
                       </View>
                     </View>
-                    <View style={styles.clipInfo}>
-                      <Text style={styles.clipTitle} numberOfLines={1}>{truncateTitle(reel.title)}</Text>
+                    <View style={styles.reelBottom}>
+                      <Text style={styles.reelTitle} numberOfLines={2}>{truncateTitle(reel.title)}</Text>
+                      <Text style={styles.reelHandle}>{reel.user?.username ? `@${reel.user.username}` : ''}</Text>
+                      {reel.game ? (
+                        <View style={styles.gameTag}>
+                          <Text style={styles.gameTagText}>{reel.game.name}</Text>
+                        </View>
+                      ) : null}
                     </View>
                   </TouchableOpacity>
                 ))
@@ -1594,23 +1786,30 @@ export default function PublicProfileScreen() {
                     }}
                     activeOpacity={0.8}
                   >
-                    <Image source={{ uri: getScreenshotThumbnail(item) }} style={styles.screenshotImage} />
-                    <View style={styles.screenshotInfo}>
-                      <Text style={styles.screenshotTitle}>{item.title}</Text>
-                      {item.game && (
-                        <View style={[styles.gameChip, { backgroundColor: `${accentColor}22` }]}>
-                          <Text style={[styles.gameChipText, { color: accentColor }]}>{item.game.name}</Text>
+                    <Image source={{ uri: getScreenshotThumbnail(item) }} style={styles.screenshotImage} resizeMode="cover" />
+                    <View style={styles.screenshotContent}>
+                      <Text style={styles.screenshotTitle} numberOfLines={1}>{item.title}</Text>
+                      <Text style={styles.screenshotHandle}>{user.username ? `@${user.username}` : ''}</Text>
+                      <View style={styles.screenshotFooter}>
+                        <View style={styles.screenshotStats}>
+                          <View style={styles.statItem}>
+                            <Heart size={14} color="#94A3B8" />
+                            <Text style={styles.statVal}>{item._count?.likes || 0}</Text>
+                          </View>
+                          <View style={styles.statItem}>
+                            <Flame size={14} color="#F97316" />
+                            <Text style={styles.statVal}>{item._count?.likes || 0}</Text>
+                          </View>
+                          <View style={styles.statItem}>
+                            <MessageSquare size={14} color="#94A3B8" />
+                            <Text style={styles.statVal}>{item._count?.comments || 0}</Text>
+                          </View>
                         </View>
-                      )}
-                      <View style={styles.screenshotStats}>
-                        <View style={styles.statItem}>
-                          <Heart size={13} color="#62748e" />
-                          <Text style={styles.statVal}>{item._count?.likes || 0}</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                          <MessageSquare size={13} color="#62748e" />
-                          <Text style={styles.statVal}>{item._count?.comments || 0}</Text>
-                        </View>
+                        {item.game ? (
+                          <View style={styles.gameTag}>
+                            <Text style={styles.gameTagText}>{item.game.name}</Text>
+                          </View>
+                        ) : null}
                       </View>
                     </View>
                   </TouchableOpacity>

@@ -504,14 +504,24 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.nametagTopColumn}>
-            <Image
-              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/8i8wqbkgai6khk845s60z' }}
-              style={styles.nametagImage}
-              resizeMode="contain"
-            />
-            <Text style={styles.nametagLabel}>NAMETAG</Text>
-          </View>
+          {favoriteGames.length > 0 ? (
+            <View style={styles.nametagTopColumn}>
+              <LinearGradient
+                colors={theme.nametagGradient as [string, string, ...string[]]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={styles.nametagTopCard}
+              >
+                {favoriteGames[0].imageUrl ? (
+                  <Image source={{ uri: getImageUrl(favoriteGames[0].imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
+                ) : null}
+                <Text style={[styles.nametagTopGameName, { color: theme.isLight ? '#1a1a1a' : '#FFFFFF' }]} numberOfLines={1}>
+                  {favoriteGames[0].name.toUpperCase()}
+                </Text>
+              </LinearGradient>
+              <Text style={styles.nametagLabel}>NAMETAG</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* Profile Header */}
@@ -1880,5 +1890,25 @@ const styles = StyleSheet.create({
   nametagImage: {
     width: 130,
     height: 50,
+  },
+  nametagTopCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    width: 130,
+    overflow: 'hidden',
+  },
+  nametagTopImg: {
+    width: 28,
+    height: 28,
+  },
+  nametagTopGameName: {
+    fontSize: 8,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    flex: 1,
   },
 });
