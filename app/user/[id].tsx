@@ -1703,7 +1703,7 @@ export default function PublicProfileScreen() {
                     onPress={() => router.push({ pathname: '/clip/[id]', params: { id: clip.id.toString(), fromUser: username, contentType: 'clip' } })}
                   >
                     <Image source={{ uri: getClipThumbnail(clip) }} style={styles.clipImage} />
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={styles.clipGradient} />
+                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.clipGradient} />
                     <View style={styles.clipBadges}>
                       <View style={styles.metaBadge}>
                         <Text style={styles.metaBadgeText}>{formatDuration(clip.duration)}</Text>
@@ -1743,7 +1743,7 @@ export default function PublicProfileScreen() {
                     onPress={() => router.push({ pathname: '/clip/[id]', params: { id: reel.id.toString(), fromUser: username, contentType: 'reel' } })}
                   >
                     <Image source={{ uri: getReelThumbnail(reel) }} style={styles.reelImage} />
-                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.88)']} style={styles.reelGradient} />
+                    <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.reelGradient} />
                     <View style={styles.reelTopRight}>
                       <View style={styles.reelBadge}>
                         <Text style={styles.reelBadgeText}>{formatDuration(reel.duration)}</Text>
@@ -1790,26 +1790,26 @@ export default function PublicProfileScreen() {
                     <View style={styles.screenshotContent}>
                       <Text style={styles.screenshotTitle} numberOfLines={1}>{item.title}</Text>
                       <Text style={styles.screenshotHandle}>{user.username ? `@${user.username}` : ''}</Text>
+                      {item.game ? (
+                        <View style={[styles.gameTag, { marginBottom: 12 }]}>
+                          <Text style={styles.gameTagText}>{item.game.name}</Text>
+                        </View>
+                      ) : null}
                       <View style={styles.screenshotFooter}>
                         <View style={styles.screenshotStats}>
                           <View style={styles.statItem}>
-                            <Heart size={14} color="#94A3B8" />
+                            <Heart size={16} color="#94A3B8" />
                             <Text style={styles.statVal}>{item._count?.likes || 0}</Text>
                           </View>
                           <View style={styles.statItem}>
-                            <Flame size={14} color="#F97316" />
-                            <Text style={styles.statVal}>{item._count?.likes || 0}</Text>
+                            <Flame size={16} color="#94A3B8" />
+                            <Text style={styles.statVal}>{0}</Text>
                           </View>
                           <View style={styles.statItem}>
-                            <MessageSquare size={14} color="#94A3B8" />
+                            <MessageSquare size={16} color="#94A3B8" />
                             <Text style={styles.statVal}>{item._count?.comments || 0}</Text>
                           </View>
                         </View>
-                        {item.game ? (
-                          <View style={styles.gameTag}>
-                            <Text style={styles.gameTagText}>{item.game.name}</Text>
-                          </View>
-                        ) : null}
                       </View>
                     </View>
                   </TouchableOpacity>
