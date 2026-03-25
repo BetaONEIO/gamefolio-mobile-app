@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Pressable } from 'react-native';
 import ScrollView from '@/components/ThemedScrollView';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart, Camera } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -688,33 +688,49 @@ export default function ProfileScreen() {
         {theme.displayNameFontId === 'impact' ? (
           <View style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: theme.bg, paddingHorizontal: 16, paddingVertical: 4 }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity
-                style={[styles.zombieTab, { borderBottomColor: activeTab === 'Clips' ? theme.accent : 'transparent' }]}
-                onPress={() => setActiveTab('Clips')}
-              >
-                <Text style={[styles.zombieTabLabel, { color: activeTab === 'Clips' ? '#fff' : theme.muted }]}>CLIPS</Text>
-                <Text style={[styles.zombieTabCount, { color: activeTab === 'Clips' ? theme.accent : theme.muted }]}>{clips.length}</Text>
+              {/* CLIPS tab */}
+              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
+                {activeTab === 'Clips' ? (
+                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.zombieTabPillLabel}>CLIPS</Text>
+                    <Text style={styles.zombieTabPillCount}>{clips.length}/15</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>CLIPS</Text>
+                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{clips.length}/15</Text>
+                  </>
+                )}
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.zombieTab, { borderBottomColor: activeTab === 'Reels' ? theme.accent : 'transparent' }]}
-                onPress={() => setActiveTab('Reels')}
-              >
-                <Text style={[styles.zombieTabLabel, { color: activeTab === 'Reels' ? '#fff' : theme.muted }]}>REELS</Text>
-                <Text style={[styles.zombieTabCount, { color: activeTab === 'Reels' ? theme.accent : theme.muted }]}>{reels.length}</Text>
+              {/* REELS tab */}
+              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
+                {activeTab === 'Reels' ? (
+                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.zombieTabPillLabel}>REELS</Text>
+                    <Text style={styles.zombieTabPillCount}>{reels.length}/15</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>REELS</Text>
+                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{reels.length}/15</Text>
+                  </>
+                )}
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.zombieTab, { borderBottomColor: activeTab === 'Favorites' ? theme.accent : 'transparent' }]}
-                onPress={() => setActiveTab('Favorites')}
-              >
-                <Text style={[styles.zombieTabLabel, { color: activeTab === 'Favorites' ? '#fff' : theme.muted }]}>GAMES</Text>
+              {/* GAMES tab */}
+              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
+                {activeTab === 'Favorites' ? (
+                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.zombieTabPillLabel}>GAMES</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>GAMES</Text>
+                )}
               </TouchableOpacity>
               <View style={{ flex: 1 }} />
-              <TouchableOpacity
-                style={[styles.zombieGamesPill, { backgroundColor: theme.accent }]}
-                onPress={() => setActiveTab('Favorites')}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.zombieGamesPillText}>{favoriteGames.length}/10</Text>
+              {/* Screenshots indicator — camera icon + count */}
+              <TouchableOpacity style={styles.zombieScreenshotsBtn} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
+                <Camera size={16} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
+                <Text style={[styles.zombieTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1135,12 +1151,32 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   zombieTab: {
-    paddingVertical: 10,
-    paddingHorizontal: 6,
-    marginRight: 18,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    marginRight: 16,
     alignItems: 'flex-start',
+    justifyContent: 'center',
+    paddingVertical: 6,
+  },
+  zombieTabPill: {
+    borderRadius: 100,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    alignItems: 'center',
+  },
+  zombieTabPillLabel: {
+    color: '#0f172b',
+    fontFamily: 'Impact',
+    fontSize: 13,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  zombieTabPillCount: {
+    color: '#0f172b',
+    fontFamily: 'Impact',
+    fontSize: 12,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+    marginTop: 1,
   },
   zombieTabLabel: {
     fontSize: 12,
@@ -1150,25 +1186,16 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   zombieTabCount: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: 'Impact',
     fontWeight: 'bold',
     letterSpacing: 0.5,
-    marginTop: 2,
+    marginTop: 1,
   },
-  zombieGamesPill: {
-    borderRadius: 100,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
+  zombieScreenshotsBtn: {
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  zombieGamesPillText: {
-    color: '#0f172b',
-    fontFamily: 'Impact',
-    fontSize: 17,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
   },
   nftCollectionContainer: {
     paddingHorizontal: 12,
