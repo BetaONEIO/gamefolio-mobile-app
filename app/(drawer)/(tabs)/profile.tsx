@@ -685,32 +685,67 @@ export default function ProfileScreen() {
         ) : null}
 
         {/* Tabs */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg }]} contentContainerStyle={[styles.tabsContent, { paddingHorizontal: 16 }]}>
-          {TABS.map((tab) => {
-            const countMap: Record<string, number> = {
-              Clips: clips.length,
-              Reels: reels.length,
-              Screenshots: screenshots.length,
-              Favorites: favoriteGames.length,
-            };
-            const count = countMap[tab];
-            const label = `${tab} · ${count}`;
-            const isActive = activeTab === tab;
-            return (
-              <TouchableOpacity 
-                key={tab} 
-                style={[
-                  styles.tab,
-                  isActive && { borderBottomColor: h.tabActiveBorder },
-                  isActive && { backgroundColor: theme.tabActiveBg, borderRadius: 8, paddingHorizontal: 12 },
-                ]}
-                onPress={() => setActiveTab(tab)}
+        {theme.displayNameFontId === 'impact' ? (
+          <View style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: theme.bg, paddingHorizontal: 16, paddingVertical: 4 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity
+                style={[styles.zombieTab, { borderBottomColor: activeTab === 'Clips' ? theme.accent : 'transparent' }]}
+                onPress={() => setActiveTab('Clips')}
               >
-                <Text style={[styles.tabText, { color: h.statLabelColor }, isActive && { color: h.tabActiveText }]}>{label}</Text>
+                <Text style={[styles.zombieTabLabel, { color: activeTab === 'Clips' ? '#fff' : theme.muted }]}>CLIPS</Text>
+                <Text style={[styles.zombieTabCount, { color: activeTab === 'Clips' ? theme.accent : theme.muted }]}>{clips.length}</Text>
               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+              <TouchableOpacity
+                style={[styles.zombieTab, { borderBottomColor: activeTab === 'Reels' ? theme.accent : 'transparent' }]}
+                onPress={() => setActiveTab('Reels')}
+              >
+                <Text style={[styles.zombieTabLabel, { color: activeTab === 'Reels' ? '#fff' : theme.muted }]}>REELS</Text>
+                <Text style={[styles.zombieTabCount, { color: activeTab === 'Reels' ? theme.accent : theme.muted }]}>{reels.length}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.zombieTab, { borderBottomColor: activeTab === 'Favorites' ? theme.accent : 'transparent' }]}
+                onPress={() => setActiveTab('Favorites')}
+              >
+                <Text style={[styles.zombieTabLabel, { color: activeTab === 'Favorites' ? '#fff' : theme.muted }]}>GAMES</Text>
+              </TouchableOpacity>
+              <View style={{ flex: 1 }} />
+              <TouchableOpacity
+                style={[styles.zombieGamesPill, { backgroundColor: theme.accent }]}
+                onPress={() => setActiveTab('Favorites')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.zombieGamesPillText}>{favoriteGames.length}/10</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg }]} contentContainerStyle={[styles.tabsContent, { paddingHorizontal: 16 }]}>
+            {TABS.map((tab) => {
+              const countMap: Record<string, number> = {
+                Clips: clips.length,
+                Reels: reels.length,
+                Screenshots: screenshots.length,
+                Favorites: favoriteGames.length,
+              };
+              const count = countMap[tab];
+              const label = `${tab} · ${count}`;
+              const isActive = activeTab === tab;
+              return (
+                <TouchableOpacity
+                  key={tab}
+                  style={[
+                    styles.tab,
+                    isActive && { borderBottomColor: h.tabActiveBorder },
+                    isActive && { backgroundColor: theme.tabActiveBg, borderRadius: 8, paddingHorizontal: 12 },
+                  ]}
+                  onPress={() => setActiveTab(tab)}
+                >
+                  <Text style={[styles.tabText, { color: h.statLabelColor }, isActive && { color: h.tabActiveText }]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* Content based on active tab */}
         {activeTab === 'Clips' && (
@@ -1098,6 +1133,42 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  zombieTab: {
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    marginRight: 18,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+    alignItems: 'flex-start',
+  },
+  zombieTabLabel: {
+    fontSize: 12,
+    fontFamily: 'Impact',
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  zombieTabCount: {
+    fontSize: 13,
+    fontFamily: 'Impact',
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  zombieGamesPill: {
+    borderRadius: 100,
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zombieGamesPillText: {
+    color: '#0f172b',
+    fontFamily: 'Impact',
+    fontSize: 17,
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
   nftCollectionContainer: {
     paddingHorizontal: 12,
