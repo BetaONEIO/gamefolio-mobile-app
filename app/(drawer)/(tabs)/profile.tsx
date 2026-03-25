@@ -430,6 +430,11 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: h.containerBg }]}>
       <AppHeader onOpenLevelTracker={() => setIsLevelModalVisible(true)} />
+      {(user as any)?.profileTheme && (
+        <View style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} pointerEvents="none">
+          <ThemeBackgroundEffect themeId={(user as any).profileTheme} />
+        </View>
+      )}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {isBirthdayToday(user?.birthday) && (
           <BirthdayBanner 
@@ -821,12 +826,6 @@ export default function ProfileScreen() {
         )}
       </View>
       </ScrollView>
-
-      {(user as any)?.profileTheme && (
-        <View style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} pointerEvents="none">
-          <ThemeBackgroundEffect themeId={(user as any).profileTheme} />
-        </View>
-      )}
 
       <AddGamesModal 
         visible={isAddGamesModalVisible} 

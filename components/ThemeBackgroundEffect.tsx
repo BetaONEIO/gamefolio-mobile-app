@@ -161,7 +161,11 @@ function ZombieEffect() {
         Animated.timing(fog3, { toValue: 0, duration: 22000, useNativeDriver: true }),
       ])),
       Animated.loop(
-        Animated.timing(sweepAnim, { toValue: 1, duration: 7000, useNativeDriver: true })
+        Animated.sequence([
+          Animated.timing(sweepAnim, { toValue: 1, duration: 5500, useNativeDriver: true }),
+          Animated.timing(sweepAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+          Animated.delay(2500),
+        ])
       ),
       Animated.loop(Animated.sequence([
         Animated.timing(gridAnim, { toValue: 1, duration: 3500, useNativeDriver: true }),
@@ -173,7 +177,7 @@ function ZombieEffect() {
   }, []);
 
   const sweepTX = useMemo(
-    () => sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-sweepRange / 2, sweepRange / 2] }),
+    () => sweepAnim.interpolate({ inputRange: [0, 1], outputRange: [-sweepRange, sweepRange] }),
     [sweepAnim, sweepRange]
   );
   const gridOpacity = useMemo(
