@@ -2243,6 +2243,15 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         ))
         .orderBy(asc(heroSlides.displayOrder));
 
+      // If no local slides, fall back to production
+      if (!slides || slides.length === 0) {
+        const productionSlides = await proxyToProduction('/api/hero-slides');
+        if (productionSlides && productionSlides.length > 0) {
+          return res.json(productionSlides);
+        }
+        return res.json([]);
+      }
+
       const { supabaseStorage } = await import('./supabase-storage');
       const slidesWithSignedUrls = await Promise.all(
         slides.map(async (slide) => {

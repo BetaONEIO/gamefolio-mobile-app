@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ImageBackground,
   Platform,
+  useWindowDimensions,
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -44,8 +45,13 @@ const FALLBACK_SLIDES: HeroSlide[] = [
   },
 ];
 
-export default function HeroBanner() {
+interface HeroBannerProps {
+  contentPadding?: number;
+}
+
+export default function HeroBanner({ contentPadding = 16 }: HeroBannerProps) {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
   const [currentSlide, setCurrentSlide] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -110,9 +116,15 @@ export default function HeroBanner() {
   const slide = activeSlides[Math.min(currentSlide, activeSlides.length - 1)];
   const isCenter = slide.textAlign === 'center';
 
+  const containerStyle = {
+    width: screenWidth,
+    marginLeft: -contentPadding,
+    marginRight: -contentPadding,
+  };
+
   if (isLoading) {
     return (
-      <View style={[styles.container, styles.loadingContainer]}>
+      <View style={[styles.container, containerStyle, styles.loadingContainer]}>
         <View style={styles.loadingContent}>
           <View style={styles.loadingTitle} />
           <View style={styles.loadingSubtitle} />
@@ -123,7 +135,7 @@ export default function HeroBanner() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       <ImageBackground
         source={{ uri: slide.imageUrl }}
         style={styles.backgroundImage}
@@ -195,12 +207,9 @@ export default function HeroBanner() {
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    height: 210,
+    height: 300,
     marginBottom: 16,
-    marginHorizontal: -16,
     overflow: 'hidden',
-    alignSelf: 'center',
   },
   backgroundImage: {
     flex: 1,

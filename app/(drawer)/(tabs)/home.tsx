@@ -607,7 +607,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Banner */}
-        <HeroBanner />
+        <HeroBanner contentPadding={contentPadding} />
 
         {/* Join Pro Today — only for non-pro users who haven't dismissed it */}
         {(!user || !user.isPro) && !proPromoDismissed ? (
