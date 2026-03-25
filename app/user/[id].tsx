@@ -1132,7 +1132,7 @@ export default function PublicProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <AppHeader showBackButton={true} hideUpload={true} />
+      <AppHeader showBackButton={true} />
       {activeThemeId ? (
         <View style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} pointerEvents="none">
           <ThemeBackgroundEffect themeId={activeThemeId} />
@@ -1326,25 +1326,6 @@ export default function PublicProfileScreen() {
             )}
           </View>
 
-          {/* Current Game Nametag — shown here for dark themes */}
-          {currentGame && !theme.statsCardIncludesBio && (
-            <View style={styles.nametagSection}>
-              <Text style={styles.nametagLabel}>NAMETAG</Text>
-              <LinearGradient
-                colors={theme.nametagGradient}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={styles.nametagCard}
-              >
-                {currentGame.imageUrl ? (
-                  <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagGameImg} />
-                ) : (
-                  <Gamepad2 size={20} color={theme.isLight ? '#fff' : '#ff8904'} />
-                )}
-                <Text style={styles.nametagGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
-              </LinearGradient>
-            </View>
-          )}
         </View>
 
         {/* Stats card with floating Collection button */}
