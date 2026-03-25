@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
 import { useMemo } from 'react';
 import Svg, { Path, Ellipse } from 'react-native-svg';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, Mail, Play, Camera, Flag, ChevronLeft, Bell, Upload, UserX, FolderHeart } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, Mail, Play, Camera, Flag, UserX, FolderHeart } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getProfileTheme, ProfileThemeTokens } from '@/constants/themes';
 import { ThemeBackgroundEffect } from '@/components/ThemeBackgroundEffect';
 import StyledUsername from '@/components/StyledUsername';
+import AppHeader from '@/components/AppHeader';
 
 const { width, height: windowHeight } = Dimensions.get('window');
 
@@ -72,100 +73,18 @@ function createStyles(theme: ProfileThemeTokens) {
       backgroundColor: 'transparent',
     },
 
-    navBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingBottom: 10,
-      backgroundColor: theme.navBg,
-      borderBottomWidth: 0.5,
-      borderBottomColor: theme.navBorderColor,
-    },
-    navLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      width: 72,
-    },
-    navCenter: {
-      flex: 1,
-      flexDirection: 'row',
+    bannerShareButton: {
+      position: 'absolute',
+      top: 16,
+      right: 16,
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
       alignItems: 'center',
       justifyContent: 'center',
-      gap: 6,
-    },
-    navRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      width: 120,
-      justifyContent: 'flex-end',
-    },
-    navIconBtn: {
-      width: 32,
-      height: 32,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    navUsername: {
-      color: theme.textPrimary,
-      fontSize: 16,
-      fontWeight: '800',
-      letterSpacing: -0.5,
-    },
-    navVerified: {
-      backgroundColor: theme.verifiedBg,
-      borderWidth: 0.5,
-      borderColor: theme.verifiedBorderColor,
-      width: 14,
-      height: 14,
-      borderRadius: 7,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    navGreenBtn: {
-      width: 32,
-      height: 32,
-      borderRadius: 10,
-      backgroundColor: theme.accent,
-      alignItems: 'center',
-      justifyContent: 'center',
-      shadowColor: theme.accent,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 6,
-      elevation: 4,
-    },
-    navAvatarChip: {
-      width: 36,
-      height: 36,
-      borderRadius: 10,
-      borderWidth: 1.5,
-      borderColor: theme.isLight ? theme.verifiedBorderColor : (theme.accent + '80'),
-      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.8)' : 'rgba(29,41,61,0.7)',
-      overflow: 'hidden',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    navAvatar: {
-      width: 34,
-      height: 34,
-    },
-    navStatusBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 4,
-      backgroundColor: theme.accentFaint,
-      borderWidth: 0.5,
-      borderColor: theme.accentMuted,
-      marginLeft: 4,
-    },
-    navStatusText: {
-      color: theme.accent,
-      fontSize: 8,
-      fontWeight: '900',
-      letterSpacing: 0.9,
-      textTransform: 'uppercase',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.2)',
     },
 
     identitySection: {
@@ -1213,42 +1132,12 @@ export default function PublicProfileScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Top Nav */}
-      <View style={[styles.navBar, { paddingTop: insets.top + 8 }]}>
-        <View style={styles.navLeft}>
-          <TouchableOpacity style={styles.navIconBtn} onPress={() => router.back()}>
-            <ChevronLeft size={22} color={theme.textPrimary} />
-          </TouchableOpacity>
+      <AppHeader showBackButton={true} hideUpload={true} />
+      {activeThemeId ? (
+        <View style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} pointerEvents="none">
+          <ThemeBackgroundEffect themeId={activeThemeId} />
         </View>
-
-        <View style={styles.navCenter}>
-          <Text style={styles.navUsername} numberOfLines={1}>{displayName}</Text>
-          {user.emailVerified && (
-            <View style={styles.navVerified}>
-              <Check size={8} color={theme.verifiedText} strokeWidth={4} />
-            </View>
-          )}
-          {theme.statusText.length > 0 && (
-            <View style={styles.navStatusBadge}>
-              <Text style={styles.navStatusText}>{theme.statusText}</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.navRight}>
-          <TouchableOpacity style={styles.navIconBtn} onPress={() => setIsShareModalVisible(true)}>
-            <Share2 size={18} color={theme.textPrimary} />
-          </TouchableOpacity>
-          {isMe && (
-            <TouchableOpacity
-              style={styles.navGreenBtn}
-              onPress={() => router.push('/(drawer)/(tabs)/create')}
-            >
-              <Upload size={16} color={theme.followBtnTextColor} />
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+      ) : null}
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
 
@@ -1261,6 +1150,13 @@ export default function PublicProfileScreen() {
               locations={[0.3, 1]}
               style={styles.bannerBottomFade}
             />
+            <TouchableOpacity
+              style={styles.bannerShareButton}
+              onPress={() => setIsShareModalVisible(true)}
+              activeOpacity={0.8}
+            >
+              <Share2 size={20} color="#FFF" />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -1564,11 +1460,11 @@ export default function PublicProfileScreen() {
                 const textColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : '#FFF';
                 return (
                   <View key={i} style={[styles.platformChip, { backgroundColor: chipBg, borderColor: chipBorder, borderWidth: isOutlined ? 1.5 : 0 }]}>
-                    {p.type === 'xbox' && <Gamepad2 size={10} color={iconColor} />}
-                    {p.type === 'ps' && <Gamepad2 size={10} color={iconColor} />}
-                    {p.type === 'pc' && <Monitor size={10} color={iconColor} />}
-                    {p.type === 'nintendo' && <Gamepad2 size={10} color={iconColor} />}
-                    {p.type === 'epic' && <Gamepad2 size={10} color={iconColor} />}
+                    {p.type === 'xbox' && <Gamepad2 size={12} color={iconColor} />}
+                    {p.type === 'ps' && <Gamepad2 size={12} color={iconColor} />}
+                    {p.type === 'pc' && <Monitor size={12} color={iconColor} />}
+                    {p.type === 'nintendo' && <Gamepad2 size={12} color={iconColor} />}
+                    {p.type === 'epic' && <Gamepad2 size={12} color={iconColor} />}
                     <Text style={[styles.platformText, { color: textColor }]}>{p.name}</Text>
                   </View>
                 );
@@ -1840,12 +1736,6 @@ export default function PublicProfileScreen() {
           )}
         </View>
       </ScrollView>
-
-      {activeThemeId && (
-        <View style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} pointerEvents="none">
-          <ThemeBackgroundEffect themeId={activeThemeId} />
-        </View>
-      )}
 
       <ProfilePictureModal
         visible={isProfileModalVisible}
