@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import { View, StyleSheet, Animated, Text, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Defs, RadialGradient, Stop, Ellipse } from 'react-native-svg';
+import Svg, { Defs, RadialGradient, Stop, Ellipse, Rect } from 'react-native-svg';
 
 function NeoMatrixEffect() {
   const COL_W = 38;
@@ -136,6 +136,25 @@ function ZombieFogBlob({
   );
 }
 
+function ZombieRadialVignette() {
+  const { width: W, height: H } = useWindowDimensions();
+  const id = 'zombie_radial_vignette';
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Svg width={W} height={H}>
+        <Defs>
+          <RadialGradient id={id} cx="50%" cy="45%" r="72%" fx="50%" fy="45%">
+            <Stop offset="0%" stopColor="#000000" stopOpacity="0" />
+            <Stop offset="55%" stopColor="#020d01" stopOpacity="0.35" />
+            <Stop offset="100%" stopColor="#000000" stopOpacity="0.88" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width={W} height={H} fill={`url(#${id})`} />
+      </Svg>
+    </View>
+  );
+}
+
 function ZombieEffect() {
   const { width: W, height: H } = useWindowDimensions();
   const fog1 = useRef(new Animated.Value(0)).current;
@@ -181,7 +200,7 @@ function ZombieEffect() {
     [sweepAnim, sweepRange]
   );
   const gridOpacity = useMemo(
-    () => gridAnim.interpolate({ inputRange: [0, 1], outputRange: [0.55, 0.85] }),
+    () => gridAnim.interpolate({ inputRange: [0, 1], outputRange: [0.08, 0.14] }),
     [gridAnim]
   );
   const gridRows = Math.ceil(H / 48) + 1;
@@ -202,12 +221,14 @@ function ZombieEffect() {
 
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: gridOpacity }]}>
         {Array.from({ length: gridRows }).map((_, i) => (
-          <View key={`h${i}`} style={{ position: 'absolute', left: 0, right: 0, top: i * 48, height: 1.5, backgroundColor: '#9ae600' }} />
+          <View key={`h${i}`} style={{ position: 'absolute', left: 0, right: 0, top: i * 48, height: 1, backgroundColor: '#9ae600' }} />
         ))}
         {Array.from({ length: gridCols }).map((_, i) => (
-          <View key={`v${i}`} style={{ position: 'absolute', top: 0, bottom: 0, left: i * 48, width: 1.5, backgroundColor: '#9ae600' }} />
+          <View key={`v${i}`} style={{ position: 'absolute', top: 0, bottom: 0, left: i * 48, width: 1, backgroundColor: '#9ae600' }} />
         ))}
       </Animated.View>
+
+      <ZombieRadialVignette />
 
       <View style={[StyleSheet.absoluteFill, { overflow: 'hidden' }]}>
         <View style={{ position: 'absolute', top: -H, left: -W, width: W * 3, height: H * 3, transform: [{ rotate: '20deg' }] }}>
