@@ -481,16 +481,16 @@ export default function ProfileScreen() {
         {/* Profile picture and action buttons row below banner */}
         <View style={styles.topRowWithActions}>
           <View style={[styles.avatarWrapper, {
+            borderRadius: 74,
             shadowColor: theme.shadowColor,
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: theme.avatarGlowOpacity,
             shadowRadius: theme.avatarGlowRadius,
-            elevation: 12,
           }]}>
             <TouchableOpacity onPress={() => setIsProfileModalVisible(true)}>
                 <Image 
                   source={{ uri: profileData.avatar }} 
-                  style={[styles.avatar, { borderColor: h.avatarBorderColor }]} 
+                  style={[styles.avatar, { borderColor: theme.avatarBorderColor }]} 
                 />
                 <View style={[styles.onlineIndicator, { borderColor: h.containerBg }]} />
             </TouchableOpacity>
