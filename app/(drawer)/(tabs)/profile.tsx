@@ -559,12 +559,12 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={[styles.infoSection, { paddingTop: 17 }]}>
+        <View style={styles.infoSection}>
           {/* Floating Collection button — overlaps card top border */}
           <TouchableOpacity
             style={[styles.collectionButton, {
               position: 'absolute',
-              top: 0,
+              top: -17,
               right: 0,
               zIndex: 10,
               backgroundColor: profileSectionTab === 'collection' ? theme.accent : 'transparent',
@@ -587,7 +587,6 @@ export default function ProfileScreen() {
                 borderRadius: h.cardBorderRadius,
                 borderWidth: 0.5,
                 borderColor: h.cardBorder,
-                overflow: 'hidden',
                 shadowColor: theme.shadowColor,
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: 0.55,
@@ -1054,7 +1053,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: 'transparent',
     position: 'relative',
-    overflow: 'hidden',
   },
   topBorderRow: {
     flexDirection: 'row',
