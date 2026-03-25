@@ -1382,7 +1382,7 @@ export default function PublicProfileScreen() {
               Favorites: favoriteGames.length,
             };
             const count = countMap[tab];
-            const label = count > 0 ? `${tab} · ${count}` : tab;
+            const label = `${tab} · ${count}`;
             return (
               <TouchableOpacity
                 key={tab}

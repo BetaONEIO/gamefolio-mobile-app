@@ -578,7 +578,7 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={[styles.infoSection, theme.hasDripEffect && { marginBottom: 28 }]}>
+        <View style={styles.infoSection}>
           <View
             onLayout={(e) => setStatsCardWidth(e.nativeEvent.layout.width)}
             style={[
@@ -589,6 +589,7 @@ export default function ProfileScreen() {
                 borderWidth: 0.5,
                 borderColor: h.cardBorder,
                 overflow: theme.hasDripEffect ? 'visible' : 'hidden',
+                marginBottom: theme.hasDripEffect ? 28 : 0,
               }
             ]}
           >
@@ -704,7 +705,7 @@ export default function ProfileScreen() {
               Favorites: favoriteGames.length,
             };
             const count = countMap[tab];
-            const label = count > 0 ? `${tab} · ${count}` : tab;
+            const label = `${tab} · ${count}`;
             return (
               <TouchableOpacity 
                 key={tab} 
