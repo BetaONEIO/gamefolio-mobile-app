@@ -267,20 +267,16 @@ function createStyles(theme: ProfileThemeTokens) {
     statsGradientBar: {
       height: 3,
     },
-    statsRow: {
+    statsRowCompact: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
+      gap: 32,
       paddingVertical: 16,
-      paddingHorizontal: 8,
+      paddingHorizontal: 16,
     },
-    statCol: {
-      flex: 1,
-      alignItems: theme.statAlign,
-    },
-    statDivider: {
-      width: 0.5,
-      height: 36,
-      backgroundColor: theme.dividerColor,
+    statColumn: {
+      flexDirection: 'column',
+      alignItems: theme.statAlign as 'flex-start' | 'center',
     },
     statNumber: {
       color: theme.statNumberColor,
@@ -290,15 +286,25 @@ function createStyles(theme: ProfileThemeTokens) {
       marginBottom: 2,
     },
     statLabel: {
-      color: theme.isLight ? theme.followingLabelColor : (theme.statLabelPill ? theme.accentDark : (theme.accentDark === '#022c22' ? '#62748e' : theme.accentDark)),
-      fontSize: theme.statLabelPill ? 10 : 8,
+      color: theme.muted,
+      fontSize: 11,
+      fontWeight: '600',
+      letterSpacing: 0.5,
+    },
+    statLabelPillStyle: {
+      borderWidth: 1,
+      borderColor: theme.accent,
+      borderRadius: 100,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      marginTop: 4,
+      backgroundColor: theme.accentMuted,
+    },
+    statLabelPillText: {
+      color: theme.accent,
+      fontSize: 10,
       fontWeight: '900',
-      textTransform: 'uppercase',
-      letterSpacing: theme.isLight ? 0.8 : 1.2,
-      backgroundColor: theme.statLabelPill ? (theme.accent + 'e6') : 'transparent',
-      paddingHorizontal: theme.statLabelPill ? 10 : 0,
-      paddingVertical: theme.statLabelPill ? 4 : 0,
-      borderRadius: theme.statLabelPill ? 100 : 0,
+      letterSpacing: 1.2,
     },
     statsCardBioSection: {
       borderTopWidth: 0.5,
@@ -346,12 +352,10 @@ function createStyles(theme: ProfileThemeTokens) {
       paddingBottom: 8,
     },
     bio: {
-      color: theme.isLight ? theme.bioTextColor : (theme.accent + 'cc'),
-      fontSize: 10,
-      fontWeight: '700',
-      lineHeight: 16,
-      letterSpacing: theme.isLight ? -0.2 : 0.5,
-      textTransform: theme.isLight ? 'none' : 'uppercase',
+      color: theme.bioTextColor || '#E2E8F0',
+      fontSize: 14,
+      textAlign: 'left',
+      lineHeight: 20,
     },
     platformsRow: {
       flexDirection: 'row',
@@ -638,34 +642,30 @@ function createStyles(theme: ProfileThemeTokens) {
       textAlign: 'center',
     },
 
-    tabsScroll: {
-      marginTop: 24,
+    tabsContainer: {
+      borderBottomWidth: 1,
+      borderBottomColor: theme.dividerColor,
+      marginBottom: 16,
     },
     tabsContent: {
-      paddingHorizontal: 16,
-      gap: 8,
-      flexDirection: 'row',
-      paddingBottom: 4,
+      paddingBottom: 0,
     },
-    tabPill: {
-      paddingVertical: 7,
-      paddingHorizontal: 16,
-      borderRadius: 100,
-      backgroundColor: theme.tabInactiveBg,
-      borderWidth: 0.5,
-      borderColor: theme.tabInactiveBorder,
-      marginRight: 4,
+    tab: {
+      paddingVertical: 12,
+      paddingHorizontal: 4,
+      marginRight: 24,
+      borderBottomWidth: 2,
+      borderBottomColor: 'transparent',
     },
-    tabPillActive: {
-      backgroundColor: theme.tabActiveBg,
-      borderColor: theme.tabActiveBorder,
+    tabActive: {
+      borderBottomColor: theme.tabActiveBorder,
     },
-    tabPillText: {
-      color: theme.textHandle,
-      fontSize: 13,
-      fontWeight: '700',
+    tabText: {
+      color: theme.muted,
+      fontSize: 16,
+      fontWeight: '600',
     },
-    tabPillTextActive: {
+    tabTextActive: {
       color: theme.tabActiveText,
     },
 
@@ -1301,7 +1301,7 @@ export default function PublicProfileScreen() {
           <Text style={styles.handle}>{handle}</Text>
           <UserTypeBadge userType={user.userType} showUserType={user.showUserType !== false} />
           {user.bio ? (
-            <Text style={[styles.bio, { marginTop: 6, textTransform: 'none', fontSize: 13, fontWeight: '400', letterSpacing: 0 }]} numberOfLines={3}>{user.bio}</Text>
+            <Text style={[styles.bio, { marginTop: 6 }]} numberOfLines={3}>{user.bio}</Text>
           ) : null}
 
           {/* Pill badge below handle for light/pink theme */}
@@ -1382,21 +1382,23 @@ export default function PublicProfileScreen() {
                     style={styles.statsGradientBar}
                   />
                 )}
-                <View style={[styles.statsRow, theme.statsCardIncludesBio && { paddingHorizontal: 16 }]}>
-                  <View style={styles.statCol}>
-                    <Text style={styles.statNumber}>{clips.length + reels.length + screenshots.length}</Text>
-                    <Text style={styles.statLabel}>{statUploads}</Text>
-                  </View>
-                  {!theme.statsCardIncludesBio && <View style={styles.statDivider} />}
-                  <View style={styles.statCol}>
-                    <Text style={styles.statNumber}>{user._count?.followers || 0}</Text>
-                    <Text style={styles.statLabel}>{statFollowers}</Text>
-                  </View>
-                  {!theme.statsCardIncludesBio && <View style={styles.statDivider} />}
-                  <View style={styles.statCol}>
-                    <Text style={styles.statNumber}>{user._count?.following || 0}</Text>
-                    <Text style={styles.statLabel}>{statFollowing}</Text>
-                  </View>
+                <View style={[styles.statsRowCompact, theme.statAlign !== 'flex-start' && { justifyContent: 'flex-start', gap: 24 }]}>
+                  {([
+                    { value: clips.length + reels.length + screenshots.length, label: statUploads },
+                    { value: user._count?.followers || 0, label: statFollowers },
+                    { value: user._count?.following || 0, label: statFollowing },
+                  ] as { value: number; label: string }[]).map((stat, i) => (
+                    <View key={i} style={styles.statColumn}>
+                      <Text style={styles.statNumber}>{stat.value}</Text>
+                      {theme.statLabelPill ? (
+                        <View style={styles.statLabelPillStyle}>
+                          <Text style={styles.statLabelPillText}>{stat.label.toUpperCase()}</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.statLabel}>{stat.label.toUpperCase()}</Text>
+                      )}
+                    </View>
+                  ))}
                 </View>
                 {theme.hasDripEffect && statsCardWidth > 0 && (
                   <ZombieDrip cardWidth={statsCardWidth} color={theme.accent} />
@@ -1513,7 +1515,7 @@ export default function PublicProfileScreen() {
 
         {/* Content Tabs */}
         {theme.displayNameFontId === 'impact' ? (
-          <View style={[styles.tabsScroll, { paddingHorizontal: 16, paddingVertical: 4 }]}>
+          <View style={[styles.tabsContainer, { backgroundColor: theme.bg, paddingHorizontal: 16, paddingVertical: 4 }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
                 {activeTab === 'Clips' ? (
@@ -1559,7 +1561,7 @@ export default function PublicProfileScreen() {
             </View>
           </View>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabsScroll} contentContainerStyle={styles.tabsContent}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { backgroundColor: theme.tabInactiveBg }]} contentContainerStyle={[styles.tabsContent, { paddingHorizontal: 16 }]}>
             {TABS.map((tab) => {
               const countMap: Record<string, number> = {
                 Clips: clips.length,
@@ -1569,13 +1571,18 @@ export default function PublicProfileScreen() {
               };
               const count = countMap[tab];
               const label = `${tab} · ${count}`;
+              const isActive = activeTab === tab;
               return (
                 <TouchableOpacity
                   key={tab}
-                  style={[styles.tabPill, activeTab === tab && styles.tabPillActive]}
+                  style={[
+                    styles.tab,
+                    isActive && styles.tabActive,
+                    isActive && { backgroundColor: theme.tabActiveBg, borderRadius: 8, paddingHorizontal: 12 },
+                  ]}
                   onPress={() => setActiveTab(tab)}
                 >
-                  <Text style={[styles.tabPillText, activeTab === tab && styles.tabPillTextActive]}>{label}</Text>
+                  <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{label}</Text>
                 </TouchableOpacity>
               );
             })}
