@@ -436,102 +436,6 @@ function createStyles(theme: ProfileThemeTokens) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    featuredSection: {
-      paddingHorizontal: 16,
-      paddingTop: 16,
-      paddingBottom: 4,
-    },
-    featuredLabel: {
-      color: theme.accent,
-      fontSize: 9,
-      fontWeight: '900',
-      letterSpacing: 1,
-      textTransform: 'uppercase',
-      marginBottom: 8,
-    },
-    featuredMeta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    featuredMetaDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-      backgroundColor: theme.accent,
-    },
-    featuredMetaText: {
-      color: theme.accent + '99',
-      fontSize: 8,
-      fontWeight: '700',
-      textTransform: 'uppercase',
-    },
-    featuredCard: {
-      borderRadius: 16,
-      borderWidth: 0.5,
-      borderColor: theme.cardBorder,
-      overflow: 'hidden',
-      height: 190,
-      backgroundColor: theme.isLight ? 'rgba(255,255,255,0.15)' : theme.cardBg,
-      shadowColor: theme.shadowColor,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.15,
-      shadowRadius: 10,
-      elevation: 4,
-    },
-    featuredImage: {
-      width: '100%',
-      height: '100%',
-    },
-    featuredGradient: {
-      position: 'absolute',
-      left: 0,
-      right: 0,
-      bottom: 0,
-      height: '60%',
-    },
-    featuredInfo: {
-      position: 'absolute',
-      top: 12,
-      left: 12,
-    },
-    featuredPlayBtn: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    featuredPlayCircle: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
-      backgroundColor: theme.playCircleBg,
-      borderWidth: 0.5,
-      borderColor: 'rgba(255,255,255,0.2)',
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingLeft: 3,
-    },
-    featuredOnline: {
-      position: 'absolute',
-      top: 12,
-      right: 12,
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    featuredOnlineDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-      backgroundColor: '#22c55e',
-    },
 
     bannerSection: {
       position: 'relative',
@@ -1090,7 +994,6 @@ export default function PublicProfileScreen() {
   const bannerUrl = user.bannerUrl || 'https://images.unsplash.com/photo-1511512578047-dfb367046420?q=80&w=800&auto=format&fit=crop';
   const displayName = user.displayName || user.username;
   const handle = `@${user.username}`;
-  const featuredClip = clips[0] || reels[0] || null;
   const currentGame = favoriteGames[0] || null;
 
   const buildPlatforms = () => {
@@ -1408,44 +1311,6 @@ export default function PublicProfileScreen() {
             })}
           </View>
         ) : null}
-
-        {/* Featured Clip */}
-        {featuredClip && (
-          <View style={styles.featuredSection}>
-            <TouchableOpacity
-              style={styles.featuredCard}
-              onPress={() => router.push({ pathname: '/clip/[id]', params: { id: featuredClip.id.toString(), fromUser: username, contentType: featuredClip.videoType === 'reel' ? 'reel' : 'clip' } })}
-              activeOpacity={0.9}
-            >
-              <Image source={{ uri: getClipThumbnail(featuredClip) }} style={styles.featuredImage} resizeMode="cover" />
-              <LinearGradient
-                colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.8)']}
-                style={styles.featuredGradient}
-              />
-              <View style={styles.featuredInfo}>
-                <Text style={styles.featuredLabel}>
-                  {theme.verifiedLabel.length > 0 ? `Extract Mission #${featuredClip.id}` : featuredClip.title}
-                </Text>
-                {theme.verifiedLabel.length > 0 && (
-                  <View style={styles.featuredMeta}>
-                    <View style={styles.featuredMetaDot} />
-                    <Text style={styles.featuredMetaText}>Confidential Archive</Text>
-                  </View>
-                )}
-              </View>
-              <View style={styles.featuredPlayBtn}>
-                <View style={styles.featuredPlayCircle}>
-                  <Play size={16} color="#FFF" fill="#FFF" />
-                </View>
-              </View>
-              {user.isOnline && (
-                <View style={styles.featuredOnline}>
-                  <View style={styles.featuredOnlineDot} />
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
 
         {/* Content Tabs */}
         {theme.displayNameFontId === 'impact' ? (
