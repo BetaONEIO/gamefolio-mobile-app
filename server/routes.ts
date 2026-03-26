@@ -4136,7 +4136,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   app.get("/api/reels/latest", async (req, res) => {
     try {
       const query: Record<string, string> = {};
-      if (req.query.limit) query.limit = req.query.limit as string;
+      query.limit = (req.query.limit as string) || '500';
       if (req.query.period) query.period = req.query.period as string;
 
       const data = await proxyToProduction('/api/reels/latest', query);

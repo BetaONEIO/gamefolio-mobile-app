@@ -1633,7 +1633,7 @@ export default function TrendingScreen() {
     queryKey: ['reels', 'trending', timePeriod],
     queryFn: async () => {
       const token = await getAccessToken();
-      return api.reels.getLatest(token || undefined, { limit: 50, period: getApiTimePeriod(timePeriod) });
+      return api.reels.getLatest(token || undefined, { period: getApiTimePeriod(timePeriod) });
     },
   });
 
