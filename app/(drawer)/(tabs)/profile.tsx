@@ -603,13 +603,13 @@ export default function ProfileScreen() {
               {
                 backgroundColor: h.cardBg,
                 borderRadius: h.cardBorderRadius,
-                borderWidth: 2,
+                borderWidth: 1,
                 borderColor: h.cardBorder,
                 shadowColor: theme.shadowColor,
                 shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.8,
-                shadowRadius: 20,
-                elevation: 15,
+                shadowOpacity: 0.6,
+                shadowRadius: 10,
+                elevation: 8,
               }
             ]}
           >

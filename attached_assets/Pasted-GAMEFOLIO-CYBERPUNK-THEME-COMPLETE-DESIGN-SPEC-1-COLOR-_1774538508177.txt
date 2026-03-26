@@ -1,0 +1,166 @@
+GAMEFOLIO CYBERPUNK THEME — COMPLETE DESIGN SPEC
+1. COLOR PALETTE
+Primary Accent (Cyan):        #00D3F2
+Secondary Accent (Magenta):   #E12AFB
+Dark Cyan Border:             #00B8DB
+Background (Deep Black):      #020617
+Card Background:              #1E1E2E (slightly lighter)
+Text Primary:                 #00D3F2 (cyan)
+Text Secondary:               #FFFFFF
+Border Color:                 #00B8DB88 (with alpha)
+2. TYPOGRAPHY
+Font Family:          "Orbitron" (fallback: monospace)
+Font Weights:         400, 500, 600, 700, 800, 900
+Letter Spacing:       1.4px - 2px (varies by element)
+Font Size:            0.65rem - 1rem (technical feel, smaller)
+Text Transform:       UPPERCASE for labels/badges
+3. ANIMATIONS
+Glow Animation (4 second cycle):
+
+@keyframes profileTabsCyberGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px #00d3f244, inset 0 0 8px #00d3f211;
+    border-color: #00b8db88;
+  }
+  50% {
+    box-shadow: 0 0 14px #e12afb55, inset 0 0 10px #e12afb11;
+    border-color: #e12afb88;
+  }
+}
+Duration: 4s, Timing: ease-in-out, Loop: infinite
+
+Gradient Text Effect:
+
+Gradient: linear-gradient(270deg, #00d3f2, #e12afb)
+Background Clip: text
+-webkit-text-fill-color: transparent
+4. COMPONENT STYLING
+STATS BOX (Flashing Border):
+
+{
+  backgroundColor: 'rgba(0, 6, 18, 0.9)',  // Deep black with transparency
+  color: '#00d3f2',                        // Cyan text
+  border: '1px solid #00b8db55',           // Semi-transparent dark cyan
+  fontFamily: "'Orbitron', sans-serif",
+  fontSize: '0.6rem',
+  letterSpacing: '0.8px',
+  borderRadius: '2px',                     // Sharp corners, not rounded
+  boxShadow: '0 0 10px #00d3f244'         // Cyan glow
+}
+Animation: Apply profileTabsCyberGlow animation to border
+
+STAT NUMBERS:
+
+{
+  color: '#00d3f2',
+  fontFamily: "'Orbitron', sans-serif",
+  fontWeight: 'bold',
+  fontSize: '1.5rem',
+  lineHeight: '2rem'
+}
+STAT LABELS (with gradient):
+
+{
+  background: 'linear-gradient(270deg, #00d3f2, #e12afb)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+  padding: '2px 6px',
+  letterSpacing: '1.6px',
+  fontFamily: "'Orbitron', sans-serif",
+  fontSize: '0.65rem',
+  fontWeight: '900',
+  textTransform: 'uppercase'
+}
+MENU/HEADER:
+
+{
+  background: '#020617',                   // Deep black
+  border: '1px solid #00b8db88',           // Semi-transparent cyan
+  clipPath: 'polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%)',  // Angled edges
+  backdropFilter: 'blur(sm)'               // Slight blur effect
+}
+Header Text:
+
+{
+  background: 'linear-gradient(270deg, #00d3f2, #e12afb)',
+  WebkitBackgroundClip: 'text',
+  WebkitTextFillColor: 'transparent',
+  backgroundClip: 'text',
+  fontFamily: "'Orbitron', sans-serif",
+  letterSpacing: '2px',
+  fontSize: '0.65rem',
+  fontWeight: '900'
+}
+TAB BUTTONS (Active State):
+
+{
+  backgroundColor: 'primary/90',
+  color: '#ffffff',
+  fontFamily: "'Orbitron', sans-serif",
+  letterSpacing: '2px',
+  fontSize: '0.65rem',
+  fontWeight: '900',
+  boxShadow: '0 0 10px #00d3f244'  // Cyan glow on active
+}
+TAB BUTTONS (Inactive State):
+
+{
+  color: 'muted-foreground',
+  fontFamily: "'Orbitron', sans-serif",
+  letterSpacing: '2px',
+  fontSize: '0.65rem',
+  fontWeight: '900',
+  opacity: '0.6'
+}
+5. PLATFORM CONNECTIONS BADGES
+{
+  backgroundColor: 'rgba(0, 6, 18, 0.9)',
+  color: '#00d3f2',
+  border: '1px solid #00d3f299',
+  fontFamily: "'Orbitron', sans-serif",
+  padding: '2px 6px',
+  borderRadius: '2px',
+  fontSize: '0.65rem'
+}
+6. BORDER RADIUS STRATEGY
+Stats Box: 2px (slightly rounded corners)
+Menu/Header: 0px with clipPath for angled edges
+Badges: 2px
+Most other elements: 0px (sharp/hard edges)
+CLIPPATH PATTERN:
+
+polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%)
+Creates 10px diagonal angle cuts on opposite corners
+
+7. BOX SHADOWS & GLOWS
+Standard Glow:
+
+box-shadow: 0 0 10px #00d3f244
+Pulsing Border Glow (from animation):
+
+0 0 8px #00d3f244, inset 0 0 8px #00d3f211   (0% state)
+0 0 14px #e12afb55, inset 0 0 10px #e12afb11 (50% state)
+Inset Glow (inner edge):
+
+inset 0 0 8px #00d3f211  (cyan)
+inset 0 0 10px #e12afb11 (magenta)
+8. BACKGROUND GRADIENT (for banners)
+`linear-gradient(135deg, #020617, #1E1E2E)`
+9. OPACITY GUIDE
+Borders: 55% - 99% alpha
+Box-shadow: 11% - 55% alpha
+Text overlays: 60% - 90% alpha
+Backgrounds: 90% opacity
+10. ACTIVATION DETECTION
+isCyberpunkTheme = 
+  accentColor?.toLowerCase() === '#00d3f2' &&
+  !isLightBackground
+11. MOBILE-SPECIFIC CONSIDERATIONS
+Font Scaling:
+
+Mobile: 0.6rem - 0.9rem (smaller, fits mobile screens)
+Letter-spacing: maintain 1.4-2px for readability
+Touch Targets:
+
+Ensure stats boxes & buttons are min 44x44px for touch
