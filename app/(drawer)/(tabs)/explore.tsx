@@ -767,11 +767,13 @@ export default function ExploreScreen() {
                   {/* Empty State */}
                   {(activeSearchTab === 'all' && 
                     (usersSearchQuery.data?.users?.length || 0) === 0 &&
+                    (combinedSearchQuery.data?.hashtags?.length || 0) === 0 &&
                     displayedGames.length === 0 &&
                     (combinedSearchQuery.data?.clips?.length || 0) === 0 &&
                     (combinedSearchQuery.data?.reels?.length || 0) === 0 &&
                     (combinedSearchQuery.data?.screenshots?.length || 0) === 0) ||
                   (activeSearchTab === 'users' && (usersSearchQuery.data?.users?.length || 0) === 0) ||
+                  (activeSearchTab === 'hashtags' && (combinedSearchQuery.data?.hashtags?.length || 0) === 0) ||
                   (activeSearchTab === 'games' && displayedGames.length === 0) ||
                   (activeSearchTab === 'clips' && (combinedSearchQuery.data?.clips?.length || 0) === 0) ||
                   (activeSearchTab === 'reels' && (combinedSearchQuery.data?.reels?.length || 0) === 0) ||

@@ -6696,31 +6696,39 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         screenshots = Array.isArray(prodScreenshots) ? prodScreenshots.slice(0, limitNum) : [];
       }
 
-      let games: { id: string; name: string; icon: string; category: string; players: number }[] = [];
-      try {
-        const twitchGames = await twitchApi.searchGames(query, limitNum);
-        games = twitchGames.map((g: any) => {
-          let icon = g.box_art_url || g.boxArt || '';
-          icon = icon.replace(/\d+x\d+/, '100x100');
-          return { id: g.id || g.twitchId, name: g.name, icon, category: 'Game', players: 0 };
-        });
-      } catch (e) {
-        console.error('[Search] Error searching games:', e);
-      }
+      const [gamesResult, prodTrendingTags] = await Promise.all([
+        (async () => {
+          try {
+            const twitchGames = await twitchApi.searchGames(query, limitNum);
+            return twitchGames.map((g: { id?: string; twitchId?: string; name: string; box_art_url?: string; boxArt?: string }) => {
+              let icon = g.box_art_url || g.boxArt || '';
+              icon = icon.replace(/\d+x\d+/, '100x100');
+              return { id: g.id || g.twitchId, name: g.name, icon, category: 'Game', players: 0 };
+            });
+          } catch (e) {
+            console.error('[Search] Error searching games:', e);
+            return [];
+          }
+        })(),
+        proxyToProduction('/api/tags/trending?limit=50', {}).catch(() => null),
+      ]);
 
-      const TRENDING_TAGS = [
-        { id: '1', name: 'gaming', count: 18000 }, { id: '2', name: 'fortnite', count: 12300 },
-        { id: '3', name: 'valorant', count: 15420 }, { id: '4', name: 'apex', count: 9800 },
-        { id: '5', name: 'csgo', count: 8500 }, { id: '6', name: 'leagueoflegends', count: 7200 },
-        { id: '7', name: 'minecraft', count: 6800 }, { id: '8', name: 'overwatch', count: 5400 },
-        { id: '9', name: 'rocketleague', count: 4200 }, { id: '10', name: 'callofduty', count: 3900 },
-        { id: '11', name: 'gta', count: 3500 }, { id: '12', name: 'league', count: 5600 },
-        { id: '13', name: 'funny', count: 11000 }, { id: '14', name: 'fails', count: 8200 },
-        { id: '15', name: 'clutch', count: 7500 }, { id: '16', name: 'esports', count: 6300 },
-        { id: '17', name: 'streamer', count: 5100 }, { id: '18', name: 'fps', count: 4800 },
-        { id: '19', name: 'rpg', count: 4100 }, { id: '20', name: 'cod', count: 3800 },
-      ];
-      const hashtags = TRENDING_TAGS.filter(tag => tag.name.includes(searchTerm)).slice(0, limitNum);
+      const games = gamesResult as { id: string | undefined; name: string; icon: string; category: string; players: number }[];
+
+      let allTags: string[] = [];
+      if (Array.isArray(prodTrendingTags) && prodTrendingTags.length > 0) {
+        allTags = prodTrendingTags.map((t: string | { name: string }) => typeof t === 'string' ? t : t.name);
+      } else {
+        allTags = [
+          'gaming', 'fortnite', 'valorant', 'apex', 'csgo', 'leagueoflegends',
+          'minecraft', 'overwatch', 'rocketleague', 'callofduty', 'gta', 'league',
+          'funny', 'fails', 'clutch', 'esports', 'streamer', 'fps', 'rpg', 'cod',
+        ];
+      }
+      const hashtags = allTags
+        .filter(tag => tag.toLowerCase().includes(searchTerm))
+        .slice(0, limitNum)
+        .map((name, idx) => ({ id: String(idx + 1), name, count: 0 }));
 
       console.log(`[Search] Results: ${hashtags.length} hashtags, ${users.length} users, ${games.length} games, ${clips.length} clips, ${reels.length} reels, ${screenshots.length} screenshots`);
       return res.json({ hashtags, users, games, clips, reels, screenshots });
@@ -6730,15 +6738,22 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
-  // Trending tags endpoint
-  app.get("/api/tags/trending", async (_req, res) => {
-    const TRENDING_TAGS = [
-      "gaming", "fortnite", "valorant", "cod", "minecraft",
-      "funny", "fails", "clutch", "esports", "twitch",
-      "streamer", "fps", "rpg", "gta", "leagueoflegends",
-      "overwatch", "csgo", "roblox", "apexlegends", "callofduty"
-    ];
-    return res.json(TRENDING_TAGS);
+  app.get("/api/tags/trending", async (req, res) => {
+    try {
+      const limit = req.query.limit as string || '20';
+      const prodTags = await proxyToProduction(`/api/tags/trending?limit=${limit}`, {});
+      if (Array.isArray(prodTags) && prodTags.length > 0) {
+        return res.json(prodTags);
+      }
+      return res.json([
+        "gaming", "fortnite", "valorant", "cod", "minecraft",
+        "funny", "fails", "clutch", "esports", "twitch",
+        "streamer", "fps", "rpg", "gta", "leagueoflegends",
+        "overwatch", "csgo", "roblox", "apexlegends", "callofduty"
+      ]);
+    } catch {
+      return res.json([]);
+    }
   });
 
   // Unified search endpoints that match frontend expectations
