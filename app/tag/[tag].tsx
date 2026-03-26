@@ -26,7 +26,7 @@ interface TagContentItem {
   videoUrl?: string;
   thumbnailUrl?: string;
   imageUrl?: string;
-  user: { id: number; username: string; displayName?: string; avatarUrl?: string };
+  user?: { id: number; username: string; displayName?: string; avatarUrl?: string };
   game?: { id: number; name: string };
   _count?: { likes?: number; fires?: number; comments?: number };
 }
@@ -250,10 +250,10 @@ export default function TagScreen() {
                   style={styles.userRow}
                   onPress={(e) => {
                     e.stopPropagation();
-                    router.push({ pathname: '/user/[id]', params: { id: item.user.username } });
+                    router.push({ pathname: '/user/[id]', params: { id: item.user?.username || '' } });
                   }}
                 >
-                  <Image source={{ uri: item.user.avatarUrl }} style={styles.userAvatar} />
+                  <Image source={{ uri: item.user?.avatarUrl }} style={styles.userAvatar} />
                   <Text style={styles.contentUsername}>@{item.user?.username}</Text>
                 </TouchableOpacity>
                 <Text style={styles.contentTitle} numberOfLines={2}>{truncateTitle(item.title, 34)}</Text>

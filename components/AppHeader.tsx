@@ -314,7 +314,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
   }, [router, closeSearch]);
 
   const handleUserPress = useCallback((user: UserResult) => {
-    router.push(`/user/${user.id}`);
+    router.push(`/user/${user.username}`);
     closeSearch();
   }, [router, closeSearch]);
 
