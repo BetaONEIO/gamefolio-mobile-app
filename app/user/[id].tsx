@@ -523,8 +523,6 @@ function createStyles(theme: ProfileThemeTokens) {
     },
 
     tabsContainer: {
-      borderBottomWidth: 1,
-      borderBottomColor: theme.dividerColor,
       marginBottom: 16,
     },
     tabsContent: {
