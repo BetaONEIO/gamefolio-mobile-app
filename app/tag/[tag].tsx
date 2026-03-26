@@ -40,30 +40,34 @@ export default function TagScreen() {
       
       try {
         let result: Clip[] = [];
+        const hashtagQuery = `#${tagName}`;
         
         if (contentType === 'clips') {
-          result = await api.clips.getFeed(token || undefined, {
-            page: 1,
-            limit: 50,
-          });
+          try {
+            result = await api.search.clips(hashtagQuery, token || undefined);
+          } catch {
+            const feed = await api.clips.getFeed(token || undefined, { page: 1, limit: 50 });
+            result = feed.filter(item => item.videoType === 'clip');
+          }
+          result = result.filter(item => item.videoType === 'clip' || !item.videoType);
         } else if (contentType === 'reels') {
-          result = await api.reels.getLatest(token || undefined);
+          try {
+            result = await api.search.reels(hashtagQuery, token || undefined);
+          } catch {
+            result = await api.reels.getLatest(token || undefined);
+          }
+          result = result.filter(item => item.videoType === 'reel');
         } else if (contentType === 'screenshots') {
           result = [];
         }
 
-        const filtered = result.filter(item => 
-          item.title?.toLowerCase().includes(tagName?.toLowerCase() || '') ||
-          item.description?.toLowerCase().includes(tagName?.toLowerCase() || '')
-        );
-
-        let sorted = [...filtered];
+        let sorted = [...result];
         if (sortOption === 'latest') {
           sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         } else if (sortOption === 'most-viewed') {
           sorted.sort((a, b) => (b.views || 0) - (a.views || 0));
         } else if (sortOption === 'trending') {
-          sorted.sort((a, b) => ((b._count.likes || 0) + (b._count.fires || 0)) - ((a._count.likes || 0) + (a._count.fires || 0)));
+          sorted.sort((a, b) => ((b._count?.likes || 0) + (b._count?.fires || 0)) - ((a._count?.likes || 0) + (a._count?.fires || 0)));
         }
 
         console.log('[TagScreen] Found', sorted.length, contentType);

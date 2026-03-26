@@ -6656,6 +6656,99 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Search Routes
   // ==========================================
 
+  // Unified search endpoint — returns hashtags, users, and games
+  app.get("/api/search", async (req, res) => {
+    try {
+      const query = ((req.query.query || req.query.q) as string) || '';
+      const limitNum = parseInt((req.query.limit as string) || '10', 10) || 10;
+      if (!query) {
+        return res.json({ hashtags: [], users: [], games: [] });
+      }
+      console.log(`[Search] Unified search for: "${query}" limit=${limitNum}`);
+      const searchTerm = query.toLowerCase();
+
+      const mockHashtags = [
+        { id: '1', name: 'valorant', count: 15420 },
+        { id: '2', name: 'fortnite', count: 12300 },
+        { id: '3', name: 'apex', count: 9800 },
+        { id: '4', name: 'csgo', count: 8500 },
+        { id: '5', name: 'leagueoflegends', count: 7200 },
+        { id: '6', name: 'minecraft', count: 6800 },
+        { id: '7', name: 'overwatch', count: 5400 },
+        { id: '8', name: 'rocketleague', count: 4200 },
+        { id: '9', name: 'callofduty', count: 3900 },
+        { id: '10', name: 'gta', count: 3500 },
+        { id: '11', name: 'league', count: 5600 },
+        { id: '12', name: 'leagueclips', count: 3200 },
+        { id: '13', name: 'gaming', count: 18000 },
+        { id: '14', name: 'funny', count: 11000 },
+        { id: '15', name: 'fails', count: 8200 },
+        { id: '16', name: 'clutch', count: 7500 },
+        { id: '17', name: 'esports', count: 6300 },
+        { id: '18', name: 'streamer', count: 5100 },
+        { id: '19', name: 'fps', count: 4800 },
+        { id: '20', name: 'rpg', count: 4100 },
+      ];
+
+      const hashtags = mockHashtags
+        .filter(tag => tag.name.includes(searchTerm))
+        .slice(0, limitNum);
+
+      let searchUsers: any[] = [];
+      try {
+        const dbUsers = await storage.searchUsers(query);
+        searchUsers = dbUsers.slice(0, limitNum).map(u => ({
+          id: String(u.id),
+          username: u.username || '',
+          displayName: u.displayName || u.username || '',
+          avatar: u.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent((u.displayName || u.username || 'User').slice(0, 20))}&background=1a1a2e&color=4ADE80&bold=true&size=128`,
+          verified: false,
+          followers: 0,
+        }));
+      } catch (e) {
+        console.error('[Search] Error searching users:', e);
+      }
+
+      let searchGames: any[] = [];
+      try {
+        const token = await twitchApi.getAccessToken();
+        if (token) {
+          const twitchGames = await twitchApi.searchGames(query, limitNum);
+          searchGames = twitchGames.map((g: any) => {
+            let icon = g.box_art_url || g.boxArt || '';
+            icon = icon.replace(/\d+x\d+/, '100x100');
+            return {
+              id: g.id || g.twitchId,
+              name: g.name,
+              icon,
+              category: 'Game',
+              players: 0,
+            };
+          });
+        }
+      } catch (e) {
+        console.error('[Search] Error searching games:', e);
+      }
+
+      console.log(`[Search] Results: ${hashtags.length} hashtags, ${searchUsers.length} users, ${searchGames.length} games`);
+      return res.json({ hashtags, users: searchUsers, games: searchGames });
+    } catch (err) {
+      console.error("Error in unified search:", err);
+      return res.status(500).json({ message: "Error performing search" });
+    }
+  });
+
+  // Trending tags endpoint
+  app.get("/api/tags/trending", async (_req, res) => {
+    const TRENDING_TAGS = [
+      "gaming", "fortnite", "valorant", "cod", "minecraft",
+      "funny", "fails", "clutch", "esports", "twitch",
+      "streamer", "fps", "rpg", "gta", "leagueoflegends",
+      "overwatch", "csgo", "roblox", "apexlegends", "callofduty"
+    ];
+    return res.json(TRENDING_TAGS);
+  });
+
   // Unified search endpoints that match frontend expectations
 
   // Search clips with query parameter
