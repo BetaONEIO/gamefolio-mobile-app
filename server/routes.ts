@@ -6656,101 +6656,66 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Search Routes
   // ==========================================
 
-  // Unified search endpoint — returns hashtags, users, and games
+  // Unified search endpoint — aggregates results from production sub-routes and local sources
   app.get("/api/search", async (req, res) => {
     try {
       const query = ((req.query.query || req.query.q) as string) || '';
       const limitNum = parseInt((req.query.limit as string) || '10', 10) || 10;
       if (!query) {
-        return res.json({ hashtags: [], users: [], games: [] });
+        return res.json({ hashtags: [], users: [], games: [], clips: [], reels: [], screenshots: [] });
       }
       console.log(`[Search] Unified search for: "${query}" limit=${limitNum}`);
       const searchTerm = query.toLowerCase();
+      const encodedQ = encodeURIComponent(query);
 
-      const mockHashtags = [
-        { id: '1', name: 'valorant', count: 15420 },
-        { id: '2', name: 'fortnite', count: 12300 },
-        { id: '3', name: 'apex', count: 9800 },
-        { id: '4', name: 'csgo', count: 8500 },
-        { id: '5', name: 'leagueoflegends', count: 7200 },
-        { id: '6', name: 'minecraft', count: 6800 },
-        { id: '7', name: 'overwatch', count: 5400 },
-        { id: '8', name: 'rocketleague', count: 4200 },
-        { id: '9', name: 'callofduty', count: 3900 },
-        { id: '10', name: 'gta', count: 3500 },
-        { id: '11', name: 'league', count: 5600 },
-        { id: '12', name: 'leagueclips', count: 3200 },
-        { id: '13', name: 'gaming', count: 18000 },
-        { id: '14', name: 'funny', count: 11000 },
-        { id: '15', name: 'fails', count: 8200 },
-        { id: '16', name: 'clutch', count: 7500 },
-        { id: '17', name: 'esports', count: 6300 },
-        { id: '18', name: 'streamer', count: 5100 },
-        { id: '19', name: 'fps', count: 4800 },
-        { id: '20', name: 'rpg', count: 4100 },
-      ];
+      const [prodUsers, prodClips, prodReels, prodScreenshots] = await Promise.all([
+        proxyToProduction(`/api/search/users?q=${encodedQ}`, {}).catch(() => null),
+        proxyToProduction(`/api/search/clips?q=${encodedQ}`, {}).catch(() => null),
+        proxyToProduction(`/api/search/reels?q=${encodedQ}`, {}).catch(() => null),
+        proxyToProduction(`/api/search/screenshots?q=${encodedQ}`, {}).catch(() => null),
+      ]);
 
-      const hashtags = mockHashtags
-        .filter(tag => tag.name.includes(searchTerm))
-        .slice(0, limitNum);
+      const users = (Array.isArray(prodUsers) ? prodUsers : []).slice(0, limitNum).map((u: any) => ({
+        id: String(u.id),
+        username: u.username || '',
+        displayName: u.displayName || u.display_name || u.username || '',
+        avatar: u.avatarUrl || u.avatar_url || u.avatar || defaultAvatarUrl(u.username || '', u.displayName || u.display_name),
+        verified: u.verified || u.isVerified || false,
+        followers: u.followers || u._count?.followers || 0,
+      }));
 
-      let searchUsers: any[] = [];
+      const clips = Array.isArray(prodClips) ? prodClips.slice(0, limitNum) : [];
+      const reels = Array.isArray(prodReels) ? prodReels.slice(0, limitNum) : [];
+      const screenshots = Array.isArray(prodScreenshots) ? prodScreenshots.slice(0, limitNum) : [];
+
+      let games: { id: string; name: string; icon: string; category: string; players: number }[] = [];
       try {
-        const dbUsers = await storage.searchUsers(query);
-        searchUsers = dbUsers.slice(0, limitNum).map(u => ({
-          id: String(u.id),
-          username: u.username || '',
-          displayName: u.displayName || u.username || '',
-          avatar: u.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent((u.displayName || u.username || 'User').slice(0, 20))}&background=1a1a2e&color=4ADE80&bold=true&size=128`,
-          verified: false,
-          followers: 0,
-        }));
-      } catch (e) {
-        console.error('[Search] Error searching users:', e);
-      }
-
-      let searchGames: any[] = [];
-      try {
-        const token = await twitchApi.getAccessToken();
-        if (token) {
-          const twitchGames = await twitchApi.searchGames(query, limitNum);
-          searchGames = twitchGames.map((g: any) => {
-            let icon = g.box_art_url || g.boxArt || '';
-            icon = icon.replace(/\d+x\d+/, '100x100');
-            return {
-              id: g.id || g.twitchId,
-              name: g.name,
-              icon,
-              category: 'Game',
-              players: 0,
-            };
-          });
-        }
+        const twitchGames = await twitchApi.searchGames(query, limitNum);
+        games = twitchGames.map((g: any) => {
+          let icon = g.box_art_url || g.boxArt || '';
+          icon = icon.replace(/\d+x\d+/, '100x100');
+          return { id: g.id || g.twitchId, name: g.name, icon, category: 'Game', players: 0 };
+        });
       } catch (e) {
         console.error('[Search] Error searching games:', e);
       }
 
-      let searchClips: any[] = [];
-      let searchReels: any[] = [];
-      let searchScreenshots: any[] = [];
-      try {
-        searchClips = (await storage.searchClips(query)).slice(0, limitNum);
-      } catch (e) {
-        console.error('[Search] Error searching clips:', e);
-      }
-      try {
-        searchReels = (await storage.searchReels(query)).slice(0, limitNum);
-      } catch (e) {
-        console.error('[Search] Error searching reels:', e);
-      }
-      try {
-        searchScreenshots = (await storage.searchScreenshots(query)).slice(0, limitNum);
-      } catch (e) {
-        console.error('[Search] Error searching screenshots:', e);
-      }
+      const TRENDING_TAGS = [
+        { id: '1', name: 'gaming', count: 18000 }, { id: '2', name: 'fortnite', count: 12300 },
+        { id: '3', name: 'valorant', count: 15420 }, { id: '4', name: 'apex', count: 9800 },
+        { id: '5', name: 'csgo', count: 8500 }, { id: '6', name: 'leagueoflegends', count: 7200 },
+        { id: '7', name: 'minecraft', count: 6800 }, { id: '8', name: 'overwatch', count: 5400 },
+        { id: '9', name: 'rocketleague', count: 4200 }, { id: '10', name: 'callofduty', count: 3900 },
+        { id: '11', name: 'gta', count: 3500 }, { id: '12', name: 'league', count: 5600 },
+        { id: '13', name: 'funny', count: 11000 }, { id: '14', name: 'fails', count: 8200 },
+        { id: '15', name: 'clutch', count: 7500 }, { id: '16', name: 'esports', count: 6300 },
+        { id: '17', name: 'streamer', count: 5100 }, { id: '18', name: 'fps', count: 4800 },
+        { id: '19', name: 'rpg', count: 4100 }, { id: '20', name: 'cod', count: 3800 },
+      ];
+      const hashtags = TRENDING_TAGS.filter(tag => tag.name.includes(searchTerm)).slice(0, limitNum);
 
-      console.log(`[Search] Results: ${hashtags.length} hashtags, ${searchUsers.length} users, ${searchGames.length} games, ${searchClips.length} clips, ${searchReels.length} reels, ${searchScreenshots.length} screenshots`);
-      return res.json({ hashtags, users: searchUsers, games: searchGames, clips: searchClips, reels: searchReels, screenshots: searchScreenshots });
+      console.log(`[Search] Results: ${hashtags.length} hashtags, ${users.length} users, ${games.length} games, ${clips.length} clips, ${reels.length} reels, ${screenshots.length} screenshots`);
+      return res.json({ hashtags, users, games, clips, reels, screenshots });
     } catch (err) {
       console.error("Error in unified search:", err);
       return res.status(500).json({ message: "Error performing search" });

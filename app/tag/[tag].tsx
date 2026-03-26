@@ -4,10 +4,9 @@ import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ChevronLeft, Eye, Play, Settings, Camera, Hash } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
-import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
-import { api, Clip } from '@/lib/api';
+import { api, Clip, Screenshot } from '@/lib/api';
 import AppHeader from '@/components/AppHeader';
 import * as Haptics from 'expo-haptics';
 
@@ -15,6 +14,22 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type ContentType = 'clips' | 'reels' | 'screenshots';
 type SortOption = 'trending' | 'latest' | 'most-viewed';
+
+interface TagContentItem {
+  id: number;
+  title: string;
+  description?: string;
+  views?: number;
+  duration?: number;
+  createdAt: string;
+  videoType?: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
+  imageUrl?: string;
+  user: { id: number; username: string; displayName?: string; avatarUrl?: string };
+  game?: { id: number; name: string };
+  _count?: { likes?: number; fires?: number; comments?: number };
+}
 
 const formatNumber = (num: number): string => {
   if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
@@ -32,47 +47,82 @@ export default function TagScreen() {
   const [sortOption, setSortOption] = useState<SortOption>('trending');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
 
-  const { data: clips = [], isLoading } = useQuery<Clip[]>({
+  const { data: clips = [], isLoading } = useQuery<TagContentItem[]>({
     queryKey: ['tag', tagName, contentType, sortOption],
     queryFn: async () => {
       const token = await getAccessToken();
       console.log('[TagScreen] Fetching content for tag:', tagName, contentType, sortOption);
       
       try {
-        let result: Clip[] = [];
+        let items: TagContentItem[] = [];
         const hashtagQuery = `#${tagName}`;
         
         if (contentType === 'clips') {
           try {
-            result = await api.search.clips(hashtagQuery, token || undefined);
-            result = result.filter(item => item.videoType === 'clip' || !item.videoType);
+            const result = await api.search.clips(hashtagQuery, token || undefined);
+            items = result
+              .filter((c: Clip) => c.videoType === 'clip' || !c.videoType)
+              .map((c: Clip) => ({
+                id: c.id,
+                title: c.title,
+                description: c.description,
+                views: c.views,
+                duration: c.duration,
+                createdAt: c.createdAt,
+                videoType: c.videoType || 'clip',
+                videoUrl: c.videoUrl,
+                thumbnailUrl: c.thumbnailUrl,
+                user: c.user,
+                game: c.game,
+                _count: c._count,
+              }));
           } catch {
             console.log('[TagScreen] Search clips API failed, returning empty');
-            result = [];
           }
         } else if (contentType === 'reels') {
           try {
-            result = await api.search.reels(hashtagQuery, token || undefined);
-            result = result.filter(item => item.videoType === 'reel');
+            const result = await api.search.reels(hashtagQuery, token || undefined);
+            items = result
+              .filter((c: Clip) => c.videoType === 'reel')
+              .map((c: Clip) => ({
+                id: c.id,
+                title: c.title,
+                description: c.description,
+                views: c.views,
+                duration: c.duration,
+                createdAt: c.createdAt,
+                videoType: 'reel',
+                videoUrl: c.videoUrl,
+                thumbnailUrl: c.thumbnailUrl,
+                user: c.user,
+                game: c.game,
+                _count: c._count,
+              }));
           } catch {
             console.log('[TagScreen] Search reels API failed, returning empty');
-            result = [];
           }
         } else if (contentType === 'screenshots') {
           try {
-            const screenshots = await api.search.screenshots(hashtagQuery, token || undefined);
-            result = screenshots.map((s: any) => ({
-              ...s,
+            const result = await api.search.screenshots(hashtagQuery, token || undefined);
+            items = result.map((s: Screenshot) => ({
+              id: s.id,
+              title: s.title,
+              description: s.description,
+              views: s.views,
+              createdAt: s.createdAt,
               videoType: 'screenshot',
-              _count: s._count || { likes: 0, fires: 0, comments: 0 },
+              imageUrl: s.imageUrl,
+              thumbnailUrl: s.thumbnailUrl,
+              user: s.user,
+              game: s.game,
+              _count: s._count,
             }));
           } catch {
             console.log('[TagScreen] Search screenshots API failed, returning empty');
-            result = [];
           }
         }
 
-        let sorted = [...result];
+        let sorted = [...items];
         if (sortOption === 'latest') {
           sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         } else if (sortOption === 'most-viewed') {
@@ -103,19 +153,20 @@ export default function TagScreen() {
     setShowSortDropdown(false);
   };
 
-  const renderContentItem = ({ item }: { item: Clip; index: number }) => {
+  const renderContentItem = ({ item }: { item: TagContentItem; index: number }) => {
     if (contentType === 'screenshots') {
+      const screenshotUri = item.imageUrl || item.thumbnailUrl || '';
       return (
         <TouchableOpacity
           style={styles.screenshotGridCard}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            console.log('Open screenshot:', item.id);
+            router.push('/(drawer)/(tabs)/screenshots/latest');
           }}
           activeOpacity={0.8}
         >
           <ImageBackground 
-            source={{ uri: item.videoType === 'reel' ? getReelThumbnail(item) : getClipThumbnail(item) }} 
+            source={{ uri: screenshotUri }} 
             style={styles.screenshotGridThumbnail} 
             imageStyle={{ borderRadius: 8 }}
           >
@@ -129,6 +180,7 @@ export default function TagScreen() {
     }
     
     if (contentType === 'reels') {
+      const reelThumb = item.thumbnailUrl || '';
       return (
         <TouchableOpacity
           style={styles.reelGridCard}
@@ -139,7 +191,7 @@ export default function TagScreen() {
           activeOpacity={0.8}
         >
           <ImageBackground 
-            source={{ uri: item.videoType === 'reel' ? getReelThumbnail(item) : getClipThumbnail(item) }} 
+            source={{ uri: reelThumb }} 
             style={styles.reelGridThumbnail} 
             imageStyle={{ borderRadius: 12 }}
           >
@@ -176,7 +228,7 @@ export default function TagScreen() {
           }}
           activeOpacity={0.8}
         >
-          <ImageBackground source={{ uri: item.videoType === 'reel' ? getReelThumbnail(item) : getClipThumbnail(item) }} style={styles.contentThumbnail} imageStyle={{ borderRadius: 16 }}>
+          <ImageBackground source={{ uri: item.thumbnailUrl || '' }} style={styles.contentThumbnail} imageStyle={{ borderRadius: 16 }}>
             <LinearGradient
               colors={['rgba(0,0,0,0.6)', 'transparent', 'transparent', 'rgba(0,0,0,0.8)']}
               style={styles.contentGradient}
