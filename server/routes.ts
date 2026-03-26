@@ -6730,8 +6730,27 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         console.error('[Search] Error searching games:', e);
       }
 
-      console.log(`[Search] Results: ${hashtags.length} hashtags, ${searchUsers.length} users, ${searchGames.length} games`);
-      return res.json({ hashtags, users: searchUsers, games: searchGames });
+      let searchClips: any[] = [];
+      let searchReels: any[] = [];
+      let searchScreenshots: any[] = [];
+      try {
+        searchClips = (await storage.searchClips(query)).slice(0, limitNum);
+      } catch (e) {
+        console.error('[Search] Error searching clips:', e);
+      }
+      try {
+        searchReels = (await storage.searchReels(query)).slice(0, limitNum);
+      } catch (e) {
+        console.error('[Search] Error searching reels:', e);
+      }
+      try {
+        searchScreenshots = (await storage.searchScreenshots(query)).slice(0, limitNum);
+      } catch (e) {
+        console.error('[Search] Error searching screenshots:', e);
+      }
+
+      console.log(`[Search] Results: ${hashtags.length} hashtags, ${searchUsers.length} users, ${searchGames.length} games, ${searchClips.length} clips, ${searchReels.length} reels, ${searchScreenshots.length} screenshots`);
+      return res.json({ hashtags, users: searchUsers, games: searchGames, clips: searchClips, reels: searchReels, screenshots: searchScreenshots });
     } catch (err) {
       console.error("Error in unified search:", err);
       return res.status(500).json({ message: "Error performing search" });

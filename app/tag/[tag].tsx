@@ -45,20 +45,31 @@ export default function TagScreen() {
         if (contentType === 'clips') {
           try {
             result = await api.search.clips(hashtagQuery, token || undefined);
+            result = result.filter(item => item.videoType === 'clip' || !item.videoType);
           } catch {
-            const feed = await api.clips.getFeed(token || undefined, { page: 1, limit: 50 });
-            result = feed.filter(item => item.videoType === 'clip');
+            console.log('[TagScreen] Search clips API failed, returning empty');
+            result = [];
           }
-          result = result.filter(item => item.videoType === 'clip' || !item.videoType);
         } else if (contentType === 'reels') {
           try {
             result = await api.search.reels(hashtagQuery, token || undefined);
+            result = result.filter(item => item.videoType === 'reel');
           } catch {
-            result = await api.reels.getLatest(token || undefined);
+            console.log('[TagScreen] Search reels API failed, returning empty');
+            result = [];
           }
-          result = result.filter(item => item.videoType === 'reel');
         } else if (contentType === 'screenshots') {
-          result = [];
+          try {
+            const screenshots = await api.search.screenshots(hashtagQuery, token || undefined);
+            result = screenshots.map((s: any) => ({
+              ...s,
+              videoType: 'screenshot',
+              _count: s._count || { likes: 0, fires: 0, comments: 0 },
+            }));
+          } catch {
+            console.log('[TagScreen] Search screenshots API failed, returning empty');
+            result = [];
+          }
         }
 
         let sorted = [...result];
