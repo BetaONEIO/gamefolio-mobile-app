@@ -65,28 +65,6 @@ function getBackendUrl(): string {
   return '';
 }
 
-const mockHashtags = [
-  { id: '1', name: 'valorant', count: 15420 },
-  { id: '2', name: 'fortnite', count: 12300 },
-  { id: '3', name: 'apex', count: 9800 },
-  { id: '4', name: 'csgo', count: 8500 },
-  { id: '5', name: 'leagueoflegends', count: 7200 },
-  { id: '6', name: 'minecraft', count: 6800 },
-  { id: '7', name: 'overwatch', count: 5400 },
-  { id: '8', name: 'rocketleague', count: 4200 },
-  { id: '9', name: 'callofduty', count: 3900 },
-  { id: '10', name: 'gta', count: 3500 },
-];
-
-// No mock users - only real users from database will be shown
-
-const mockGames = [
-  { id: '1', name: 'Valorant', icon: 'https://static-cdn.jtvnw.net/ttv-boxart/516575-100x100.jpg', category: 'FPS', players: 450000 },
-  { id: '2', name: 'Fortnite', icon: 'https://static-cdn.jtvnw.net/ttv-boxart/33214-100x100.jpg', category: 'Battle Royale', players: 380000 },
-  { id: '3', name: 'League of Legends', icon: 'https://static-cdn.jtvnw.net/ttv-boxart/21779-100x100.jpg', category: 'MOBA', players: 320000 },
-  { id: '4', name: 'Apex Legends', icon: 'https://static-cdn.jtvnw.net/ttv-boxart/511224-100x100.jpg', category: 'Battle Royale', players: 280000 },
-  { id: '5', name: 'Minecraft', icon: 'https://static-cdn.jtvnw.net/ttv-boxart/27471-100x100.jpg', category: 'Sandbox', players: 250000 },
-];
 
 async function searchAll(query: string, limit: number): Promise<SearchResponse> {
   const baseUrl = getBackendUrl();
@@ -95,8 +73,8 @@ async function searchAll(query: string, limit: number): Promise<SearchResponse> 
   console.log('[Search] Env.BACKEND_URL:', Env.BACKEND_URL);
   
   if (!baseUrl) {
-    console.log('[Search] No backend URL, using local mock data');
-    return searchMockData(query, limit);
+    console.log('[Search] No backend URL available');
+    return emptySearchResults();
   }
   
   console.log('[Search] Fetching search results for:', query);
@@ -125,21 +103,21 @@ async function searchAll(query: string, limit: number): Promise<SearchResponse> 
     console.log('[Search] Raw response (first 300 chars):', text.substring(0, 300));
     
     if (text.startsWith('<!DOCTYPE') || text.startsWith('<html') || text.startsWith('<')) {
-      console.log('[Search] Received HTML, falling back to mock data');
-      return searchMockData(query, limit);
+      console.log('[Search] Received HTML instead of JSON');
+      return emptySearchResults();
     }
     
     if (!response.ok) {
-      console.log('[Search] Error response, falling back to mock data');
-      return searchMockData(query, limit);
+      console.log('[Search] Error response');
+      return emptySearchResults();
     }
     
     let data;
     try {
       data = JSON.parse(text);
     } catch {
-      console.log('[Search] Failed to parse JSON, falling back to mock data');
-      return searchMockData(query, limit);
+      console.log('[Search] Failed to parse JSON');
+      return emptySearchResults();
     }
     
     console.log('[Search] Data received:', JSON.stringify(data).substring(0, 200));
@@ -168,31 +146,16 @@ async function searchAll(query: string, limit: number): Promise<SearchResponse> 
     };
   } catch (error: any) {
     if (error?.name === 'AbortError') {
-      console.log('[Search] Request timed out, falling back to mock data');
+      console.log('[Search] Request timed out');
     } else {
-      console.log('[Search] Error:', error?.message || error, ', falling back to mock data');
+      console.log('[Search] Error:', error?.message || error);
     }
-    return searchMockData(query, limit);
+    return emptySearchResults();
   }
 }
 
-function searchMockData(query: string, limit: number): SearchResponse {
-  const searchTerm = query.toLowerCase();
-  
-  const hashtags = mockHashtags
-    .filter(tag => tag.name.toLowerCase().includes(searchTerm))
-    .slice(0, limit);
-    
-  // No mock users - return empty array, real users come from backend
-  const users: UserResult[] = [];
-    
-  const games = mockGames
-    .filter(game => game.name.toLowerCase().includes(searchTerm))
-    .slice(0, limit);
-    
-  console.log('[Search] Mock results (users always empty - real users from backend):', { hashtags: hashtags.length, users: users.length, games: games.length });
-  
-  return { hashtags, users, games };
+function emptySearchResults(): SearchResponse {
+  return { hashtags: [], users: [], games: [] };
 }
 
 function formatNumber(num: number): string {

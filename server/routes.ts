@@ -6735,75 +6735,83 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
   // Unified search endpoints that match frontend expectations
 
-  // Search clips with query parameter
   app.get("/api/search/clips", async (req, res) => {
     try {
       const query = req.query.q as string;
       if (!query) {
         return res.status(400).json({ message: "Search query is required" });
       }
-      const clips = await storage.searchClips(query);
-      res.json(clips);
+      const encodedQ = encodeURIComponent(query);
+      const prodResult = await proxyToProduction(`/api/search/clips?q=${encodedQ}`, {});
+      res.json(Array.isArray(prodResult) ? prodResult : []);
     } catch (err) {
       console.error("Error searching clips:", err);
       return res.status(500).json({ message: "Error searching clips" });
     }
   });
 
-  // Search users with query parameter
   app.get("/api/search/users", async (req, res) => {
     try {
       const query = req.query.q as string;
       if (!query) {
         return res.status(400).json({ message: "Search query is required" });
       }
-      const users = await storage.searchUsers(query);
-      res.json(users);
+      const encodedQ = encodeURIComponent(query);
+      const prodResult = await proxyToProduction(`/api/search/users?q=${encodedQ}`, {});
+      res.json(Array.isArray(prodResult) ? prodResult : []);
     } catch (err) {
       console.error("Error searching users:", err);
       return res.status(500).json({ message: "Error searching users" });
     }
   });
 
-  // Search games with query parameter
   app.get("/api/search/games", async (req, res) => {
     try {
       const query = req.query.q as string;
       if (!query) {
         return res.status(400).json({ message: "Search query is required" });
       }
-      const games = await storage.searchGames(query);
-      res.json(games);
+      try {
+        const twitchGames = await twitchApi.searchGames(query, 20);
+        const games = twitchGames.map((g: { id?: string; twitchId?: string; name: string; box_art_url?: string; boxArt?: string }) => {
+          let icon = g.box_art_url || g.boxArt || '';
+          icon = icon.replace(/\d+x\d+/, '100x100');
+          return { id: g.id || g.twitchId, name: g.name, icon, category: 'Game' };
+        });
+        res.json(games);
+      } catch {
+        res.json([]);
+      }
     } catch (err) {
       console.error("Error searching games:", err);
       return res.status(500).json({ message: "Error searching games" });
     }
   });
 
-  // Search reels with query parameter
   app.get("/api/search/reels", async (req, res) => {
     try {
       const query = req.query.q as string;
       if (!query) {
         return res.status(400).json({ message: "Search query is required" });
       }
-      const reels = await storage.searchReels(query);
-      res.json(reels);
+      const encodedQ = encodeURIComponent(query);
+      const prodResult = await proxyToProduction(`/api/search/reels?q=${encodedQ}`, {});
+      res.json(Array.isArray(prodResult) ? prodResult : []);
     } catch (err) {
       console.error("Error searching reels:", err);
       return res.status(500).json({ message: "Error searching reels" });
     }
   });
 
-  // Search screenshots with query parameter
   app.get("/api/search/screenshots", async (req, res) => {
     try {
       const query = req.query.q as string;
       if (!query) {
         return res.status(400).json({ message: "Search query is required" });
       }
-      const screenshots = await storage.searchScreenshots(query);
-      res.json(screenshots);
+      const encodedQ = encodeURIComponent(query);
+      const prodResult = await proxyToProduction(`/api/search/screenshots?q=${encodedQ}`, {});
+      res.json(Array.isArray(prodResult) ? prodResult : []);
     } catch (err) {
       console.error("Error searching screenshots:", err);
       return res.status(500).json({ message: "Error searching screenshots" });
