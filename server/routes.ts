@@ -6672,14 +6672,23 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
       const prodUsers = await proxyToProduction(`/api/search/users?q=${encodedQ}`, {}).catch(() => null);
 
-      const users = (Array.isArray(prodUsers) ? prodUsers : []).slice(0, limitNum).map((u: any) => ({
-        id: String(u.id),
-        username: u.username || '',
-        displayName: u.displayName || u.display_name || u.username || '',
-        avatar: u.avatarUrl || u.avatar_url || u.avatar || defaultAvatarUrl(u.username || '', u.displayName || u.display_name),
-        verified: u.verified || u.isVerified || false,
-        followers: u.followers || u._count?.followers || 0,
-      }));
+      const users = (Array.isArray(prodUsers) ? prodUsers : []).slice(0, limitNum).map((u: any) => {
+        let avatar = u.avatarUrl || u.avatar_url || u.avatar || '';
+        if (avatar && avatar.startsWith('/')) {
+          avatar = `${PRODUCTION_API_URL}${avatar}`;
+        }
+        if (!avatar) {
+          avatar = defaultAvatarUrl(u.username || '', u.displayName || u.display_name);
+        }
+        return {
+          id: String(u.id),
+          username: u.username || '',
+          displayName: u.displayName || u.display_name || u.username || '',
+          avatar,
+          verified: u.verified || u.isVerified || false,
+          followers: u.followers || u._count?.followers || 0,
+        };
+      });
 
       let clips: any[] = [];
       let reels: any[] = [];

@@ -570,7 +570,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
                             style={styles.resultItem}
                             onPress={() => handleUserPress(user)}
                           >
-                            <Image source={{ uri: user.avatar }} style={styles.userAvatar} />
+                            <Image source={{ uri: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.username)}&background=1a1a2e&color=4ADE80&bold=true&size=128` }} style={styles.userAvatar} />
                             <View style={styles.resultInfo}>
                               <View style={styles.usernameRow}>
                                 <Text style={styles.resultName}>{user.displayName}</Text>
