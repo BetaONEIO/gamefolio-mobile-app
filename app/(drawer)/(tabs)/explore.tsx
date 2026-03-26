@@ -15,7 +15,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Search, X, Play, User, Film, Camera, Video, Gamepad2 } from 'lucide-react-native';
+import { Search, X, Play, User, Film, Camera, Video, Gamepad2, Hash } from 'lucide-react-native';
 import { Clip, Screenshot } from '@/lib/api';
 import { useRouter } from 'expo-router';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
@@ -256,7 +256,7 @@ export default function ExploreScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLevelModalVisible, setIsLevelModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeSearchTab, setActiveSearchTab] = useState<'all' | 'users' | 'games' | 'clips' | 'reels' | 'screenshots'>('all');
+  const [activeSearchTab, setActiveSearchTab] = useState<'all' | 'users' | 'hashtags' | 'games' | 'clips' | 'reels' | 'screenshots'>('all');
 
 
   const searchInputRef = useRef<TextInput>(null);
@@ -349,7 +349,7 @@ export default function ExploreScreen() {
     queryKey: ['search', 'combined', debouncedSearch],
     queryFn: async () => {
       const trimmedSearch = debouncedSearch?.trim() || '';
-      if (!trimmedSearch) return { clips: [] as Clip[], reels: [] as Clip[], screenshots: [] as Screenshot[] };
+      if (!trimmedSearch) return { clips: [] as Clip[], reels: [] as Clip[], screenshots: [] as Screenshot[], hashtags: [] as { id: string; name: string; count: number }[] };
       try {
         const token = await getAccessToken();
         const result = await api.search.search(trimmedSearch, token || undefined, true);
@@ -357,10 +357,11 @@ export default function ExploreScreen() {
           clips: (result.clips || []).filter((c: Clip) => c.videoType === 'clip'),
           reels: (result.reels || (result.clips || []).filter((c: Clip) => c.videoType === 'reel')),
           screenshots: result.screenshots || [],
+          hashtags: result.hashtags || [],
         };
       } catch (error) {
         console.error('[Explore] Combined search error:', error);
-        return { clips: [] as Clip[], reels: [] as Clip[], screenshots: [] as Screenshot[] };
+        return { clips: [] as Clip[], reels: [] as Clip[], screenshots: [] as Screenshot[], hashtags: [] as { id: string; name: string; count: number }[] };
       }
     },
     enabled: !!debouncedSearch && debouncedSearch.trim().length > 0,
@@ -420,7 +421,7 @@ export default function ExploreScreen() {
     Keyboard.dismiss();
     router.push({ 
       pathname: '/user/[id]', 
-      params: { id: user.id.toString() } 
+      params: { id: user.username } 
     });
   }, [router]);
 
@@ -537,6 +538,7 @@ export default function ExploreScreen() {
                 {([
                   { key: 'all', label: 'All', icon: <Search size={14} color={activeSearchTab === 'all' ? '#131F2A' : '#94A3B8'} /> },
                   { key: 'users', label: 'Users', icon: <User size={14} color={activeSearchTab === 'users' ? '#131F2A' : '#94A3B8'} /> },
+                  { key: 'hashtags', label: 'Hashtags', icon: <Hash size={14} color={activeSearchTab === 'hashtags' ? '#131F2A' : '#94A3B8'} /> },
                   { key: 'games', label: 'Games', icon: <Gamepad2 size={14} color={activeSearchTab === 'games' ? '#131F2A' : '#94A3B8'} /> },
                   { key: 'clips', label: 'Clips', icon: <Film size={14} color={activeSearchTab === 'clips' ? '#131F2A' : '#94A3B8'} /> },
                   { key: 'reels', label: 'Reels', icon: <Video size={14} color={activeSearchTab === 'reels' ? '#131F2A' : '#94A3B8'} /> },
@@ -590,6 +592,37 @@ export default function ExploreScreen() {
                       </View>
                     </>
                   )}
+
+                  {/* Hashtags Section */}
+                  {(activeSearchTab === 'all' || activeSearchTab === 'hashtags') && (combinedSearchQuery.data?.hashtags?.length || 0) > 0 ? (
+                    <>
+                      <View style={styles.sectionHeader}>
+                        <Hash size={18} color="#4ADE80" />
+                        <Text style={styles.sectionTitle}>Hashtags</Text>
+                      </View>
+                      <View style={styles.usersGrid}>
+                        {combinedSearchQuery.data?.hashtags?.map((tag) => (
+                          <TouchableOpacity
+                            key={tag.id}
+                            style={styles.userCard}
+                            onPress={() => {
+                              Keyboard.dismiss();
+                              router.push({ pathname: '/tag/[tag]', params: { tag: tag.name } });
+                            }}
+                            activeOpacity={0.7}
+                          >
+                            <View style={[styles.userAvatar, { backgroundColor: 'rgba(74, 222, 128, 0.15)', alignItems: 'center', justifyContent: 'center' }]}>
+                              <Hash size={20} color="#4ADE80" />
+                            </View>
+                            <View style={styles.userInfo}>
+                              <Text style={styles.userDisplayName} numberOfLines={1}>#{tag.name}</Text>
+                              <Text style={styles.userUsername} numberOfLines={1}>{tag.count > 0 ? `${tag.count.toLocaleString()} posts` : 'Explore'}</Text>
+                            </View>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </>
+                  ) : null}
 
                   {/* Games Section */}
                   {(activeSearchTab === 'all' || activeSearchTab === 'games') && displayedGames.length > 0 && (
