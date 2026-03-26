@@ -1193,11 +1193,16 @@ export const api = {
   },
 
   reels: {
-    getLatest: (token?: string) =>
-      apiFetch<Clip[]>('/api/reels/latest', {
+    getLatest: (token?: string, options?: { limit?: number; period?: string }) => {
+      const params = new URLSearchParams();
+      if (options?.limit) params.set('limit', options.limit.toString());
+      if (options?.period) params.set('period', options.period);
+      const qs = params.toString();
+      return apiFetch<Clip[]>(`/api/reels/latest${qs ? `?${qs}` : ''}`, {
         method: 'GET',
         token,
-      }),
+      });
+    },
 
     getTrending: (token?: string) =>
       apiFetch<Clip[]>('/api/reels/trending', {
