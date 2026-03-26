@@ -352,7 +352,7 @@ export default function ExploreScreen() {
       if (!trimmedSearch) return { clips: [] as Clip[], reels: [] as Clip[], screenshots: [] as Screenshot[] };
       try {
         const token = await getAccessToken();
-        const result = await api.search.search(trimmedSearch, token || undefined);
+        const result = await api.search.search(trimmedSearch, token || undefined, true);
         return {
           clips: (result.clips || []).filter((c: Clip) => c.videoType === 'clip'),
           reels: (result.reels || (result.clips || []).filter((c: Clip) => c.videoType === 'reel')),

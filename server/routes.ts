@@ -6668,12 +6668,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const searchTerm = query.toLowerCase();
       const encodedQ = encodeURIComponent(query);
 
-      const [prodUsers, prodClips, prodReels, prodScreenshots] = await Promise.all([
-        proxyToProduction(`/api/search/users?q=${encodedQ}`, {}).catch(() => null),
-        proxyToProduction(`/api/search/clips?q=${encodedQ}`, {}).catch(() => null),
-        proxyToProduction(`/api/search/reels?q=${encodedQ}`, {}).catch(() => null),
-        proxyToProduction(`/api/search/screenshots?q=${encodedQ}`, {}).catch(() => null),
-      ]);
+      const includeContent = req.query.include_content === 'true';
+
+      const prodUsers = await proxyToProduction(`/api/search/users?q=${encodedQ}`, {}).catch(() => null);
 
       const users = (Array.isArray(prodUsers) ? prodUsers : []).slice(0, limitNum).map((u: any) => ({
         id: String(u.id),
@@ -6684,9 +6681,20 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         followers: u.followers || u._count?.followers || 0,
       }));
 
-      const clips = Array.isArray(prodClips) ? prodClips.slice(0, limitNum) : [];
-      const reels = Array.isArray(prodReels) ? prodReels.slice(0, limitNum) : [];
-      const screenshots = Array.isArray(prodScreenshots) ? prodScreenshots.slice(0, limitNum) : [];
+      let clips: any[] = [];
+      let reels: any[] = [];
+      let screenshots: any[] = [];
+
+      if (includeContent) {
+        const [prodClips, prodReels, prodScreenshots] = await Promise.all([
+          proxyToProduction(`/api/search/clips?q=${encodedQ}`, {}).catch(() => null),
+          proxyToProduction(`/api/search/reels?q=${encodedQ}`, {}).catch(() => null),
+          proxyToProduction(`/api/search/screenshots?q=${encodedQ}`, {}).catch(() => null),
+        ]);
+        clips = Array.isArray(prodClips) ? prodClips.slice(0, limitNum) : [];
+        reels = Array.isArray(prodReels) ? prodReels.slice(0, limitNum) : [];
+        screenshots = Array.isArray(prodScreenshots) ? prodScreenshots.slice(0, limitNum) : [];
+      }
 
       let games: { id: string; name: string; icon: string; category: string; players: number }[] = [];
       try {

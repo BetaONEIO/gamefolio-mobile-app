@@ -1706,8 +1706,9 @@ export const api = {
       });
     },
 
-    search: (query: string, token?: string) => {
+    search: (query: string, token?: string, includeContent?: boolean) => {
       console.log(`[Search API] 🔵 Searching all: ${query} via REST...`);
+      const contentParam = includeContent ? '&include_content=true' : '';
       return apiFetch<{
         games?: TwitchGame[];
         users?: User[];
@@ -1715,7 +1716,7 @@ export const api = {
         clips?: Clip[];
         reels?: Clip[];
         screenshots?: Screenshot[];
-      }>(`/api/search?q=${encodeURIComponent(query)}`, {
+      }>(`/api/search?q=${encodeURIComponent(query)}${contentParam}`, {
         method: 'GET',
         token,
       });

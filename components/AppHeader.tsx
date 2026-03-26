@@ -216,7 +216,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-    }, 150);
+    }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
