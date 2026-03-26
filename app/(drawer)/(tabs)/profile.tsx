@@ -1,10 +1,12 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Pressable } from 'react-native';
+import Animated from 'react-native-reanimated';
 import ScrollView from '@/components/ThemedScrollView';
 import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart, Camera } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState, useMemo } from 'react';
+import { useCyberpunkPulse } from '@/lib/cyberpunk-animation';
 import { useRouter } from 'expo-router';
 import { getProfileTheme, ProfileThemeTokens } from '@/constants/themes';
 import { useAuth } from '@/context/AuthContext';
@@ -187,6 +189,7 @@ export default function ProfileScreen() {
   const theme = useMemo(() => getProfileTheme((user as any)?.profileTheme), [user]);
   const h = useMemo(() => createHeaderStyles(theme), [theme]);
   const displayFont = useMemo(() => FONT_STYLES.find(f => f.id === (theme.displayNameFontId || 'default')), [theme]);
+  const cyberpunkPulse = useCyberpunkPulse();
   
   // Fetch profile stats (clips count, followers, following) using REST
   const { data: profileStats } = useQuery({
@@ -597,7 +600,7 @@ export default function ProfileScreen() {
               </Text>
             </LinearGradient>
           </TouchableOpacity>
-          <View
+          <Animated.View
             style={[
               styles.infoBorderContainer,
               {
@@ -607,10 +610,8 @@ export default function ProfileScreen() {
                 borderColor: h.cardBorder,
                 shadowColor: theme.shadowColor,
                 shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.6,
-                shadowRadius: 10,
-                elevation: 8,
-              }
+              },
+              cyberpunkPulse,
             ]}
           >
             {profileSectionTab === 'stats' ? (
@@ -664,7 +665,7 @@ export default function ProfileScreen() {
                 )}
               </View>
             )}
-          </View>
+          </Animated.View>
         </View>
 
         {profileSectionTab === 'stats' && profileData.platforms.length > 0 ? (
