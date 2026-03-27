@@ -7,6 +7,7 @@ import { ArrowLeft, RefreshCw } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { Env } from '@/constants/Env';
+import { resolveNftImageUrl } from '@/lib/image-utils';
 
 const { width } = Dimensions.get('window');
 const NUM_COLS = 2;
@@ -16,12 +17,6 @@ const CARD_WIDTH = (width - SIDE_PAD * 2 - CARD_MARGIN * (NUM_COLS - 1)) / NUM_C
 
 type TabType = 'nfts' | 'borders' | 'tags';
 type FilterType = 'owned' | 'sold';
-
-function resolveImageUrl(image?: string | null): string | null {
-  if (!image) return null;
-  if (image.startsWith('http')) return image;
-  return `${Env.BACKEND_URL}${image}`;
-}
 
 export default function Collections() {
   const router = useRouter();
@@ -62,7 +57,7 @@ export default function Collections() {
   };
 
   const renderNFTCard = ({ item }: { item: any }) => {
-    const imageUrl = resolveImageUrl(item.image || item.imageDataUrl);
+    const imageUrl = resolveNftImageUrl(item.image || item.imageDataUrl);
     const rarity = item.rarity || 'RARE';
     const isSold = !!item.sold;
 

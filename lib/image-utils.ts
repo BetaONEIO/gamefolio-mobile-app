@@ -118,6 +118,12 @@ export async function signUserData(user: any): Promise<any> {
   return signed;
 }
 
+export function resolveNftImageUrl(image?: string | null): string | null {
+  if (!image) return null;
+  if (image.startsWith('http')) return image;
+  return `${Env.BACKEND_URL}${image}`;
+}
+
 export function getImageCacheKey(url: string | null | undefined): string | undefined {
   if (!url) return undefined;
 

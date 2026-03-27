@@ -29,6 +29,7 @@ import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { Env } from '@/constants/Env';
+import { resolveNftImageUrl } from '@/lib/image-utils';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
@@ -320,12 +321,13 @@ export default function StorePage() {
             const canAfford = gfBalance >= listing.listed_price;
             const isOwnListing = listing.user_id === user?.id;
             const sellerName = listing.display_name || listing.username || 'Unknown';
+            const listingImageUrl = resolveNftImageUrl(listing.image_url);
             return (
               <View key={listing.token_id} style={styles.nftCard}>
                 <View style={styles.nftImageContainer}>
-                  {listing.image_url ? (
+                  {listingImageUrl ? (
                     <Image
-                      source={{ uri: listing.image_url.startsWith('http') ? listing.image_url : `${Env.BACKEND_URL}${listing.image_url}` }}
+                      source={{ uri: listingImageUrl }}
                       style={styles.nftImage}
                       resizeMode="cover"
                     />
