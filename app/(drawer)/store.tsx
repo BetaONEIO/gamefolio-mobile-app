@@ -33,7 +33,7 @@ import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 52) / 2;
-const MINT_PRICE_PER_NFT = 500;
+const MINT_PRICE_PER_NFT = 250;
 const MAX_MINT_QTY = 5;
 
 interface StoreItem {
@@ -71,7 +71,7 @@ const RARITY_COLORS: Record<string, string> = {
 
 export default function StorePage() {
   const router = useRouter();
-  const { user, getAccessToken } = useAuth();
+  const { user, getAccessToken, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('buy');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -82,6 +82,7 @@ export default function StorePage() {
 
   const [mintQty, setMintQty] = useState(1);
   const [mintState, setMintState] = useState<MintState>('idle');
+  const [mintConfirming, setMintConfirming] = useState(false);
   const [mintError, setMintError] = useState('');
   const [mintedTokenIds, setMintedTokenIds] = useState<number[]>([]);
 
@@ -137,7 +138,7 @@ export default function StorePage() {
 
     try {
       const token = await getAccessToken();
-      const res = await fetch(`${Env.BACKEND_URL}/api/store/purchase-intent`, {
+      const res = await fetch(`${Env.BACKEND_URL}/api/store/buy-with-gf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ itemId: selectedItem.id }),
@@ -147,6 +148,9 @@ export default function StorePage() {
         setPurchaseState('error');
         setPurchaseError(data.error || 'Purchase failed. Please try again.');
         return;
+      }
+      if (data.newBalance !== undefined) {
+        updateUser({ gfTokenBalance: data.newBalance });
       }
       queryClient.invalidateQueries({ queryKey: ['/api/store/owned'] });
       setPurchaseState('success');
@@ -163,6 +167,7 @@ export default function StorePage() {
   };
 
   const handleMintNFT = async () => {
+    setMintConfirming(false);
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setMintState('processing');
     setMintError('');
@@ -484,7 +489,7 @@ export default function StorePage() {
 
           <TouchableOpacity
             style={[styles.mintButton, !canAffordMint && styles.mintButtonDisabled]}
-            onPress={handleMintNFT}
+            onPress={() => { if (canAffordMint) setMintConfirming(true); }}
             disabled={!canAffordMint}
             activeOpacity={0.8}
           >
@@ -722,6 +727,64 @@ export default function StorePage() {
                 </TouchableOpacity>
               </>
             ) : null}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={mintConfirming}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMintConfirming(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Confirm Mint</Text>
+              <TouchableOpacity onPress={() => setMintConfirming(false)} activeOpacity={0.7} style={styles.closeBtn}>
+                <X size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.mintConfirmCard}>
+              <View style={styles.mintConfirmRow}>
+                <Sparkles size={32} color="#4ADE80" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.mintConfirmTitle}>Gamefolio Genesis</Text>
+                  <Text style={styles.mintConfirmSub}>{mintQty} NFT{mintQty > 1 ? 's' : ''} on SKALE blockchain</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.mintConfirmSummary}>
+              <View style={styles.mintConfirmSummaryRow}>
+                <Text style={styles.mintSummaryLabel}>Quantity</Text>
+                <Text style={styles.mintSummaryValue}>{mintQty}</Text>
+              </View>
+              <View style={styles.mintConfirmSummaryRow}>
+                <Text style={styles.mintSummaryLabel}>Price per NFT</Text>
+                <Text style={styles.mintSummaryValue}>{MINT_PRICE_PER_NFT.toLocaleString()} GF</Text>
+              </View>
+              <View style={[styles.mintConfirmSummaryRow, styles.mintConfirmTotal]}>
+                <Text style={styles.mintTotalLabelBold}>Total Cost</Text>
+                <Text style={styles.mintTotalValueGreen}>{(mintQty * MINT_PRICE_PER_NFT).toLocaleString()} GF</Text>
+              </View>
+              <View style={styles.mintConfirmSummaryRow}>
+                <Text style={styles.mintSummaryLabel}>Your Balance</Text>
+                <Text style={styles.mintSummaryValue}>{gfBalance.toLocaleString()} GF</Text>
+              </View>
+              <View style={styles.mintConfirmSummaryRow}>
+                <Text style={styles.mintSummaryLabel}>After Mint</Text>
+                <Text style={styles.mintSummaryValue}>{(gfBalance - mintQty * MINT_PRICE_PER_NFT).toLocaleString()} GF</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity style={styles.confirmButton} onPress={handleMintNFT} activeOpacity={0.8}>
+              <Text style={styles.confirmButtonText}>Confirm Mint</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelLink} onPress={() => setMintConfirming(false)} activeOpacity={0.7}>
+              <Text style={styles.cancelLinkText}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -1007,6 +1070,28 @@ const styles = StyleSheet.create({
   resultText: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 20 },
   doneButton: { backgroundColor: '#4ADE80', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 40, marginTop: 8 },
   doneButtonText: { fontSize: 16, fontWeight: '700' as const, color: '#020617' },
-  cancelLink: { paddingVertical: 8 },
+  cancelLink: { paddingVertical: 8, alignItems: 'center' },
   cancelLinkText: { fontSize: 14, color: '#64748B' },
+  mintConfirmCard: {
+    backgroundColor: '#131F2A',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+  },
+  mintConfirmRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  mintConfirmTitle: { fontSize: 18, fontWeight: '700' as const, color: '#FFFFFF', marginBottom: 4 },
+  mintConfirmSub: { fontSize: 13, color: '#94A3B8' },
+  mintConfirmSummary: {
+    backgroundColor: '#131F2A',
+    borderRadius: 14,
+    padding: 16,
+    gap: 12,
+    marginBottom: 20,
+  },
+  mintConfirmSummaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  mintConfirmTotal: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 12 },
+  mintSummaryLabel: { fontSize: 14, color: '#94A3B8' },
+  mintSummaryValue: { fontSize: 14, fontWeight: '600' as const, color: '#FFFFFF' },
+  mintTotalLabelBold: { fontSize: 16, fontWeight: '700' as const, color: '#FFFFFF' },
+  mintTotalValueGreen: { fontSize: 18, fontWeight: '700' as const, color: '#4ADE80' },
 });

@@ -157,6 +157,81 @@ router.post('/api/store/purchase-intent', async (req: Request, res: Response) =>
   }
 });
 
+router.post('/api/store/buy-with-gf', async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { itemId } = req.body;
+    if (!itemId) {
+      return res.status(400).json({ error: 'itemId is required' });
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const [item] = await db.select().from(storeItems).where(eq(storeItems.id, itemId)).limit(1);
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+    if (!item.available) {
+      return res.status(400).json({ error: 'Item is not available' });
+    }
+
+    const existing = await db
+      .select()
+      .from(storePurchases)
+      .where(and(
+        eq(storePurchases.userId, userId),
+        eq(storePurchases.itemId, itemId),
+        eq(storePurchases.status, 'completed')
+      ))
+      .limit(1);
+    if (existing.length) {
+      return res.status(400).json({ error: 'You already own this item' });
+    }
+
+    const isPro = !!user.isPro;
+    const finalCost = isPro ? Math.floor(item.gfCost * 0.8) : item.gfCost;
+    const currentBalance = user.gfTokenBalance ?? 0;
+
+    if (currentBalance < finalCost) {
+      return res.status(400).json({
+        error: `Insufficient GF balance. You need ${finalCost - currentBalance} more GF.`,
+        required: finalCost,
+        current: currentBalance,
+      });
+    }
+
+    const newBalance = currentBalance - finalCost;
+    await db.update(users).set({ gfTokenBalance: newBalance }).where(eq(users.id, userId));
+
+    const [purchase] = await db.insert(storePurchases).values({
+      userId,
+      itemId,
+      walletAddress: user.walletAddress || 'gf-balance',
+      gfAmount: finalCost,
+      status: 'completed',
+      completedAt: new Date(),
+    }).returning();
+
+    return res.json({
+      success: true,
+      purchaseId: purchase.id,
+      itemName: item.name,
+      gfCost: finalCost,
+      newBalance,
+    });
+  } catch (error: any) {
+    console.error('Buy with GF error:', error);
+    return res.status(500).json({ error: 'Failed to complete purchase' });
+  }
+});
+
 router.post('/api/store/verify-purchase', async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;

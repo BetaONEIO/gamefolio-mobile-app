@@ -45,7 +45,7 @@ interface StoreItem {
 type PurchaseState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
 
 export default function StorePage() {
-  const { user, getAccessToken } = useAuth();
+  const { user, getAccessToken, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedItem, setSelectedItem] = useState<StoreItem | null>(null);
@@ -85,7 +85,7 @@ export default function StorePage() {
 
     try {
       const token = await getAccessToken();
-      const res = await fetch(`${Env.BACKEND_URL}/api/store/purchase-intent`, {
+      const res = await fetch(`${Env.BACKEND_URL}/api/store/buy-with-gf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -101,6 +101,9 @@ export default function StorePage() {
         return;
       }
 
+      if (data.newBalance !== undefined) {
+        updateUser({ gfTokenBalance: data.newBalance });
+      }
       queryClient.invalidateQueries({ queryKey: ['/api/store/owned'] });
       setPurchaseState('success');
     } catch {

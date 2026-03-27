@@ -38,7 +38,7 @@ const PRESET_AMOUNTS = [
   { value: 100, label: '£100', gf: 10000 },
 ];
 
-type CheckoutState = 'idle' | 'creating' | 'browser' | 'recovering' | 'success' | 'error';
+type CheckoutState = 'idle' | 'creating' | 'browser' | 'recovering' | 'polling' | 'success' | 'error';
 
 interface OrderResult {
   orderId: string;
@@ -105,6 +105,64 @@ export default function BuyGFPage() {
   const selectedPreset = PRESET_AMOUNTS.find(p => p.value === selectedAmount);
   const gfAmount = selectedAmount * GF_PRICE_PER_POUND;
 
+  const POLL_INTERVAL_MS = 4000;
+  const MAX_POLL_ATTEMPTS = 30;
+
+  const pollOrderStatus = useCallback(async (orderId: string, initialGfAmount: number) => {
+    let attempts = 0;
+    setCheckoutState('polling');
+
+    while (attempts < MAX_POLL_ATTEMPTS) {
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
+      attempts++;
+
+      try {
+        const token = await getAccessToken();
+        const orderRes = await fetch(`${Env.BACKEND_URL}/api/gf/orders/${orderId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!orderRes.ok) continue;
+
+        const orderData = await orderRes.json();
+        const status: string = orderData?.status || 'created';
+
+        setOrderResult({
+          orderId,
+          gfAmount: orderData?.gfAmount ?? initialGfAmount,
+          status,
+        });
+
+        if (status === 'credited' || status === 'delivered') {
+          if (typeof orderData?.newBalance === 'number') {
+            updateUser({ gfTokenBalance: orderData.newBalance });
+          } else if (typeof orderData?.gfAmount === 'number') {
+            updateUser({ gfTokenBalance: (user?.gfTokenBalance ?? 0) + orderData.gfAmount });
+          }
+          queryClient.invalidateQueries({ queryKey: ['/api/store/owned'] });
+          setCheckoutState('success');
+          return;
+        }
+
+        if (status === 'paid') {
+          setCheckoutState('success');
+          return;
+        }
+
+        if (status === 'failed') {
+          setCheckoutState('error');
+          setErrorMessage('Your order has failed. Please try again or contact support.');
+          return;
+        }
+      } catch {
+        // Continue polling on network error
+      }
+    }
+
+    // Timed out — show current state as success if any non-created status was seen
+    setCheckoutState('error');
+    setErrorMessage('We could not confirm your order status. Your tokens will be credited automatically if payment succeeded. Please check your wallet.');
+  }, [getAccessToken, updateUser, queryClient, user?.gfTokenBalance]);
+
   const handleCheckout = useCallback(async () => {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setCheckoutState('creating');
@@ -146,40 +204,54 @@ export default function BuyGFPage() {
 
       setCheckoutState('recovering');
 
-      const recoverToken = await getAccessToken();
-      await fetch(`${Env.BACKEND_URL}/api/gf/recover-orders`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${recoverToken}` },
-      });
+      try {
+        const recoverToken = await getAccessToken();
+        await fetch(`${Env.BACKEND_URL}/api/gf/recover-orders`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${recoverToken}` },
+        });
+      } catch {
+        // recover-orders is best-effort
+      }
 
+      // Check order status once immediately
       const orderToken = await getAccessToken();
       const orderRes = await fetch(`${Env.BACKEND_URL}/api/gf/orders/${orderId}`, {
         headers: { Authorization: `Bearer ${orderToken}` },
       });
-      const orderData = await orderRes.json();
-
-      const status = orderData?.status || 'created';
+      const orderData = orderRes.ok ? await orderRes.json() : null;
+      const immediateStatus: string = orderData?.status || 'created';
 
       setOrderResult({
         orderId,
         gfAmount: orderData?.gfAmount ?? gfAmount,
-        status,
+        status: immediateStatus,
       });
 
-      if (status === 'credited' || status === 'delivered' || status === 'paid') {
-        if (orderData?.newBalance !== undefined) {
+      if (immediateStatus === 'credited' || immediateStatus === 'delivered' || immediateStatus === 'paid') {
+        if (typeof orderData?.newBalance === 'number') {
           updateUser({ gfTokenBalance: orderData.newBalance });
+        } else if (typeof orderData?.gfAmount === 'number') {
+          updateUser({ gfTokenBalance: (user?.gfTokenBalance ?? 0) + orderData.gfAmount });
         }
         queryClient.invalidateQueries({ queryKey: ['/api/store/owned'] });
         setCheckoutState('success');
-      } else {
-        setCheckoutState('idle');
+        return;
       }
+
+      if (immediateStatus === 'failed') {
+        setCheckoutState('error');
+        setErrorMessage('Your order has failed. Please try again or contact support.');
+        return;
+      }
+
+      // Not yet terminal — start polling
+      await pollOrderStatus(orderId, orderData?.gfAmount ?? gfAmount);
     } catch (err: any) {
       setCheckoutState('error');
       setErrorMessage(err.message || 'An unexpected error occurred. Please try again.');
     }
-  }, [selectedAmount, getAccessToken, gfAmount, updateUser, queryClient]);
+  }, [selectedAmount, getAccessToken, gfAmount, updateUser, queryClient, pollOrderStatus, user?.gfTokenBalance]);
 
   const handleReset = () => {
     setCheckoutState('idle');
@@ -228,20 +300,52 @@ export default function BuyGFPage() {
     );
   }
 
-  if (checkoutState === 'creating' || checkoutState === 'browser' || checkoutState === 'recovering') {
+  if (checkoutState === 'creating' || checkoutState === 'browser' || checkoutState === 'recovering' || checkoutState === 'polling') {
     const stateMessages: Record<string, { title: string; desc: string }> = {
       creating: { title: 'Creating Order...', desc: 'Setting up your checkout session.' },
       browser: { title: 'Complete Payment', desc: 'Finish your payment in the browser window, then return here.' },
-      recovering: { title: 'Confirming Payment...', desc: 'Please wait while we confirm your payment and credit your tokens.' },
+      recovering: { title: 'Confirming Payment...', desc: 'Please wait while we confirm your payment.' },
+      polling: { title: 'Processing Tokens...', desc: 'Waiting for your payment to be confirmed and tokens to be credited. This may take a moment.' },
     };
     const msg = stateMessages[checkoutState] || stateMessages.creating;
+    const currentStatus = orderResult?.status;
+    const statusConfig = currentStatus ? ORDER_STATUS_CONFIG[currentStatus] : null;
 
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4ADE80" />
-        <Text style={styles.loadingTitle}>{msg.title}</Text>
-        <Text style={styles.loadingDesc}>{msg.desc}</Text>
-      </View>
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.pollingContainer}>
+          <ActivityIndicator size="large" color="#4ADE80" />
+          <Text style={styles.loadingTitle}>{msg.title}</Text>
+          <Text style={styles.loadingDesc}>{msg.desc}</Text>
+
+          {statusConfig && orderResult ? (
+            <View style={[styles.statusCard, { backgroundColor: statusConfig.bg, borderColor: statusConfig.color + '40' }]}>
+              <statusConfig.Icon size={24} color={statusConfig.color} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.statusLabel, { color: statusConfig.color }]}>{statusConfig.label}</Text>
+                <Text style={styles.statusDescription}>{statusConfig.description}</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {['created', 'paid', 'delivering', 'delivered'].map((step, idx) => {
+            const cfg = ORDER_STATUS_CONFIG[step];
+            const currentIdx = currentStatus ? ['created', 'paid', 'delivering', 'delivered', 'credited'].indexOf(currentStatus) : -1;
+            const isCompleted = currentIdx > idx;
+            const isActive = currentIdx === idx;
+            const stepColor = isCompleted ? '#4ADE80' : isActive ? cfg.color : '#334155';
+
+            return (
+              <View key={step} style={styles.stepRow}>
+                <View style={[styles.stepDot, { backgroundColor: isCompleted ? '#4ADE80' : isActive ? cfg.color : '#1E293B', borderColor: stepColor }]}>
+                  {isCompleted ? <CheckCircle size={12} color="#020617" /> : null}
+                </View>
+                <Text style={[styles.stepText, { color: stepColor }]}>{cfg.label}</Text>
+              </View>
+            );
+          })}
+        </View>
+      </ScrollView>
     );
   }
 
@@ -408,6 +512,29 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 40 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20, padding: 32 },
+  pollingContainer: { alignItems: 'center', gap: 20, padding: 32, paddingTop: 48 },
+  statusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    width: '100%',
+    marginTop: 8,
+  },
+  statusLabel: { fontSize: 15, fontWeight: '700' as const, marginBottom: 2 },
+  statusDescription: { fontSize: 12, color: '#94A3B8' },
+  stepRow: { flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%' },
+  stepDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepText: { fontSize: 14, fontWeight: '600' as const },
   loadingTitle: { fontSize: 20, fontWeight: '700' as const, color: '#FFFFFF' },
   loadingDesc: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 20 },
   header: { marginBottom: 24 },
