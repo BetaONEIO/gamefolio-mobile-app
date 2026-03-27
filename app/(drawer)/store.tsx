@@ -36,16 +36,15 @@ const CARD_WIDTH = (width - 52) / 2;
 const MINT_PRICE_PER_NFT = 250;
 const MAX_MINT_QTY = 5;
 
-interface StoreItem {
-  id: number;
+interface NftCollectionItem {
+  id: string;
   name: string;
-  description: string | null;
-  category: string;
-  rarity: string;
+  description: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
   gfCost: number;
-  originalPrice?: number;
-  proDiscount?: boolean;
   imageUrl: string | null;
+  category: string;
+  maxSupply: number;
 }
 
 interface OwnedNFT {
@@ -76,7 +75,6 @@ export default function StorePage() {
   const [activeTab, setActiveTab] = useState<TabType>('buy');
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
-  const [selectedItem, setSelectedItem] = useState<StoreItem | null>(null);
   const [purchaseState, setPurchaseState] = useState<PurchaseState>('idle');
   const [purchaseError, setPurchaseError] = useState('');
   const [pendingPurchaseId, setPendingPurchaseId] = useState<number | null>(null);
@@ -87,19 +85,28 @@ export default function StorePage() {
   const [mintError, setMintError] = useState('');
   const [mintedTokenIds, setMintedTokenIds] = useState<number[]>([]);
 
-  const gfBalance = user?.gfTokenBalance ?? 0;
-
-  const { data: storeItems = [], isLoading: storeLoading } = useQuery<StoreItem[]>({
-    queryKey: ['/api/store/items', user?.id],
+  const { data: gfBalanceData } = useQuery<{ gfTokenBalance: number }>({
+    queryKey: ['/api/me/gf-balance', user?.id],
     queryFn: async () => {
       const token = await getAccessToken();
-      const res = await fetch(`${Env.BACKEND_URL}/api/store/items`, {
+      const res = await fetch(`${Env.BACKEND_URL}/api/me/gf-balance`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) return [];
+      if (!res.ok) return { gfTokenBalance: user?.gfTokenBalance ?? 0 };
       return res.json();
     },
     enabled: !!user?.id,
+    staleTime: 30000,
+  });
+  const gfBalance = gfBalanceData?.gfTokenBalance ?? user?.gfTokenBalance ?? 0;
+
+  const { data: nftCollection = [], isLoading: collectionLoading } = useQuery<NftCollectionItem[]>({
+    queryKey: ['/api/nfts/collection'],
+    queryFn: async () => {
+      const res = await fetch(`${Env.BACKEND_URL}/api/nfts/collection`);
+      if (!res.ok) return [];
+      return res.json();
+    },
   });
 
   const { data: ownedNFTs = [], isLoading: nftsLoading } = useQuery<OwnedNFT[]>({
@@ -125,47 +132,26 @@ export default function StorePage() {
     });
   };
 
-  const handleBuyItem = async (item: StoreItem) => {
+  const [selectedNftItem, setSelectedNftItem] = useState<NftCollectionItem | null>(null);
+
+  const handleBuyNftItem = (item: NftCollectionItem) => {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setSelectedItem(item);
+    setSelectedNftItem(item);
     setPurchaseState('confirming');
     setPurchaseError('');
-    setPendingPurchaseId(null);
-
-    try {
-      const token = await getAccessToken();
-      const res = await fetch(`${Env.BACKEND_URL}/api/store/purchase-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ itemId: item.id }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPendingPurchaseId(data.purchaseId ?? null);
-      }
-    } catch {
-      /* non-fatal – confirm modal still shows with local item data */
-    }
   };
 
-  const handleConfirmPurchase = async () => {
-    if (!selectedItem) return;
+  const handleConfirmNftPurchase = async () => {
+    if (!selectedNftItem) return;
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     setPurchaseState('processing');
 
     try {
       const token = await getAccessToken();
-      const endpoint = pendingPurchaseId
-        ? `${Env.BACKEND_URL}/api/store/complete-purchase`
-        : `${Env.BACKEND_URL}/api/store/buy-with-gf`;
-      const body = pendingPurchaseId
-        ? { purchaseId: pendingPurchaseId }
-        : { itemId: selectedItem.id };
-
-      const res = await fetch(endpoint, {
+      const res = await fetch(`${Env.BACKEND_URL}/api/mint/mint`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ quantity: 1 }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -173,10 +159,11 @@ export default function StorePage() {
         setPurchaseError(data.error || 'Purchase failed. Please try again.');
         return;
       }
-      if (data.newBalance !== undefined) {
+      queryClient.invalidateQueries({ queryKey: ['/api/nfts/owned', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
+      if (typeof data.newBalance === 'number') {
         updateUser({ gfTokenBalance: data.newBalance });
       }
-      queryClient.invalidateQueries({ queryKey: ['/api/store/owned'] });
       setPurchaseState('success');
     } catch {
       setPurchaseState('error');
@@ -185,7 +172,7 @@ export default function StorePage() {
   };
 
   const handleClosePurchaseModal = () => {
-    setSelectedItem(null);
+    setSelectedNftItem(null);
     setPurchaseState('idle');
     setPurchaseError('');
     setPendingPurchaseId(null);
@@ -224,37 +211,26 @@ export default function StorePage() {
   const canAffordMint = gfBalance >= mintTotal;
 
   const renderBuyTab = () => {
-    if (storeLoading) {
+    if (collectionLoading) {
       return (
         <View style={styles.loadingState}>
           <ActivityIndicator size="large" color="#4ADE80" />
-          <Text style={styles.loadingText}>Loading store items...</Text>
-        </View>
-      );
-    }
-
-    if (storeItems.length === 0) {
-      return (
-        <View style={styles.emptyState}>
-          <ShoppingCart size={48} color="#475569" />
-          <Text style={styles.emptyTitle}>Store Coming Soon</Text>
-          <Text style={styles.emptyText}>
-            New NFT items will be available here soon. Check back later!
-          </Text>
+          <Text style={styles.loadingText}>Loading NFT collection...</Text>
         </View>
       );
     }
 
     return (
       <View style={styles.mainContent}>
-        <Text style={styles.mainTitle}>Gamefolio Collection</Text>
+        <Text style={styles.mainTitle}>Genesis NFT Collection</Text>
         <Text style={styles.subtitle}>
-          Browse and purchase exclusive Gamefolio items for your profile
+          Purchase exclusive Gamefolio NFTs minted on the SKALE blockchain
         </Text>
 
         <View style={styles.nftGrid}>
-          {storeItems.map((item) => {
+          {nftCollection.map((item) => {
             const rarityColor = RARITY_COLORS[item.rarity] || '#94A3B8';
+            const canAfford = gfBalance >= item.gfCost;
             return (
               <View key={item.id} style={styles.nftCard}>
                 <View style={styles.nftImageContainer}>
@@ -262,7 +238,7 @@ export default function StorePage() {
                     <Image source={{ uri: item.imageUrl }} style={styles.nftImage} />
                   ) : (
                     <View style={[styles.nftImagePlaceholder, { borderColor: rarityColor + '40' }]}>
-                      <ShoppingCart size={36} color={rarityColor} />
+                      <Sparkles size={36} color={rarityColor} />
                     </View>
                   )}
                   <View style={[styles.forSaleBadge, { backgroundColor: rarityColor }]}>
@@ -270,29 +246,24 @@ export default function StorePage() {
                   </View>
                   <TouchableOpacity
                     style={styles.heartButton}
-                    onPress={() => toggleFavorite(String(item.id))}
+                    onPress={() => toggleFavorite(item.id)}
                     activeOpacity={0.7}
                   >
                     <Heart
                       size={20}
-                      color={favorites.has(String(item.id)) ? '#EF4444' : '#64748B'}
-                      fill={favorites.has(String(item.id)) ? '#EF4444' : 'transparent'}
+                      color={favorites.has(item.id) ? '#EF4444' : '#64748B'}
+                      fill={favorites.has(item.id) ? '#EF4444' : 'transparent'}
                     />
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.nftContent}>
                   <Text style={styles.nftName}>{item.name}</Text>
-                  {item.description ? (
-                    <Text style={styles.nftDescription} numberOfLines={2}>{item.description}</Text>
-                  ) : null}
+                  <Text style={styles.nftDescription} numberOfLines={2}>{item.description}</Text>
 
                   <View style={styles.nftPriceRow}>
                     <View style={styles.priceInfo}>
-                      <Text style={styles.priceLabel}>Price</Text>
-                      {item.proDiscount ? (
-                        <Text style={styles.priceOriginal}>{(item.originalPrice || item.gfCost).toLocaleString()} GF</Text>
-                      ) : null}
+                      <Text style={styles.priceLabel}>Supply: {item.maxSupply.toLocaleString()}</Text>
                       <View style={styles.priceContainer}>
                         <Sparkles size={14} color="#4ADE80" />
                         <Text style={styles.priceGF}>{item.gfCost.toLocaleString()} GF</Text>
@@ -300,8 +271,8 @@ export default function StorePage() {
                     </View>
 
                     <TouchableOpacity
-                      style={styles.buyButton}
-                      onPress={() => handleBuyItem(item)}
+                      style={[styles.buyButton, !canAfford && { opacity: 0.5 }]}
+                      onPress={() => canAfford && handleBuyNftItem(item)}
                       activeOpacity={0.8}
                     >
                       <ShoppingCart size={14} color="#020617" />
@@ -529,7 +500,7 @@ export default function StorePage() {
   };
 
   const renderWatchlistTab = () => {
-    const watchedItems = storeItems.filter(item => favorites.has(String(item.id)));
+    const watchedItems = nftCollection.filter(item => favorites.has(item.id));
     return (
       <View style={styles.emptyState}>
         <Heart size={48} color="#475569" />
@@ -550,7 +521,7 @@ export default function StorePage() {
                   <Text style={styles.priceGF}>{item.gfCost.toLocaleString()} GF</Text>
                   <TouchableOpacity
                     style={styles.buyButton}
-                    onPress={() => { handleBuyItem(item); setActiveTab('buy'); }}
+                    onPress={() => handleBuyNftItem(item)}
                     activeOpacity={0.8}
                   >
                     <Text style={styles.buyButtonText}>Buy Now</Text>
@@ -633,7 +604,7 @@ export default function StorePage() {
       </LinearGradient>
 
       <Modal
-        visible={selectedItem !== null}
+        visible={selectedNftItem !== null}
         transparent
         animationType="slide"
         onRequestClose={handleClosePurchaseModal}
@@ -646,7 +617,7 @@ export default function StorePage() {
                   <CheckCircle size={40} color="#4ADE80" />
                 </View>
                 <Text style={styles.resultTitle}>Purchase Successful!</Text>
-                <Text style={styles.resultText}>{selectedItem?.name} has been added to your inventory.</Text>
+                <Text style={styles.resultText}>{selectedNftItem?.name} NFT has been minted to your wallet.</Text>
                 <TouchableOpacity style={styles.doneButton} onPress={handleClosePurchaseModal} activeOpacity={0.8}>
                   <Text style={styles.doneButtonText}>Done</Text>
                 </TouchableOpacity>
@@ -668,10 +639,10 @@ export default function StorePage() {
             ) : purchaseState === 'processing' ? (
               <View style={styles.resultContainer}>
                 <ActivityIndicator size="large" color="#4ADE80" />
-                <Text style={styles.resultTitle}>Processing...</Text>
-                <Text style={styles.resultText}>Please wait while we complete your purchase.</Text>
+                <Text style={styles.resultTitle}>Minting NFT...</Text>
+                <Text style={styles.resultText}>Please wait while your NFT is being minted on-chain.</Text>
               </View>
-            ) : selectedItem ? (
+            ) : selectedNftItem ? (
               <>
                 <View style={styles.modalHeader}>
                   <Text style={styles.modalTitle}>Confirm Purchase</Text>
@@ -682,70 +653,56 @@ export default function StorePage() {
 
                 <View style={styles.modalItemCard}>
                   <View style={[styles.modalItemIcon, {
-                    backgroundColor: (RARITY_COLORS[selectedItem.rarity] || '#94A3B8') + '20',
+                    backgroundColor: (RARITY_COLORS[selectedNftItem.rarity] || '#94A3B8') + '20',
                   }]}>
-                    <ShoppingCart size={36} color={RARITY_COLORS[selectedItem.rarity] || '#94A3B8'} />
+                    <Sparkles size={36} color={RARITY_COLORS[selectedNftItem.rarity] || '#94A3B8'} />
                   </View>
                   <View style={styles.modalItemInfo}>
-                    <Text style={styles.modalItemName}>{selectedItem.name}</Text>
+                    <Text style={styles.modalItemName}>{selectedNftItem.name}</Text>
                     <View style={styles.modalRarityRow}>
-                      <View style={[styles.rarityDot, { backgroundColor: RARITY_COLORS[selectedItem.rarity] || '#94A3B8' }]} />
-                      <Text style={[styles.rarityText, { color: RARITY_COLORS[selectedItem.rarity] || '#94A3B8' }]}>
-                        {selectedItem.rarity.charAt(0).toUpperCase() + selectedItem.rarity.slice(1)}
+                      <View style={[styles.rarityDot, { backgroundColor: RARITY_COLORS[selectedNftItem.rarity] || '#94A3B8' }]} />
+                      <Text style={[styles.rarityText, { color: RARITY_COLORS[selectedNftItem.rarity] || '#94A3B8' }]}>
+                        {selectedNftItem.rarity.charAt(0).toUpperCase() + selectedNftItem.rarity.slice(1)}
                       </Text>
                     </View>
-                    {selectedItem.description ? (
-                      <Text style={styles.modalItemDesc} numberOfLines={2}>{selectedItem.description}</Text>
-                    ) : null}
+                    <Text style={styles.modalItemDesc} numberOfLines={2}>{selectedNftItem.description}</Text>
                   </View>
                 </View>
 
                 <View style={styles.priceSummary}>
-                  {selectedItem.proDiscount ? (
-                    <View style={styles.summaryRow}>
-                      <Text style={styles.summaryLabel}>Original Price</Text>
-                      <Text style={styles.summaryStrike}>{(selectedItem.originalPrice || selectedItem.gfCost).toLocaleString()} GF</Text>
-                    </View>
-                  ) : null}
-                  {selectedItem.proDiscount ? (
-                    <View style={styles.summaryRow}>
-                      <Text style={styles.summaryLabel}>Pro Discount</Text>
-                      <Text style={styles.discountText}>-20%</Text>
-                    </View>
-                  ) : null}
                   <View style={[styles.summaryRow, styles.totalRow]}>
                     <Text style={styles.totalLabel}>Total</Text>
-                    <Text style={styles.totalValue}>{selectedItem.gfCost.toLocaleString()} GF</Text>
+                    <Text style={styles.totalValue}>{selectedNftItem.gfCost.toLocaleString()} GF</Text>
                   </View>
                   <View style={styles.summaryRow}>
                     <Text style={styles.summaryLabel}>Your Balance</Text>
                     <Text style={[
                       styles.balanceCheck,
-                      gfBalance < selectedItem.gfCost && styles.balanceInsufficient,
+                      gfBalance < selectedNftItem.gfCost && styles.balanceInsufficient,
                     ]}>
                       {gfBalance.toLocaleString()} GF
                     </Text>
                   </View>
                 </View>
 
-                {gfBalance < selectedItem.gfCost ? (
+                {gfBalance < selectedNftItem.gfCost ? (
                   <View style={styles.insufficientBanner}>
                     <AlertCircle size={16} color="#F59E0B" />
                     <Text style={styles.insufficientText}>
-                      You need {(selectedItem.gfCost - gfBalance).toLocaleString()} more GF.
+                      You need {(selectedNftItem.gfCost - gfBalance).toLocaleString()} more GF.
                     </Text>
                   </View>
                 ) : null}
 
                 <TouchableOpacity
-                  style={[styles.confirmButton, gfBalance < selectedItem.gfCost && styles.confirmButtonDisabled]}
-                  onPress={handleConfirmPurchase}
-                  disabled={gfBalance < selectedItem.gfCost}
+                  style={[styles.confirmButton, gfBalance < selectedNftItem.gfCost && styles.confirmButtonDisabled]}
+                  onPress={handleConfirmNftPurchase}
+                  disabled={gfBalance < selectedNftItem.gfCost}
                   activeOpacity={0.8}
                 >
                   <Text style={[
                     styles.confirmButtonText,
-                    gfBalance < selectedItem.gfCost && styles.confirmButtonTextDisabled,
+                    gfBalance < selectedNftItem.gfCost && styles.confirmButtonTextDisabled,
                   ]}>
                     Confirm Purchase
                   </Text>

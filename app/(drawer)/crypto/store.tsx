@@ -129,6 +129,7 @@ export default function StorePage() {
         updateUser({ gfTokenBalance: data.newBalance });
       }
       queryClient.invalidateQueries({ queryKey: ['/api/store/owned'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
       setPurchaseState('success');
     } catch {
       setPurchaseState('error');
@@ -143,7 +144,19 @@ export default function StorePage() {
     setPendingPurchaseId(null);
   };
 
-  const gfBalance = user?.gfTokenBalance ?? 0;
+  const { data: gfBalanceData } = useQuery<{ balance: number }>({
+    queryKey: ['/api/me/gf-balance', user?.id],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/me/gf-balance`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return { balance: user?.gfTokenBalance ?? 0 };
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+  const gfBalance = gfBalanceData?.balance ?? user?.gfTokenBalance ?? 0;
 
   if (isLoading) {
     return (

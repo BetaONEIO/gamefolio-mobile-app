@@ -1,15 +1,30 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, TrendingUp } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/context/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { Env } from '@/constants/Env';
 
 export default function WalletPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const balance = user?.gfTokenBalance ?? 0;
+  const { user, getAccessToken } = useAuth();
+
+  const { data: gfBalanceData } = useQuery<{ balance: number }>({
+    queryKey: ['/api/me/gf-balance', user?.id],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/me/gf-balance`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return { balance: user?.gfTokenBalance ?? 0 };
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+  const balance = gfBalanceData?.balance ?? user?.gfTokenBalance ?? 0;
 
   const handleButtonPress = () => {
     if (Platform.OS !== 'web') {

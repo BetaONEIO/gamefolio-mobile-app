@@ -139,6 +139,7 @@ export default function BuyGFPage() {
             updateUser({ gfTokenBalance: (user?.gfTokenBalance ?? 0) + orderData.gfAmount });
           }
           queryClient.invalidateQueries({ queryKey: ['/api/store/owned'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance'] });
           setCheckoutState('success');
           return;
         }
@@ -224,13 +225,14 @@ export default function BuyGFPage() {
         status: immediateStatus,
       });
 
-      if (immediateStatus === 'credited' || immediateStatus === 'delivered' || immediateStatus === 'paid') {
+      if (immediateStatus === 'credited' || immediateStatus === 'delivered') {
         if (typeof orderData?.newBalance === 'number') {
           updateUser({ gfTokenBalance: orderData.newBalance });
         } else if (typeof orderData?.gfAmount === 'number') {
           updateUser({ gfTokenBalance: (user?.gfTokenBalance ?? 0) + orderData.gfAmount });
         }
         queryClient.invalidateQueries({ queryKey: ['/api/store/owned'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance'] });
         setCheckoutState('success');
         return;
       }

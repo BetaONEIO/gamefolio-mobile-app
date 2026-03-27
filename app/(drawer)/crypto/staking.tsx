@@ -68,7 +68,19 @@ export default function StakingPage() {
   const [txError, setTxError] = useState('');
   const [txHash, setTxHash] = useState('');
 
-  const gfBalance = user?.gfTokenBalance ?? 0;
+  const { data: gfBalanceData } = useQuery<{ balance: number }>({
+    queryKey: ['/api/me/gf-balance', user?.id],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/me/gf-balance`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return { balance: user?.gfTokenBalance ?? 0 };
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+  const gfBalance = gfBalanceData?.balance ?? user?.gfTokenBalance ?? 0;
 
   const { data: position, isLoading: positionLoading, refetch: refetchPosition } = useQuery<StakingPosition>({
     queryKey: ['/api/staking/my-position', user?.id],
@@ -161,6 +173,7 @@ export default function StakingPage() {
       }
       refetchPosition();
       queryClient.invalidateQueries({ queryKey: ['/api/staking/history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
       setTxState('success');
     } catch (err: any) {
       setTxState('error');
@@ -201,6 +214,7 @@ export default function StakingPage() {
       }
       refetchPosition();
       queryClient.invalidateQueries({ queryKey: ['/api/staking/history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
       setTxState('success');
     } catch (err: any) {
       setTxState('error');
@@ -236,6 +250,7 @@ export default function StakingPage() {
       }
       refetchPosition();
       queryClient.invalidateQueries({ queryKey: ['/api/staking/history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
       setTxState('success');
     } catch (err: any) {
       setTxState('error');

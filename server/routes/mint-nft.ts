@@ -972,4 +972,60 @@ router.get('/api/nft/profile-picture/:userId', async (req: Request, res: Respons
   }
 });
 
+const NFT_COLLECTION: {
+  id: string;
+  name: string;
+  description: string;
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  gfCost: number;
+  imageUrl: string | null;
+  category: string;
+  maxSupply: number;
+}[] = [
+  {
+    id: 'genesis-common',
+    name: 'Genesis Common',
+    description: 'A common genesis NFT from the Gamefolio founding collection.',
+    rarity: 'common',
+    gfCost: 100,
+    imageUrl: null,
+    category: 'genesis',
+    maxSupply: 10000,
+  },
+  {
+    id: 'genesis-rare',
+    name: 'Genesis Rare',
+    description: 'A rare genesis NFT with exclusive traits from the Gamefolio collection.',
+    rarity: 'rare',
+    gfCost: 500,
+    imageUrl: null,
+    category: 'genesis',
+    maxSupply: 2500,
+  },
+  {
+    id: 'genesis-epic',
+    name: 'Genesis Epic',
+    description: 'An epic genesis NFT with powerful in-game attributes.',
+    rarity: 'epic',
+    gfCost: 1000,
+    imageUrl: null,
+    category: 'genesis',
+    maxSupply: 500,
+  },
+  {
+    id: 'genesis-legendary',
+    name: 'Genesis Legendary',
+    description: 'An ultra-rare legendary NFT, one of only 100 in existence.',
+    rarity: 'legendary',
+    gfCost: 2500,
+    imageUrl: null,
+    category: 'genesis',
+    maxSupply: 100,
+  },
+];
+
+router.get('/api/nfts/collection', async (_req: Request, res: Response) => {
+  return res.json(NFT_COLLECTION);
+});
+
 export default router;
