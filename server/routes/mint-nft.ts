@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import sharp from 'sharp';
 import { db } from '../db';
+import { hybridAuth } from '../middleware/hybrid-auth';
 import { users, previousAvatars } from '@shared/schema';
 import { eq, sql, desc } from 'drizzle-orm';
 import { maxUint256, parseUnits, type Address, decodeEventLog } from 'viem';
@@ -109,7 +110,7 @@ const router = Router();
   }
 })();
 
-router.get('/api/mint/wallet-status', async (req: Request, res: Response) => {
+router.get('/api/mint/wallet-status', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -131,7 +132,7 @@ router.get('/api/mint/wallet-status', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/mint/approve', async (req: Request, res: Response) => {
+router.post('/api/mint/approve', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -175,7 +176,7 @@ router.post('/api/mint/approve', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/mint/mint', async (req: Request, res: Response) => {
+router.post('/api/mint/mint', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -331,7 +332,7 @@ router.post('/api/mint/mint', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/mint/regenerate-wallet', async (req: Request, res: Response) => {
+router.post('/api/mint/regenerate-wallet', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -611,7 +612,7 @@ router.post('/api/nft/metadata/batch', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/api/nfts/owned', async (req: Request, res: Response) => {
+router.get('/api/nfts/owned', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -782,7 +783,7 @@ router.get('/api/nfts/user/:userId', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/admin/nfts/backfill', async (req: Request, res: Response) => {
+router.post('/api/admin/nfts/backfill', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -870,7 +871,7 @@ router.post('/api/admin/nfts/backfill', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/nft/set-profile-picture', async (req: Request, res: Response) => {
+router.post('/api/nft/set-profile-picture', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
