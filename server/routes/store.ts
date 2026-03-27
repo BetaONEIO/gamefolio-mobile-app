@@ -16,6 +16,28 @@ const publicClient = createPublicClient({
 
 const router = Router();
 
+const GENESIS_NFT_SEEDS = [
+  { name: 'Genesis Common', description: 'A common genesis NFT from the Gamefolio founding collection.', gfCost: 100, category: 'genesis', rarity: 'common' },
+  { name: 'Genesis Rare', description: 'A rare genesis NFT with exclusive traits from the Gamefolio collection.', gfCost: 500, category: 'genesis', rarity: 'rare' },
+  { name: 'Genesis Epic', description: 'An epic genesis NFT with powerful in-game attributes.', gfCost: 1000, category: 'genesis', rarity: 'epic' },
+  { name: 'Genesis Legendary', description: 'An ultra-rare legendary NFT, one of only 100 in existence.', gfCost: 2500, category: 'genesis', rarity: 'legendary' },
+];
+
+(async () => {
+  try {
+    for (const seed of GENESIS_NFT_SEEDS) {
+      const existing = await db.select().from(storeItems)
+        .where(and(eq(storeItems.name, seed.name), eq(storeItems.category, 'genesis')))
+        .limit(1);
+      if (!existing.length) {
+        await db.insert(storeItems).values({ ...seed, available: true });
+      }
+    }
+  } catch {
+    // Non-fatal: items may already exist
+  }
+})();
+
 function getTreasuryAddress(): string {
   const privateKey = process.env.TREASURY_WALLET_PRIVATE_KEY;
   if (!privateKey) {
@@ -402,57 +424,6 @@ router.post('/api/store/verify-purchase', hybridAuth, async (req: Request, res: 
   } catch (error: any) {
     console.error('Verify purchase error:', error);
     return res.status(500).json({ error: 'Failed to verify purchase' });
-  }
-});
-
-const NFT_COLLECTION_ITEMS: Record<string, { name: string; gfCost: number; rarity: string }> = {
-  'genesis-common': { name: 'Genesis Common', gfCost: 100, rarity: 'common' },
-  'genesis-rare': { name: 'Genesis Rare', gfCost: 500, rarity: 'rare' },
-  'genesis-epic': { name: 'Genesis Epic', gfCost: 1000, rarity: 'epic' },
-  'genesis-legendary': { name: 'Genesis Legendary', gfCost: 2500, rarity: 'legendary' },
-};
-
-router.post('/api/store/buy-nft', hybridAuth, async (req: Request, res: Response) => {
-  try {
-    const userId = (req as any).user?.id;
-    if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-
-    const { nftId } = req.body;
-    if (!nftId || !NFT_COLLECTION_ITEMS[nftId]) {
-      return res.status(400).json({ error: 'Invalid NFT item ID' });
-    }
-
-    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const nftItem = NFT_COLLECTION_ITEMS[nftId];
-    const currentBalance = user.gfTokenBalance ?? 0;
-
-    if (currentBalance < nftItem.gfCost) {
-      return res.status(400).json({
-        error: `Insufficient GF balance. You need ${nftItem.gfCost - currentBalance} more GF.`,
-        required: nftItem.gfCost,
-        current: currentBalance,
-      });
-    }
-
-    const newBalance = currentBalance - nftItem.gfCost;
-    await db.update(users).set({ gfTokenBalance: newBalance }).where(eq(users.id, userId));
-
-    return res.json({
-      success: true,
-      nftId,
-      itemName: nftItem.name,
-      gfCost: nftItem.gfCost,
-      newBalance,
-    });
-  } catch (error: any) {
-    console.error('Buy NFT error:', error);
-    return res.status(500).json({ error: 'Failed to complete NFT purchase' });
   }
 });
 

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import sharp from 'sharp';
 import { db } from '../db';
 import { hybridAuth } from '../middleware/hybrid-auth';
-import { users, previousAvatars } from '@shared/schema';
+import { users, previousAvatars, storeItems } from '@shared/schema';
 import { eq, sql, desc } from 'drizzle-orm';
 import { maxUint256, parseUnits, type Address, decodeEventLog } from 'viem';
 import {
@@ -1026,7 +1026,25 @@ const NFT_COLLECTION: {
 ];
 
 router.get('/api/nfts/collection', async (_req: Request, res: Response) => {
-  return res.json(NFT_COLLECTION);
+  try {
+    const items = await db.select().from(storeItems)
+      .where(eq(storeItems.category, 'genesis'));
+    if (items.length > 0) {
+      return res.json(items.map(item => ({
+        id: item.id,
+        name: item.name,
+        description: item.description || '',
+        rarity: item.rarity || 'common',
+        gfCost: item.gfCost,
+        imageUrl: item.image || null,
+        category: item.category,
+        maxSupply: item.rarity === 'legendary' ? 100 : item.rarity === 'epic' ? 500 : item.rarity === 'rare' ? 2500 : 10000,
+      })));
+    }
+    return res.json(NFT_COLLECTION);
+  } catch {
+    return res.json(NFT_COLLECTION);
+  }
 });
 
 export default router;

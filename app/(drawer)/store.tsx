@@ -37,7 +37,7 @@ const MINT_PRICE_PER_NFT = 250;
 const MAX_MINT_QTY = 5;
 
 interface NftCollectionItem {
-  id: string;
+  id: number;
   name: string;
   description: string;
   rarity: 'common' | 'rare' | 'epic' | 'legendary';
@@ -123,11 +123,12 @@ export default function StorePage() {
     enabled: !!user?.id && activeTab === 'sell',
   });
 
-  const toggleFavorite = (itemId: string) => {
+  const toggleFavorite = (itemId: string | number) => {
+    const key = String(itemId);
     setFavorites(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(itemId)) newSet.delete(itemId);
-      else newSet.add(itemId);
+      if (newSet.has(key)) newSet.delete(key);
+      else newSet.add(key);
       return newSet;
     });
   };
@@ -148,10 +149,11 @@ export default function StorePage() {
 
     try {
       const token = await getAccessToken();
-      const res = await fetch(`${Env.BACKEND_URL}/api/store/buy-nft`, {
+
+      const res = await fetch(`${Env.BACKEND_URL}/api/store/purchase-intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ nftId: selectedNftItem.id }),
+        body: JSON.stringify({ itemId: selectedNftItem.id }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -159,7 +161,8 @@ export default function StorePage() {
         setPurchaseError(data.error || 'Purchase failed. Please try again.');
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ['/api/nfts/owned', user?.id] });
+
+      queryClient.invalidateQueries({ queryKey: ['/api/store/owned', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
       if (typeof data.newBalance === 'number') {
         updateUser({ gfTokenBalance: data.newBalance });
@@ -246,13 +249,13 @@ export default function StorePage() {
                   </View>
                   <TouchableOpacity
                     style={styles.heartButton}
-                    onPress={() => toggleFavorite(item.id)}
+                    onPress={() => toggleFavorite(String(item.id))}
                     activeOpacity={0.7}
                   >
                     <Heart
                       size={20}
-                      color={favorites.has(item.id) ? '#EF4444' : '#64748B'}
-                      fill={favorites.has(item.id) ? '#EF4444' : 'transparent'}
+                      color={favorites.has(String(item.id)) ? '#EF4444' : '#64748B'}
+                      fill={favorites.has(String(item.id)) ? '#EF4444' : 'transparent'}
                     />
                   </TouchableOpacity>
                 </View>
@@ -500,7 +503,7 @@ export default function StorePage() {
   };
 
   const renderWatchlistTab = () => {
-    const watchedItems = nftCollection.filter(item => favorites.has(item.id));
+    const watchedItems = nftCollection.filter(item => favorites.has(String(item.id)));
     return (
       <View style={styles.emptyState}>
         <Heart size={48} color="#475569" />
