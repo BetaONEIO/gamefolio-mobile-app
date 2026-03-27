@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { users } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
+import { hybridAuth } from '../middleware/hybrid-auth';
 
 const router = Router();
 
@@ -9,7 +10,7 @@ const QUICK_SELL_PRICE = 250;
 const PLATFORM_FEE_PERCENT = 1.5;
 const QUICK_LIST_FEE = 1.25;
 
-router.post('/api/nft/quick-sell', async (req: Request, res: Response) => {
+router.post('/api/nft/quick-sell', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -80,7 +81,7 @@ router.get('/api/marketplace/listings', async (_req: Request, res: Response) => 
   }
 });
 
-router.post('/api/marketplace/buy', async (req: Request, res: Response) => {
+router.post('/api/marketplace/buy', hybridAuth, async (req: Request, res: Response) => {
   try {
     const buyerId = (req as any).user?.id;
     if (!buyerId) {

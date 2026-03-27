@@ -16,6 +16,7 @@ import gfWebhookRoutes from './routes/gf-webhook';
 import gfStakingRoutes from './routes/gf-staking';
 import storeRoutes from './routes/store';
 import mintNftRoutes from './routes/mint-nft';
+import quickSellRoutes from './routes/quick-sell';
 import { createOGMetaMiddleware } from './og-meta';
 import { storage } from './storage';
 import { LeaderboardService, loadXpSettingsFromDB } from './leaderboard-service';
@@ -249,6 +250,7 @@ app.use((req, res, next) => {
     app.use(gfStakingRoutes);
     app.use(storeRoutes);
     app.use(mintNftRoutes);
+    app.use(quickSellRoutes);
 
     // Social media preview route - must be before Vite middleware
     app.get('/profile/:username', async (req, res, next) => {
