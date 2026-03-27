@@ -37,14 +37,12 @@ const MINT_PRICE_PER_NFT = 250;
 const MAX_MINT_QTY = 5;
 
 interface NftCollectionItem {
-  id: number;
+  tokenId: number;
   name: string;
   description: string;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  image: string | null;
+  attributes: { trait_type: string; value: string }[];
   gfCost: number;
-  imageUrl: string | null;
-  category: string;
-  maxSupply: number;
 }
 
 interface OwnedNFT {
@@ -61,12 +59,6 @@ type TabType = 'buy' | 'sell' | 'mint' | 'watchlist';
 type PurchaseState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
 type MintState = 'idle' | 'processing' | 'success' | 'error';
 
-const RARITY_COLORS: Record<string, string> = {
-  common: '#94A3B8',
-  rare: '#3B82F6',
-  epic: '#8B5CF6',
-  legendary: '#F59E0B',
-};
 
 export default function StorePage() {
   const router = useRouter();
@@ -135,27 +127,12 @@ export default function StorePage() {
 
   const [selectedNftItem, setSelectedNftItem] = useState<NftCollectionItem | null>(null);
 
-  const handleBuyNftItem = async (item: NftCollectionItem) => {
+  const handleBuyNftItem = (item: NftCollectionItem) => {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedNftItem(item);
     setPurchaseState('confirming');
     setPurchaseError('');
     setPendingPurchaseId(null);
-
-    try {
-      const token = await getAccessToken();
-      const res = await fetch(`${Env.BACKEND_URL}/api/store/purchase-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ itemId: item.id }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPendingPurchaseId(data.purchaseId ?? null);
-      }
-    } catch {
-      /* non-fatal — confirm modal still shows with local item data */
-    }
   };
 
   const handleConfirmNftPurchase = async () => {
@@ -165,17 +142,10 @@ export default function StorePage() {
 
     try {
       const token = await getAccessToken();
-      const endpoint = pendingPurchaseId
-        ? `${Env.BACKEND_URL}/api/store/complete-purchase`
-        : `${Env.BACKEND_URL}/api/store/buy-with-gf`;
-      const body = pendingPurchaseId
-        ? { purchaseId: pendingPurchaseId }
-        : { itemId: selectedNftItem.id };
-
-      const res = await fetch(endpoint, {
+      const res = await fetch(`${Env.BACKEND_URL}/api/mint/mint`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ quantity: 1 }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -184,10 +154,11 @@ export default function StorePage() {
         return;
       }
 
-      queryClient.invalidateQueries({ queryKey: ['/api/store/owned', user?.id] });
+      if (data.tokenIds?.length > 0) setMintedTokenIds(data.tokenIds);
+      queryClient.invalidateQueries({ queryKey: ['/api/nfts/owned', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
-      if (typeof data.newBalance === 'number') {
-        updateUser({ gfTokenBalance: data.newBalance });
+      if (typeof data.newGfBalance === 'number') {
+        updateUser({ gfTokenBalance: data.newGfBalance });
       }
       setPurchaseState('success');
     } catch {
@@ -245,39 +216,49 @@ export default function StorePage() {
       );
     }
 
+    if (nftCollection.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Sparkles size={48} color="#475569" />
+          <Text style={styles.emptyTitle}>No NFTs Available</Text>
+          <Text style={styles.emptyText}>Check back soon for available NFTs in the collection.</Text>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.mainContent}>
-        <Text style={styles.mainTitle}>Genesis NFT Collection</Text>
+        <Text style={styles.mainTitle}>Gamefolio Genesis Collection</Text>
         <Text style={styles.subtitle}>
-          Purchase exclusive Gamefolio NFTs minted on the SKALE blockchain
+          {nftCollection.length} NFTs minted on SKALE — purchase one for {nftCollection[0]?.gfCost?.toLocaleString() ?? '500'} GF
         </Text>
 
         <View style={styles.nftGrid}>
           {nftCollection.map((item) => {
-            const rarityColor = RARITY_COLORS[item.rarity] || '#94A3B8';
             const canAfford = gfBalance >= item.gfCost;
+            const imageUrl = item.image ? `${Env.BACKEND_URL}${item.image}` : null;
             return (
-              <View key={item.id} style={styles.nftCard}>
+              <View key={item.tokenId} style={styles.nftCard}>
                 <View style={styles.nftImageContainer}>
-                  {item.imageUrl ? (
-                    <Image source={{ uri: item.imageUrl }} style={styles.nftImage} />
+                  {imageUrl ? (
+                    <Image source={{ uri: imageUrl }} style={styles.nftImage} />
                   ) : (
-                    <View style={[styles.nftImagePlaceholder, { borderColor: rarityColor + '40' }]}>
-                      <Sparkles size={36} color={rarityColor} />
+                    <View style={[styles.nftImagePlaceholder, { borderColor: '#4ADE8040' }]}>
+                      <Sparkles size={36} color="#4ADE80" />
                     </View>
                   )}
-                  <View style={[styles.forSaleBadge, { backgroundColor: rarityColor }]}>
-                    <Text style={styles.forSaleText}>{item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)}</Text>
+                  <View style={[styles.forSaleBadge, { backgroundColor: '#0F172A' }]}>
+                    <Text style={styles.forSaleText}>#{item.tokenId}</Text>
                   </View>
                   <TouchableOpacity
                     style={styles.heartButton}
-                    onPress={() => toggleFavorite(String(item.id))}
+                    onPress={() => toggleFavorite(String(item.tokenId))}
                     activeOpacity={0.7}
                   >
                     <Heart
                       size={20}
-                      color={favorites.has(String(item.id)) ? '#EF4444' : '#64748B'}
-                      fill={favorites.has(String(item.id)) ? '#EF4444' : 'transparent'}
+                      color={favorites.has(String(item.tokenId)) ? '#EF4444' : '#64748B'}
+                      fill={favorites.has(String(item.tokenId)) ? '#EF4444' : 'transparent'}
                     />
                   </TouchableOpacity>
                 </View>
@@ -288,7 +269,7 @@ export default function StorePage() {
 
                   <View style={styles.nftPriceRow}>
                     <View style={styles.priceInfo}>
-                      <Text style={styles.priceLabel}>Supply: {item.maxSupply.toLocaleString()}</Text>
+                      <Text style={styles.priceLabel}>Genesis NFT</Text>
                       <View style={styles.priceContainer}>
                         <Sparkles size={14} color="#4ADE80" />
                         <Text style={styles.priceGF}>{item.gfCost.toLocaleString()} GF</Text>
@@ -525,7 +506,7 @@ export default function StorePage() {
   };
 
   const renderWatchlistTab = () => {
-    const watchedItems = nftCollection.filter(item => favorites.has(String(item.id)));
+    const watchedItems = nftCollection.filter(item => favorites.has(String(item.tokenId)));
     return (
       <View style={styles.emptyState}>
         <Heart size={48} color="#475569" />
@@ -540,7 +521,7 @@ export default function StorePage() {
         {watchedItems.length > 0 ? (
           <View style={[styles.nftGrid, { marginTop: 20, width: '100%' }]}>
             {watchedItems.map((item) => (
-              <View key={item.id} style={styles.nftCard}>
+              <View key={item.tokenId} style={styles.nftCard}>
                 <View style={styles.nftContent}>
                   <Text style={styles.nftName}>{item.name}</Text>
                   <Text style={styles.priceGF}>{item.gfCost.toLocaleString()} GF</Text>
@@ -642,7 +623,11 @@ export default function StorePage() {
                   <CheckCircle size={40} color="#4ADE80" />
                 </View>
                 <Text style={styles.resultTitle}>Purchase Successful!</Text>
-                <Text style={styles.resultText}>{selectedNftItem?.name} NFT has been minted to your wallet.</Text>
+                <Text style={styles.resultText}>
+                  {mintedTokenIds.length > 0
+                    ? `Gamefolio Genesis #${mintedTokenIds[0]} has been minted to your wallet.`
+                    : `${selectedNftItem?.name ?? 'Genesis NFT'} has been minted to your wallet.`}
+                </Text>
                 <TouchableOpacity style={styles.doneButton} onPress={handleClosePurchaseModal} activeOpacity={0.8}>
                   <Text style={styles.doneButtonText}>Done</Text>
                 </TouchableOpacity>
@@ -677,17 +662,22 @@ export default function StorePage() {
                 </View>
 
                 <View style={styles.modalItemCard}>
-                  <View style={[styles.modalItemIcon, {
-                    backgroundColor: (RARITY_COLORS[selectedNftItem.rarity] || '#94A3B8') + '20',
-                  }]}>
-                    <Sparkles size={36} color={RARITY_COLORS[selectedNftItem.rarity] || '#94A3B8'} />
+                  <View style={[styles.modalItemIcon, { backgroundColor: 'rgba(74, 222, 128, 0.12)' }]}>
+                    {selectedNftItem.image ? (
+                      <Image
+                        source={{ uri: `${Env.BACKEND_URL}${selectedNftItem.image}` }}
+                        style={{ width: 56, height: 56, borderRadius: 8 }}
+                      />
+                    ) : (
+                      <Sparkles size={36} color="#4ADE80" />
+                    )}
                   </View>
                   <View style={styles.modalItemInfo}>
                     <Text style={styles.modalItemName}>{selectedNftItem.name}</Text>
                     <View style={styles.modalRarityRow}>
-                      <View style={[styles.rarityDot, { backgroundColor: RARITY_COLORS[selectedNftItem.rarity] || '#94A3B8' }]} />
-                      <Text style={[styles.rarityText, { color: RARITY_COLORS[selectedNftItem.rarity] || '#94A3B8' }]}>
-                        {selectedNftItem.rarity.charAt(0).toUpperCase() + selectedNftItem.rarity.slice(1)}
+                      <View style={[styles.rarityDot, { backgroundColor: '#4ADE80' }]} />
+                      <Text style={[styles.rarityText, { color: '#4ADE80' }]}>
+                        Genesis NFT #{selectedNftItem.tokenId}
                       </Text>
                     </View>
                     <Text style={styles.modalItemDesc} numberOfLines={2}>{selectedNftItem.description}</Text>

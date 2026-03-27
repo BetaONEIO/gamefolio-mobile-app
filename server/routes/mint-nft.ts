@@ -973,77 +973,71 @@ router.get('/api/nft/profile-picture/:userId', async (req: Request, res: Respons
   }
 });
 
-const NFT_COLLECTION: {
-  id: number;
-  name: string;
-  description: string;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  gfCost: number;
-  imageUrl: string | null;
-  category: string;
-  maxSupply: number;
-}[] = [
-  {
-    id: 0,
-    name: 'Genesis Common',
-    description: 'A common genesis NFT from the Gamefolio founding collection.',
-    rarity: 'common',
-    gfCost: 100,
-    imageUrl: null,
-    category: 'genesis',
-    maxSupply: 10000,
-  },
-  {
-    id: 0,
-    name: 'Genesis Rare',
-    description: 'A rare genesis NFT with exclusive traits from the Gamefolio collection.',
-    rarity: 'rare',
-    gfCost: 500,
-    imageUrl: null,
-    category: 'genesis',
-    maxSupply: 2500,
-  },
-  {
-    id: 0,
-    name: 'Genesis Epic',
-    description: 'An epic genesis NFT with powerful in-game attributes.',
-    rarity: 'epic',
-    gfCost: 1000,
-    imageUrl: null,
-    category: 'genesis',
-    maxSupply: 500,
-  },
-  {
-    id: 0,
-    name: 'Genesis Legendary',
-    description: 'An ultra-rare legendary NFT, one of only 100 in existence.',
-    rarity: 'legendary',
-    gfCost: 2500,
-    imageUrl: null,
-    category: 'genesis',
-    maxSupply: 100,
-  },
-];
+let collectionCache: { data: any[]; fetchedAt: number } | null = null;
+const COLLECTION_CACHE_TTL = 5 * 60 * 1000;
 
 router.get('/api/nfts/collection', async (_req: Request, res: Response) => {
   try {
-    const items = await db.select().from(storeItems)
-      .where(eq(storeItems.category, 'genesis'));
-    if (items.length > 0) {
-      return res.json(items.map(item => ({
-        id: item.id,
-        name: item.name,
-        description: item.description || '',
-        rarity: item.rarity || 'common',
-        gfCost: item.gfCost,
-        imageUrl: item.image || null,
-        category: item.category,
-        maxSupply: item.rarity === 'legendary' ? 100 : item.rarity === 'epic' ? 500 : item.rarity === 'rare' ? 2500 : 10000,
-      })));
+    if (collectionCache && Date.now() - collectionCache.fetchedAt < COLLECTION_CACHE_TTL) {
+      return res.json(collectionCache.data);
     }
-    return res.json(NFT_COLLECTION);
-  } catch {
-    return res.json(NFT_COLLECTION);
+
+    const totalSupply = await publicClient.readContract({
+      address: NFT_CONTRACT_ADDRESS as `0x${string}`,
+      abi: NFT_ABI,
+      functionName: 'totalSupply',
+      args: [],
+    });
+    const count = Math.min(Number(totalSupply), 100);
+    if (count === 0) return res.json([]);
+
+    const baseUri = MINT_CONFIG.baseURI.replace(/\/$/, '');
+    const tokenIds = Array.from({ length: count }, (_, i) => i + 1);
+
+    const results = await Promise.allSettled(
+      tokenIds.map(async (tokenId) => {
+        const ipfsUri = `${baseUri}/${tokenId}`;
+        for (let g = 0; g < IPFS_GATEWAYS.length; g++) {
+          try {
+            const url = `${IPFS_GATEWAYS[g]}${ipfsUri.replace('ipfs://', '')}.json`;
+            const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+            if (resp.ok) {
+              const meta = await resp.json();
+              return {
+                tokenId,
+                name: meta.name || `Gamefolio Genesis #${tokenId}`,
+                description: meta.description || 'A Gamefolio Genesis NFT from the founding collection.',
+                image: meta.image ? ipfsToProxyUrl(meta.image) : null,
+                attributes: meta.attributes || [],
+                gfCost: MINT_CONFIG.pricePerMint,
+              };
+            }
+          } catch {
+            continue;
+          }
+        }
+        return {
+          tokenId,
+          name: `Gamefolio Genesis #${tokenId}`,
+          description: 'A Gamefolio Genesis NFT from the founding collection.',
+          image: null,
+          attributes: [],
+          gfCost: MINT_CONFIG.pricePerMint,
+        };
+      })
+    );
+
+    const collection = results.map((r, i) =>
+      r.status === 'fulfilled'
+        ? r.value
+        : { tokenId: tokenIds[i], name: `Gamefolio Genesis #${tokenIds[i]}`, description: '', image: null, attributes: [], gfCost: MINT_CONFIG.pricePerMint }
+    );
+
+    collectionCache = { data: collection, fetchedAt: Date.now() };
+    return res.json(collection);
+  } catch (error: any) {
+    console.error('NFT collection fetch error:', error);
+    return res.json([]);
   }
 });
 
