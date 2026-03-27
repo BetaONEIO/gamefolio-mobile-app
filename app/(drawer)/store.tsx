@@ -85,20 +85,20 @@ export default function StorePage() {
   const [mintError, setMintError] = useState('');
   const [mintedTokenIds, setMintedTokenIds] = useState<number[]>([]);
 
-  const { data: gfBalanceData } = useQuery<{ gfTokenBalance: number }>({
+  const { data: gfBalanceData } = useQuery<{ balance: number }>({
     queryKey: ['/api/me/gf-balance', user?.id],
     queryFn: async () => {
       const token = await getAccessToken();
       const res = await fetch(`${Env.BACKEND_URL}/api/me/gf-balance`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) return { gfTokenBalance: user?.gfTokenBalance ?? 0 };
+      if (!res.ok) return { balance: user?.gfTokenBalance ?? 0 };
       return res.json();
     },
     enabled: !!user?.id,
     staleTime: 30000,
   });
-  const gfBalance = gfBalanceData?.gfTokenBalance ?? user?.gfTokenBalance ?? 0;
+  const gfBalance = gfBalanceData?.balance ?? user?.gfTokenBalance ?? 0;
 
   const { data: nftCollection = [], isLoading: collectionLoading } = useQuery<NftCollectionItem[]>({
     queryKey: ['/api/nfts/collection'],
@@ -148,10 +148,10 @@ export default function StorePage() {
 
     try {
       const token = await getAccessToken();
-      const res = await fetch(`${Env.BACKEND_URL}/api/mint/mint`, {
+      const res = await fetch(`${Env.BACKEND_URL}/api/store/buy-nft`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ quantity: 1 }),
+        body: JSON.stringify({ nftId: selectedNftItem.id }),
       });
       const data = await res.json();
       if (!res.ok) {

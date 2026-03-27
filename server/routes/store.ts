@@ -26,7 +26,7 @@ function getTreasuryAddress(): string {
   return account.address;
 }
 
-router.get('/api/store/items', async (req: Request, res: Response) => {
+router.get('/api/store/items', hybridAuth, async (req: Request, res: Response) => {
   try {
     const items = await db
       .select()
@@ -402,6 +402,57 @@ router.post('/api/store/verify-purchase', hybridAuth, async (req: Request, res: 
   } catch (error: any) {
     console.error('Verify purchase error:', error);
     return res.status(500).json({ error: 'Failed to verify purchase' });
+  }
+});
+
+const NFT_COLLECTION_ITEMS: Record<string, { name: string; gfCost: number; rarity: string }> = {
+  'genesis-common': { name: 'Genesis Common', gfCost: 100, rarity: 'common' },
+  'genesis-rare': { name: 'Genesis Rare', gfCost: 500, rarity: 'rare' },
+  'genesis-epic': { name: 'Genesis Epic', gfCost: 1000, rarity: 'epic' },
+  'genesis-legendary': { name: 'Genesis Legendary', gfCost: 2500, rarity: 'legendary' },
+};
+
+router.post('/api/store/buy-nft', hybridAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { nftId } = req.body;
+    if (!nftId || !NFT_COLLECTION_ITEMS[nftId]) {
+      return res.status(400).json({ error: 'Invalid NFT item ID' });
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const nftItem = NFT_COLLECTION_ITEMS[nftId];
+    const currentBalance = user.gfTokenBalance ?? 0;
+
+    if (currentBalance < nftItem.gfCost) {
+      return res.status(400).json({
+        error: `Insufficient GF balance. You need ${nftItem.gfCost - currentBalance} more GF.`,
+        required: nftItem.gfCost,
+        current: currentBalance,
+      });
+    }
+
+    const newBalance = currentBalance - nftItem.gfCost;
+    await db.update(users).set({ gfTokenBalance: newBalance }).where(eq(users.id, userId));
+
+    return res.json({
+      success: true,
+      nftId,
+      itemName: nftItem.name,
+      gfCost: nftItem.gfCost,
+      newBalance,
+    });
+  } catch (error: any) {
+    console.error('Buy NFT error:', error);
+    return res.status(500).json({ error: 'Failed to complete NFT purchase' });
   }
 });
 
