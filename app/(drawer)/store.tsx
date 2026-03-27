@@ -67,6 +67,12 @@ interface MarketplaceListing {
 type TabType = 'buy' | 'sell' | 'mint' | 'watchlist';
 type PurchaseState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
 type MintState = 'idle' | 'processing' | 'success' | 'error';
+type SellState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
+
+const QUICK_SELL_PRICE = 250;
+const QUICK_SELL_PLATFORM_FEE = QUICK_SELL_PRICE * 0.015;
+const QUICK_SELL_LIST_FEE = 1.25;
+const QUICK_SELL_NET = QUICK_SELL_PRICE - QUICK_SELL_PLATFORM_FEE - QUICK_SELL_LIST_FEE;
 
 
 export default function StorePage() {
@@ -85,6 +91,11 @@ export default function StorePage() {
   const [mintConfirming, setMintConfirming] = useState(false);
   const [mintError, setMintError] = useState('');
   const [mintedTokenIds, setMintedTokenIds] = useState<number[]>([]);
+
+  const [selectedNftToSell, setSelectedNftToSell] = useState<OwnedNFT | null>(null);
+  const [sellState, setSellState] = useState<SellState>('idle');
+  const [sellError, setSellError] = useState('');
+  const [sellNetReceived, setSellNetReceived] = useState<number>(0);
 
   const { data: gfBalanceData } = useQuery<{ balance: number }>({
     queryKey: ['/api/me/gf-balance', user?.id],
@@ -190,6 +201,53 @@ export default function StorePage() {
     setPurchaseState('idle');
     setPurchaseError('');
     setPendingPurchaseId(null);
+  };
+
+  const handleOpenQuickSell = (nft: OwnedNFT) => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedNftToSell(nft);
+    setSellState('confirming');
+    setSellError('');
+    setSellNetReceived(0);
+  };
+
+  const handleConfirmQuickSell = async () => {
+    if (!selectedNftToSell) return;
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setSellState('processing');
+
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/nft/quick-sell`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ tokenId: selectedNftToSell.tokenId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setSellState('error');
+        setSellError(data.error || 'Quick sell failed. Please try again.');
+        return;
+      }
+
+      setSellNetReceived(data.receivedAmount ?? QUICK_SELL_NET);
+      queryClient.invalidateQueries({ queryKey: ['/api/nfts/owned', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/marketplace/listings'] });
+      if (typeof data.receivedAmount === 'number') {
+        updateUser({ gfTokenBalance: (user?.gfTokenBalance ?? 0) + data.receivedAmount });
+      }
+      setSellState('success');
+    } catch {
+      setSellState('error');
+      setSellError('Network error. Please try again.');
+    }
+  };
+
+  const handleCloseQuickSellModal = () => {
+    setSelectedNftToSell(null);
+    setSellState('idle');
+    setSellError('');
   };
 
   const handleMintNFT = async () => {
@@ -329,8 +387,16 @@ export default function StorePage() {
           <TrendingUp size={48} color="#475569" />
           <Text style={styles.emptyTitle}>No NFTs to Sell</Text>
           <Text style={styles.emptyText}>
-            You don't own any NFTs yet. Mint some from the Mint tab to get started!
+            You don't own any NFTs yet. Mint one from the Mint tab to get started!
           </Text>
+          <TouchableOpacity
+            style={styles.goToMintButton}
+            onPress={() => setActiveTab('mint')}
+            activeOpacity={0.8}
+          >
+            <Sparkles size={16} color="#020617" />
+            <Text style={styles.goToMintButtonText}>Go to Mint</Text>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -338,7 +404,7 @@ export default function StorePage() {
     return (
       <View style={styles.mainContent}>
         <Text style={styles.mainTitle}>Your NFTs</Text>
-        <Text style={styles.subtitle}>Select an NFT to list it for sale on the marketplace</Text>
+        <Text style={styles.subtitle}>Quick Sell lists your NFT for 250 GFT and credits your balance instantly</Text>
 
         <View style={styles.nftGrid}>
           {activeNFTs.map((nft) => (
@@ -363,8 +429,12 @@ export default function StorePage() {
                   <View style={styles.ownedBadge}>
                     <Text style={styles.ownedBadgeText}>Owned</Text>
                   </View>
-                  <TouchableOpacity style={styles.listButton} activeOpacity={0.8}>
-                    <Text style={styles.listButtonText}>List (Soon)</Text>
+                  <TouchableOpacity
+                    style={styles.listButton}
+                    activeOpacity={0.8}
+                    onPress={() => handleOpenQuickSell(nft)}
+                  >
+                    <Text style={styles.listButtonText}>Quick Sell</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -801,6 +871,131 @@ export default function StorePage() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={sellState !== 'idle' && selectedNftToSell != null}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCloseQuickSellModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {sellState === 'success' ? 'Sale Complete' : sellState === 'error' ? 'Sale Failed' : 'Quick Sell'}
+              </Text>
+              <TouchableOpacity onPress={handleCloseQuickSellModal} activeOpacity={0.7} style={styles.closeBtn}>
+                <X size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            {sellState === 'success' ? (
+              <>
+                <View style={styles.emptyState}>
+                  <View style={styles.mintSuccessIcon}>
+                    <CheckCircle size={48} color="#4ADE80" />
+                  </View>
+                  <Text style={styles.emptyTitle}>NFT Listed!</Text>
+                  <Text style={styles.emptyText}>
+                    {`${sellNetReceived.toFixed(2)} GFT has been credited to your balance.\nYour NFT is now live in the marketplace.`}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={() => { handleCloseQuickSellModal(); setActiveTab('buy'); }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.confirmButtonText}>View in Marketplace</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelLink} onPress={handleCloseQuickSellModal} activeOpacity={0.7}>
+                  <Text style={styles.cancelLinkText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            ) : sellState === 'error' ? (
+              <>
+                <View style={styles.emptyState}>
+                  <View style={[styles.mintSuccessIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                    <AlertCircle size={48} color="#EF4444" />
+                  </View>
+                  <Text style={[styles.emptyTitle, { color: '#EF4444' }]}>Could Not Sell</Text>
+                  <Text style={styles.emptyText}>{sellError}</Text>
+                </View>
+                <TouchableOpacity style={styles.confirmButton} onPress={() => setSellState('confirming')} activeOpacity={0.8}>
+                  <Text style={styles.confirmButtonText}>Try Again</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelLink} onPress={handleCloseQuickSellModal} activeOpacity={0.7}>
+                  <Text style={styles.cancelLinkText}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <View style={styles.mintConfirmCard}>
+                  <View style={styles.mintConfirmRow}>
+                    {selectedNftToSell?.imageDataUrl ? (
+                      <Image source={{ uri: selectedNftToSell.imageDataUrl }} style={styles.sellModalThumb} />
+                    ) : selectedNftToSell?.image ? (
+                      <Image source={{ uri: `${Env.BACKEND_URL}${selectedNftToSell.image}` }} style={styles.sellModalThumb} />
+                    ) : (
+                      <View style={[styles.sellModalThumb, styles.sellModalThumbPlaceholder]}>
+                        <Sparkles size={24} color="#4ADE80" />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.mintConfirmTitle}>
+                        {selectedNftToSell?.name || `Gamefolio Genesis #${selectedNftToSell?.tokenId}`}
+                      </Text>
+                      <Text style={styles.mintConfirmSub}>Token #{selectedNftToSell?.tokenId}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.mintConfirmSummary}>
+                  <View style={styles.mintConfirmSummaryRow}>
+                    <Text style={styles.mintSummaryLabel}>Listing Price</Text>
+                    <Text style={styles.mintSummaryValue}>{QUICK_SELL_PRICE} GFT</Text>
+                  </View>
+                  <View style={styles.mintConfirmSummaryRow}>
+                    <Text style={styles.mintSummaryLabel}>Platform Fee (1.5%)</Text>
+                    <Text style={[styles.mintSummaryValue, { color: '#EF4444' }]}>- {QUICK_SELL_PLATFORM_FEE.toFixed(2)} GFT</Text>
+                  </View>
+                  <View style={styles.mintConfirmSummaryRow}>
+                    <Text style={styles.mintSummaryLabel}>Listing Fee</Text>
+                    <Text style={[styles.mintSummaryValue, { color: '#EF4444' }]}>- {QUICK_SELL_LIST_FEE.toFixed(2)} GFT</Text>
+                  </View>
+                  <View style={[styles.mintConfirmSummaryRow, styles.mintConfirmTotal]}>
+                    <Text style={styles.mintTotalLabelBold}>You Receive</Text>
+                    <Text style={styles.mintTotalValueGreen}>{QUICK_SELL_NET.toFixed(2)} GFT</Text>
+                  </View>
+                  <View style={styles.mintConfirmSummaryRow}>
+                    <Text style={styles.mintSummaryLabel}>Current Balance</Text>
+                    <Text style={styles.mintSummaryValue}>{gfBalance.toLocaleString()} GFT</Text>
+                  </View>
+                  <View style={styles.mintConfirmSummaryRow}>
+                    <Text style={styles.mintSummaryLabel}>After Sale</Text>
+                    <Text style={styles.mintSummaryValue}>{(gfBalance + QUICK_SELL_NET).toFixed(2)} GFT</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.confirmButton, sellState === 'processing' && { opacity: 0.7 }]}
+                  onPress={handleConfirmQuickSell}
+                  activeOpacity={0.8}
+                  disabled={sellState === 'processing'}
+                >
+                  {sellState === 'processing' ? (
+                    <ActivityIndicator size="small" color="#020617" />
+                  ) : (
+                    <Text style={styles.confirmButtonText}>Confirm Quick Sell</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelLink} onPress={handleCloseQuickSellModal} activeOpacity={0.7}>
+                  <Text style={styles.cancelLinkText}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -931,12 +1126,36 @@ const styles = StyleSheet.create({
   },
   ownedBadgeText: { fontSize: 11, color: '#4ADE80', fontWeight: '600' },
   listButton: {
-    backgroundColor: 'rgba(148, 163, 184, 0.15)',
+    backgroundColor: 'rgba(74, 222, 128, 0.15)',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.3)',
   },
-  listButtonText: { fontSize: 11, color: '#94A3B8', fontWeight: '600' },
+  listButtonText: { fontSize: 11, color: '#4ADE80', fontWeight: '600' },
+  goToMintButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#4ADE80',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  goToMintButtonText: { fontSize: 14, fontWeight: 'bold', color: '#020617' },
+  sellModalThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 10,
+    marginRight: 12,
+  },
+  sellModalThumbPlaceholder: {
+    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   mintCard: {
     backgroundColor: 'rgba(30, 41, 59, 0.6)',
     borderRadius: 20,
