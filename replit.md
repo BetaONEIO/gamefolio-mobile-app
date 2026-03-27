@@ -84,6 +84,16 @@ Preferred communication style: Simple, everyday language.
 - Push notifications via expo-notifications
 - Birthday celebrations and profile badges
 
+### GF Token / Crypto System
+- **GF Token Balance**: Stored in `user.gfTokenBalance` (integer). Updated locally via `updateUser({ gfTokenBalance })` from `useAuth()`.
+- **Wallet Screen** (`app/(drawer)/crypto/wallet.tsx`): Displays real GF balance from auth user, recent transactions from `GET /api/gf/orders`.
+- **Buy GF Tokens** (`app/(drawer)/crypto/buy/index.tsx`): Stripe checkout via `POST /api/gf/checkout` → open URL in `expo-web-browser` → recover via `POST /api/gf/recover-orders` → poll `GET /api/gf/orders/:id` until paid.
+- **Virtual Store** (`app/(drawer)/store.tsx`): Real items from `GET /api/store/items`. Purchase via `POST /api/store/purchase-intent`. Shows GF balance in header.
+- **Inventory** (`app/(drawer)/crypto/inventory.tsx`): Owned virtual items from `GET /api/store/owned`.
+- **NFT Store** (`app/(drawer)/crypto/store.tsx`): 3 tabs — Buy (store items), Mint (500 GFT each, max 5 via `POST /api/mint/mint`), Sell (owned NFTs from `GET /api/nfts/owned`).
+- **Staking** (`app/(drawer)/crypto/staking.tsx`): Real position from `GET /api/staking/my-position`. Stake/unstake/claim rewards via POST endpoints. Modal flows with GF balance deduction.
+- **New Backend Endpoint**: `GET /api/staking/my-position` (hybridAuth) in `server/routes/gf-staking.ts` — returns wallet status, on-chain staked/earned, and DB staking record. Needed because `walletAddress` is not in the client-side User type.
+
 ## External Dependencies
 
 ### Third-Party Services

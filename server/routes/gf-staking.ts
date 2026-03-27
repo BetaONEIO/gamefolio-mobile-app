@@ -7,6 +7,7 @@ import { writeContractWithPoW, publicClient } from '../skale-pow';
 import { GF_STAKING_ADDRESS, GF_STAKING_ABI, GF_TOKEN_ADDRESS, GF_TOKEN_ABI } from '../../shared/contracts';
 import { getStakingStats, getStakePosition } from '../gf-staking-service';
 import { transferGfTokens } from '../gf-token-service';
+import { hybridAuth } from '../middleware/hybrid-auth';
 
 const router = Router();
 const GF_DECIMALS = 18;
@@ -23,6 +24,50 @@ router.get('/api/staking/position/:address', async (req: Request, res: Response)
   } catch (error: any) {
     console.error('[Staking] Get position error:', error);
     return res.json({ staked: '0', earned: '0' });
+  }
+});
+
+router.get('/api/staking/my-position', hybridAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const [user] = await db.select({
+      walletAddress: users.walletAddress,
+      gfTokenBalance: users.gfTokenBalance,
+    }).from(users).where(eq(users.id, userId)).limit(1);
+
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const [staking] = await db.select().from(userStaking).where(eq(userStaking.userId, userId)).limit(1);
+
+    let onChainStaked = '0';
+    let onChainEarned = '0';
+
+    if (user.walletAddress) {
+      try {
+        const position = await getStakePosition(user.walletAddress);
+        onChainStaked = position.staked;
+        onChainEarned = position.earned;
+      } catch {
+        // Fall back to DB values
+      }
+    }
+
+    return res.json({
+      hasWallet: !!user.walletAddress,
+      walletAddress: user.walletAddress || null,
+      inAppBalance: user.gfTokenBalance || 0,
+      onChainStaked,
+      onChainEarned,
+      dbStaked: staking?.stakedAmount || 0,
+      totalEarned: staking?.totalEarned || 0,
+      stakedAt: staking?.stakedAt || null,
+      lastClaimAt: staking?.lastClaimAt || null,
+    });
+  } catch (error: any) {
+    console.error('[Staking] My position error:', error);
+    return res.status(500).json({ error: 'Failed to get staking position' });
   }
 });
 

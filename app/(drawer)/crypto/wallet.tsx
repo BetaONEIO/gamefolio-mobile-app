@@ -1,13 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Plus, TrendingUp } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useAuth } from '@/context/AuthContext';
 
 export default function WalletPage() {
   const router = useRouter();
-  const balance = 0.0;
+  const { user } = useAuth();
+  const balance = user?.gfTokenBalance ?? 0;
 
   const handleButtonPress = () => {
     if (Platform.OS !== 'web') {
@@ -25,15 +27,16 @@ export default function WalletPage() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           />
-          
+
           <Text style={styles.balanceAmount}>
             {balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}
           </Text>
           <Text style={styles.tokenName}>Gamefolio Token</Text>
+          <Text style={styles.usdValue}>≈ £{(balance * 0.01).toFixed(2)} GBP</Text>
         </View>
 
         <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
               handleButtonPress();
@@ -46,8 +49,8 @@ export default function WalletPage() {
             </View>
             <Text style={styles.actionButtonText}>Buy</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
               handleButtonPress();
@@ -100,6 +103,11 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
     color: '#94A3B8',
     marginTop: 8,
+  },
+  usdValue: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 4,
   },
   actionButtonsContainer: {
     flexDirection: 'row',

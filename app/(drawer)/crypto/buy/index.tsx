@@ -1,539 +1,541 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
-import { ShoppingCart, Coins, ChevronRight, Clock, CheckCircle, AlertCircle, Truck, Package } from 'lucide-react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Platform,
+  Modal,
+} from 'react-native';
+import {
+  ShoppingCart,
+  Coins,
+  ChevronRight,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Truck,
+  Package,
+  X,
+  Sparkles,
+  Info,
+} from 'lucide-react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Haptics from 'expo-haptics';
+import { useAuth } from '@/context/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { Env } from '@/constants/Env';
 
-const GF_PRICE_PER_POUND = 100; // 1 GBP = 100 GF
+const GF_PRICE_PER_POUND = 100;
 
 const PRESET_AMOUNTS = [
-  { value: 5, label: '£5' },
-  { value: 10, label: '£10' },
-  { value: 25, label: '£25' },
-  { value: 50, label: '£50' },
-  { value: 100, label: '£100' },
+  { value: 5, label: '£5', gf: 500 },
+  { value: 10, label: '£10', gf: 1000 },
+  { value: 25, label: '£25', gf: 2500 },
+  { value: 50, label: '£50', gf: 5000 },
+  { value: 100, label: '£100', gf: 10000 },
 ];
 
-type OrderStatus = 'created' | 'paid' | 'delivering' | 'delivered' | 'failed';
+type CheckoutState = 'idle' | 'creating' | 'browser' | 'recovering' | 'success' | 'error';
 
-interface OrderStatusConfig {
-  label: string;
-  description: string;
-  icon: typeof Clock;
-  color: string;
-  bgColor: string;
+interface OrderResult {
+  orderId: string;
+  gfAmount: number;
+  status: string;
 }
 
-const ORDER_STATUS_CONFIG: Record<OrderStatus, OrderStatusConfig> = {
+const ORDER_STATUS_CONFIG: Record<string, { label: string; description: string; Icon: any; color: string; bg: string }> = {
   created: {
     label: 'Order Created',
     description: 'Waiting for payment confirmation',
-    icon: Clock,
+    Icon: Clock,
     color: '#F59E0B',
-    bgColor: 'rgba(245, 158, 11, 0.15)',
+    bg: 'rgba(245, 158, 11, 0.15)',
   },
   paid: {
     label: 'Payment Received',
     description: 'Processing your GF tokens',
-    icon: CheckCircle,
+    Icon: CheckCircle,
     color: '#3B82F6',
-    bgColor: 'rgba(59, 130, 246, 0.15)',
+    bg: 'rgba(59, 130, 246, 0.15)',
+  },
+  credited: {
+    label: 'Tokens Credited',
+    description: 'GF tokens added to your account',
+    Icon: CheckCircle,
+    color: '#4ADE80',
+    bg: 'rgba(74, 222, 128, 0.15)',
+  },
+  delivered: {
+    label: 'Tokens Delivered',
+    description: 'GF tokens transferred on-chain',
+    Icon: Package,
+    color: '#4ADE80',
+    bg: 'rgba(74, 222, 128, 0.15)',
   },
   delivering: {
     label: 'Delivering Tokens',
     description: 'Transferring GF to your wallet',
-    icon: Truck,
+    Icon: Truck,
     color: '#8B5CF6',
-    bgColor: 'rgba(139, 92, 246, 0.15)',
-  },
-  delivered: {
-    label: 'Delivered',
-    description: 'GF tokens added to your wallet',
-    icon: Package,
-    color: '#4ADE80',
-    bgColor: 'rgba(74, 222, 128, 0.15)',
+    bg: 'rgba(139, 92, 246, 0.15)',
   },
   failed: {
-    label: 'Failed',
-    description: 'Something went wrong. Contact support.',
-    icon: AlertCircle,
+    label: 'Order Failed',
+    description: 'Something went wrong. Please contact support.',
+    Icon: AlertCircle,
     color: '#EF4444',
-    bgColor: 'rgba(239, 68, 68, 0.15)',
+    bg: 'rgba(239, 68, 68, 0.15)',
   },
 };
 
-interface OrderStatusCardProps {
-  status: OrderStatus;
-  amount?: number;
-  gfAmount?: number;
-  orderId?: string;
-}
+export default function BuyGFPage() {
+  const { user, getAccessToken, updateUser } = useAuth();
+  const queryClient = useQueryClient();
 
-function OrderStatusCard({ status, amount, gfAmount, orderId }: OrderStatusCardProps) {
-  const config = ORDER_STATUS_CONFIG[status];
-  const Icon = config.icon;
+  const [selectedAmount, setSelectedAmount] = useState(10);
+  const [checkoutState, setCheckoutState] = useState<CheckoutState>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [orderResult, setOrderResult] = useState<OrderResult | null>(null);
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
 
-  return (
-    <View style={[styles.orderCard, { borderColor: `${config.color}40` }]}>
-      <View style={styles.orderCardHeader}>
-        <View style={[styles.orderStatusIcon, { backgroundColor: config.bgColor }]}>
-          <Icon size={20} color={config.color} />
-        </View>
-        <View style={styles.orderStatusInfo}>
-          <Text style={[styles.orderStatusLabel, { color: config.color }]}>{config.label}</Text>
-          <Text style={styles.orderStatusDescription}>{config.description}</Text>
-        </View>
-      </View>
-      
-      {(amount || gfAmount || orderId) && (
-        <View style={styles.orderDetails}>
-          {orderId && (
-            <View style={styles.orderDetailRow}>
-              <Text style={styles.orderDetailLabel}>Order ID</Text>
-              <Text style={styles.orderDetailValue}>#{orderId}</Text>
-            </View>
-          )}
-          {amount && (
-            <View style={styles.orderDetailRow}>
-              <Text style={styles.orderDetailLabel}>Amount Paid</Text>
-              <Text style={styles.orderDetailValue}>£{amount}</Text>
-            </View>
-          )}
-          {gfAmount && (
-            <View style={styles.orderDetailRow}>
-              <Text style={styles.orderDetailLabel}>GF Tokens</Text>
-              <Text style={[styles.orderDetailValue, { color: '#4ADE80' }]}>{gfAmount.toLocaleString()} GF</Text>
-            </View>
-          )}
-        </View>
-      )}
+  const gfBalance = user?.gfTokenBalance ?? 0;
+  const selectedPreset = PRESET_AMOUNTS.find(p => p.value === selectedAmount);
+  const gfAmount = selectedAmount * GF_PRICE_PER_POUND;
 
-      <View style={styles.orderProgress}>
-        {(['created', 'paid', 'delivering', 'delivered'] as OrderStatus[]).map((step, index) => {
-          const stepIndex = ['created', 'paid', 'delivering', 'delivered'].indexOf(status);
-          const currentIndex = index;
-          const isActive = currentIndex <= stepIndex && status !== 'failed';
-          const isFailed = status === 'failed';
-          
-          return (
-            <React.Fragment key={step}>
-              <View style={[
-                styles.progressDot,
-                isActive && styles.progressDotActive,
-                isFailed && index === 0 && styles.progressDotFailed,
-              ]} />
-              {index < 3 && (
-                <View style={[
-                  styles.progressLine,
-                  currentIndex < stepIndex && styles.progressLineActive,
-                  isFailed && styles.progressLineFailed,
-                ]} />
-              )}
-            </React.Fragment>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
+  const handleCheckout = useCallback(async () => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setCheckoutState('creating');
+    setErrorMessage('');
+    setOrderResult(null);
 
-export default function BuyPage() {
-  const router = useRouter();
-  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
-  const [currentOrder, setCurrentOrder] = useState<{
-    status: OrderStatus;
-    amount: number;
-    gfAmount: number;
-    orderId: string;
-  } | null>(null);
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/gf/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ gbpAmount: selectedAmount }),
+      });
 
-  const gfToReceive = selectedAmount ? selectedAmount * GF_PRICE_PER_POUND : 0;
+      const data = await res.json();
+      if (!res.ok) {
+        setCheckoutState('error');
+        setErrorMessage(data.error || 'Failed to create checkout session. Please try again.');
+        return;
+      }
 
-  const handleContinueToPayment = () => {
-    if (!selectedAmount) return;
-    
-    console.log('[BuyPage] Creating order for £' + selectedAmount);
-    setCurrentOrder({
-      status: 'created',
-      amount: selectedAmount,
-      gfAmount: gfToReceive,
-      orderId: Math.random().toString(36).substring(2, 10).toUpperCase(),
-    });
+      const { orderId, checkoutUrl } = data;
+      if (!checkoutUrl) {
+        setCheckoutState('error');
+        setErrorMessage('No checkout URL returned from server.');
+        return;
+      }
+
+      setCheckoutState('browser');
+
+      if (Platform.OS === 'web') {
+        window.open(checkoutUrl, '_blank');
+      } else {
+        await WebBrowser.openBrowserAsync(checkoutUrl, {
+          dismissButtonStyle: 'close',
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+        });
+      }
+
+      setCheckoutState('recovering');
+
+      const recoverToken = await getAccessToken();
+      await fetch(`${Env.BACKEND_URL}/api/gf/recover-orders`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${recoverToken}` },
+      });
+
+      const orderToken = await getAccessToken();
+      const orderRes = await fetch(`${Env.BACKEND_URL}/api/gf/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${orderToken}` },
+      });
+      const orderData = await orderRes.json();
+
+      const status = orderData?.status || 'created';
+
+      setOrderResult({
+        orderId,
+        gfAmount: orderData?.gfAmount ?? gfAmount,
+        status,
+      });
+
+      if (status === 'credited' || status === 'delivered' || status === 'paid') {
+        if (orderData?.newBalance !== undefined) {
+          updateUser({ gfTokenBalance: orderData.newBalance });
+        }
+        queryClient.invalidateQueries({ queryKey: ['/api/store/owned'] });
+        setCheckoutState('success');
+      } else {
+        setCheckoutState('idle');
+      }
+    } catch (err: any) {
+      setCheckoutState('error');
+      setErrorMessage(err.message || 'An unexpected error occurred. Please try again.');
+    }
+  }, [selectedAmount, getAccessToken, gfAmount, updateUser, queryClient]);
+
+  const handleReset = () => {
+    setCheckoutState('idle');
+    setErrorMessage('');
+    setOrderResult(null);
   };
 
-  return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.headerSection}>
-        <View style={styles.headerIcon}>
-          <ShoppingCart size={28} color="#3B82F6" />
-        </View>
-        <Text style={styles.headerTitle}>Buy GF Tokens</Text>
-        <Text style={styles.headerSubtitle}>
-          Purchase GF tokens instantly with secure payment
-        </Text>
-      </View>
+  if (checkoutState === 'success' && orderResult) {
+    const config = ORDER_STATUS_CONFIG[orderResult.status] || ORDER_STATUS_CONFIG.credited;
+    const StatusIcon = config.Icon;
 
-      <View style={styles.priceInfoCard}>
-        <View style={styles.priceRow}>
-          <Text style={styles.priceLabel}>Current Rate</Text>
-          <View style={styles.priceValueWrap}>
-            <Coins size={16} color="#4ADE80" />
-            <Text style={styles.priceValue}>1 GBP = {GF_PRICE_PER_POUND} GF</Text>
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.resultContainer}>
+          <View style={[styles.resultIcon, { backgroundColor: config.bg }]}>
+            <StatusIcon size={48} color={config.color} />
+          </View>
+          <Text style={styles.resultTitle}>Payment Complete!</Text>
+          <Text style={styles.resultSubtitle}>
+            {orderResult.gfAmount.toLocaleString()} GF tokens have been added to your account
+          </Text>
+
+          <View style={styles.resultSummary}>
+            <View style={styles.resultRow}>
+              <Text style={styles.resultRowLabel}>Tokens Received</Text>
+              <View style={styles.resultRowValue}>
+                <Sparkles size={14} color="#4ADE80" />
+                <Text style={styles.resultAmount}>{orderResult.gfAmount.toLocaleString()} GF</Text>
+              </View>
+            </View>
+            <View style={styles.resultRow}>
+              <Text style={styles.resultRowLabel}>New Balance</Text>
+              <Text style={styles.resultBalance}>{(user?.gfTokenBalance ?? 0).toLocaleString()} GF</Text>
+            </View>
+            <View style={styles.resultRow}>
+              <Text style={styles.resultRowLabel}>Order ID</Text>
+              <Text style={styles.resultOrderId}>#{orderResult.orderId}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.doneButton} onPress={handleReset} activeOpacity={0.8}>
+            <Text style={styles.doneButtonText}>Buy More Tokens</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  if (checkoutState === 'creating' || checkoutState === 'browser' || checkoutState === 'recovering') {
+    const stateMessages: Record<string, { title: string; desc: string }> = {
+      creating: { title: 'Creating Order...', desc: 'Setting up your checkout session.' },
+      browser: { title: 'Complete Payment', desc: 'Finish your payment in the browser window, then return here.' },
+      recovering: { title: 'Confirming Payment...', desc: 'Please wait while we confirm your payment and credit your tokens.' },
+    };
+    const msg = stateMessages[checkoutState] || stateMessages.creating;
+
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4ADE80" />
+        <Text style={styles.loadingTitle}>{msg.title}</Text>
+        <Text style={styles.loadingDesc}>{msg.desc}</Text>
+      </View>
+    );
+  }
+
+  if (checkoutState === 'error') {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.resultContainer}>
+          <View style={[styles.resultIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+            <AlertCircle size={48} color="#EF4444" />
+          </View>
+          <Text style={styles.resultTitle}>Checkout Failed</Text>
+          <Text style={styles.errorMessage}>{errorMessage}</Text>
+          <TouchableOpacity style={styles.doneButton} onPress={handleReset} activeOpacity={0.8}>
+            <Text style={styles.doneButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  return (
+    <>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>Buy GF Tokens</Text>
+          <Text style={styles.subtitle}>Purchase tokens to use across the Gamefolio platform</Text>
+          <View style={styles.balancePill}>
+            <Sparkles size={14} color="#4ADE80" />
+            <Text style={styles.balanceText}>{gfBalance.toLocaleString()} GF balance</Text>
           </View>
         </View>
-      </View>
 
-      {currentOrder && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Current Order</Text>
-          <OrderStatusCard
-            status={currentOrder.status}
-            amount={currentOrder.amount}
-            gfAmount={currentOrder.gfAmount}
-            orderId={currentOrder.orderId}
-          />
+        <View style={styles.rateCard}>
+          <View style={styles.rateLeft}>
+            <Coins size={20} color="#4ADE80" />
+            <Text style={styles.rateText}>1 GF Token = £0.01 GBP</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.infoButton}
+            onPress={() => setShowHowItWorks(true)}
+            activeOpacity={0.7}
+          >
+            <Info size={16} color="#64748B" />
+          </TouchableOpacity>
         </View>
-      )}
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Select Amount</Text>
-        <View style={styles.amountGrid}>
-          {PRESET_AMOUNTS.map((preset) => {
-            const isSelected = selectedAmount === preset.value;
-            const gf = preset.value * GF_PRICE_PER_POUND;
-            
-            return (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Select Amount</Text>
+          <View style={styles.amountsGrid}>
+            {PRESET_AMOUNTS.map((preset) => (
               <TouchableOpacity
                 key={preset.value}
-                style={[styles.amountCard, isSelected && styles.amountCardSelected]}
-                onPress={() => setSelectedAmount(preset.value)}
+                style={[
+                  styles.amountCard,
+                  selectedAmount === preset.value && styles.amountCardActive,
+                ]}
+                onPress={() => {
+                  setSelectedAmount(preset.value);
+                  if (Platform.OS !== 'web') Haptics.selectionAsync();
+                }}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.amountPrice, isSelected && styles.amountPriceSelected]}>
+                <Text style={[
+                  styles.amountLabel,
+                  selectedAmount === preset.value && styles.amountLabelActive,
+                ]}>
                   {preset.label}
                 </Text>
-                <Text style={[styles.amountGF, isSelected && styles.amountGFSelected]}>
-                  {gf.toLocaleString()} GF
+                <Text style={[
+                  styles.amountGF,
+                  selectedAmount === preset.value && styles.amountGFActive,
+                ]}>
+                  {preset.gf.toLocaleString()} GF
                 </Text>
-                {isSelected && (
-                  <View style={styles.selectedIndicator}>
-                    <CheckCircle size={16} color="#4ADE80" />
-                  </View>
-                )}
               </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={styles.summaryCard}>
-        <Text style={styles.summaryTitle}>Order Summary</Text>
-        
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Amount</Text>
-          <Text style={styles.summaryValue}>
-            {selectedAmount ? `£${selectedAmount}` : '—'}
-          </Text>
-        </View>
-        
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Rate</Text>
-          <Text style={styles.summaryValue}>{GF_PRICE_PER_POUND} GF/£</Text>
-        </View>
-        
-        <View style={styles.summaryDivider} />
-        
-        <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabelLarge}>You will receive</Text>
-          <View style={styles.summaryGFWrap}>
-            <Coins size={20} color="#4ADE80" />
-            <Text style={styles.summaryGFValue}>
-              {gfToReceive.toLocaleString()} GF
-            </Text>
+            ))}
           </View>
         </View>
-      </View>
 
-      <TouchableOpacity
-        style={[styles.continueButton, !selectedAmount && styles.continueButtonDisabled]}
-        onPress={handleContinueToPayment}
-        activeOpacity={0.8}
-        disabled={!selectedAmount}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>Order Summary</Text>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>You Pay</Text>
+            <Text style={styles.summaryValue}>£{selectedAmount}.00 GBP</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>You Receive</Text>
+            <View style={styles.summaryGFRow}>
+              <Sparkles size={14} color="#4ADE80" />
+              <Text style={styles.summaryGFValue}>{gfAmount.toLocaleString()} GF</Text>
+            </View>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Rate</Text>
+            <Text style={styles.summaryValue}>100 GF per £1</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Payment</Text>
+            <Text style={styles.summaryValue}>Stripe (Card / PayPal)</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.checkoutButton}
+          onPress={handleCheckout}
+          activeOpacity={0.8}
+        >
+          <ShoppingCart size={20} color="#020617" />
+          <Text style={styles.checkoutButtonText}>Continue to Checkout</Text>
+          <ChevronRight size={18} color="#020617" />
+        </TouchableOpacity>
+
+        <View style={styles.securityNote}>
+          <Text style={styles.securityText}>
+            Payments are securely processed by Stripe. Tokens are typically credited instantly after payment.
+          </Text>
+        </View>
+      </ScrollView>
+
+      <Modal
+        visible={showHowItWorks}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowHowItWorks(false)}
       >
-        <Text style={[styles.continueButtonText, !selectedAmount && styles.continueButtonTextDisabled]}>
-          Continue to Payment
-        </Text>
-        <ChevronRight size={20} color={selectedAmount ? '#FFFFFF' : '#64748B'} />
-      </TouchableOpacity>
-    </ScrollView>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>How It Works</Text>
+              <TouchableOpacity onPress={() => setShowHowItWorks(false)} activeOpacity={0.7}>
+                <X size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            {[
+              { step: '1', title: 'Select an amount', desc: 'Choose how many GF tokens you want to purchase.' },
+              { step: '2', title: 'Pay with Stripe', desc: 'Complete your payment securely using card or PayPal.' },
+              { step: '3', title: 'Tokens credited instantly', desc: 'GF tokens appear in your wallet after payment confirmation.' },
+              { step: '4', title: 'Use anywhere on Gamefolio', desc: 'Spend GF on NFTs, store items, staking, and more.' },
+            ].map((item) => (
+              <View key={item.step} style={styles.howItWorksStep}>
+                <View style={styles.stepBadge}>
+                  <Text style={styles.stepBadgeText}>{item.step}</Text>
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={styles.stepTitle}>{item.title}</Text>
+                  <Text style={styles.stepDesc}>{item.desc}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  headerSection: {
+  container: { flex: 1 },
+  scrollContent: { padding: 16, paddingBottom: 40 },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 20, padding: 32 },
+  loadingTitle: { fontSize: 20, fontWeight: '700' as const, color: '#FFFFFF' },
+  loadingDesc: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 20 },
+  header: { marginBottom: 24 },
+  title: { fontSize: 28, fontWeight: '700' as const, color: '#FFFFFF', marginBottom: 6 },
+  subtitle: { fontSize: 14, color: '#94A3B8', marginBottom: 12 },
+  balancePill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
-  },
-  headerIcon: {
-    width: 64,
-    height: 64,
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.2)',
+  },
+  balanceText: { fontSize: 13, fontWeight: '700' as const, color: '#4ADE80' },
+  rateCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700' as const,
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#94A3B8',
-    textAlign: 'center' as const,
-  },
-  priceInfoCard: {
+    justifyContent: 'space-between',
     backgroundColor: '#1E293B',
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: 12,
+    padding: 14,
     marginBottom: 24,
     borderWidth: 1,
     borderColor: '#334155',
   },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  priceLabel: {
-    fontSize: 14,
-    color: '#94A3B8',
-    fontWeight: '500' as const,
-  },
-  priceValueWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  priceValue: {
-    fontSize: 15,
-    color: '#4ADE80',
-    fontWeight: '700' as const,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: '#FFFFFF',
-    marginBottom: 16,
-  },
-  amountGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
+  rateLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rateText: { fontSize: 14, fontWeight: '600' as const, color: '#FFFFFF' },
+  infoButton: { padding: 4 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 16, fontWeight: '700' as const, color: '#FFFFFF', marginBottom: 14 },
+  amountsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   amountCard: {
-    width: '31%',
+    width: '47%',
     backgroundColor: '#1E293B',
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#334155',
-    position: 'relative' as const,
   },
-  amountCardSelected: {
-    borderColor: '#4ADE80',
+  amountCardActive: {
     backgroundColor: 'rgba(74, 222, 128, 0.1)',
+    borderColor: '#4ADE80',
   },
-  amountPrice: {
-    fontSize: 20,
-    fontWeight: '700' as const,
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  amountPriceSelected: {
-    color: '#4ADE80',
-  },
-  amountGF: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500' as const,
-  },
-  amountGFSelected: {
-    color: '#94A3B8',
-  },
-  selectedIndicator: {
-    position: 'absolute' as const,
-    top: 8,
-    right: 8,
-  },
+  amountLabel: { fontSize: 22, fontWeight: '700' as const, color: '#FFFFFF', marginBottom: 4 },
+  amountLabelActive: { color: '#4ADE80' },
+  amountGF: { fontSize: 12, color: '#64748B', fontWeight: '500' as const },
+  amountGFActive: { color: '#86EFAC' },
   summaryCard: {
     backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 20,
-    marginBottom: 20,
+    gap: 14,
     borderWidth: 1,
     borderColor: '#334155',
+    marginBottom: 24,
   },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: '#FFFFFF',
-    marginBottom: 16,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: '#94A3B8',
-  },
-  summaryValue: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600' as const,
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    marginVertical: 12,
-  },
-  summaryLabelLarge: {
-    fontSize: 15,
-    color: '#FFFFFF',
-    fontWeight: '600' as const,
-  },
-  summaryGFWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  summaryGFValue: {
-    fontSize: 20,
-    color: '#4ADE80',
-    fontWeight: '700' as const,
-  },
-  continueButton: {
+  summaryTitle: { fontSize: 16, fontWeight: '700' as const, color: '#FFFFFF', marginBottom: 4 },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  summaryLabel: { fontSize: 14, color: '#94A3B8' },
+  summaryValue: { fontSize: 14, fontWeight: '600' as const, color: '#FFFFFF' },
+  summaryGFRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  summaryGFValue: { fontSize: 16, fontWeight: '700' as const, color: '#4ADE80' },
+  summaryDivider: { height: 1, backgroundColor: '#334155', marginVertical: 4 },
+  checkoutButton: {
+    backgroundColor: '#4ADE80',
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#4ADE80',
-    borderRadius: 14,
-    paddingVertical: 16,
-    gap: 8,
-    marginBottom: 32,
+    gap: 12,
+    marginBottom: 16,
   },
-  continueButtonDisabled: {
-    backgroundColor: '#1E293B',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  continueButtonText: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: '#131F2A',
-  },
-  continueButtonTextDisabled: {
-    color: '#64748B',
-  },
-  orderCard: {
+  checkoutButtonText: { fontSize: 16, fontWeight: '700' as const, color: '#020617', flex: 1, textAlign: 'center' },
+  securityNote: { alignItems: 'center', paddingHorizontal: 8 },
+  securityText: { fontSize: 12, color: '#64748B', textAlign: 'center', lineHeight: 18 },
+  resultContainer: { alignItems: 'center', paddingVertical: 40, gap: 16 },
+  resultIcon: { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center' },
+  resultTitle: { fontSize: 24, fontWeight: '700' as const, color: '#FFFFFF' },
+  resultSubtitle: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 20 },
+  resultSummary: {
     backgroundColor: '#1E293B',
     borderRadius: 16,
-    padding: 16,
+    padding: 20,
+    gap: 14,
+    width: '100%',
     borderWidth: 1,
+    borderColor: '#334155',
+    marginTop: 8,
   },
-  orderCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+  resultRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  resultRowLabel: { fontSize: 14, color: '#94A3B8' },
+  resultRowValue: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  resultAmount: { fontSize: 16, fontWeight: '700' as const, color: '#4ADE80' },
+  resultBalance: { fontSize: 14, fontWeight: '600' as const, color: '#FFFFFF' },
+  resultOrderId: { fontSize: 12, color: '#64748B' },
+  doneButton: { backgroundColor: '#4ADE80', borderRadius: 14, paddingVertical: 16, paddingHorizontal: 40, marginTop: 8 },
+  doneButtonText: { fontSize: 16, fontWeight: '700' as const, color: '#020617' },
+  errorMessage: { fontSize: 14, color: '#94A3B8', textAlign: 'center', lineHeight: 20, paddingHorizontal: 24 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: '#1E293B',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+    gap: 20,
   },
-  orderStatusIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  orderStatusInfo: {
-    flex: 1,
-  },
-  orderStatusLabel: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    marginBottom: 2,
-  },
-  orderStatusDescription: {
-    fontSize: 13,
-    color: '#64748B',
-  },
-  orderDetails: {
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 16,
-  },
-  orderDetailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  orderDetailLabel: {
-    fontSize: 13,
-    color: '#64748B',
-  },
-  orderDetailValue: {
-    fontSize: 13,
-    color: '#FFFFFF',
-    fontWeight: '600' as const,
-  },
-  orderProgress: {
-    flexDirection: 'row',
+  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  modalTitle: { fontSize: 20, fontWeight: '700' as const, color: '#FFFFFF' },
+  howItWorksStep: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
+  stepBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(74, 222, 128, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 8,
+    flexShrink: 0,
   },
-  progressDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#334155',
-  },
-  progressDotActive: {
-    backgroundColor: '#4ADE80',
-  },
-  progressDotFailed: {
-    backgroundColor: '#EF4444',
-  },
-  progressLine: {
-    flex: 1,
-    height: 3,
-    backgroundColor: '#334155',
-    marginHorizontal: 4,
-  },
-  progressLineActive: {
-    backgroundColor: '#4ADE80',
-  },
-  progressLineFailed: {
-    backgroundColor: '#EF4444',
-  },
+  stepBadgeText: { fontSize: 14, fontWeight: '700' as const, color: '#4ADE80' },
+  stepContent: { flex: 1 },
+  stepTitle: { fontSize: 15, fontWeight: '700' as const, color: '#FFFFFF', marginBottom: 4 },
+  stepDesc: { fontSize: 13, color: '#94A3B8', lineHeight: 18 },
 });
