@@ -581,7 +581,7 @@ export default function ProfileScreen() {
               borderWidth: 1.5,
               overflow: 'hidden',
             }]}
-            onPress={() => setProfileSectionTab(profileSectionTab === 'collection' ? 'stats' : 'collection')}
+            onPress={() => router.push('/my-collection')}
             activeOpacity={0.8}
           >
             <LinearGradient
@@ -592,7 +592,7 @@ export default function ProfileScreen() {
             >
               <FolderHeart size={14} color='#0f172b' />
               <Text style={[styles.collectionButtonText, { color: '#0f172b', fontFamily: displayFont?.fontFamily }]}>
-                {profileSectionTab === 'collection' ? 'Stats' : 'Collection'}
+                Collection
               </Text>
             </LinearGradient>
           </TouchableOpacity>
