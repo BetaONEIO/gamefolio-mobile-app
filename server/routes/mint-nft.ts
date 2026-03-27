@@ -37,6 +37,8 @@ const router = Router();
     `);
     console.log('✅ user_nfts table ready');
 
+    await db.execute(sql`ALTER TABLE user_nfts ADD COLUMN IF NOT EXISTS image_url TEXT`);
+
     const existingCount = await db.execute(sql`SELECT COUNT(*) as cnt FROM user_nfts`);
     const count = Number((existingCount as any)[0]?.cnt || 0);
     if (count === 0) {

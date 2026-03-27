@@ -1,16 +1,27 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, FlatList, Image, ActivityIndicator } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, RefreshCw } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
+import { Env } from '@/constants/Env';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - 48) / 2;
+const NUM_COLS = 2;
+const CARD_MARGIN = 12;
+const SIDE_PAD = 16;
+const CARD_WIDTH = (width - SIDE_PAD * 2 - CARD_MARGIN * (NUM_COLS - 1)) / NUM_COLS;
 
 type TabType = 'nfts' | 'borders' | 'tags';
 type FilterType = 'owned' | 'sold';
+
+function resolveImageUrl(image?: string | null): string | null {
+  if (!image) return null;
+  if (image.startsWith('http')) return image;
+  return `${Env.BACKEND_URL}${image}`;
+}
 
 export default function Collections() {
   const router = useRouter();
@@ -25,30 +36,24 @@ export default function Collections() {
     queryFn: async () => {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
-      const baseUrl = process.env.EXPO_PUBLIC_DOMAIN || 'http://localhost:5000';
-      const res = await fetch(
-        `${baseUrl}/api/nfts/owned`,
-        {
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        }
-      );
+      const res = await fetch(`${Env.BACKEND_URL}/api/nfts/owned`, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
       if (!res.ok) throw new Error('Failed to fetch NFTs');
       return res.json();
     },
   });
 
-  const nfts = useMemo(() => {
-    const allNfts = nftData?.nfts || [];
-    return allNfts.filter((n: any) => (filter === 'owned' ? !n.sold : n.sold));
-  }, [nftData, filter]);
+  const allNfts: any[] = nftData?.nfts || [];
 
-  const ownedCount = useMemo(() => {
-    return (nftData?.nfts || []).filter((n: any) => !n.sold).length;
-  }, [nftData]);
+  const nfts = useMemo(
+    () => allNfts.filter((n: any) => (filter === 'owned' ? !n.sold : n.sold)),
+    [allNfts, filter]
+  );
 
-  const soldCount = useMemo(() => {
-    return (nftData?.nfts || []).filter((n: any) => n.sold).length;
-  }, [nftData]);
+  const ownedCount = useMemo(() => allNfts.filter((n: any) => !n.sold).length, [allNfts]);
+  const soldCount = useMemo(() => allNfts.filter((n: any) => n.sold).length, [allNfts]);
+  const totalCount = allNfts.length;
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -56,23 +61,47 @@ export default function Collections() {
     setRefreshing(false);
   };
 
-  const renderNFTCard = ({ item }: { item: any }) => (
-    <View style={styles.nftCard}>
-      {item.image ? (
-        <Image source={{ uri: item.image }} style={styles.nftImage} resizeMode="cover" />
-      ) : (
-        <View style={styles.nftImagePlaceholder} />
-      )}
-      <View style={styles.nftCardBottom}>
-        <Text style={styles.nftId}>#{item.tokenId}</Text>
-        <Text style={styles.nftStatus}>{item.sold ? 'SOLD' : 'RARE'}</Text>
+  const renderNFTCard = ({ item }: { item: any }) => {
+    const imageUrl = resolveImageUrl(item.image || item.imageDataUrl);
+    const rarity = item.rarity || 'RARE';
+    const isSold = !!item.sold;
+
+    return (
+      <View style={styles.nftCard}>
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.nftImage} resizeMode="cover" />
+        ) : (
+          <View style={styles.nftImagePlaceholder} />
+        )}
+
+        <View style={styles.tokenIdBadge}>
+          <Text style={styles.tokenIdBadgeText}>#{item.tokenId}</Text>
+        </View>
+
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.85)']}
+          style={styles.cardOverlay}
+        >
+          <View style={styles.cardOverlayContent}>
+            <Text style={styles.cardNftId}>#{item.tokenId}</Text>
+            {isSold ? (
+              <View style={styles.soldBadge}>
+                <Text style={styles.soldBadgeText}>SOLD</Text>
+              </View>
+            ) : (
+              <View style={styles.rarityRow}>
+                <View style={styles.rarityDot} />
+                <Text style={styles.rarityText}>{rarity}</Text>
+              </View>
+            )}
+          </View>
+        </LinearGradient>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <ArrowLeft size={24} color="#FFF" />
@@ -86,7 +115,6 @@ export default function Collections() {
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabs}>
         {(['nfts', 'borders', 'tags'] as TabType[]).map((tab) => (
           <TouchableOpacity
@@ -101,35 +129,36 @@ export default function Collections() {
         ))}
       </View>
 
-      {activeTab === 'nfts' && (
+      {activeTab === 'nfts' ? (
         <>
-          {/* Filter Info */}
           <View style={styles.filterSection}>
-            <Text style={styles.filterLabel}>MY NFTS</Text>
-            <Text style={styles.nftCount}>{nfts.length} Items</Text>
+            <View>
+              <Text style={styles.filterLabel}>MY NFTS</Text>
+              <View style={styles.totalCountRow}>
+                <Text style={styles.totalCountNumber}>{totalCount}</Text>
+                <Text style={styles.totalCountLabel}>Items Total</Text>
+              </View>
+            </View>
+            <View style={styles.filterButtons}>
+              <TouchableOpacity
+                style={[styles.filterButton, filter === 'owned' && styles.filterButtonActive]}
+                onPress={() => setFilter('owned')}
+              >
+                <Text style={[styles.filterButtonText, filter === 'owned' && styles.filterButtonTextActive]}>
+                  Owned {ownedCount}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterButton, filter === 'sold' && styles.filterButtonActive]}
+                onPress={() => setFilter('sold')}
+              >
+                <Text style={[styles.filterButtonText, filter === 'sold' && styles.filterButtonTextActive]}>
+                  Sold {soldCount}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          {/* Filter Buttons */}
-          <View style={styles.filterButtons}>
-            <TouchableOpacity
-              style={[styles.filterButton, filter === 'owned' && styles.filterButtonActive]}
-              onPress={() => setFilter('owned')}
-            >
-              <Text style={[styles.filterButtonText, filter === 'owned' && styles.filterButtonTextActive]}>
-                Owned {ownedCount}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.filterButton, filter === 'sold' && styles.filterButtonActive]}
-              onPress={() => setFilter('sold')}
-            >
-              <Text style={[styles.filterButtonText, filter === 'sold' && styles.filterButtonTextActive]}>
-                Sold {soldCount}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* NFT Grid */}
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#4ADE80" />
@@ -143,19 +172,16 @@ export default function Collections() {
             <FlatList
               data={nfts}
               renderItem={renderNFTCard}
-              keyExtractor={(item) => item.tokenId.toString()}
-              numColumns={2}
+              keyExtractor={(item) => String(item.tokenId)}
+              numColumns={NUM_COLS}
               columnWrapperStyle={styles.row}
               contentContainerStyle={styles.gridContent}
-              scrollEnabled={true}
               onRefresh={onRefresh}
               refreshing={refreshing}
             />
           )}
         </>
-      )}
-
-      {activeTab !== 'nfts' && (
+      ) : (
         <View style={styles.comingSoonContainer}>
           <Text style={styles.comingSoonText}>Coming Soon</Text>
         </View>
@@ -167,7 +193,7 @@ export default function Collections() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172b',
+    backgroundColor: '#0a0f1e',
   },
   header: {
     flexDirection: 'row',
@@ -192,7 +218,7 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 12,
     color: '#94a3b8',
-    marginTop: 4,
+    marginTop: 2,
   },
   refreshButton: {
     padding: 8,
@@ -200,52 +226,68 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#1e293b',
+    gap: 4,
   },
   tab: {
-    marginRight: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    marginBottom: 8,
   },
   activeTab: {
-    borderBottomColor: '#4ADE80',
+    backgroundColor: 'rgba(74, 222, 128, 0.15)',
+    borderColor: '#4ADE80',
   },
   tabText: {
     color: '#64748b',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   activeTabText: {
-    color: '#FFF',
+    color: '#4ADE80',
   },
   filterSection: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   filterLabel: {
-    color: '#64748b',
-    fontSize: 12,
+    color: '#4ADE80',
+    fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 1,
+    marginBottom: 4,
   },
-  nftCount: {
-    color: '#e2e8f0',
-    fontSize: 14,
-    fontWeight: '600',
+  totalCountRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  totalCountNumber: {
+    color: '#FFF',
+    fontSize: 32,
+    fontWeight: '800',
+    lineHeight: 36,
+  },
+  totalCountLabel: {
+    color: '#94a3b8',
+    fontSize: 13,
+    fontWeight: '500',
   },
   filterButtons: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    gap: 12,
+    gap: 8,
   },
   filterButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#1e293b',
@@ -259,50 +301,98 @@ const styles = StyleSheet.create({
   filterButtonText: {
     color: '#94a3b8',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   filterButtonTextActive: {
     color: '#020617',
   },
   row: {
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingHorizontal: 16,
-    marginBottom: 12,
+    justifyContent: 'flex-start',
+    gap: CARD_MARGIN,
+    paddingHorizontal: SIDE_PAD,
+    marginBottom: CARD_MARGIN,
   },
   gridContent: {
-    paddingBottom: 20,
+    paddingBottom: 32,
   },
   nftCard: {
     width: CARD_WIDTH,
-    borderRadius: 8,
+    height: CARD_WIDTH,
+    borderRadius: 10,
     overflow: 'hidden',
     backgroundColor: '#1e293b',
+    position: 'relative',
   },
   nftImage: {
     width: '100%',
-    height: 160,
-    backgroundColor: '#0f172b',
+    height: '100%',
   },
   nftImagePlaceholder: {
     width: '100%',
-    height: 160,
+    height: '100%',
     backgroundColor: '#334155',
   },
-  nftCardBottom: {
-    padding: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#334155',
+  tokenIdBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
-  nftId: {
-    color: '#4ADE80',
-    fontSize: 12,
+  tokenIdBadgeText: {
+    color: '#CBD5E1',
+    fontSize: 10,
     fontWeight: '700',
   },
-  nftStatus: {
-    color: '#64748b',
+  cardOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 8,
+    paddingTop: 20,
+    paddingBottom: 8,
+  },
+  cardOverlayContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardNftId: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  rarityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  rarityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4ADE80',
+  },
+  rarityText: {
+    color: '#4ADE80',
     fontSize: 10,
-    marginTop: 2,
+    fontWeight: '700',
+  },
+  soldBadge: {
+    backgroundColor: 'rgba(239,68,68,0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  soldBadgeText: {
+    color: '#EF4444',
+    fontSize: 9,
+    fontWeight: '700',
   },
   loadingContainer: {
     flex: 1,

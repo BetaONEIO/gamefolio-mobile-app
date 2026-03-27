@@ -62,6 +62,7 @@ interface MarketplaceListing {
   user_id: number;
   username: string;
   display_name: string;
+  image_url?: string | null;
 }
 
 type TabType = 'buy' | 'sell' | 'mint' | 'watchlist';
@@ -221,7 +222,10 @@ export default function StorePage() {
       const res = await fetch(`${Env.BACKEND_URL}/api/nft/quick-sell`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ tokenId: selectedNftToSell.tokenId }),
+        body: JSON.stringify({
+          tokenId: selectedNftToSell.tokenId,
+          imageUrl: selectedNftToSell.image || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -319,9 +323,17 @@ export default function StorePage() {
             return (
               <View key={listing.token_id} style={styles.nftCard}>
                 <View style={styles.nftImageContainer}>
-                  <View style={[styles.nftImagePlaceholder, { borderColor: '#4ADE8040' }]}>
-                    <Sparkles size={36} color="#4ADE80" />
-                  </View>
+                  {listing.image_url ? (
+                    <Image
+                      source={{ uri: listing.image_url.startsWith('http') ? listing.image_url : `${Env.BACKEND_URL}${listing.image_url}` }}
+                      style={styles.nftImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.nftImagePlaceholder, { borderColor: '#4ADE8040' }]}>
+                      <Sparkles size={36} color="#4ADE80" />
+                    </View>
+                  )}
                   <View style={[styles.forSaleBadge, { backgroundColor: '#0F172A' }]}>
                     <Text style={styles.forSaleText}>#{listing.token_id}</Text>
                   </View>

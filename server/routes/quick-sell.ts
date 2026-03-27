@@ -17,7 +17,7 @@ router.post('/api/nft/quick-sell', hybridAuth, async (req: Request, res: Respons
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const { tokenId } = req.body;
+    const { tokenId, imageUrl } = req.body;
     if (tokenId == null || typeof tokenId !== 'number') {
       return res.status(400).json({ error: 'Token ID is required' });
     }
@@ -41,8 +41,9 @@ router.post('/api/nft/quick-sell', hybridAuth, async (req: Request, res: Respons
       })
       .where(eq(users.id, userId));
 
+    const cleanImageUrl = typeof imageUrl === 'string' && imageUrl.length > 0 ? imageUrl : null;
     await db.execute(
-      sql`UPDATE user_nfts SET sold = true, sold_at = NOW(), listing_active = true, listed_price = ${QUICK_SELL_PRICE} WHERE user_id = ${userId} AND token_id = ${tokenId}`
+      sql`UPDATE user_nfts SET sold = true, sold_at = NOW(), listing_active = true, listed_price = ${QUICK_SELL_PRICE}, image_url = COALESCE(${cleanImageUrl}, image_url) WHERE user_id = ${userId} AND token_id = ${tokenId}`
     );
 
     console.log(`[Quick Sell] User ${userId} sold NFT #${tokenId} for ${receivedAmount} GFT (price: ${QUICK_SELL_PRICE}, fees: ${totalDeductions})`);
@@ -66,7 +67,7 @@ router.get('/api/marketplace/listings', async (_req: Request, res: Response) => 
   try {
     const listings = await db.execute(
       sql`SELECT un.token_id, un.listed_price, un.sold_at, un.user_id,
-                 u.username, u.display_name
+                 un.image_url, u.username, u.display_name
           FROM user_nfts un
           JOIN users u ON u.id = un.user_id
           WHERE un.sold = true AND un.listing_active = true
