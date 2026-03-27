@@ -309,10 +309,6 @@ export default function ProfileScreen() {
     platforms: buildPlatforms()
   };
 
-  console.log('[Profile] profileStats:', profileStats);
-  console.log('[Profile] user.bio:', user?.bio);
-  console.log('[Profile] profileData.bio:', profileData.bio);
-
   // Fetch owned NFTs — only when collection tab is active
   const { data: nftData, isLoading: nftsLoading } = useQuery<{ nfts: any[]; count: number }>({
     queryKey: ['/api/nfts/owned'],
