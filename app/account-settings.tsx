@@ -20,7 +20,9 @@ export default function AccountSettings() {
   const { user, updateUser, getAccessToken } = useAuth();
   const [showUserType, setShowUserType] = useState(user?.showUserType !== false);
   const [isPrivate, setIsPrivate] = useState(user?.isPrivate ?? false);
+  const [bio, setBio] = useState(user?.bio ?? '');
   const [isSaving, setIsSaving] = useState(false);
+  const [bioSaved, setBioSaved] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
 
   const updateProfileMutation = useMutation({
@@ -44,6 +46,11 @@ export default function AccountSettings() {
   useEffect(() => {
     setIsPrivate(user?.isPrivate ?? false);
   }, [user?.isPrivate]);
+
+  useEffect(() => {
+    setBio(user?.bio ?? '');
+    setBioSaved(false);
+  }, [user?.bio]);
 
   // Security/Privacy State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -190,6 +197,24 @@ export default function AccountSettings() {
     } catch (error) {
       console.error('[AccountSettings] Failed to update isPrivate:', error);
       setIsPrivate(!newValue);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveBio = async () => {
+    setIsSaving(true);
+    setBioSaved(false);
+    try {
+      await updateProfileMutation.mutateAsync({ bio: bio.trim() } as Record<string, unknown>);
+      if (updateUser) {
+        await updateUser({ bio: bio.trim() });
+      }
+      setBioSaved(true);
+      setTimeout(() => setBioSaved(false), 3000);
+      console.log('[AccountSettings] Updated bio to:', bio.trim());
+    } catch (error) {
+      console.error('[AccountSettings] Failed to update bio:', error);
     } finally {
       setIsSaving(false);
     }
@@ -512,6 +537,33 @@ export default function AccountSettings() {
                   </View>
                 </View>
 
+                <View style={styles.bioSection}>
+                  <Text style={styles.sectionHeader}>Bio</Text>
+                  <Text style={styles.bioLabel}>Tell people about yourself</Text>
+                  <TextInput
+                    style={styles.bioInput}
+                    placeholder="Add a bio (optional)"
+                    placeholderTextColor="#64748B"
+                    value={bio}
+                    onChangeText={setBio}
+                    maxLength={160}
+                    multiline
+                    numberOfLines={3}
+                  />
+                  <View style={styles.bioFooter}>
+                    <Text style={styles.bioCount}>{bio.length}/160</Text>
+                    <TouchableOpacity 
+                      style={[styles.bioSaveButton, isSaving && styles.bioSaveButtonDisabled]}
+                      onPress={handleSaveBio}
+                      disabled={isSaving}
+                    >
+                      <Text style={styles.bioSaveButtonText}>
+                        {bioSaved ? '✓ Saved' : isSaving ? 'Saving...' : 'Save Bio'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
               </View>
             )}
 
@@ -783,4 +835,29 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   redeemButtonText: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+  bioSection: { marginTop: 24, borderTopWidth: 1, borderTopColor: '#1E293B', paddingTop: 24 },
+  bioLabel: { color: '#94A3B8', fontSize: 13, marginBottom: 12 },
+  bioInput: {
+    backgroundColor: '#1E2D3C',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: '#FFF',
+    fontSize: 14,
+    minHeight: 80,
+    textAlignVertical: 'top' as const,
+    marginBottom: 8,
+  },
+  bioFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  bioCount: { color: '#64748B', fontSize: 12 },
+  bioSaveButton: {
+    backgroundColor: '#4ADE80',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 6,
+  },
+  bioSaveButtonDisabled: { backgroundColor: '#64748B', opacity: 0.6 },
+  bioSaveButtonText: { color: '#000', fontSize: 13, fontWeight: '600' },
 });
