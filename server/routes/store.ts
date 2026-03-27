@@ -5,6 +5,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { privateKeyToAccount } from 'viem/accounts';
 import { createPublicClient, http, parseUnits, decodeEventLog, type Address } from 'viem';
 import { GF_TOKEN_ADDRESS, GF_TOKEN_ABI, SKALE_NEBULA_TESTNET } from '../../shared/contracts';
+import { hybridAuth } from '../middleware/hybrid-auth';
 
 const GF_DECIMALS = 18;
 
@@ -56,7 +57,7 @@ router.get('/api/store/items', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/api/store/owned', async (req: Request, res: Response) => {
+router.get('/api/store/owned', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -88,7 +89,7 @@ router.get('/api/store/owned', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/store/purchase-intent', async (req: Request, res: Response) => {
+router.post('/api/store/purchase-intent', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -101,8 +102,8 @@ router.post('/api/store/purchase-intent', async (req: Request, res: Response) =>
     }
 
     const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-    if (!user.length || !user[0].walletAddress) {
-      return res.status(400).json({ error: 'Wallet address not connected' });
+    if (!user.length) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
     const item = await db.select().from(storeItems).where(eq(storeItems.id, itemId)).limit(1);
@@ -131,24 +132,34 @@ router.post('/api/store/purchase-intent', async (req: Request, res: Response) =>
     const isPro = !!user[0].isPro;
     const baseCost = item[0].gfCost;
     const finalCost = isPro ? Math.floor(baseCost * 0.8) : baseCost;
+    const walletAddress = user[0].walletAddress || 'gf-balance';
 
     const [purchase] = await db.insert(storePurchases).values({
       userId,
       itemId,
-      walletAddress: user[0].walletAddress,
+      walletAddress,
       gfAmount: finalCost,
       status: 'pending',
     }).returning();
 
-    const treasuryAddress = getTreasuryAddress();
+    let treasuryAddress = '';
+    try {
+      treasuryAddress = getTreasuryAddress();
+    } catch {
+      treasuryAddress = '';
+    }
 
     return res.json({
       purchaseId: purchase.id,
       itemId: item[0].id,
       itemName: item[0].name,
+      itemDescription: item[0].description,
+      itemCategory: item[0].category,
+      itemRarity: item[0].rarity,
       gfCost: finalCost,
       originalPrice: baseCost,
       discountApplied: isPro,
+      currentBalance: user[0].gfTokenBalance ?? 0,
       treasuryAddress,
     });
   } catch (error: any) {
@@ -157,7 +168,7 @@ router.post('/api/store/purchase-intent', async (req: Request, res: Response) =>
   }
 });
 
-router.post('/api/store/buy-with-gf', async (req: Request, res: Response) => {
+router.post('/api/store/buy-with-gf', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {
@@ -232,7 +243,76 @@ router.post('/api/store/buy-with-gf', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/store/verify-purchase', async (req: Request, res: Response) => {
+router.post('/api/store/complete-purchase', hybridAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const { purchaseId } = req.body;
+    if (!purchaseId) {
+      return res.status(400).json({ error: 'purchaseId is required' });
+    }
+
+    const [purchase] = await db
+      .select()
+      .from(storePurchases)
+      .where(and(
+        eq(storePurchases.id, purchaseId),
+        eq(storePurchases.userId, userId),
+        eq(storePurchases.status, 'pending')
+      ))
+      .limit(1);
+
+    if (!purchase) {
+      return res.status(404).json({ error: 'Purchase intent not found or already completed' });
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const [item] = await db.select().from(storeItems).where(eq(storeItems.id, purchase.itemId)).limit(1);
+    if (!item) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    const gfCost = purchase.gfAmount;
+    const currentBalance = user.gfTokenBalance ?? 0;
+
+    if (currentBalance < gfCost) {
+      await db.update(storePurchases)
+        .set({ status: 'failed' })
+        .where(eq(storePurchases.id, purchaseId));
+      return res.status(400).json({
+        error: `Insufficient GF balance. You need ${gfCost - currentBalance} more GF.`,
+        required: gfCost,
+        current: currentBalance,
+      });
+    }
+
+    const newBalance = currentBalance - gfCost;
+    await db.update(users).set({ gfTokenBalance: newBalance }).where(eq(users.id, userId));
+    await db.update(storePurchases)
+      .set({ status: 'completed', completedAt: new Date() })
+      .where(eq(storePurchases.id, purchaseId));
+
+    return res.json({
+      success: true,
+      purchaseId,
+      itemName: item.name,
+      gfCost,
+      newBalance,
+    });
+  } catch (error: any) {
+    console.error('Complete purchase error:', error);
+    return res.status(500).json({ error: 'Failed to complete purchase' });
+  }
+});
+
+router.post('/api/store/verify-purchase', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) {

@@ -79,6 +79,7 @@ export default function StorePage() {
   const [selectedItem, setSelectedItem] = useState<StoreItem | null>(null);
   const [purchaseState, setPurchaseState] = useState<PurchaseState>('idle');
   const [purchaseError, setPurchaseError] = useState('');
+  const [pendingPurchaseId, setPendingPurchaseId] = useState<number | null>(null);
 
   const [mintQty, setMintQty] = useState(1);
   const [mintState, setMintState] = useState<MintState>('idle');
@@ -124,11 +125,27 @@ export default function StorePage() {
     });
   };
 
-  const handleBuyItem = (item: StoreItem) => {
+  const handleBuyItem = async (item: StoreItem) => {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedItem(item);
     setPurchaseState('confirming');
     setPurchaseError('');
+    setPendingPurchaseId(null);
+
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/store/purchase-intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ itemId: item.id }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPendingPurchaseId(data.purchaseId ?? null);
+      }
+    } catch {
+      /* non-fatal – confirm modal still shows with local item data */
+    }
   };
 
   const handleConfirmPurchase = async () => {
@@ -138,10 +155,17 @@ export default function StorePage() {
 
     try {
       const token = await getAccessToken();
-      const res = await fetch(`${Env.BACKEND_URL}/api/store/buy-with-gf`, {
+      const endpoint = pendingPurchaseId
+        ? `${Env.BACKEND_URL}/api/store/complete-purchase`
+        : `${Env.BACKEND_URL}/api/store/buy-with-gf`;
+      const body = pendingPurchaseId
+        ? { purchaseId: pendingPurchaseId }
+        : { itemId: selectedItem.id };
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ itemId: selectedItem.id }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -164,6 +188,7 @@ export default function StorePage() {
     setSelectedItem(null);
     setPurchaseState('idle');
     setPurchaseError('');
+    setPendingPurchaseId(null);
   };
 
   const handleMintNFT = async () => {

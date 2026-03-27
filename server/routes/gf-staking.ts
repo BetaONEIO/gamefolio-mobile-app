@@ -71,7 +71,7 @@ router.get('/api/staking/my-position', hybridAuth, async (req: Request, res: Res
   }
 });
 
-router.get('/api/staking/history', async (req: Request, res: Response) => {
+router.get('/api/staking/history', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
@@ -102,7 +102,7 @@ router.get('/api/staking/stats', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/staking/stake', async (req: Request, res: Response) => {
+router.post('/api/staking/stake', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
@@ -224,7 +224,7 @@ router.post('/api/staking/stake', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/staking/unstake', async (req: Request, res: Response) => {
+router.post('/api/staking/unstake', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
@@ -347,7 +347,7 @@ router.post('/api/staking/unstake', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/staking/claim', async (req: Request, res: Response) => {
+router.post('/api/staking/claim', hybridAuth, async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ error: 'Authentication required' });

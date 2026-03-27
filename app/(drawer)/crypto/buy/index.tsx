@@ -143,16 +143,12 @@ export default function BuyGFPage() {
           return;
         }
 
-        if (status === 'paid') {
-          setCheckoutState('success');
-          return;
-        }
-
         if (status === 'failed') {
           setCheckoutState('error');
           setErrorMessage('Your order has failed. Please try again or contact support.');
           return;
         }
+        /* 'paid' and 'delivering' are intermediate — continue polling until delivered/credited */
       } catch {
         // Continue polling on network error
       }
