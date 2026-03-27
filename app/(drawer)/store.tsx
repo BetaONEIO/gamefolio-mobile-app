@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(74, 222, 128, 0.2)',
+    borderColor: 'rgba(74, 222, 128, 0.3)',
   },
   balanceIcon: {
     width: 48,
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tabActive: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#4ADE80',
   },
   tabText: {
     fontSize: 12,
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   tabTextActive: {
-    color: '#FFFFFF',
+    color: '#020617',
   },
   mainContent: {
     paddingHorizontal: 20,
@@ -434,7 +434,7 @@ const styles = StyleSheet.create({
     position: 'absolute' as const,
     top: 8,
     right: 8,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#4ADE80',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
   forSaleText: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#020617',
   },
   heartButton: {
     position: 'absolute' as const,
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
   buyButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#4ADE80',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 10,
