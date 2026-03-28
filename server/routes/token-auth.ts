@@ -52,11 +52,11 @@ async function syncUserFromProduction(prodUser: any): Promise<any> {
     await db.execute(sql`
       INSERT INTO users (
         id, username, email, password, display_name, bio, avatar_url, banner_url,
-        xp, level, game_tokens, is_private, auth_provider, created_at, updated_at
+        xp, level, game_tokens, is_private, auth_provider, email_verified, created_at, updated_at
       ) VALUES (
         ${userId}, ${username}, ${email}, ${placeholderPassword}, ${displayName}, ${bio},
         ${avatarUrl}, ${bannerUrl}, ${xp}, ${level}, ${gameTokens},
-        ${isPrivate}, ${authProvider}, NOW(), NOW()
+        ${isPrivate}, ${authProvider}, true, NOW(), NOW()
       )
       ON CONFLICT (id) DO UPDATE SET
         username = EXCLUDED.username,
@@ -68,6 +68,7 @@ async function syncUserFromProduction(prodUser: any): Promise<any> {
         xp = EXCLUDED.xp,
         level = EXCLUDED.level,
         is_private = EXCLUDED.is_private,
+        email_verified = true,
         updated_at = NOW()
     `);
     return await storage.getUserById(userId);
