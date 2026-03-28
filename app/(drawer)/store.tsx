@@ -23,6 +23,9 @@ import {
   AlertCircle,
   Plus,
   Minus,
+  Package,
+  Lock,
+  Crown,
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -66,10 +69,53 @@ interface MarketplaceListing {
   image_url?: string | null;
 }
 
-type TabType = 'buy' | 'sell' | 'mint' | 'watchlist';
+type TabType = 'buy' | 'sell' | 'mint' | 'watchlist' | 'items';
 type PurchaseState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
 type MintState = 'idle' | 'processing' | 'success' | 'error';
 type SellState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
+type ItemPurchaseState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
+
+type RarityFilter = 'all' | 'common' | 'rare' | 'epic' | 'legendary';
+type ItemCategory = 'all' | 'name-tags' | 'borders' | 'items';
+
+interface StoreItem {
+  id: number;
+  name: string;
+  description: string | null;
+  image: string | null;
+  gfCost: number;
+  category: string;
+  rarity: string | null;
+  available: boolean;
+}
+
+interface StoreNameTag {
+  id: number;
+  name: string;
+  imageUrl: string;
+  rarity: string;
+  gfCost: number | null;
+  owned: boolean;
+}
+
+interface StoreBorder {
+  id: number;
+  name: string;
+  imageUrl: string;
+  rarity: string;
+  gfCost: number | null;
+  owned: boolean;
+  isPro: boolean;
+  proOnly: boolean;
+  shape?: string;
+}
+
+const RARITY_COLORS: Record<string, string> = {
+  legendary: '#F59E0B',
+  epic: '#8B5CF6',
+  rare: '#3B82F6',
+  common: '#64748B',
+};
 
 const QUICK_SELL_PRICE = 250;
 const QUICK_SELL_PLATFORM_FEE = QUICK_SELL_PRICE * 0.015;
@@ -98,6 +144,13 @@ export default function StorePage() {
   const [sellState, setSellState] = useState<SellState>('idle');
   const [sellError, setSellError] = useState('');
   const [sellNetReceived, setSellNetReceived] = useState<number>(0);
+
+  const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
+  const [itemCategory, setItemCategory] = useState<ItemCategory>('all');
+  const [selectedStoreItem, setSelectedStoreItem] = useState<StoreItem | StoreNameTag | StoreBorder | null>(null);
+  const [selectedItemType, setSelectedItemType] = useState<'item' | 'name-tag' | 'border'>('item');
+  const [itemPurchaseState, setItemPurchaseState] = useState<ItemPurchaseState>('idle');
+  const [itemPurchaseError, setItemPurchaseError] = useState('');
 
   const { data: gfBalanceData } = useQuery<{ balance: number }>({
     queryKey: ['/api/me/gf-balance', user?.id],
@@ -149,6 +202,344 @@ export default function StorePage() {
     },
     enabled: !!user?.id && activeTab === 'sell',
   });
+
+  const { data: storeItems = [], isLoading: storeItemsLoading } = useQuery<StoreItem[]>({
+    queryKey: ['/api/store/items'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/store/items`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: activeTab === 'items',
+  });
+
+  const { data: storeNameTags = [], isLoading: nameTagsLoading } = useQuery<StoreNameTag[]>({
+    queryKey: ['/api/store/name-tags'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/store/name-tags`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: activeTab === 'items',
+  });
+
+  const { data: storeBorders = [], isLoading: bordersLoading } = useQuery<StoreBorder[]>({
+    queryKey: ['/api/store/borders'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/store/borders`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: activeTab === 'items',
+  });
+
+  const { data: ownedItems = [] } = useQuery<{ id: number }[]>({
+    queryKey: ['/api/store/owned'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/store/owned`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user?.id && activeTab === 'items',
+  });
+  const ownedItemIds = new Set(ownedItems.map((i) => i.id));
+
+  const handleOpenItemPurchase = (item: StoreItem | StoreNameTag | StoreBorder, type: 'item' | 'name-tag' | 'border') => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedStoreItem(item);
+    setSelectedItemType(type);
+    setItemPurchaseState('confirming');
+    setItemPurchaseError('');
+  };
+
+  const handleCloseItemModal = () => {
+    setSelectedStoreItem(null);
+    setItemPurchaseState('idle');
+    setItemPurchaseError('');
+  };
+
+  const getItemCost = (item: StoreItem | StoreNameTag | StoreBorder): number => {
+    if ('gfCost' in item && typeof item.gfCost === 'number') return item.gfCost;
+    return 0;
+  };
+
+  const getItemName = (item: StoreItem | StoreNameTag | StoreBorder): string => item.name;
+
+  const getItemRarity = (item: StoreItem | StoreNameTag | StoreBorder): string => {
+    if ('rarity' in item && item.rarity) return item.rarity;
+    return 'common';
+  };
+
+  const handleConfirmItemPurchase = async () => {
+    if (!selectedStoreItem) return;
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setItemPurchaseState('processing');
+
+    try {
+      const token = await getAccessToken();
+      let endpoint = '';
+      let body: Record<string, unknown> = {};
+
+      if (selectedItemType === 'item') {
+        endpoint = `${Env.BACKEND_URL}/api/store/purchase-intent`;
+        body = { itemId: selectedStoreItem.id };
+      } else if (selectedItemType === 'name-tag') {
+        endpoint = `${Env.BACKEND_URL}/api/store/name-tags/${selectedStoreItem.id}/purchase`;
+        body = {};
+      } else {
+        endpoint = `${Env.BACKEND_URL}/api/store/borders/${selectedStoreItem.id}/purchase`;
+        body = {};
+      }
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setItemPurchaseState('error');
+        setItemPurchaseError(data.error || 'Purchase failed. Please try again.');
+        return;
+      }
+
+      if (data.purchaseId) {
+        const confirmRes = await fetch(`${Env.BACKEND_URL}/api/store/complete-purchase`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ purchaseId: data.purchaseId }),
+        });
+        if (!confirmRes.ok) {
+          const confirmData = await confirmRes.json();
+          setItemPurchaseState('error');
+          setItemPurchaseError(confirmData.error || 'Purchase completion failed.');
+          return;
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['/api/store/owned'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/store/name-tags'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/store/borders'] });
+      setItemPurchaseState('success');
+    } catch {
+      setItemPurchaseState('error');
+      setItemPurchaseError('Network error. Please try again.');
+    }
+  };
+
+  const getFilteredItems = () => {
+    let allItems: Array<{ id: number; name: string; rarity: string; gfCost: number; image?: string | null; owned: boolean; isProOnly: boolean; type: 'item' | 'name-tag' | 'border' }> = [];
+
+    if (itemCategory === 'all' || itemCategory === 'items') {
+      storeItems.forEach((item) => {
+        allItems.push({
+          id: item.id,
+          name: item.name,
+          rarity: item.rarity || 'common',
+          gfCost: item.gfCost,
+          image: item.image,
+          owned: ownedItemIds.has(item.id),
+          isProOnly: false,
+          type: 'item',
+        });
+      });
+    }
+    if (itemCategory === 'all' || itemCategory === 'name-tags') {
+      storeNameTags.forEach((tag) => {
+        allItems.push({
+          id: tag.id,
+          name: tag.name,
+          rarity: tag.rarity,
+          gfCost: tag.gfCost ?? 0,
+          image: tag.imageUrl,
+          owned: tag.owned,
+          isProOnly: false,
+          type: 'name-tag',
+        });
+      });
+    }
+    if (itemCategory === 'all' || itemCategory === 'borders') {
+      storeBorders.forEach((border) => {
+        allItems.push({
+          id: border.id,
+          name: border.name,
+          rarity: border.rarity,
+          gfCost: border.gfCost ?? 0,
+          image: border.imageUrl,
+          owned: border.owned,
+          isProOnly: border.proOnly,
+          type: 'border',
+        });
+      });
+    }
+
+    if (rarityFilter !== 'all') {
+      allItems = allItems.filter((i) => i.rarity === rarityFilter);
+    }
+
+    return allItems;
+  };
+
+  const renderItemsTab = () => {
+    const isLoading = storeItemsLoading || nameTagsLoading || bordersLoading;
+
+    if (isLoading) {
+      return (
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color="#4ADE80" />
+          <Text style={styles.loadingText}>Loading store items...</Text>
+        </View>
+      );
+    }
+
+    const filteredItems = getFilteredItems();
+
+    return (
+      <View style={styles.mainContent}>
+        <Text style={styles.mainTitle}>Store Items</Text>
+        <Text style={styles.subtitle}>Customize your profile with name tags, borders, and more</Text>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryFilters}>
+          {(['all', 'items', 'name-tags', 'borders'] as ItemCategory[]).map((cat) => (
+            <TouchableOpacity
+              key={cat}
+              style={[styles.filterChip, itemCategory === cat && styles.filterChipActive]}
+              onPress={() => setItemCategory(cat)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filterChipText, itemCategory === cat && styles.filterChipTextActive]}>
+                {cat === 'all' ? 'All' : cat === 'name-tags' ? 'Name Tags' : cat === 'borders' ? 'Borders' : 'Items'}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.rarityFilters}>
+          {(['all', 'common', 'rare', 'epic', 'legendary'] as RarityFilter[]).map((r) => (
+            <TouchableOpacity
+              key={r}
+              style={[styles.rarityChip, rarityFilter === r && { backgroundColor: RARITY_COLORS[r] || '#4ADE80' }]}
+              onPress={() => setRarityFilter(r)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.rarityDotChip, { backgroundColor: r === 'all' ? '#64748B' : RARITY_COLORS[r] }]} />
+              <Text style={[styles.rarityChipText, rarityFilter === r && styles.rarityChipTextActive]}>
+                {r.charAt(0).toUpperCase() + r.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {filteredItems.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Package size={48} color="#475569" />
+            <Text style={styles.emptyTitle}>No Items Found</Text>
+            <Text style={styles.emptyText}>Try a different category or rarity filter.</Text>
+          </View>
+        ) : (
+          <View style={styles.nftGrid}>
+            {filteredItems.map((item) => {
+              const rarityColor = RARITY_COLORS[item.rarity] || '#64748B';
+              const canAfford = gfBalance >= item.gfCost;
+              const isOwned = item.owned;
+              const isProOnly = item.isProOnly;
+
+              return (
+                <View key={`${item.type}-${item.id}`} style={[styles.nftCard, { borderColor: rarityColor + '40' }]}>
+                  <View style={styles.nftImageContainer}>
+                    {item.image ? (
+                      <Image source={{ uri: item.image }} style={styles.nftImage} resizeMode="cover" />
+                    ) : (
+                      <View style={[styles.nftImagePlaceholder, { borderColor: rarityColor + '40' }]}>
+                        <Sparkles size={32} color={rarityColor} />
+                      </View>
+                    )}
+                    <View style={[styles.forSaleBadge, { backgroundColor: rarityColor + 'CC' }]}>
+                      <Text style={[styles.forSaleText, { color: '#FFFFFF' }]}>
+                        {item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)}
+                      </Text>
+                    </View>
+                    {isProOnly ? (
+                      <View style={styles.proLockBadge}>
+                        <Crown size={12} color="#F59E0B" />
+                      </View>
+                    ) : null}
+                    {isOwned ? (
+                      <View style={styles.ownedOverlay}>
+                        <CheckCircle size={20} color="#4ADE80" />
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.nftContent}>
+                    <Text style={styles.nftName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={[styles.nftDescription, { color: rarityColor }]} numberOfLines={1}>
+                      {item.type === 'name-tag' ? 'Name Tag' : item.type === 'border' ? 'Border' : 'Item'}
+                    </Text>
+
+                    <View style={styles.nftPriceRow}>
+                      <View style={styles.priceInfo}>
+                        {item.gfCost > 0 ? (
+                          <View style={styles.priceContainer}>
+                            <Sparkles size={12} color="#4ADE80" />
+                            <Text style={styles.priceGF}>{item.gfCost.toLocaleString()} GF</Text>
+                          </View>
+                        ) : (
+                          <Text style={[styles.priceGF, { color: '#4ADE80' }]}>Free</Text>
+                        )}
+                      </View>
+
+                      {isOwned ? (
+                        <View style={styles.ownedBadge}>
+                          <Text style={styles.ownedBadgeText}>Owned</Text>
+                        </View>
+                      ) : isProOnly ? (
+                        <View style={styles.proOnlyBadge}>
+                          <Lock size={12} color="#F59E0B" />
+                          <Text style={styles.proOnlyText}>PRO</Text>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.buyButton, (!canAfford && item.gfCost > 0) && { opacity: 0.5 }]}
+                          onPress={() => {
+                            if (canAfford || item.gfCost === 0) {
+                              const original = item.type === 'name-tag'
+                                ? storeNameTags.find((t) => t.id === item.id)
+                                : item.type === 'border'
+                                  ? storeBorders.find((b) => b.id === item.id)
+                                  : storeItems.find((s) => s.id === item.id);
+                              if (original) handleOpenItemPurchase(original as any, item.type);
+                            }
+                          }}
+                          activeOpacity={0.8}
+                        >
+                          <ShoppingCart size={12} color="#020617" />
+                          <Text style={styles.buyButtonText}>Buy</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
+    );
+  };
 
   const toggleFavorite = (itemId: string | number) => {
     const key = String(itemId);
@@ -657,6 +1048,8 @@ export default function StorePage() {
       case 'sell': return renderSellTab();
       case 'mint': return renderMintTab();
       case 'watchlist': return renderWatchlistTab();
+      case 'items': return renderItemsTab();
+      default: return renderBuyTab();
     }
   };
 
@@ -692,11 +1085,17 @@ export default function StorePage() {
             </View>
           </View>
 
-          <View style={styles.tabsContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.tabsScrollWrap}
+            contentContainerStyle={styles.tabsContainer}
+          >
             {([
               { key: 'buy', label: 'Buy', Icon: ShoppingCart },
               { key: 'sell', label: 'Sell', Icon: TrendingUp },
               { key: 'mint', label: 'Mint', Icon: Sparkles },
+              { key: 'items', label: 'Items', Icon: Package },
               { key: 'watchlist', label: 'Watch', Icon: Heart },
             ] as const).map(({ key, label, Icon }) => (
               <TouchableOpacity
@@ -705,13 +1104,13 @@ export default function StorePage() {
                 onPress={() => setActiveTab(key)}
                 activeOpacity={0.7}
               >
-                <Icon size={16} color={activeTab === key ? '#020617' : '#64748B'} />
+                <Icon size={15} color={activeTab === key ? '#020617' : '#64748B'} />
                 <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>
                   {label}
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
 
           <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
             {renderContent()}
@@ -820,6 +1219,115 @@ export default function StorePage() {
                     gfBalance < selectedListing.listed_price && styles.confirmButtonTextDisabled,
                   ]}>
                     Confirm Purchase
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={itemPurchaseState !== 'idle' && selectedStoreItem !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCloseItemModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            {itemPurchaseState === 'success' ? (
+              <View style={styles.resultContainer}>
+                <View style={[styles.resultIcon, { backgroundColor: 'rgba(74, 222, 128, 0.15)' }]}>
+                  <CheckCircle size={40} color="#4ADE80" />
+                </View>
+                <Text style={styles.resultTitle}>Item Purchased!</Text>
+                <Text style={styles.resultText}>
+                  {selectedStoreItem ? getItemName(selectedStoreItem) : ''} has been added to your profile.
+                </Text>
+                <TouchableOpacity style={styles.doneButton} onPress={handleCloseItemModal} activeOpacity={0.8}>
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            ) : itemPurchaseState === 'error' ? (
+              <View style={styles.resultContainer}>
+                <View style={[styles.resultIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                  <AlertCircle size={40} color="#EF4444" />
+                </View>
+                <Text style={styles.resultTitle}>Purchase Failed</Text>
+                <Text style={styles.resultText}>{itemPurchaseError}</Text>
+                <TouchableOpacity style={styles.doneButton} onPress={() => setItemPurchaseState('confirming')} activeOpacity={0.8}>
+                  <Text style={styles.doneButtonText}>Try Again</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelLink} onPress={handleCloseItemModal} activeOpacity={0.7}>
+                  <Text style={styles.cancelLinkText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            ) : itemPurchaseState === 'processing' ? (
+              <View style={styles.resultContainer}>
+                <ActivityIndicator size="large" color="#4ADE80" />
+                <Text style={styles.resultTitle}>Processing...</Text>
+                <Text style={styles.resultText}>Completing your purchase. Please wait.</Text>
+              </View>
+            ) : selectedStoreItem ? (
+              <>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Confirm Purchase</Text>
+                  <TouchableOpacity onPress={handleCloseItemModal} activeOpacity={0.7} style={styles.closeBtn}>
+                    <X size={20} color="#94A3B8" />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.modalItemCard}>
+                  <View style={[styles.modalItemIcon, { backgroundColor: (RARITY_COLORS[getItemRarity(selectedStoreItem)] || '#4ADE80') + '20' }]}>
+                    <Package size={36} color={RARITY_COLORS[getItemRarity(selectedStoreItem)] || '#4ADE80'} />
+                  </View>
+                  <View style={styles.modalItemInfo}>
+                    <Text style={styles.modalItemName}>{getItemName(selectedStoreItem)}</Text>
+                    <View style={styles.modalRarityRow}>
+                      <View style={[styles.rarityDot, { backgroundColor: RARITY_COLORS[getItemRarity(selectedStoreItem)] || '#64748B' }]} />
+                      <Text style={[styles.rarityText, { color: RARITY_COLORS[getItemRarity(selectedStoreItem)] || '#64748B' }]}>
+                        {getItemRarity(selectedStoreItem).charAt(0).toUpperCase() + getItemRarity(selectedStoreItem).slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.priceSummary}>
+                  <View style={[styles.summaryRow, styles.totalRow]}>
+                    <Text style={styles.totalLabel}>Total</Text>
+                    <Text style={styles.totalValue}>{getItemCost(selectedStoreItem) > 0 ? `${getItemCost(selectedStoreItem).toLocaleString()} GF` : 'Free'}</Text>
+                  </View>
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Your Balance</Text>
+                    <Text style={[
+                      styles.balanceCheck,
+                      gfBalance < getItemCost(selectedStoreItem) && styles.balanceInsufficient,
+                    ]}>
+                      {gfBalance.toLocaleString()} GF
+                    </Text>
+                  </View>
+                </View>
+
+                {gfBalance < getItemCost(selectedStoreItem) && getItemCost(selectedStoreItem) > 0 ? (
+                  <View style={styles.insufficientBanner}>
+                    <AlertCircle size={16} color="#F59E0B" />
+                    <Text style={styles.insufficientText}>
+                      You need {(getItemCost(selectedStoreItem) - gfBalance).toLocaleString()} more GF.
+                    </Text>
+                  </View>
+                ) : null}
+
+                <TouchableOpacity
+                  style={[styles.confirmButton, gfBalance < getItemCost(selectedStoreItem) && getItemCost(selectedStoreItem) > 0 && styles.confirmButtonDisabled]}
+                  onPress={handleConfirmItemPurchase}
+                  disabled={gfBalance < getItemCost(selectedStoreItem) && getItemCost(selectedStoreItem) > 0}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[
+                    styles.confirmButtonText,
+                    gfBalance < getItemCost(selectedStoreItem) && getItemCost(selectedStoreItem) > 0 && styles.confirmButtonTextDisabled,
+                  ]}>
+                    {getItemCost(selectedStoreItem) === 0 ? 'Get for Free' : 'Confirm Purchase'}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -1052,15 +1560,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#0E1831',
   },
   tab: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 12,
     backgroundColor: 'rgba(30, 41, 59, 0.4)',
     gap: 6,
+    minWidth: 72,
   },
   tabActive: { backgroundColor: '#4ADE80' },
   tabText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
@@ -1340,4 +1848,76 @@ const styles = StyleSheet.create({
   mintSummaryValue: { fontSize: 14, fontWeight: '600' as const, color: '#FFFFFF' },
   mintTotalLabelBold: { fontSize: 16, fontWeight: '700' as const, color: '#FFFFFF' },
   mintTotalValueGreen: { fontSize: 18, fontWeight: '700' as const, color: '#4ADE80' },
+  tabsScrollWrap: { flexShrink: 0 },
+  loadingState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
+  loadingText: { fontSize: 14, color: '#94A3B8' },
+  categoryFilters: { paddingHorizontal: 20, gap: 8, paddingBottom: 4, paddingTop: 4 },
+  filterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  filterChipActive: { backgroundColor: 'rgba(74, 222, 128, 0.15)', borderColor: '#4ADE80' },
+  filterChipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
+  filterChipTextActive: { color: '#4ADE80' },
+  rarityFilters: { paddingHorizontal: 20, gap: 8, paddingBottom: 8, paddingTop: 4 },
+  rarityChip: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  rarityDotChip: { width: 7, height: 7, borderRadius: 3.5 },
+  rarityChipText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
+  rarityChipTextActive: { color: '#020617' },
+  nftPriceRow: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
+  priceInfo: { flex: 1 },
+  ownedBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(74, 222, 128, 0.15)',
+  },
+  ownedBadgeText: { fontSize: 11, fontWeight: '700', color: '#4ADE80' },
+  proLockBadge: {
+    position: 'absolute' as const,
+    top: 6,
+    left: 6,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(245, 158, 11, 0.9)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  proOnlyBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  proOnlyText: { fontSize: 11, fontWeight: '700', color: '#F59E0B' },
+  ownedOverlay: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
 });
