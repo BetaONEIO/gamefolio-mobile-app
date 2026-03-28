@@ -161,6 +161,8 @@ export default function StorePage() {
   const [listMarketPrice, setListMarketPrice] = useState('');
 
   const [watchlistDeleteConfirm, setWatchlistDeleteConfirm] = useState<{ visible: boolean; nftId: number; nftName: string } | null>(null);
+  const [watchlistDetailItem, setWatchlistDetailItem] = useState<{ item: WatchlistItem; listing: MarketplaceListing | null } | null>(null);
+  const [watchlistDetailChecked, setWatchlistDetailChecked] = useState<boolean | null>(null);
 
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
   const [itemCategory, setItemCategory] = useState<ItemCategory>('all');
@@ -301,6 +303,26 @@ export default function StorePage() {
     setSelectedStoreItem(null);
     setItemPurchaseState('idle');
     setItemPurchaseError('');
+  };
+
+  const handleOpenWatchlistDetail = async (item: WatchlistItem) => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const listing = marketplaceListings.find((l) => l.token_id === item.nftId) || null;
+    setWatchlistDetailItem({ item, listing });
+    setWatchlistDetailChecked(null);
+    // Use check endpoint for accurate per-NFT watchlist state in detail view
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/nft/watchlist/check/${item.nftId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWatchlistDetailChecked(!!data.inWatchlist);
+      }
+    } catch {
+      setWatchlistDetailChecked(true);
+    }
   };
 
   const handleConfirmDeleteWatchlist = async (nftId: number) => {
@@ -1175,9 +1197,8 @@ export default function StorePage() {
               <TouchableOpacity
                 key={item.id}
                 style={[styles.nftCard, !isStillListed && { opacity: 0.5 }]}
-                onPress={() => { if (isStillListed && liveListing) handleBuyListing(liveListing); }}
-                activeOpacity={isStillListed ? 0.85 : 1}
-                disabled={!isStillListed}
+                onPress={() => handleOpenWatchlistDetail(item)}
+                activeOpacity={0.85}
               >
                 <View style={styles.nftImageContainer}>
                   {imageUrl ? (
@@ -1826,6 +1847,98 @@ export default function StorePage() {
                 </TouchableOpacity>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Watchlist NFT Detail Modal */}
+      <Modal
+        visible={watchlistDetailItem !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setWatchlistDetailItem(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            {watchlistDetailItem ? (() => {
+              const { item, listing } = watchlistDetailItem;
+              const imageUrl = resolveNftImageUrl(item.nftImage);
+              const isListed = !!listing;
+              const canAfford = isListed && gfBalance >= (listing?.listed_price ?? 0);
+              return (
+                <>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>{item.nftName}</Text>
+                    <TouchableOpacity onPress={() => setWatchlistDetailItem(null)} activeOpacity={0.7} style={styles.closeBtn}>
+                      <X size={20} color="#94A3B8" />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                    {imageUrl ? (
+                      <Image source={{ uri: imageUrl }} style={{ width: 160, height: 160, borderRadius: 16 }} resizeMode="cover" />
+                    ) : (
+                      <View style={{ width: 160, height: 160, borderRadius: 16, backgroundColor: '#131F2A', alignItems: 'center', justifyContent: 'center' }}>
+                        <Sparkles size={48} color="#4ADE80" />
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ backgroundColor: '#131F2A', borderRadius: 14, padding: 16, gap: 10, marginBottom: 20 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={styles.mintSummaryLabel}>Token ID</Text>
+                      <Text style={styles.mintSummaryValue}>#{item.nftId}</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={styles.mintSummaryLabel}>Status</Text>
+                      <Text style={[styles.mintSummaryValue, { color: isListed ? '#4ADE80' : '#EF4444' }]}>
+                        {isListed ? 'Listed for Sale' : 'No Longer Listed'}
+                      </Text>
+                    </View>
+                    {isListed ? (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={styles.mintSummaryLabel}>Price</Text>
+                        <Text style={styles.mintTotalValueGreen}>{listing.listed_price.toLocaleString()} GF</Text>
+                      </View>
+                    ) : null}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={styles.mintSummaryLabel}>Saved to Watchlist</Text>
+                      {watchlistDetailChecked === null ? (
+                        <ActivityIndicator size="small" color="#4ADE80" />
+                      ) : (
+                        <Heart size={18} color={watchlistDetailChecked ? '#EF4444' : '#475569'} fill={watchlistDetailChecked ? '#EF4444' : 'none'} />
+                      )}
+                    </View>
+                  </View>
+                  {isListed ? (
+                    <TouchableOpacity
+                      style={[styles.confirmButton, !canAfford && styles.confirmButtonDisabled]}
+                      onPress={() => {
+                        setWatchlistDetailItem(null);
+                        if (canAfford && listing) handleBuyListing(listing);
+                      }}
+                      disabled={!canAfford}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.confirmButtonText, !canAfford && styles.confirmButtonTextDisabled]}>
+                        {canAfford ? 'Buy Now' : 'Insufficient Balance'}
+                      </Text>
+                    </TouchableOpacity>
+                  ) : null}
+                  <TouchableOpacity
+                    style={[styles.cancelLink, { marginTop: 8 }]}
+                    onPress={() => {
+                      setWatchlistDetailItem(null);
+                      setWatchlistDeleteConfirm({ visible: true, nftId: item.nftId, nftName: item.nftName });
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.cancelLinkText, { color: '#EF4444' }]}>Remove from Watchlist</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.cancelLink} onPress={() => setWatchlistDetailItem(null)} activeOpacity={0.7}>
+                    <Text style={styles.cancelLinkText}>Close</Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })() : null}
           </View>
         </View>
       </Modal>
