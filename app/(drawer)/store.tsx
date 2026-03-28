@@ -160,6 +160,8 @@ export default function StorePage() {
   const [listMarketError, setListMarketError] = useState('');
   const [listMarketPrice, setListMarketPrice] = useState('');
 
+  const [watchlistDeleteConfirm, setWatchlistDeleteConfirm] = useState<{ visible: boolean; nftId: number; nftName: string } | null>(null);
+
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
   const [itemCategory, setItemCategory] = useState<ItemCategory>('all');
   const [selectedStoreItem, setSelectedStoreItem] = useState<StoreItem | StoreNameTag | StoreBorder | null>(null);
@@ -271,18 +273,19 @@ export default function StorePage() {
   });
   const ownedItemIds = new Set(ownedItems.map((i) => i.id));
 
-  const { data: watchlistItems = [], isLoading: watchlistLoading } = useQuery<WatchlistItem[]>({
+  const { data: watchlistItems = [], isLoading: watchlistLoading, isError: watchlistError } = useQuery<WatchlistItem[]>({
     queryKey: ['/api/nft/watchlist', user?.id],
     queryFn: async () => {
       const token = await getAccessToken();
       const res = await fetch(`${Env.BACKEND_URL}/api/nft/watchlist`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!res.ok) return [];
+      if (!res.ok) throw new Error('Failed to fetch watchlist');
       return res.json();
     },
     enabled: !!user?.id && (activeTab === 'watchlist' || activeTab === 'buy'),
     staleTime: 60000,
+    retry: 1,
   });
   const watchlistNftIds = new Set(watchlistItems.map((w) => w.nftId));
 
@@ -300,30 +303,42 @@ export default function StorePage() {
     setItemPurchaseError('');
   };
 
+  const handleConfirmDeleteWatchlist = async (nftId: number) => {
+    setWatchlistDeleteConfirm(null);
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      const token = await getAccessToken();
+      await fetch(`${Env.BACKEND_URL}/api/nft/watchlist/${nftId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/nft/watchlist', user?.id] });
+    } catch {
+      // silently ignore
+    }
+  };
+
   const handleToggleWatchlist = async (listing: MarketplaceListing) => {
     if (!user?.id) return;
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const nftId = listing.token_id;
     const isWatched = watchlistNftIds.has(nftId);
+    if (isWatched) {
+      setWatchlistDeleteConfirm({ visible: true, nftId, nftName: `NFT #${nftId}` });
+      return;
+    }
     try {
       const token = await getAccessToken();
-      if (isWatched) {
-        await fetch(`${Env.BACKEND_URL}/api/nft/watchlist/${nftId}`, {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } else {
-        await fetch(`${Env.BACKEND_URL}/api/nft/watchlist`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            nftId,
-            nftName: `Gamefolio Genesis #${listing.token_id}`,
-            nftImage: listing.image_url || '',
-            nftPrice: listing.listed_price,
-          }),
-        });
-      }
+      await fetch(`${Env.BACKEND_URL}/api/nft/watchlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          nftId,
+          nftName: `Gamefolio Genesis #${listing.token_id}`,
+          nftImage: listing.image_url || '',
+          nftPrice: listing.listed_price,
+        }),
+      });
       queryClient.invalidateQueries({ queryKey: ['/api/nft/watchlist', user?.id] });
     } catch {
     }
@@ -1105,6 +1120,25 @@ export default function StorePage() {
       );
     }
 
+    if (watchlistError) {
+      return (
+        <View style={styles.emptyState}>
+          <Heart size={48} color="#EF4444" />
+          <Text style={styles.emptyTitle}>Could Not Load Watchlist</Text>
+          <Text style={styles.emptyText}>
+            Something went wrong loading your saved items. Please try again.
+          </Text>
+          <TouchableOpacity
+            style={styles.goToMintButton}
+            onPress={() => queryClient.invalidateQueries({ queryKey: ['/api/nft/watchlist', user?.id] })}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.goToMintButtonText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     if (watchlistItems.length === 0) {
       return (
         <View style={styles.emptyState}>
@@ -1138,7 +1172,13 @@ export default function StorePage() {
             const isStillListed = !!liveListing;
             const canAfford = isStillListed && gfBalance >= (liveListing?.listed_price ?? 0);
             return (
-              <View key={item.id} style={[styles.nftCard, !isStillListed && { opacity: 0.5 }]}>
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.nftCard, !isStillListed && { opacity: 0.5 }]}
+                onPress={() => { if (isStillListed && liveListing) handleBuyListing(liveListing); }}
+                activeOpacity={isStillListed ? 0.85 : 1}
+                disabled={!isStillListed}
+              >
                 <View style={styles.nftImageContainer}>
                   {imageUrl ? (
                     <Image source={{ uri: imageUrl }} style={styles.nftImage} resizeMode="cover" />
@@ -1152,17 +1192,9 @@ export default function StorePage() {
                   </View>
                   <TouchableOpacity
                     style={styles.heartButton}
-                    onPress={() => {
-                      if (isStillListed) {
-                        handleToggleWatchlist(liveListing);
-                      } else {
-                        getAccessToken().then((t) => {
-                          fetch(`${Env.BACKEND_URL}/api/nft/watchlist/${item.nftId}`, {
-                            method: 'DELETE',
-                            headers: { Authorization: `Bearer ${t}` },
-                          }).then(() => queryClient.invalidateQueries({ queryKey: ['/api/nft/watchlist', user?.id] }));
-                        });
-                      }
+                    onPress={(e) => {
+                      e.stopPropagation?.();
+                      setWatchlistDeleteConfirm({ visible: true, nftId: item.nftId, nftName: item.nftName });
                     }}
                     activeOpacity={0.7}
                   >
@@ -1178,7 +1210,7 @@ export default function StorePage() {
                   {isStillListed ? (
                     <TouchableOpacity
                       style={[styles.buyButton, { marginTop: 8 }, !canAfford && { opacity: 0.5 }]}
-                      onPress={() => canAfford && handleBuyListing(liveListing)}
+                      onPress={(e) => { e.stopPropagation?.(); if (canAfford) handleBuyListing(liveListing); }}
                       activeOpacity={0.8}
                     >
                       <ShoppingCart size={14} color="#020617" />
@@ -1190,7 +1222,7 @@ export default function StorePage() {
                     </Text>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -1794,6 +1826,41 @@ export default function StorePage() {
                 </TouchableOpacity>
               </>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={watchlistDeleteConfirm !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setWatchlistDeleteConfirm(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { paddingBottom: 24 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Remove from Watchlist</Text>
+              <TouchableOpacity onPress={() => setWatchlistDeleteConfirm(null)} activeOpacity={0.7} style={styles.closeBtn}>
+                <X size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.resultText, { textAlign: 'left', marginBottom: 24 }]}>
+              Remove{' '}
+              <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>
+                {watchlistDeleteConfirm?.nftName}
+              </Text>{' '}
+              from your watchlist?
+            </Text>
+            <TouchableOpacity
+              style={[styles.confirmButton, { backgroundColor: '#EF4444', marginBottom: 12 }]}
+              onPress={() => watchlistDeleteConfirm && handleConfirmDeleteWatchlist(watchlistDeleteConfirm.nftId)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.confirmButtonText}>Remove</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelLink} onPress={() => setWatchlistDeleteConfirm(null)} activeOpacity={0.7}>
+              <Text style={styles.cancelLinkText}>Keep</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
