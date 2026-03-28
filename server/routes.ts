@@ -7439,7 +7439,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
   // Purchase a name tag with GF tokens (off-chain balance)
   app.post("/api/store/purchase-name-tag", hybridAuth, async (req, res) => {
-    if (!req.isAuthenticated() && !(req as any).user) {
+    if (!req.user) {
       return res.sendStatus(401);
     }
 
@@ -7613,7 +7613,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   });
 
   app.post("/api/store/purchase-border", hybridAuth, async (req, res) => {
-    if (!req.isAuthenticated() && !(req as any).user) {
+    if (!req.user) {
       return res.sendStatus(401);
     }
 

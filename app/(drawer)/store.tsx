@@ -291,55 +291,29 @@ export default function StorePage() {
       const token = await getAccessToken();
       const authHeader = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 
-      if (selectedItemType === 'name-tag') {
-        const res = await fetch(`${Env.BACKEND_URL}/api/store/purchase-name-tag`, {
-          method: 'POST',
-          headers: authHeader,
-          body: JSON.stringify({ nameTagId: selectedStoreItem.id }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setItemPurchaseState('error');
-          setItemPurchaseError(data.message || data.error || 'Purchase failed. Please try again.');
-          return;
-        }
-      } else if (selectedItemType === 'border') {
-        const res = await fetch(`${Env.BACKEND_URL}/api/store/purchase-border`, {
-          method: 'POST',
-          headers: authHeader,
-          body: JSON.stringify({ borderId: selectedStoreItem.id }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setItemPurchaseState('error');
-          setItemPurchaseError(data.message || data.error || 'Purchase failed. Please try again.');
-          return;
-        }
-      } else {
-        const intentRes = await fetch(`${Env.BACKEND_URL}/api/store/purchase-intent`, {
-          method: 'POST',
-          headers: authHeader,
-          body: JSON.stringify({ itemId: selectedStoreItem.id }),
-        });
-        const intentData = await intentRes.json();
-        if (!intentRes.ok) {
-          setItemPurchaseState('error');
-          setItemPurchaseError(intentData.error || 'Purchase failed. Please try again.');
-          return;
-        }
+      const intentRes = await fetch(`${Env.BACKEND_URL}/api/store/purchase-intent`, {
+        method: 'POST',
+        headers: authHeader,
+        body: JSON.stringify({ itemId: selectedStoreItem.id, itemType: selectedItemType }),
+      });
+      const intentData = await intentRes.json();
+      if (!intentRes.ok) {
+        setItemPurchaseState('error');
+        setItemPurchaseError(intentData.error || intentData.message || 'Purchase failed. Please try again.');
+        return;
+      }
 
-        if (intentData.purchaseId) {
-          const confirmRes = await fetch(`${Env.BACKEND_URL}/api/store/complete-purchase`, {
-            method: 'POST',
-            headers: authHeader,
-            body: JSON.stringify({ purchaseId: intentData.purchaseId }),
-          });
-          if (!confirmRes.ok) {
-            const confirmData = await confirmRes.json();
-            setItemPurchaseState('error');
-            setItemPurchaseError(confirmData.error || 'Purchase completion failed.');
-            return;
-          }
+      if (intentData.purchaseId) {
+        const confirmRes = await fetch(`${Env.BACKEND_URL}/api/store/complete-purchase`, {
+          method: 'POST',
+          headers: authHeader,
+          body: JSON.stringify({ purchaseId: intentData.purchaseId }),
+        });
+        if (!confirmRes.ok) {
+          const confirmData = await confirmRes.json();
+          setItemPurchaseState('error');
+          setItemPurchaseError(confirmData.error || 'Purchase completion failed.');
+          return;
         }
       }
 
