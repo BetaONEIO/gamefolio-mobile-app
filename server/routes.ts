@@ -7410,7 +7410,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         })
       );
 
-      if (req.isAuthenticated()) {
+      if (!!req.user) {
         const unlockedTags = await storage.getUserUnlockedNameTags(req.user.id);
         const unlockedIds = new Set(unlockedTags.map(t => t.id));
         const user = await storage.getUserById(req.user.id);
@@ -7592,7 +7592,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         })
       );
 
-      if (req.isAuthenticated()) {
+      if (!!req.user) {
         const unlockedBorders = await storage.getUserUnlockedBorders2(req.user.id);
         const unlockedIds = new Set(unlockedBorders.map(b => b.id));
         const user = await storage.getUserById(req.user.id);

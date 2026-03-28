@@ -137,15 +137,16 @@ router.post('/api/store/purchase-intent', hybridAuth, async (req: Request, res: 
       if (!tag) return res.status(404).json({ error: 'Name tag not found' });
       if (!tag.availableInStore || !tag.isActive) return res.status(400).json({ error: 'Name tag is not available for purchase' });
       if (tag.isDefault) return res.status(400).json({ error: 'This name tag is free for everyone' });
-      const cost = Math.max(tag.gfCost ?? 0, 0);
-      if (cost <= 0) return res.status(400).json({ error: 'This name tag has no price set' });
+      const baseCost = Math.max(tag.gfCost ?? 0, 0);
+      if (baseCost <= 0) return res.status(400).json({ error: 'This name tag has no price set' });
+      const cost = isPro ? Math.floor(baseCost * 0.8) : baseCost;
       const [existing] = await db.select().from(userUnlockedNameTags)
         .where(and(eq(userUnlockedNameTags.userId, userId), eq(userUnlockedNameTags.nameTagId, itemId))).limit(1);
       if (existing) return res.status(400).json({ error: 'You already own this name tag' });
       if (currentBalance < cost) return res.status(400).json({ error: `Insufficient GF tokens. Need ${cost} GF, you have ${currentBalance} GF` });
       await db.update(users).set({ gfTokenBalance: sql`COALESCE(${users.gfTokenBalance}, 0) - ${cost}` }).where(eq(users.id, userId));
       await db.insert(userUnlockedNameTags).values({ userId, nameTagId: itemId });
-      return res.json({ success: true, itemName: tag.name, gfCost: cost, newBalance: currentBalance - cost });
+      return res.json({ success: true, itemName: tag.name, gfCost: cost, originalPrice: baseCost, discountApplied: isPro, newBalance: currentBalance - cost });
     }
 
     // --- Border ---
