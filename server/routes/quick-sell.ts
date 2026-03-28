@@ -82,6 +82,47 @@ router.get('/api/marketplace/listings', async (_req: Request, res: Response) => 
   }
 });
 
+router.post('/api/marketplace/list', hybridAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
+    const { tokenId, listedPrice, imageUrl } = req.body;
+    if (tokenId == null || typeof tokenId !== 'number') {
+      return res.status(400).json({ error: 'Token ID is required' });
+    }
+    const price = Number(listedPrice);
+    if (!price || price <= 0) {
+      return res.status(400).json({ error: 'Listed price must be greater than 0' });
+    }
+
+    const existing = await db.execute(
+      sql`SELECT * FROM user_nfts WHERE user_id = ${userId} AND token_id = ${tokenId} AND sold = false`
+    );
+    const rows = (existing as any).rows || existing;
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'NFT not found or already sold' });
+    }
+
+    const cleanImageUrl = typeof imageUrl === 'string' && imageUrl.length > 0 ? imageUrl : null;
+    await db.execute(
+      sql`UPDATE user_nfts SET sold = true, sold_at = NOW(), listing_active = true, listed_price = ${price}, image_url = COALESCE(${cleanImageUrl}, image_url) WHERE user_id = ${userId} AND token_id = ${tokenId}`
+    );
+
+    console.log(`[Marketplace] User ${userId} listed NFT #${tokenId} for ${price} GFT`);
+
+    return res.json({
+      success: true,
+      tokenId,
+      listedPrice: price,
+      message: `NFT #${tokenId} listed on marketplace for ${price} GFT.`,
+    });
+  } catch (error: any) {
+    console.error('[Marketplace] List error:', error);
+    return res.status(500).json({ error: 'Failed to list NFT. Please try again.' });
+  }
+});
+
 router.post('/api/marketplace/buy', hybridAuth, async (req: Request, res: Response) => {
   try {
     const buyerId = (req as any).user?.id;

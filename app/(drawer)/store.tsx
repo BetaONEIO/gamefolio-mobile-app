@@ -10,6 +10,7 @@ import {
   Modal,
   ActivityIndicator,
   Platform,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -26,6 +27,7 @@ import {
   Package,
   Lock,
   Crown,
+  Tag,
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -69,10 +71,20 @@ interface MarketplaceListing {
   image_url?: string | null;
 }
 
+interface WatchlistItem {
+  id: number;
+  nftId: number;
+  nftName: string;
+  nftImage: string;
+  nftPrice: number;
+  createdAt: string;
+}
+
 type TabType = 'buy' | 'sell' | 'mint' | 'watchlist' | 'items';
 type PurchaseState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
 type MintState = 'idle' | 'processing' | 'success' | 'error';
 type SellState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
+type ListMarketState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
 type ItemPurchaseState = 'idle' | 'confirming' | 'processing' | 'success' | 'error';
 
 type RarityFilter = 'all' | 'common' | 'rare' | 'epic' | 'legendary';
@@ -128,8 +140,6 @@ export default function StorePage() {
   const { user, getAccessToken, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('buy');
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
-
   const [purchaseState, setPurchaseState] = useState<PurchaseState>('idle');
   const [purchaseError, setPurchaseError] = useState('');
   const [pendingPurchaseId, setPendingPurchaseId] = useState<number | null>(null);
@@ -144,6 +154,11 @@ export default function StorePage() {
   const [sellState, setSellState] = useState<SellState>('idle');
   const [sellError, setSellError] = useState('');
   const [sellNetReceived, setSellNetReceived] = useState<number>(0);
+
+  const [listMarketNft, setListMarketNft] = useState<OwnedNFT | null>(null);
+  const [listMarketState, setListMarketState] = useState<ListMarketState>('idle');
+  const [listMarketError, setListMarketError] = useState('');
+  const [listMarketPrice, setListMarketPrice] = useState('');
 
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
   const [itemCategory, setItemCategory] = useState<ItemCategory>('all');
@@ -256,6 +271,21 @@ export default function StorePage() {
   });
   const ownedItemIds = new Set(ownedItems.map((i) => i.id));
 
+  const { data: watchlistItems = [], isLoading: watchlistLoading } = useQuery<WatchlistItem[]>({
+    queryKey: ['/api/nft/watchlist', user?.id],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/nft/watchlist`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!user?.id && (activeTab === 'watchlist' || activeTab === 'buy'),
+    staleTime: 60000,
+  });
+  const watchlistNftIds = new Set(watchlistItems.map((w) => w.nftId));
+
   const handleOpenItemPurchase = (item: StoreItem | StoreNameTag | StoreBorder, type: 'item' | 'name-tag' | 'border') => {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setSelectedStoreItem(item);
@@ -268,6 +298,87 @@ export default function StorePage() {
     setSelectedStoreItem(null);
     setItemPurchaseState('idle');
     setItemPurchaseError('');
+  };
+
+  const handleToggleWatchlist = async (listing: MarketplaceListing) => {
+    if (!user?.id) return;
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const nftId = listing.token_id;
+    const isWatched = watchlistNftIds.has(nftId);
+    try {
+      const token = await getAccessToken();
+      if (isWatched) {
+        await fetch(`${Env.BACKEND_URL}/api/nft/watchlist/${nftId}`, {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } else {
+        await fetch(`${Env.BACKEND_URL}/api/nft/watchlist`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            nftId,
+            nftName: `Gamefolio Genesis #${listing.token_id}`,
+            nftImage: listing.image_url || '',
+            nftPrice: listing.listed_price,
+          }),
+        });
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/nft/watchlist', user?.id] });
+    } catch {
+    }
+  };
+
+  const handleOpenListMarket = (nft: OwnedNFT) => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setListMarketNft(nft);
+    setListMarketState('confirming');
+    setListMarketError('');
+    setListMarketPrice('');
+  };
+
+  const handleCloseListMarketModal = () => {
+    setListMarketNft(null);
+    setListMarketState('idle');
+    setListMarketError('');
+    setListMarketPrice('');
+  };
+
+  const handleConfirmListMarket = async () => {
+    if (!listMarketNft) return;
+    const price = parseFloat(listMarketPrice);
+    if (!listMarketPrice || isNaN(price) || price <= 0) {
+      setListMarketError('Please enter a valid price greater than 0.');
+      return;
+    }
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setListMarketState('processing');
+    setListMarketError('');
+    try {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/marketplace/list`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          tokenId: listMarketNft.tokenId,
+          listedPrice: price,
+          imageUrl: listMarketNft.image || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setListMarketState('error');
+        setListMarketError(data.error || 'Listing failed. Please try again.');
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/nfts/owned', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/marketplace/listings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
+      setListMarketState('success');
+    } catch {
+      setListMarketState('error');
+      setListMarketError('Network error. Please try again.');
+    }
   };
 
   const getItemCost = (item: StoreItem | StoreNameTag | StoreBorder): number => {
@@ -533,16 +644,6 @@ export default function StorePage() {
     );
   };
 
-  const toggleFavorite = (itemId: string | number) => {
-    const key = String(itemId);
-    setFavorites(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(key)) newSet.delete(key);
-      else newSet.add(key);
-      return newSet;
-    });
-  };
-
   const [selectedListing, setSelectedListing] = useState<MarketplaceListing | null>(null);
 
   const handleBuyListing = (listing: MarketplaceListing) => {
@@ -724,13 +825,13 @@ export default function StorePage() {
                   </View>
                   <TouchableOpacity
                     style={styles.heartButton}
-                    onPress={() => toggleFavorite(String(listing.token_id))}
+                    onPress={() => handleToggleWatchlist(listing)}
                     activeOpacity={0.7}
                   >
                     <Heart
                       size={20}
-                      color={favorites.has(String(listing.token_id)) ? '#EF4444' : '#64748B'}
-                      fill={favorites.has(String(listing.token_id)) ? '#EF4444' : 'transparent'}
+                      color={watchlistNftIds.has(listing.token_id) ? '#EF4444' : '#64748B'}
+                      fill={watchlistNftIds.has(listing.token_id) ? '#EF4444' : 'transparent'}
                     />
                   </TouchableOpacity>
                 </View>
@@ -823,15 +924,20 @@ export default function StorePage() {
               <View style={styles.nftContent}>
                 <Text style={styles.nftName}>{nft.name || `Gamefolio Genesis #${nft.tokenId}`}</Text>
                 <View style={styles.ownedNftActions}>
-                  <View style={styles.ownedBadge}>
-                    <Text style={styles.ownedBadgeText}>Owned</Text>
-                  </View>
                   <TouchableOpacity
                     style={styles.listButton}
                     activeOpacity={0.8}
                     onPress={() => handleOpenQuickSell(nft)}
                   >
                     <Text style={styles.listButtonText}>Quick Sell</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.listMarketButton}
+                    activeOpacity={0.8}
+                    onPress={() => handleOpenListMarket(nft)}
+                  >
+                    <Tag size={11} color="#FFFFFF" />
+                    <Text style={styles.listMarketButtonText}>List</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -990,46 +1096,104 @@ export default function StorePage() {
   };
 
   const renderWatchlistTab = () => {
-    const watchedListings = marketplaceListings.filter(l => favorites.has(String(l.token_id)));
+    if (watchlistLoading) {
+      return (
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color="#4ADE80" />
+          <Text style={styles.loadingText}>Loading watchlist...</Text>
+        </View>
+      );
+    }
+
+    if (watchlistItems.length === 0) {
+      return (
+        <View style={styles.emptyState}>
+          <Heart size={48} color="#475569" />
+          <Text style={styles.emptyTitle}>No Watchlist Items</Text>
+          <Text style={styles.emptyText}>
+            Tap the heart icon on any marketplace listing to save it here for later.
+          </Text>
+          <TouchableOpacity
+            style={styles.goToMintButton}
+            onPress={() => setActiveTab('buy')}
+            activeOpacity={0.8}
+          >
+            <ShoppingCart size={16} color="#020617" />
+            <Text style={styles.goToMintButtonText}>Browse Marketplace</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     return (
-      <View style={styles.emptyState}>
-        <Heart size={48} color="#475569" />
-        <Text style={styles.emptyTitle}>
-          {favorites.size === 0 ? 'No Favorites Yet' : 'My Watchlist'}
+      <View style={styles.mainContent}>
+        <Text style={styles.mainTitle}>My Watchlist</Text>
+        <Text style={styles.subtitle}>
+          {watchlistItems.length} saved item{watchlistItems.length > 1 ? 's' : ''}
         </Text>
-        <Text style={styles.emptyText}>
-          {favorites.size === 0
-            ? 'Tap the heart icon on any marketplace listing to save it here'
-            : watchedListings.length > 0
-              ? `${watchedListings.length} saved listing${watchedListings.length > 1 ? 's' : ''} still available`
-              : 'Your saved listings are no longer available'}
-        </Text>
-        {watchedListings.length > 0 ? (
-          <View style={[styles.nftGrid, { marginTop: 20, width: '100%' }]}>
-            {watchedListings.map((listing) => (
-              <View key={listing.token_id} style={styles.nftCard}>
-                <View style={styles.nftContent}>
-                  <Text style={styles.nftName}>Genesis #{listing.token_id}</Text>
-                  <Text style={styles.nftDescription} numberOfLines={1}>
-                    by {listing.display_name || listing.username}
-                  </Text>
-                  <View style={styles.priceContainer}>
-                    <Sparkles size={12} color="#4ADE80" />
-                    <Text style={styles.priceGF}>{listing.listed_price.toLocaleString()} GF</Text>
+        <View style={styles.nftGrid}>
+          {watchlistItems.map((item) => {
+            const imageUrl = resolveNftImageUrl(item.nftImage);
+            const liveListing = marketplaceListings.find((l) => l.token_id === item.nftId);
+            const isStillListed = !!liveListing;
+            const canAfford = isStillListed && gfBalance >= (liveListing?.listed_price ?? 0);
+            return (
+              <View key={item.id} style={[styles.nftCard, !isStillListed && { opacity: 0.5 }]}>
+                <View style={styles.nftImageContainer}>
+                  {imageUrl ? (
+                    <Image source={{ uri: imageUrl }} style={styles.nftImage} resizeMode="cover" />
+                  ) : (
+                    <View style={[styles.nftImagePlaceholder, { borderColor: '#4ADE8040' }]}>
+                      <Sparkles size={36} color="#4ADE80" />
+                    </View>
+                  )}
+                  <View style={[styles.forSaleBadge, { backgroundColor: '#0F172A' }]}>
+                    <Text style={styles.forSaleText}>#{item.nftId}</Text>
                   </View>
                   <TouchableOpacity
-                    style={styles.buyButton}
-                    onPress={() => handleBuyListing(listing)}
-                    activeOpacity={0.8}
+                    style={styles.heartButton}
+                    onPress={() => {
+                      if (isStillListed) {
+                        handleToggleWatchlist(liveListing);
+                      } else {
+                        getAccessToken().then((t) => {
+                          fetch(`${Env.BACKEND_URL}/api/nft/watchlist/${item.nftId}`, {
+                            method: 'DELETE',
+                            headers: { Authorization: `Bearer ${t}` },
+                          }).then(() => queryClient.invalidateQueries({ queryKey: ['/api/nft/watchlist', user?.id] }));
+                        });
+                      }
+                    }}
+                    activeOpacity={0.7}
                   >
-                    <ShoppingCart size={14} color="#020617" />
-                    <Text style={styles.buyButtonText}>Buy Now</Text>
+                    <Heart size={20} color="#EF4444" fill="#EF4444" />
                   </TouchableOpacity>
                 </View>
+                <View style={styles.nftContent}>
+                  <Text style={styles.nftName} numberOfLines={1}>{item.nftName}</Text>
+                  <View style={styles.priceContainer}>
+                    <Sparkles size={12} color="#4ADE80" />
+                    <Text style={styles.priceGF}>{item.nftPrice.toLocaleString()} GF</Text>
+                  </View>
+                  {isStillListed ? (
+                    <TouchableOpacity
+                      style={[styles.buyButton, { marginTop: 8 }, !canAfford && { opacity: 0.5 }]}
+                      onPress={() => canAfford && handleBuyListing(liveListing)}
+                      activeOpacity={0.8}
+                    >
+                      <ShoppingCart size={14} color="#020617" />
+                      <Text style={styles.buyButtonText}>Buy Now</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={[styles.nftDescription, { marginTop: 6, color: '#EF4444' }]}>
+                      No longer listed
+                    </Text>
+                  )}
+                </View>
               </View>
-            ))}
-          </View>
-        ) : null}
+            );
+          })}
+        </View>
       </View>
     );
   };
@@ -1510,6 +1674,129 @@ export default function StorePage() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={listMarketState !== 'idle' && listMarketNft !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCloseListMarketModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {listMarketState === 'success' ? 'Listed!' : listMarketState === 'error' ? 'Listing Failed' : 'List on Marketplace'}
+              </Text>
+              <TouchableOpacity onPress={handleCloseListMarketModal} activeOpacity={0.7} style={styles.closeBtn}>
+                <X size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            {listMarketState === 'success' ? (
+              <>
+                <View style={styles.emptyState}>
+                  <View style={styles.mintSuccessIcon}>
+                    <CheckCircle size={48} color="#4ADE80" />
+                  </View>
+                  <Text style={styles.emptyTitle}>NFT Listed!</Text>
+                  <Text style={styles.emptyText}>
+                    {`Gamefolio Genesis #${listMarketNft?.tokenId} is now live in the marketplace at ${listMarketPrice} GFT.`}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={() => { handleCloseListMarketModal(); setActiveTab('buy'); }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.confirmButtonText}>View in Marketplace</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelLink} onPress={handleCloseListMarketModal} activeOpacity={0.7}>
+                  <Text style={styles.cancelLinkText}>Close</Text>
+                </TouchableOpacity>
+              </>
+            ) : listMarketState === 'error' ? (
+              <>
+                <View style={styles.emptyState}>
+                  <View style={[styles.mintSuccessIcon, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                    <AlertCircle size={48} color="#EF4444" />
+                  </View>
+                  <Text style={[styles.emptyTitle, { color: '#EF4444' }]}>Listing Failed</Text>
+                  <Text style={styles.emptyText}>{listMarketError}</Text>
+                </View>
+                <TouchableOpacity style={styles.confirmButton} onPress={() => setListMarketState('confirming')} activeOpacity={0.8}>
+                  <Text style={styles.confirmButtonText}>Try Again</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelLink} onPress={handleCloseListMarketModal} activeOpacity={0.7}>
+                  <Text style={styles.cancelLinkText}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            ) : listMarketState === 'processing' ? (
+              <View style={styles.resultContainer}>
+                <ActivityIndicator size="large" color="#4ADE80" />
+                <Text style={styles.resultTitle}>Listing NFT...</Text>
+                <Text style={styles.resultText}>Publishing your NFT to the marketplace.</Text>
+              </View>
+            ) : (
+              <>
+                <View style={styles.mintConfirmCard}>
+                  <View style={styles.mintConfirmRow}>
+                    {listMarketNft?.imageDataUrl ? (
+                      <Image source={{ uri: listMarketNft.imageDataUrl }} style={styles.sellModalThumb} />
+                    ) : listMarketNft?.image ? (
+                      <Image source={{ uri: `${Env.BACKEND_URL}${listMarketNft.image}` }} style={styles.sellModalThumb} />
+                    ) : (
+                      <View style={[styles.sellModalThumb, styles.sellModalThumbPlaceholder]}>
+                        <Sparkles size={24} color="#4ADE80" />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.mintConfirmTitle}>
+                        {listMarketNft?.name || `Gamefolio Genesis #${listMarketNft?.tokenId}`}
+                      </Text>
+                      <Text style={styles.mintConfirmSub}>Token #{listMarketNft?.tokenId}</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.priceInputRow}>
+                  <Text style={styles.priceInputLabel}>Set Listing Price (GF)</Text>
+                  <TextInput
+                    style={styles.priceInput}
+                    value={listMarketPrice}
+                    onChangeText={setListMarketPrice}
+                    placeholder="e.g. 300"
+                    placeholderTextColor="#64748B"
+                    keyboardType="numeric"
+                    returnKeyType="done"
+                  />
+                </View>
+
+                {listMarketError.length > 0 ? (
+                  <View style={styles.insufficientBanner}>
+                    <AlertCircle size={16} color="#F59E0B" />
+                    <Text style={styles.insufficientText}>{listMarketError}</Text>
+                  </View>
+                ) : null}
+
+                <Text style={styles.listMarketNote}>
+                  Your NFT will appear in the marketplace. Buyers pay the price you set in GF tokens.
+                </Text>
+
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={handleConfirmListMarket}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.confirmButtonText}>List on Marketplace</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cancelLink} onPress={handleCloseListMarketModal} activeOpacity={0.7}>
+                  <Text style={styles.cancelLinkText}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1900,5 +2187,36 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
+  },
+  listMarketButton: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  listMarketButtonText: { fontSize: 11, color: '#FFFFFF', fontWeight: '600' as const },
+  priceInputRow: { marginBottom: 16 },
+  priceInputLabel: { fontSize: 14, color: '#94A3B8', marginBottom: 8 },
+  priceInput: {
+    backgroundColor: '#131F2A',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.3)',
+  },
+  listMarketNote: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center' as const,
+    lineHeight: 18,
+    marginBottom: 16,
+    paddingHorizontal: 8,
   },
 });
