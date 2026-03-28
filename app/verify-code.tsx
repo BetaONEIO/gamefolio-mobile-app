@@ -203,7 +203,10 @@ export default function VerifyCodeScreen() {
       
       <View style={styles.header}>
         <TouchableOpacity 
-          onPress={() => router.replace('/')} 
+          onPress={async () => {
+            await logoutUser();
+            router.replace('/');
+          }}
           style={styles.backButton}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
