@@ -289,32 +289,57 @@ export default function StorePage() {
 
     try {
       const token = await getAccessToken();
-      const intentRes = await fetch(`${Env.BACKEND_URL}/api/store/purchase-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          itemId: selectedStoreItem.id,
-          itemType: selectedItemType,
-        }),
-      });
-      const intentData = await intentRes.json();
-      if (!intentRes.ok) {
-        setItemPurchaseState('error');
-        setItemPurchaseError(intentData.error || 'Purchase failed. Please try again.');
-        return;
-      }
+      const authHeader = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 
-      if (intentData.purchaseId) {
-        const confirmRes = await fetch(`${Env.BACKEND_URL}/api/store/complete-purchase`, {
+      if (selectedItemType === 'name-tag') {
+        const res = await fetch(`${Env.BACKEND_URL}/api/store/purchase-name-tag`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ purchaseId: intentData.purchaseId }),
+          headers: authHeader,
+          body: JSON.stringify({ nameTagId: selectedStoreItem.id }),
         });
-        if (!confirmRes.ok) {
-          const confirmData = await confirmRes.json();
+        const data = await res.json();
+        if (!res.ok) {
           setItemPurchaseState('error');
-          setItemPurchaseError(confirmData.error || 'Purchase completion failed.');
+          setItemPurchaseError(data.message || data.error || 'Purchase failed. Please try again.');
           return;
+        }
+      } else if (selectedItemType === 'border') {
+        const res = await fetch(`${Env.BACKEND_URL}/api/store/purchase-border`, {
+          method: 'POST',
+          headers: authHeader,
+          body: JSON.stringify({ borderId: selectedStoreItem.id }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setItemPurchaseState('error');
+          setItemPurchaseError(data.message || data.error || 'Purchase failed. Please try again.');
+          return;
+        }
+      } else {
+        const intentRes = await fetch(`${Env.BACKEND_URL}/api/store/purchase-intent`, {
+          method: 'POST',
+          headers: authHeader,
+          body: JSON.stringify({ itemId: selectedStoreItem.id }),
+        });
+        const intentData = await intentRes.json();
+        if (!intentRes.ok) {
+          setItemPurchaseState('error');
+          setItemPurchaseError(intentData.error || 'Purchase failed. Please try again.');
+          return;
+        }
+
+        if (intentData.purchaseId) {
+          const confirmRes = await fetch(`${Env.BACKEND_URL}/api/store/complete-purchase`, {
+            method: 'POST',
+            headers: authHeader,
+            body: JSON.stringify({ purchaseId: intentData.purchaseId }),
+          });
+          if (!confirmRes.ok) {
+            const confirmData = await confirmRes.json();
+            setItemPurchaseState('error');
+            setItemPurchaseError(confirmData.error || 'Purchase completion failed.');
+            return;
+          }
         }
       }
 
@@ -445,6 +470,7 @@ export default function StorePage() {
               const canAfford = gfBalance >= item.gfCost;
               const isOwned = item.owned;
               const isProOnly = item.isProOnly;
+              const isLockedForUser = isProOnly && !user?.isPro;
 
               return (
                 <View key={`${item.type}-${item.id}`} style={[styles.nftCard, { borderColor: rarityColor + '40' }]}>
@@ -461,7 +487,7 @@ export default function StorePage() {
                         {item.rarity.charAt(0).toUpperCase() + item.rarity.slice(1)}
                       </Text>
                     </View>
-                    {isProOnly ? (
+                    {isProOnly && !isOwned ? (
                       <View style={styles.proLockBadge}>
                         <Crown size={12} color="#F59E0B" />
                       </View>
@@ -495,7 +521,7 @@ export default function StorePage() {
                         <View style={styles.ownedBadge}>
                           <Text style={styles.ownedBadgeText}>Owned</Text>
                         </View>
-                      ) : isProOnly ? (
+                      ) : isLockedForUser ? (
                         <View style={styles.proOnlyBadge}>
                           <Lock size={12} color="#F59E0B" />
                           <Text style={styles.proOnlyText}>PRO</Text>

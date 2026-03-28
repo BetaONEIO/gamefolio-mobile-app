@@ -145,14 +145,15 @@ export default function WalletPage() {
   });
 
   const { data: activityHistory = [], isLoading: activityLoading } = useQuery<ActivityItem[]>({
-    queryKey: ['/api/me/activity', user?.id],
+    queryKey: ['/api/wallet/activity', user?.id],
     queryFn: async () => {
       const token = await getAccessToken();
-      const res = await fetch(`${Env.BACKEND_URL}/api/me/activity`, {
+      const res = await fetch(`${Env.BACKEND_URL}/api/wallet/activity`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) return [];
-      return res.json();
+      const data = await res.json();
+      return Array.isArray(data.activities) ? data.activities : [];
     },
     enabled: !!user?.id && screen === 'activity',
   });
