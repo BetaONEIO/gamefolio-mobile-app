@@ -2061,6 +2061,13 @@ export const api = {
       });
     },
 
+    getUserAvatarBorders: async (token: string) => {
+      return apiFetch<AvatarBorder[]>('/api/user/avatar-borders', {
+        method: 'GET',
+        token,
+      });
+    },
+
     updateSelected: async (borderId: number | null, token: string) => {
       return apiFetch<{ selectedBorderId: number | null }>('/api/user/selected-border', {
         method: 'PATCH',

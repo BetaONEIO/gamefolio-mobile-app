@@ -581,7 +581,7 @@ export default function ProfileScreen() {
               borderWidth: 1.5,
               overflow: 'hidden',
             }]}
-            onPress={() => router.push('/my-collection')}
+            onPress={() => router.push('/collections')}
             activeOpacity={0.8}
           >
             <LinearGradient
