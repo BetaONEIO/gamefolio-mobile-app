@@ -96,6 +96,14 @@ router.post('/api/marketplace/list', hybridAuth, async (req: Request, res: Respo
       return res.status(400).json({ error: 'Listed price must be greater than 0' });
     }
 
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (user.activeProfilePicType === 'nft' && user.nftProfileTokenId === tokenId) {
+      return res.status(400).json({ error: 'This NFT is currently set as your profile picture. Please remove it as your profile picture before listing.' });
+    }
+
     const existing = await db.execute(
       sql`SELECT * FROM user_nfts WHERE user_id = ${userId} AND token_id = ${tokenId} AND sold = false`
     );

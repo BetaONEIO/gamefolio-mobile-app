@@ -330,11 +330,13 @@ export default function StorePage() {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const token = await getAccessToken();
-      await fetch(`${Env.BACKEND_URL}/api/nft/watchlist/${nftId}`, {
+      const delRes = await fetch(`${Env.BACKEND_URL}/api/nft/watchlist/${nftId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/nft/watchlist', user?.id] });
+      if (delRes.ok) {
+        queryClient.invalidateQueries({ queryKey: ['/api/nft/watchlist', user?.id] });
+      }
     } catch {
       // silently ignore
     }
@@ -351,7 +353,7 @@ export default function StorePage() {
     }
     try {
       const token = await getAccessToken();
-      await fetch(`${Env.BACKEND_URL}/api/nft/watchlist`, {
+      const postRes = await fetch(`${Env.BACKEND_URL}/api/nft/watchlist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -361,7 +363,9 @@ export default function StorePage() {
           nftPrice: listing.listed_price,
         }),
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/nft/watchlist', user?.id] });
+      if (postRes.ok) {
+        queryClient.invalidateQueries({ queryKey: ['/api/nft/watchlist', user?.id] });
+      }
     } catch {
     }
   };
