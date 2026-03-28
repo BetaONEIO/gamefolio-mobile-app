@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, ComponentType } from 'react';
 import {
   View,
   Text,
@@ -215,7 +215,7 @@ export default function WalletPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/staking/history'] });
       queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
       setTxState('success');
-    } catch (err: any) { setTxState('error'); setTxError(err.message || 'Network error.'); }
+    } catch (err: unknown) { setTxState('error'); setTxError(err instanceof Error ? err.message : 'Network error.'); }
   };
 
   const handleUnstake = async () => {
@@ -239,7 +239,7 @@ export default function WalletPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/staking/history'] });
       queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
       setTxState('success');
-    } catch (err: any) { setTxState('error'); setTxError(err.message || 'Network error.'); }
+    } catch (err: unknown) { setTxState('error'); setTxError(err instanceof Error ? err.message : 'Network error.'); }
   };
 
   const handleClaim = async () => {
@@ -261,7 +261,7 @@ export default function WalletPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/staking/history'] });
       queryClient.invalidateQueries({ queryKey: ['/api/me/gf-balance', user?.id] });
       setTxState('success');
-    } catch (err: any) { setTxState('error'); setTxError(err.message || 'Network error.'); }
+    } catch (err: unknown) { setTxState('error'); setTxError(err instanceof Error ? err.message : 'Network error.'); }
   };
 
   const handleAction = () => {
@@ -284,8 +284,11 @@ export default function WalletPage() {
     return '';
   };
 
-  const getActivityConfig = (type: string) => {
-    const configs: Record<string, { label: string; color: string; icon: any }> = {
+  type IconComponent = ComponentType<{ size?: number; color?: string }>;
+  type ActivityConfig = { label: string; color: string; icon: IconComponent };
+
+  const getActivityConfig = (type: string): ActivityConfig => {
+    const configs: Record<string, ActivityConfig> = {
       stake: { label: 'Staked', color: '#4ADE80', icon: Lock },
       unstake: { label: 'Unstaked', color: '#EF4444', icon: Unlock },
       claim: { label: 'Claimed', color: '#F59E0B', icon: Gift },
@@ -293,7 +296,7 @@ export default function WalletPage() {
       buy: { label: 'Bought GF', color: '#3B82F6', icon: Plus },
       earn: { label: 'Earned', color: '#4ADE80', icon: TrendingUp },
     };
-    return configs[type] || { label: type, color: '#94A3B8', icon: Clock };
+    return configs[type] ?? { label: type, color: '#94A3B8', icon: Clock };
   };
 
   if (screen === 'activity') {
@@ -500,12 +503,13 @@ export default function WalletPage() {
               <View style={styles.historySection}>
                 <Text style={styles.historySectionTitle}>Recent Activity</Text>
                 {stakingHistory.slice(0, 5).map((item) => {
-                  const typeConfig: Record<string, { label: string; color: string; Icon: any }> = {
+                  type StakingHistoryConfig = { label: string; color: string; Icon: ComponentType<{ size?: number; color?: string }> };
+                  const typeConfig: Record<string, StakingHistoryConfig> = {
                     stake: { label: 'Staked', color: '#4ADE80', Icon: Lock },
                     unstake: { label: 'Unstaked', color: '#EF4444', Icon: Unlock },
                     claim: { label: 'Claimed', color: '#F59E0B', Icon: Gift },
                   };
-                  const config = typeConfig[item.type] || typeConfig.stake;
+                  const config: StakingHistoryConfig = typeConfig[item.type] ?? typeConfig.stake;
                   const ItemIcon = config.Icon;
                   return (
                     <View key={item.id} style={styles.historyItem}>

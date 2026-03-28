@@ -289,37 +289,26 @@ export default function StorePage() {
 
     try {
       const token = await getAccessToken();
-      let endpoint = '';
-      let body: Record<string, unknown> = {};
-
-      if (selectedItemType === 'item') {
-        endpoint = `${Env.BACKEND_URL}/api/store/purchase-intent`;
-        body = { itemId: selectedStoreItem.id };
-      } else if (selectedItemType === 'name-tag') {
-        endpoint = `${Env.BACKEND_URL}/api/store/name-tags/${selectedStoreItem.id}/purchase`;
-        body = {};
-      } else {
-        endpoint = `${Env.BACKEND_URL}/api/store/borders/${selectedStoreItem.id}/purchase`;
-        body = {};
-      }
-
-      const res = await fetch(endpoint, {
+      const intentRes = await fetch(`${Env.BACKEND_URL}/api/store/purchase-intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          itemId: selectedStoreItem.id,
+          itemType: selectedItemType,
+        }),
       });
-      const data = await res.json();
-      if (!res.ok) {
+      const intentData = await intentRes.json();
+      if (!intentRes.ok) {
         setItemPurchaseState('error');
-        setItemPurchaseError(data.error || 'Purchase failed. Please try again.');
+        setItemPurchaseError(intentData.error || 'Purchase failed. Please try again.');
         return;
       }
 
-      if (data.purchaseId) {
+      if (intentData.purchaseId) {
         const confirmRes = await fetch(`${Env.BACKEND_URL}/api/store/complete-purchase`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ purchaseId: data.purchaseId }),
+          body: JSON.stringify({ purchaseId: intentData.purchaseId }),
         });
         if (!confirmRes.ok) {
           const confirmData = await confirmRes.json();
@@ -515,13 +504,16 @@ export default function StorePage() {
                         <TouchableOpacity
                           style={[styles.buyButton, (!canAfford && item.gfCost > 0) && { opacity: 0.5 }]}
                           onPress={() => {
-                            if (canAfford || item.gfCost === 0) {
-                              const original = item.type === 'name-tag'
-                                ? storeNameTags.find((t) => t.id === item.id)
-                                : item.type === 'border'
-                                  ? storeBorders.find((b) => b.id === item.id)
-                                  : storeItems.find((s) => s.id === item.id);
-                              if (original) handleOpenItemPurchase(original as any, item.type);
+                            if (!(canAfford || item.gfCost === 0)) return;
+                            if (item.type === 'name-tag') {
+                              const found = storeNameTags.find((t) => t.id === item.id);
+                              if (found) handleOpenItemPurchase(found, 'name-tag');
+                            } else if (item.type === 'border') {
+                              const found = storeBorders.find((b) => b.id === item.id);
+                              if (found) handleOpenItemPurchase(found, 'border');
+                            } else {
+                              const found = storeItems.find((s) => s.id === item.id);
+                              if (found) handleOpenItemPurchase(found, 'item');
                             }
                           }}
                           activeOpacity={0.8}
