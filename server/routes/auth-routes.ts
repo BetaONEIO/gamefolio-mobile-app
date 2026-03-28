@@ -76,19 +76,22 @@ async function syncProductionUser(prodUser: any): Promise<any | null> {
 
     // Upsert: insert the user if new, update profile fields if already exists.
     // Note: local users table has no email column — emails live in Supabase Auth only.
+    // email_verified is set to true because a successful production login proves
+    // the account is already verified on the Gamefolio web app.
     await db.execute(sql`
       INSERT INTO users (
-        id, username, password, display_name, avatar_url, banner_url, created_at, updated_at
+        id, username, password, display_name, avatar_url, banner_url, email_verified, created_at, updated_at
       ) VALUES (
         ${userId}, ${username}, 'PRODUCTION_SYNCED.notavalidhash',
-        ${displayName}, ${avatarUrl}, ${bannerUrl}, NOW(), NOW()
+        ${displayName}, ${avatarUrl}, ${bannerUrl}, true, NOW(), NOW()
       )
       ON CONFLICT (id) DO UPDATE SET
-        username     = EXCLUDED.username,
-        display_name = EXCLUDED.display_name,
-        avatar_url   = EXCLUDED.avatar_url,
-        banner_url   = EXCLUDED.banner_url,
-        updated_at   = NOW()
+        username       = EXCLUDED.username,
+        display_name   = EXCLUDED.display_name,
+        avatar_url     = EXCLUDED.avatar_url,
+        banner_url     = EXCLUDED.banner_url,
+        email_verified = true,
+        updated_at     = NOW()
     `);
 
     return await storage.getUserById(userId);
