@@ -68,9 +68,17 @@ interface StakingHistoryItem {
 interface ActivityItem {
   id: number;
   type: string;
+  title: string;
+  status: string;
   amount: number;
-  description?: string;
-  createdAt: string;
+  gbpAmount?: number;
+  isPositive: boolean;
+  date: string;
+  time?: string;
+  stripePaymentIntentId?: string;
+  txHash?: string;
+  walletAddress?: string;
+  orderStatus?: string;
 }
 
 interface OwnedNFT {
@@ -331,21 +339,20 @@ export default function WalletPage() {
             renderItem={({ item }) => {
               const config = getActivityConfig(item.type);
               const IconComp = config.icon;
-              const isPositive = item.type !== 'unstake' && item.type !== 'purchase';
+              const isPositive = item.isPositive;
+              const dateStr = item.date
+                ? new Date(item.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                : '';
               return (
                 <View style={styles.activityItem}>
                   <View style={[styles.activityIcon, { backgroundColor: config.color + '20' }]}>
                     <IconComp size={20} color={config.color} />
                   </View>
                   <View style={styles.activityInfo}>
-                    <Text style={styles.activityLabel}>{config.label}</Text>
-                    <Text style={styles.activityDate}>
-                      {new Date(item.createdAt).toLocaleDateString('en-GB', {
-                        day: 'numeric', month: 'short', year: 'numeric',
-                      })}
-                    </Text>
-                    {item.description ? (
-                      <Text style={styles.activityDesc} numberOfLines={1}>{item.description}</Text>
+                    <Text style={styles.activityLabel}>{item.title || config.label}</Text>
+                    <Text style={styles.activityDate}>{dateStr}</Text>
+                    {item.time ? (
+                      <Text style={styles.activityDesc} numberOfLines={1}>{item.time}</Text>
                     ) : null}
                   </View>
                   <Text style={[styles.activityAmount, { color: isPositive ? '#4ADE80' : '#EF4444' }]}>
