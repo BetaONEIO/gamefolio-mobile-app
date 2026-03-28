@@ -183,7 +183,7 @@ export default function OnboardingUserTypeScreen() {
             <TouchableOpacity 
               style={styles.backButton}
               activeOpacity={0.8}
-              onPress={() => router.back()}
+              onPress={() => router.navigate('/onboarding/avatar')}
             >
               <Text style={styles.backButtonText}>Back</Text>
             </TouchableOpacity>

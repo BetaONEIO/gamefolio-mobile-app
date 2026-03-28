@@ -122,7 +122,7 @@ export default function OnboardingAvatarScreen() {
             <TouchableOpacity 
               style={styles.backButton}
               activeOpacity={0.8}
-              onPress={() => router.back()}
+              onPress={() => router.navigate('/onboarding/games')}
             >
               <Text style={styles.backButtonText}>Back</Text>
             </TouchableOpacity>

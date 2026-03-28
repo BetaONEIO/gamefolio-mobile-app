@@ -8,11 +8,18 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Gamepad2, Upload, Share2 } from 'lucide-react-native';
+import { Gamepad2, Upload, Share2, LogOut } from 'lucide-react-native';
 import OnboardingProgress, { OnboardingStep } from '@/components/OnboardingProgress';
+import { useAuth } from '@/context/AuthContext';
 
 export default function OnboardingWelcomeScreen() {
   const router = useRouter();
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/');
+  };
 
   const steps: OnboardingStep[] = [
     { label: 'Welcome', status: 'active', route: '/onboarding' },
@@ -76,6 +83,15 @@ export default function OnboardingWelcomeScreen() {
             }}
           >
             <Text style={styles.nextButtonText}>Next</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.logoutButton}
+            activeOpacity={0.7}
+            onPress={handleLogout}
+          >
+            <LogOut size={15} color="#64748B" />
+            <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -150,5 +166,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600' as const,
     color: '#0D1821',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
+    paddingVertical: 8,
+  },
+  logoutText: {
+    fontSize: 14,
+    color: '#64748B',
   },
 });
