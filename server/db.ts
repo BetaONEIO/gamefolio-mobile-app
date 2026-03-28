@@ -2,18 +2,20 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from "@shared/schema";
 
-if (!process.env.DATABASE_URL) {
+const dbUrl = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
+
+if (!dbUrl) {
   throw new Error(
     "DATABASE_URL must be set. Did you forget to provision a database?",
   );
 }
 
-// Configure postgres connection for Supabase
-const connection = postgres(process.env.DATABASE_URL, {
-  max: 10, // Maximum pool size
-  idle_timeout: 30, // Close idle connections after 30 seconds
-  connect_timeout: 10, // Timeout after 10 seconds
+const connection = postgres(dbUrl, {
+  max: 10,
+  idle_timeout: 30,
+  connect_timeout: 10,
+  ssl: dbUrl.includes('neon.tech') ? { rejectUnauthorized: false } : undefined,
 });
 
 export const db = drizzle(connection, { schema });
-export const pool = connection; // Export for compatibility
+export const pool = connection;
