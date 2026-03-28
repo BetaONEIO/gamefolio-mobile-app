@@ -7394,7 +7394,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // ==========================================
 
   // Get name tags available for purchase in the store
-  app.get("/api/store/name-tags", async (req, res) => {
+  app.get("/api/store/name-tags", hybridAuth, async (req, res) => {
     try {
       const allTags = await storage.getAllNameTags();
       const storeTags = allTags.filter(t => t.availableInStore && t.isActive && !t.isDefault);
@@ -7571,7 +7571,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Profile Borders Store Routes
   // ==========================================
 
-  app.get("/api/store/borders", async (req, res) => {
+  app.get("/api/store/borders", hybridAuth, async (req, res) => {
     try {
       const shapeFilter = req.query.shape as string | undefined;
       const allBorders = await storage.getAllProfileBordersFromTable();
