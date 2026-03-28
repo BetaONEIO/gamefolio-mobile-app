@@ -65,6 +65,9 @@ async function syncProductionUser(prodUser: any): Promise<any | null> {
     const displayName = prodUser.displayName || prodUser.display_name || username || '';
     const avatarUrl = prodUser.avatarUrl || prodUser.avatar_url || null;
     const bannerUrl = prodUser.bannerUrl || prodUser.banner_url || null;
+    // Use the user_type from production if available; fall back to 'gamer' so
+    // established production accounts always bypass the onboarding gate.
+    const userType = prodUser.userType || prodUser.user_type || 'gamer';
 
     // Rename any different local user who already has this username to avoid conflict
     if (username) {
@@ -80,10 +83,10 @@ async function syncProductionUser(prodUser: any): Promise<any | null> {
     // the account is already verified on the Gamefolio web app.
     await db.execute(sql`
       INSERT INTO users (
-        id, username, password, display_name, avatar_url, banner_url, email_verified, created_at, updated_at
+        id, username, password, display_name, avatar_url, banner_url, email_verified, user_type, created_at, updated_at
       ) VALUES (
         ${userId}, ${username}, 'PRODUCTION_SYNCED.notavalidhash',
-        ${displayName}, ${avatarUrl}, ${bannerUrl}, true, NOW(), NOW()
+        ${displayName}, ${avatarUrl}, ${bannerUrl}, true, ${userType}, NOW(), NOW()
       )
       ON CONFLICT (id) DO UPDATE SET
         username       = EXCLUDED.username,
@@ -91,6 +94,7 @@ async function syncProductionUser(prodUser: any): Promise<any | null> {
         avatar_url     = EXCLUDED.avatar_url,
         banner_url     = EXCLUDED.banner_url,
         email_verified = true,
+        user_type      = COALESCE(users.user_type, EXCLUDED.user_type),
         updated_at     = NOW()
     `);
 

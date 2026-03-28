@@ -30,6 +30,9 @@ async function syncUserFromProduction(prodUser: any): Promise<any> {
     const gameTokens = prodUser.gameTokens || prodUser.game_tokens || 0;
     const isPrivate = prodUser.isPrivate ?? prodUser.is_private ?? false;
     const authProvider = prodUser.authProvider || prodUser.auth_provider || 'local';
+    // Use the user_type from production if available; fall back to 'gamer' so
+    // established production accounts always bypass the onboarding gate.
+    const userType = prodUser.userType || prodUser.user_type || 'gamer';
 
     // If a different user has this username locally, rename their username to avoid conflict
     if (username) {
@@ -52,11 +55,11 @@ async function syncUserFromProduction(prodUser: any): Promise<any> {
     await db.execute(sql`
       INSERT INTO users (
         id, username, email, password, display_name, bio, avatar_url, banner_url,
-        xp, level, game_tokens, is_private, auth_provider, email_verified, created_at, updated_at
+        xp, level, game_tokens, is_private, auth_provider, email_verified, user_type, created_at, updated_at
       ) VALUES (
         ${userId}, ${username}, ${email}, ${placeholderPassword}, ${displayName}, ${bio},
         ${avatarUrl}, ${bannerUrl}, ${xp}, ${level}, ${gameTokens},
-        ${isPrivate}, ${authProvider}, true, NOW(), NOW()
+        ${isPrivate}, ${authProvider}, true, ${userType}, NOW(), NOW()
       )
       ON CONFLICT (id) DO UPDATE SET
         username = EXCLUDED.username,
@@ -69,6 +72,7 @@ async function syncUserFromProduction(prodUser: any): Promise<any> {
         level = EXCLUDED.level,
         is_private = EXCLUDED.is_private,
         email_verified = true,
+        user_type = COALESCE(users.user_type, EXCLUDED.user_type),
         updated_at = NOW()
     `);
     return await storage.getUserById(userId);
