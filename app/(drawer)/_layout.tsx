@@ -44,6 +44,24 @@ export default function DrawerLayout() {
           headerShown: false,
         }}
       />
+      <Drawer.Screen
+        name="level-tracker"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="battles"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="game-categories"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Drawer>
     </AuthGuard>
   );

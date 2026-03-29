@@ -1658,6 +1658,47 @@ export const api = {
     },
   },
 
+  xp: {
+    getLevelProgress: (userId: number, token?: string) =>
+      apiFetch<{
+        level: number;
+        currentXP: number;
+        currentPoints: number;
+        pointsForCurrentLevel: number;
+        pointsForNextLevel: number;
+        pointsRemaining: number;
+        progressPercent: number;
+      }>(`/api/user/${userId}/level-progress`, { method: 'GET', token }),
+
+    getXPHistory: (userId: number, token: string, limit = 50) =>
+      apiFetch<{
+        id: number;
+        userId: number;
+        amount: number;
+        source: string;
+        description: string;
+        createdAt: string;
+      }[]>(`/api/user/${userId}/xp-history?limit=${limit}`, { method: 'GET', token }),
+
+    getDailyActivity: (userId: number, token: string) =>
+      apiFetch<{
+        clipsWatchedToday: number;
+        watch5Done: boolean;
+        watch20Done: boolean;
+        commentedToday: boolean;
+        likedToday: boolean;
+        sharedToday: boolean;
+        loginXPToday: number;
+        streakBonusToday: number;
+        lootboxOpenedToday: boolean;
+        streak: { currentStreak: number; longestStreak: number; lastLoginDate: string | null };
+        isWeekend: boolean;
+        firstUploadOfDay?: boolean;
+        weeklyUploads5?: boolean;
+        weeklyUploads10?: boolean;
+      }>(`/api/user/${userId}/daily-activity`, { method: 'GET', token }),
+  },
+
   leaderboard: {
     getLeaderboard: async (period: '1w' | '1m' | 'ever' = '1m', token?: string) => {
       console.log(`[Leaderboard API] 🔵 Fetching ${period} leaderboard...`);

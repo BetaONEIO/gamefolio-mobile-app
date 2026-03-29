@@ -4,12 +4,12 @@ import { useRevenueCat } from '@/context/RevenueCatContext';
 import { getEffectiveAvatarUrl } from '@/lib/api';
 import { DrawerContentComponentProps, DrawerContentScrollView } from '@react-navigation/drawer';
 import { useRouter, usePathname } from 'expo-router';
-import { 
-  X, 
-  Flame, 
-  Trophy, 
-  MessageSquare, 
-  User, 
+import {
+  X,
+  Flame,
+  Trophy,
+  MessageSquare,
+  User,
   LogOut,
   Home,
   Leaf,
@@ -20,7 +20,11 @@ import {
   Plus,
   Crown,
   ArrowRight,
-  Check
+  Check,
+  Zap,
+  Sword,
+  Gamepad2,
+  Camera,
 } from 'lucide-react-native';
 import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, Animated, LayoutChangeEvent, Pressable } from 'react-native';
@@ -240,11 +244,35 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             onPress={() => navigate('/(drawer)/messages')} 
             isActive={pathname.includes('messages')} 
           />
-          <NavItem 
+          <NavItem
             icon={User}
             label="My Gamefolio"
             onPress={() => navigate('/(drawer)/(tabs)/profile')}
             isActive={pathname.includes('profile')}
+          />
+          <NavItem
+            icon={Zap}
+            label="Level Tracker"
+            onPress={() => navigate('/(drawer)/level-tracker')}
+            isActive={pathname.includes('level-tracker')}
+          />
+          <NavItem
+            icon={Sword}
+            label="Battles"
+            onPress={() => navigate('/(drawer)/battles')}
+            isActive={pathname.includes('battles')}
+          />
+          <NavItem
+            icon={Camera}
+            label="Screenshots"
+            onPress={() => navigate('/(drawer)/(tabs)/screenshots/latest')}
+            isActive={pathname.includes('screenshots')}
+          />
+          <NavItem
+            icon={Gamepad2}
+            label="Browse Games"
+            onPress={() => navigate('/(drawer)/game-categories')}
+            isActive={pathname.includes('game-categories')}
           />
         </View>
 
