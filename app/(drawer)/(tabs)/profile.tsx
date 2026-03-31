@@ -1278,10 +1278,11 @@ const styles = StyleSheet.create({
   nftGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
   },
   nftCard: {
-    width: (width - 80) / 3,
+    width: (width - 48) / 2,
+    aspectRatio: 1,
     borderRadius: 10,
     overflow: 'hidden',
     borderWidth: 1,
