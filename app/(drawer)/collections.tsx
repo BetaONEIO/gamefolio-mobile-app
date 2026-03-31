@@ -438,6 +438,7 @@ export default function Collections() {
               contentContainerStyle={styles.gridContent}
               onRefresh={onRefresh}
               refreshing={refreshing}
+              showsVerticalScrollIndicator={false}
             />
           )}
         </>
@@ -464,6 +465,7 @@ export default function Collections() {
               contentContainerStyle={styles.gridContent}
               onRefresh={onRefresh}
               refreshing={refreshing}
+              showsVerticalScrollIndicator={false}
             />
           )}
         </>
@@ -490,6 +492,7 @@ export default function Collections() {
               contentContainerStyle={styles.gridContent}
               onRefresh={onRefresh}
               refreshing={refreshing}
+              showsVerticalScrollIndicator={false}
             />
           )}
         </>
