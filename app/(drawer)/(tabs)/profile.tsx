@@ -738,6 +738,16 @@ export default function ProfileScreen() {
                 <Camera size={18} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
                 <Text style={[styles.zombieTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
               </TouchableOpacity>
+              {/* NFTs tab */}
+              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab(activeTab === 'Collection' ? 'Clips' : 'Collection')} activeOpacity={0.8}>
+                {activeTab === 'Collection' ? (
+                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.zombieTabPillLabel}>NFTS</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>NFTS</Text>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         ) : (
@@ -748,9 +758,11 @@ export default function ProfileScreen() {
                 Reels: reels.length,
                 Screenshots: screenshots.length,
                 Favorites: favoriteGames.length,
+                Collection: ownedNfts.length,
               };
               const count = countMap[tab];
-              const label = `${tab} · ${count}`;
+              const displayTab = tab === 'Collection' ? 'NFTs' : tab;
+              const label = `${displayTab} · ${count}`;
               const isActive = activeTab === tab;
               return (
                 <TouchableOpacity
