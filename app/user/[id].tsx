@@ -1178,7 +1178,7 @@ export default function PublicProfileScreen() {
           <Text style={[styles.handle, { color: theme.textHandle }]}>{handle}</Text>
           <UserTypeBadge userType={user.userType} showUserType={user.showUserType !== false} />
           {user.bio ? (
-            <Text style={[styles.bio, { marginTop: 6 }]} numberOfLines={3}>{user.bio}</Text>
+            <Text style={[styles.bio, { marginTop: 16 }]} numberOfLines={3}>{user.bio}</Text>
           ) : null}
 
           <View style={styles.badgesRow}>
