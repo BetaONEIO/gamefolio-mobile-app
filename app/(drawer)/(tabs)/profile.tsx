@@ -582,7 +582,7 @@ export default function ProfileScreen() {
               borderWidth: 1.5,
               overflow: 'hidden',
             }]}
-            onPress={() => setActiveTab('Collection')}
+            onPress={() => setActiveTab(activeTab === 'Collection' ? 'Clips' : 'Collection')}
             activeOpacity={0.8}
           >
             <LinearGradient
