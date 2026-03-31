@@ -564,7 +564,7 @@ export default function ProfileScreen() {
               showUserType={user?.showUserType !== false} 
             />
             {profileData.bio ? (
-              <Text style={[styles.bio, { color: h.bioColor }]}>{profileData.bio}</Text>
+              <Text style={[styles.bio, { color: h.bioColor, marginTop: 16 }]}>{profileData.bio}</Text>
             ) : null}
           </View>
         </View>
