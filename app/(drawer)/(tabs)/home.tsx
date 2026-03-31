@@ -660,6 +660,11 @@ export default function HomeScreen() {
                 <Video size={16} color={activeTab === 'reels' ? '#002E15' : '#94A3B8'} />
                 <Text style={[styles.tabText, activeTab === 'reels' && styles.activeTabText]}>Reels</Text>
               </TouchableOpacity>
+              <Text style={styles.tabText}>Games</Text>
+              <View style={styles.tabsCameraContainer}>
+                <Camera size={16} color="#94A3B8" />
+                <Text style={styles.tabsCameraText}>5/10</Text>
+              </View>
             </View>
 
             {/* Horizontal Carousel */}
@@ -1130,30 +1135,44 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     marginBottom: 20,
-    gap: 12,
+    gap: 16,
+    alignItems: 'center',
+    backgroundColor: '#131F2A',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+    justifyContent: 'space-between',
   },
   tabButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#334155',
-    gap: 8,
+    gap: 6,
   },
   activeTabButton: {
     backgroundColor: '#4ADE80',
-    borderColor: '#4ADE80',
   },
   tabText: {
     color: '#94A3B8',
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 14,
   },
   activeTabText: {
     color: '#002E15',
+  },
+  tabsCameraContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 'auto',
+  },
+  tabsCameraText: {
+    color: '#94A3B8',
+    fontWeight: '600',
+    fontSize: 14,
   },
   clipsList: {
     gap: 16,
