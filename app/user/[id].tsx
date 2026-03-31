@@ -1143,7 +1143,7 @@ export default function PublicProfileScreen() {
         {/* User Name / Handle / Badge */}
         <View style={styles.header}>
           <View style={styles.userInfoSection}>
-          <View style={styles.nameRow}>
+          <View style={[styles.nameRow, { paddingTop: 12 }]}>
             <View style={styles.nameRowLeft}>
             {(() => {
               const userFontId = user?.profileFont;

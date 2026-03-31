@@ -526,7 +526,7 @@ export default function ProfileScreen() {
         {/* Profile Header */}
         <View style={styles.header}>
           <View style={styles.userInfoSection}>
-            <View style={styles.nameRow}>
+            <View style={[styles.nameRow, { paddingTop: 12 }]}>
               <View style={styles.nameRowLeft}>
                 {(() => {
                   const userFontId = (user as any)?.profileFont;
