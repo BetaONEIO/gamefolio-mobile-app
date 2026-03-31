@@ -740,9 +740,16 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        ) : activeTab === 'Collection' ? (
+          <View style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg, paddingHorizontal: 16, paddingVertical: 12 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Hexagon size={16} color={theme.accent} />
+              <Text style={[styles.tabText, { color: h.tabActiveText, marginLeft: 8, fontWeight: '600' }]}>NFT Collection ({ownedNfts.length})</Text>
+            </View>
+          </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg }]} contentContainerStyle={[styles.tabsContent, { paddingHorizontal: 16 }]}>
-            {TABS.map((tab) => {
+            {TABS.filter((tab) => tab !== 'Collection').map((tab) => {
               const countMap: Record<string, number> = {
                 Clips: clips.length,
                 Reels: reels.length,
