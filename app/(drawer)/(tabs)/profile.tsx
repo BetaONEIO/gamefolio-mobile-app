@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Pressable } from 'react-native';
 import ScrollView from '@/components/ThemedScrollView';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart, Camera, Hexagon } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart, Camera, Hexagon, Settings } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -741,35 +741,42 @@ export default function ProfileScreen() {
             </View>
           </View>
         ) : activeTab === 'Collection' ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg }]} contentContainerStyle={[styles.tabsContent, { paddingHorizontal: 16 }]}>
-            {['Clips', 'Reels', 'Games', 'Collection'].map((tab) => {
-              const countMap: Record<string, number> = {
-                Clips: clips.length,
-                Reels: reels.length,
-                Screenshots: screenshots.length,
-                Favorites: favoriteGames.length,
-                Games: favoriteGames.length,
-                Collection: ownedNfts.length,
-              };
-              const displayTab = tab === 'Games' ? 'Favorites' : tab;
-              const count = countMap[displayTab];
-              const label = tab === 'Collection' ? `${tab} (${count})` : `${tab} ${count}/${tab === 'Reels' ? 15 : tab === 'Games' ? 10 : 15}`;
-              const isActive = activeTab === (tab === 'Games' ? 'Favorites' : tab);
-              return (
-                <TouchableOpacity
-                  key={tab}
-                  style={[
-                    styles.tab,
-                    isActive && { borderBottomColor: h.tabActiveBorder },
-                    isActive && { backgroundColor: theme.tabActiveBg, borderRadius: 20, paddingHorizontal: 16 },
-                  ]}
-                  onPress={() => setActiveTab(tab === 'Games' ? 'Favorites' : tab)}
-                >
-                  <Text style={[styles.tabText, { color: h.statLabelColor }, isActive && { color: h.tabActiveText, fontWeight: '600' }]}>{label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          <View style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg, paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 16 }}>
+              {['Clips', 'Reels', 'Games'].map((tab) => {
+                const countMap: Record<string, number> = {
+                  Clips: clips.length,
+                  Reels: reels.length,
+                  Games: favoriteGames.length,
+                };
+                const count = countMap[tab];
+                const maxCount = tab === 'Clips' ? 15 : tab === 'Reels' ? 15 : 10;
+                const countLabel = `${count}/${maxCount}`;
+                const isActive = activeTab === 'Collection' && tab === 'Clips';
+                return (
+                  <TouchableOpacity
+                    key={tab}
+                    style={[
+                      {
+                        alignItems: 'center',
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                      },
+                      isActive && { backgroundColor: theme.accent },
+                    ]}
+                    onPress={() => setActiveTab(tab === 'Games' ? 'Favorites' : tab)}
+                  >
+                    <Text style={[{ fontSize: 14, fontWeight: '600' }, isActive ? { color: '#0f172b' } : { color: h.tabActiveText }]}>{tab}</Text>
+                    <Text style={[{ fontSize: 11, marginTop: 2 }, isActive ? { color: '#0f172b' } : { color: h.statLabelColor }]}>{countLabel}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <Pressable style={{ padding: 8 }}>
+              <Settings size={20} color={h.statLabelColor} />
+            </Pressable>
+          </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg }]} contentContainerStyle={[styles.tabsContent, { paddingHorizontal: 16 }]}>
             {TABS.filter((tab) => tab !== 'Collection').map((tab) => {
