@@ -15,7 +15,6 @@ import { useUser } from '@/context/UserContext';
 import ReelViewer from '@/components/ReelViewer';
 import LevelDetailsModal from '@/components/LevelDetailsModal';
 import HeroBanner from '@/components/HeroBanner';
-import ProOnboardingModal from '@/components/ProOnboardingModal';
 import type { ReelData, Comment } from '@/components/ReelViewer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -545,7 +544,6 @@ export default function HomeScreen() {
         colors={['#131F2A', '#061021']}
         style={StyleSheet.absoluteFill}
       />
-      <ProOnboardingModal onUpgrade={() => router.push('/(drawer)/store')} />
       
       <AppHeader onOpenLevelTracker={() => setIsLevelModalVisible(true)} />
 
