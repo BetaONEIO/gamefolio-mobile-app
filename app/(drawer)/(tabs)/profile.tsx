@@ -1964,7 +1964,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   nftCard: {
-    width: (width - 32 - 12) / 2,
+    width: '48%',
     aspectRatio: 1,
     backgroundColor: '#1E293B',
     borderRadius: 12,
