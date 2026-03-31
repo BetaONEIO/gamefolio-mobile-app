@@ -30,7 +30,7 @@ import { resolveNftImageUrl } from '@/lib/image-utils';
 
 const { width } = Dimensions.get('window');
 
-const TABS = ['Clips', 'Reels', 'Screenshots', 'Favorites'];
+const TABS = ['Clips', 'Reels', 'Screenshots', 'Favorites', 'Collection'];
 
 const formatDuration = (seconds: number) => {
   const mins = Math.floor(seconds / 60);
@@ -271,21 +271,6 @@ export default function ProfileScreen() {
     games: favoriteGames.slice(0, 3)
   });
 
-  // Fetch user NFTs
-  const { data: nftData, isLoading: nftLoading } = useQuery({
-    queryKey: ['/api/nfts/owned'],
-    queryFn: async () => {
-      const token = await getAccessToken();
-      const res = await fetch(`${Env.BACKEND_URL}/api/nfts/owned`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Failed to fetch NFTs');
-      return res.json();
-    },
-    enabled: !!user?.id,
-  });
-  const userNfts = (nftData?.nfts || []) as any[];
-  
   const formatJoinDate = (dateStr?: string) => {
     if (!dateStr) return 'Unknown';
     const date = new Date(dateStr);
@@ -337,7 +322,7 @@ export default function ProfileScreen() {
       if (!res.ok) throw new Error('Failed to fetch NFTs');
       return res.json();
     },
-    enabled: profileSectionTab === 'collection',
+    enabled: activeTab === 'Collection',
     staleTime: 60_000,
   });
 
@@ -931,11 +916,11 @@ export default function ProfileScreen() {
 
         {activeTab === 'Collection' && (
           <View style={styles.collectionContent}>
-            {nftLoading ? (
+            {nftsLoading ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>Loading NFTs...</Text>
               </View>
-            ) : userNfts.length === 0 ? (
+            ) : ownedNfts.length === 0 ? (
               <View style={styles.emptyStateContainer}>
                 <View style={styles.emptyState}>
                   <Hexagon size={48} color="#4ADE80" strokeWidth={1.5} />
@@ -945,7 +930,7 @@ export default function ProfileScreen() {
               </View>
             ) : (
               <View style={styles.nftGrid}>
-                {userNfts.map((nft) => (
+                {ownedNfts.map((nft) => (
                   <TouchableOpacity 
                     key={nft.tokenId || nft.id}
                     style={styles.nftCard}
