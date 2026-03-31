@@ -741,10 +741,10 @@ export default function ProfileScreen() {
             </View>
           </View>
         ) : activeTab === 'Collection' ? (
-          <View style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg, paddingHorizontal: 16, paddingVertical: 12 }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Hexagon size={16} color={theme.accent} />
-              <Text style={[styles.tabText, { color: h.tabActiveText, marginLeft: 8, fontWeight: '600' }]}>NFT Collection ({ownedNfts.length})</Text>
+          <View style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg, paddingHorizontal: 16, paddingVertical: 8 }]}>
+            <View style={[styles.tab, { backgroundColor: theme.tabActiveBg, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
+              <Hexagon size={16} color='#0f172b' />
+              <Text style={[styles.tabText, { color: '#0f172b', fontWeight: '600' }]}>NFT Collection · {ownedNfts.length}</Text>
             </View>
           </View>
         ) : (
