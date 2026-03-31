@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, Pressable } from 'react-native';
 import ScrollView from '@/components/ThemedScrollView';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart, Camera } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Star, Upload, FolderHeart, Camera, Hexagon } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,6 +25,7 @@ import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { api, Clip, Screenshot, Game, getEffectiveAvatarUrl } from '@/lib/api';
 import { Env } from '@/constants/Env';
+import { resolveNftImageUrl } from '@/lib/image-utils';
 
 
 const { width } = Dimensions.get('window');
@@ -269,6 +270,21 @@ export default function ProfileScreen() {
     error: favoritesError?.message || null,
     games: favoriteGames.slice(0, 3)
   });
+
+  // Fetch user NFTs
+  const { data: nftData, isLoading: nftLoading } = useQuery({
+    queryKey: ['/api/nfts/owned'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      const res = await fetch(`${Env.BACKEND_URL}/api/nfts/owned`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to fetch NFTs');
+      return res.json();
+    },
+    enabled: !!user?.id,
+  });
+  const userNfts = (nftData?.nfts || []) as any[];
   
   const formatJoinDate = (dateStr?: string) => {
     if (!dateStr) return 'Unknown';
@@ -581,7 +597,7 @@ export default function ProfileScreen() {
               borderWidth: 1.5,
               overflow: 'hidden',
             }]}
-            onPress={() => router.push('/collections')}
+            onPress={() => setActiveTab('Collection')}
             activeOpacity={0.8}
           >
             <LinearGradient
@@ -910,6 +926,44 @@ export default function ProfileScreen() {
               <Star size={20} color="#4ADE80" />
               <Text style={styles.discoverButtonText}>Discover More Games</Text>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {activeTab === 'Collection' && (
+          <View style={styles.collectionContent}>
+            {nftLoading ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>Loading NFTs...</Text>
+              </View>
+            ) : userNfts.length === 0 ? (
+              <View style={styles.emptyStateContainer}>
+                <View style={styles.emptyState}>
+                  <Hexagon size={48} color="#4ADE80" strokeWidth={1.5} />
+                  <Text style={styles.emptyStateTitle}>No NFTs yet</Text>
+                  <Text style={styles.emptyStateSubtitle}>Mint your first Gamefolio NFT to start your collection</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.nftGrid}>
+                {userNfts.map((nft) => (
+                  <TouchableOpacity 
+                    key={nft.tokenId || nft.id}
+                    style={styles.nftCard}
+                    activeOpacity={0.8}
+                    onPress={() => router.push('/collections')}
+                  >
+                    <Image
+                      source={{ uri: resolveNftImageUrl(nft.image || nft.imageDataUrl) }}
+                      style={styles.nftImage}
+                    />
+                    <View style={styles.nftRarityBadge}>
+                      <Text style={styles.nftRarityText}>{nft.rarity || 'COMMON'}</Text>
+                    </View>
+                    <Text style={styles.nftLabel}>#{nft.tokenId}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -1906,5 +1960,48 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
     flex: 1,
+  },
+  collectionContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+  },
+  nftGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  nftCard: {
+    width: (width - 48) / 2,
+    aspectRatio: 1,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  nftImage: {
+    width: '100%',
+    height: '100%',
+  },
+  nftRarityBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  nftRarityText: {
+    color: '#4ADE80',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  nftLabel: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
 });
