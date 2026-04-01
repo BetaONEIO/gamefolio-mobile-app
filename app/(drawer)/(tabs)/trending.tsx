@@ -3266,7 +3266,7 @@ export default function TrendingScreen() {
               setShowFilterDropdown(false);
             }}
           >
-            <Settings size={18} color={showTimeDropdown ? '#4ADE80' : '#FFF'} />
+            <Clock size={18} color={showTimeDropdown ? '#4ADE80' : '#FFF'} />
           </TouchableOpacity>
         </View>
       </Animated.View>
