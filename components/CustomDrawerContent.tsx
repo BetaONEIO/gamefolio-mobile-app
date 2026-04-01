@@ -160,16 +160,15 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
         {(() => {
           const level = user?.level || 1;
           const totalXP = user?.totalXP || 0;
-          const xpAtCurrentLevel = (level - 1) * 1000;
-          const xpForNextLevel = 1000;
-          const xpInLevel = Math.max(0, totalXP - xpAtCurrentLevel);
-          const progressPercent = Math.min((xpInLevel / xpForNextLevel) * 100, 100);
+          const xpPerLevel = 1000;
+          const xpInLevel = totalXP % xpPerLevel;
+          const progressPercent = (xpInLevel / xpPerLevel) * 100;
 
           return (
             <View style={styles.levelContainer}>
               <View style={styles.levelHeader}>
                 <Text style={styles.levelText}>Level {level}</Text>
-                <Text style={styles.xpText}>{Math.round(xpInLevel)} / {Math.round(xpForNextLevel)} XP</Text>
+                <Text style={styles.xpText}>{Math.round(xpInLevel)} / {xpPerLevel} XP</Text>
               </View>
               <View style={styles.levelBarBackground}>
                 <View 
