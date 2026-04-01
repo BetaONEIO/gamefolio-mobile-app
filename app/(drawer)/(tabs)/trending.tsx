@@ -2976,7 +2976,7 @@ export default function TrendingScreen() {
           {renderReelsView()}
 
           {reels.length > 0 && !showReelComments && reels[activeIndex] && (
-            <View style={[styles.reelOverlayContent, { bottom: insets.bottom + 60 }]} pointerEvents="box-none">
+            <View style={[styles.reelOverlayContent, { bottom: insets.bottom + 10 }]} pointerEvents="box-none">
               <View style={styles.reelBottomSection}>
                 <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
                   <TouchableOpacity
