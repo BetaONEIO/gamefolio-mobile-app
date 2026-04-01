@@ -24,7 +24,6 @@ import {
   Check,
   Bell,
   HelpCircle,
-  Zap,
 } from 'lucide-react-native';
 import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, Animated, LayoutChangeEvent, Pressable } from 'react-native';
@@ -310,12 +309,6 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             label="Help & Support"
             onPress={() => navigate('/(drawer)/help')}
             isActive={pathname.includes('help')}
-          />
-          <NavItem
-            icon={Zap}
-            label="Level Tracker"
-            onPress={() => navigate('/(drawer)/level-tracker')}
-            isActive={pathname.includes('level-tracker')}
           />
         </View>
 

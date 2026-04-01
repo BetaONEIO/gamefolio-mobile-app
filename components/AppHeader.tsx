@@ -742,10 +742,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
             {/* Level Tracker */}
             <TouchableOpacity
               style={styles.profileMenuItem}
-              onPress={() => {
-                closeProfileMenu();
-                onOpenLevelTracker?.();
-              }}
+              onPress={() => navigateFromProfileMenu('/(drawer)/level-tracker')}
               activeOpacity={0.7}
             >
               <View style={styles.profileMenuItemIcon}>
