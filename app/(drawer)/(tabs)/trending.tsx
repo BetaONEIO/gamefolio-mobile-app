@@ -3456,7 +3456,11 @@ export default function TrendingScreen() {
           setShowTimeDropdown(false);
         }}
       >
-        <Text style={styles.menuClockEmoji}>🕐</Text>
+        {menuVisible ? (
+          <Clock size={20} color="#4ADE80" />
+        ) : (
+          <Settings size={20} color="#FFF" />
+        )}
       </TouchableOpacity>
 
       {shareContent && (
@@ -4289,9 +4293,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(74, 222, 128, 0.3)',
     zIndex: 100,
-  },
-  menuClockEmoji: {
-    fontSize: 20,
   },
   closeMenuButton: {
     padding: 8,
