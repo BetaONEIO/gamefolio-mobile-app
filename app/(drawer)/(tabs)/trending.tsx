@@ -2943,8 +2943,6 @@ export default function TrendingScreen() {
   const renderHeader = (isReels: boolean) => (
     <>
       <View style={styles.topHeader}>
-        <Text style={styles.trendingTitle}>Trending</Text>
-        
         <View style={styles.filterButtonsRow}>
           <TouchableOpacity
             style={styles.filterButton}
@@ -3831,7 +3829,7 @@ const styles = StyleSheet.create({
   topHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
   trendingTitle: {
     fontSize: 24,
