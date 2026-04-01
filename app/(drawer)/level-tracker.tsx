@@ -46,10 +46,12 @@ export default function LevelTrackerScreen() {
   });
 
   const level = levelData?.level ?? user?.level ?? 1;
-  const progressPercent = levelData?.progressPercent ?? 0;
-  const currentPoints = levelData?.currentPoints ?? 0;
-  const pointsForNextLevel = levelData?.pointsForNextLevel ?? 100;
-  const pointsRemaining = levelData?.pointsRemaining ?? pointsForNextLevel;
+  const totalXP = user?.totalXP ?? 0;
+  const xpPerLevel = 1000;
+  const currentPoints = totalXP % xpPerLevel;
+  const pointsForNextLevel = xpPerLevel;
+  const progressPercent = (currentPoints / pointsForNextLevel) * 100;
+  const pointsRemaining = pointsForNextLevel - currentPoints;
   const currentStreak = user?.currentStreak ?? 0;
   const longestStreak = user?.longestStreak ?? 0;
 
