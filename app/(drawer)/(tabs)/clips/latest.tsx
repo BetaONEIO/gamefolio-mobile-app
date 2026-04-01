@@ -9,23 +9,39 @@ import {
   Modal,
   ActivityIndicator,
   Dimensions,
-  ViewToken,
-  Keyboard,
+  Pressable,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronDown, Gamepad2, X, ArrowLeft } from 'lucide-react-native';
+import {
+  ChevronDown,
+  Gamepad2,
+  X,
+  ArrowLeft,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Heart,
+  Flame,
+  MessageSquare,
+  Share2,
+  Eye,
+} from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHeaderHeight } from '@react-navigation/elements';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import AppHeader from '@/components/AppHeader';
 import * as Haptics from 'expo-haptics';
-import ReelViewer from '@/components/ReelViewer';
-import type { ReelData } from '@/components/ReelViewer';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_PADDING = 16;
+const VIDEO_WIDTH = SCREEN_WIDTH - CARD_PADDING * 2;
+const VIDEO_HEIGHT = VIDEO_WIDTH * (9 / 16);
 
 interface UserBasic {
   id: number;
@@ -65,20 +81,198 @@ interface ClipWithUser {
   isFired?: boolean;
 }
 
+function formatViews(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toString();
+}
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+interface ClipCardProps {
+  clip: ClipWithUser;
+  isActive: boolean;
+  onLike: () => void;
+  onFire: () => void;
+  onUserPress: (username: string) => void;
+  onGamePress: (gameId: number) => void;
+}
+
+function ClipCard({ clip, isActive, onLike, onFire, onUserPress, onGamePress }: ClipCardProps) {
+  const [playing, setPlaying] = useState(false);
+  const [muted, setMuted] = useState(false);
+
+  const player = useVideoPlayer(clip.videoUrl || '', (p) => {
+    p.loop = true;
+    p.muted = false;
+  });
+
+  useEffect(() => {
+    if (!isActive && playing) {
+      try { player.pause(); } catch {}
+      setPlaying(false);
+    }
+  }, [isActive]);
+
+  useEffect(() => {
+    try { player.muted = muted; } catch {}
+  }, [muted]);
+
+  const togglePlay = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (playing) {
+      try { player.pause(); } catch {}
+      setPlaying(false);
+    } else {
+      try { player.play(); } catch {}
+      setPlaying(true);
+    }
+  }, [playing, player]);
+
+  const toggleMute = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setMuted(prev => !prev);
+  }, []);
+
+  return (
+    <View style={styles.clipCard}>
+      <View style={styles.videoContainer}>
+        <VideoView
+          player={player}
+          style={styles.video}
+          contentFit="cover"
+          nativeControls={false}
+        />
+
+        {!playing && (
+          <Image
+            source={{ uri: clip.thumbnailUrl }}
+            style={[styles.video, StyleSheet.absoluteFillObject]}
+            contentFit="cover"
+          />
+        )}
+
+        <Pressable style={styles.videoOverlay} onPress={togglePlay}>
+          {!playing && (
+            <View style={styles.playButton}>
+              <Play size={28} color="#FFF" fill="#FFF" />
+            </View>
+          )}
+        </Pressable>
+
+        <View style={styles.videoTopRow}>
+          {clip.duration > 0 ? (
+            <View style={styles.durationBadge}>
+              <Text style={styles.durationText}>{formatDuration(clip.duration)}</Text>
+            </View>
+          ) : <View />}
+          {playing ? (
+            <TouchableOpacity style={styles.muteButton} onPress={toggleMute}>
+              {muted ? (
+                <VolumeX size={16} color="#FFF" />
+              ) : (
+                <Volume2 size={16} color="#FFF" />
+              )}
+            </TouchableOpacity>
+          ) : <View />}
+        </View>
+      </View>
+
+      <View style={styles.clipInfo}>
+        <View style={styles.clipInfoTop}>
+          <TouchableOpacity onPress={() => onUserPress(clip.user?.username)}>
+            <Image
+              source={{ uri: clip.user?.avatarUrl }}
+              style={styles.avatar}
+              contentFit="cover"
+            />
+          </TouchableOpacity>
+          <View style={styles.clipMeta}>
+            <Text style={styles.clipTitle} numberOfLines={2}>{clip.title}</Text>
+            <View style={styles.clipMetaRow}>
+              <TouchableOpacity onPress={() => onUserPress(clip.user?.username)}>
+                <Text style={styles.clipUsername}>@{clip.user?.username}</Text>
+              </TouchableOpacity>
+              {clip.game && (
+                <>
+                  <Text style={styles.metaDot}> · </Text>
+                  <TouchableOpacity onPress={() => onGamePress(clip.game.id)}>
+                    <Text style={styles.clipGame}>{clip.game.name}</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.clipActions}>
+          <View style={styles.statItem}>
+            <Eye size={14} color="#64748B" />
+            <Text style={styles.statText}>{formatViews(clip.views ?? 0)}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onLike();
+            }}
+          >
+            <Heart
+              size={18}
+              color={clip.isLiked ? '#F43F5E' : '#94A3B8'}
+              fill={clip.isLiked ? '#F43F5E' : 'none'}
+            />
+            <Text style={[styles.actionText, clip.isLiked && styles.actionTextActive]}>
+              {clip._count?.likes ?? 0}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onFire();
+            }}
+          >
+            <Flame
+              size={18}
+              color={clip.isFired ? '#F97316' : '#94A3B8'}
+              fill={clip.isFired ? '#F97316' : 'none'}
+            />
+            <Text style={[styles.actionText, clip.isFired && styles.actionTextFire]}>
+              {clip._count?.fires ?? 0}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function LatestClipsPage() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   const [showGameFilter, setShowGameFilter] = useState(false);
-  const [activeClipIndex, setActiveClipIndex] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [isTabFocused, setIsTabFocused] = useState(true);
-  const [showClipComments, setShowClipComments] = useState(false);
-  const [clipCommentText, setClipCommentText] = useState('');
-  const clipsFlatListRef = useRef<FlatList>(null);
-  
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const headerHeight = useHeaderHeight();
   const { getAccessToken, user } = useAuth();
   const queryClient = useQueryClient();
+
+  useFocusEffect(
+    useCallback(() => {
+      setIsTabFocused(true);
+      return () => {
+        setIsTabFocused(false);
+        setActiveIndex(-1);
+      };
+    }, [])
+  );
 
   const likeClipMutation = useMutation({
     mutationFn: async (clipId: number) => {
@@ -89,8 +283,8 @@ export default function LatestClipsPage() {
     onSuccess: (data, clipId) => {
       queryClient.setQueryData(['clips', 'all-latest'], (oldData: ClipWithUser[] | undefined) => {
         if (!oldData) return oldData;
-        return oldData.map(clip => 
-          clip.id === clipId 
+        return oldData.map(clip =>
+          clip.id === clipId
             ? { ...clip, isLiked: data.liked, _count: { ...clip._count, likes: data.likeCount } }
             : clip
         );
@@ -107,8 +301,8 @@ export default function LatestClipsPage() {
     onSuccess: (data, clipId) => {
       queryClient.setQueryData(['clips', 'all-latest'], (oldData: ClipWithUser[] | undefined) => {
         if (!oldData) return oldData;
-        return oldData.map(clip => 
-          clip.id === clipId 
+        return oldData.map(clip =>
+          clip.id === clipId
             ? { ...clip, isFired: data.fired, _count: { ...clip._count, fires: data.fireCount } }
             : clip
         );
@@ -116,40 +310,26 @@ export default function LatestClipsPage() {
     },
   });
 
-  useFocusEffect(
-    useCallback(() => {
-      setIsTabFocused(true);
-      return () => {
-        setIsTabFocused(false);
-      };
-    }, [])
-  );
-
   const { data: allClipsData = [], isLoading } = useQuery({
     queryKey: ['clips', 'all-latest'],
     queryFn: async () => {
       const token = await getAccessToken();
-      console.log('[Latest Clips] Fetching all latest clips');
       try {
-        // Try the feed endpoint which is more reliable
         const clips = await api.clips.getFeed(token || undefined, { page: 1, limit: 100 });
-        // Filter to only show clips (not reels)
-        const filteredClips = clips.filter(clip => clip.videoType !== 'reel');
-        console.log('[Latest Clips] Received clips:', filteredClips.length);
-        return filteredClips;
-      } catch (error) {
-        console.log('[Latest Clips] Feed endpoint failed, trying latest endpoint');
-        const clips = await api.clips.getLatest(token || undefined);
-        const filteredClips = (clips || []).filter((clip: any) => clip.videoType !== 'reel');
-        console.log('[Latest Clips] Received clips from latest:', filteredClips.length);
-        return filteredClips;
+        const clipsOnly = clips.filter((c: any) => c.videoType !== 'reel');
+        if (clipsOnly.length > 0) return clipsOnly;
+        const latest = await api.clips.getLatest(token || undefined);
+        return (latest || []).filter((c: any) => c.videoType !== 'reel');
+      } catch {
+        const latest = await api.clips.getLatest(token || undefined);
+        return (latest || []).filter((c: any) => c.videoType !== 'reel');
       }
     },
   });
 
-  const allClips = allClipsData as ClipWithUser[] | any[];
+  const allClips = allClipsData as ClipWithUser[];
 
-  const filteredClips = selectedGame 
+  const filteredClips = selectedGame
     ? allClips.filter(clip => clip.game?.id === parseInt(selectedGame))
     : allClips;
 
@@ -192,223 +372,100 @@ export default function LatestClipsPage() {
     ...gamesWithoutContent,
   ], [uniqueGames, gamesWithoutContent]);
 
-  const selectedGameName = selectedGame 
-    ? uniqueGames.find(g => g.id.toString() === selectedGame)?.name 
+  const selectedGameName = selectedGame
+    ? uniqueGames.find(g => g.id.toString() === selectedGame)?.name
     : 'All Games';
 
   const handleUserPress = useCallback((username: string) => {
     router.push({ pathname: '/user/[id]', params: { id: username } });
   }, [router]);
 
-  const toggleMute = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsMuted(prev => !prev);
-  }, []);
+  const handleGamePress = useCallback((gameId: number) => {
+    router.push({ pathname: '/game/[id]', params: { id: gameId.toString() } });
+  }, [router]);
 
-  const activeClipId = filteredClips[activeClipIndex]?.id;
-  const { data: clipCommentsData, isLoading: isLoadingClipComments } = useQuery({
-    queryKey: ['clips', 'comments', activeClipId],
-    queryFn: async () => {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/clips/${activeClipId}/comments`);
-      if (!response.ok) throw new Error('Failed to fetch comments');
-      return response.json();
-    },
-    enabled: !!activeClipId && showClipComments,
-  });
-
-  const [localClipComments, setLocalClipComments] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (clipCommentsData) {
-      setLocalClipComments(clipCommentsData as any[]);
-    }
-  }, [clipCommentsData]);
-
-  useEffect(() => {
-    setLocalClipComments([]);
-  }, [activeClipId]);
-
-  const addClipCommentMutation = useMutation({
-    mutationFn: async ({ clipId, content }: { clipId: number; content: string }) => {
-      const token = await getAccessToken();
-      if (!token) throw new Error('Not authenticated');
-      
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/clips/${clipId}/comments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ content }),
-      });
-      
-      if (!response.ok) throw new Error('Failed to add comment');
-      return response.json();
-    },
-    onSuccess: (data, variables) => {
-      if (user) {
-        const newComment: any = {
-          id: data.id || Date.now(),
-          userId: user.id,
-          content: variables.content,
-          createdAt: new Date().toISOString(),
-          user: {
-            id: user.id,
-            username: user.username,
-            displayName: user.displayName || user.username,
-            avatarUrl: user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
-          },
-        };
-        setLocalClipComments(prev => [newComment, ...prev]);
-      }
-      queryClient.invalidateQueries({ queryKey: ['clips', 'comments', activeClipId] });
-    },
-  });
-
-  const toggleClipComments = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowClipComments(prev => !prev);
-  }, []);
-
-  const { mutate: submitClipComment } = addClipCommentMutation;
-  const { mutate: likeClipMutate } = likeClipMutation;
-  const { mutate: fireClipMutate } = fireClipMutation;
-
-  const handleClipCommentSubmit = useCallback(() => {
-    if (!clipCommentText.trim() || !activeClipId || !user) return;
-    
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    submitClipComment({
-      clipId: activeClipId,
-      content: clipCommentText.trim(),
-    });
-    setClipCommentText('');
-    Keyboard.dismiss();
-  }, [clipCommentText, activeClipId, user, submitClipComment]);
-
-  const onClipsViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0 && viewableItems[0].index !== null) {
-      const newIndex = viewableItems[0].index;
-      setShowClipComments(false);
-      Keyboard.dismiss();
-      setActiveClipIndex(newIndex);
+      setActiveIndex(viewableItems[0].index);
     }
   });
 
-  const clipsViewabilityConfigRef = useRef({
-    itemVisiblePercentThreshold: 50,
-  });
-
-  const getClipItemLayout = useCallback((_: any, index: number) => ({
-    length: SCREEN_HEIGHT,
-    offset: SCREEN_HEIGHT * index,
-    index,
-  }), []);
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 });
 
   const renderClipItem = useCallback(({ item, index }: { item: ClipWithUser; index: number }) => (
-    <ReelViewer
-      item={item as ReelData}
-      isActive={index === activeClipIndex}
-      isMuted={isMuted}
-      onToggleMute={toggleMute}
+    <ClipCard
+      clip={item}
+      isActive={isTabFocused && index === activeIndex}
+      onLike={() => likeClipMutation.mutate(item.id)}
+      onFire={() => fireClipMutation.mutate(item.id)}
       onUserPress={handleUserPress}
-      onLike={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        likeClipMutate(item.id);
-      }}
-      onFire={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        fireClipMutate(item.id);
-      }}
-      onShare={() => {
-        console.log('Share clip:', item.id);
-      }}
-      showComments={index === activeClipIndex && showClipComments}
-      onToggleComments={toggleClipComments}
-      comments={index === activeClipIndex ? localClipComments : []}
-      commentText={clipCommentText}
-      onCommentTextChange={setClipCommentText}
-      onSubmitComment={handleClipCommentSubmit}
-      isLoadingComments={isLoadingClipComments}
-      isTabFocused={isTabFocused}
+      onGamePress={handleGamePress}
     />
-  ), [activeClipIndex, isMuted, toggleMute, handleUserPress, showClipComments, toggleClipComments, localClipComments, clipCommentText, handleClipCommentSubmit, isLoadingClipComments, isTabFocused, likeClipMutate, fireClipMutate]);
+  ), [activeIndex, isTabFocused, handleUserPress, handleGamePress, likeClipMutation, fireClipMutation]);
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['#131F2A', '#061021']}
-        style={StyleSheet.absoluteFill}
-      />
-
+      <LinearGradient colors={['#131F2A', '#061021']} style={StyleSheet.absoluteFill} />
       <StatusBar barStyle="light-content" />
-
       <AppHeader />
 
-      <View style={styles.pageTitleContainer}>
-        <TouchableOpacity 
+      <View style={[styles.subHeader, { paddingTop: 12 }]}>
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             router.push('/home');
           }}
         >
-          <ArrowLeft size={24} color="#FFF" />
+          <ArrowLeft size={20} color="#FFF" />
         </TouchableOpacity>
-        <View style={styles.headerTitleRow}>
-          <Text style={styles.headerTitle}>Latest Clips</Text>
-          <Text style={styles.clipsCount}>{filteredClips.length} clips</Text>
-        </View>
+        <Text style={styles.headerTitle}>Latest Clips</Text>
+        <Text style={styles.clipsCount}>{filteredClips.length}</Text>
       </View>
 
-      <View style={styles.filterContainer}>
-        <TouchableOpacity 
+      <View style={styles.filterBar}>
+        <TouchableOpacity
           style={styles.filterButton}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setShowGameFilter(true);
           }}
         >
-          <Gamepad2 size={18} color="#FFF" />
-          <Text style={styles.filterText}>
-            {selectedGameName} ({filteredClips.length})
-          </Text>
-          <ChevronDown size={18} color="#94A3B8" />
+          <Gamepad2 size={16} color="#4ADE80" />
+          <Text style={styles.filterText}>{selectedGameName}</Text>
+          <ChevronDown size={16} color="#64748B" />
         </TouchableOpacity>
       </View>
 
       {isLoading ? (
-        <View style={styles.loadingContainer}>
+        <View style={styles.centered}>
           <ActivityIndicator size="large" color="#4ADE80" />
           <Text style={styles.loadingText}>Loading clips...</Text>
         </View>
       ) : filteredClips.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Gamepad2 size={48} color="#475569" />
+        <View style={styles.centered}>
+          <Gamepad2 size={48} color="#334155" />
           <Text style={styles.emptyTitle}>No clips found</Text>
           <Text style={styles.emptySubtitle}>
-            {selectedGame ? 'Try selecting a different game' : 'Check back later for new content'}
+            {selectedGame ? 'Try a different game filter' : 'Check back later for new content'}
           </Text>
         </View>
       ) : (
         <FlatList
-          ref={clipsFlatListRef}
           data={filteredClips}
           renderItem={renderClipItem}
           keyExtractor={(item) => `clip-${item.id}`}
-          pagingEnabled
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: insets.bottom + 16 },
+          ]}
           showsVerticalScrollIndicator={false}
-          snapToInterval={SCREEN_HEIGHT}
-          decelerationRate="fast"
-          onViewableItemsChanged={onClipsViewableItemsChangedRef.current}
-          viewabilityConfig={clipsViewabilityConfigRef.current}
-          getItemLayout={getClipItemLayout}
-          removeClippedSubviews={false}
-          maxToRenderPerBatch={2}
-          windowSize={3}
-          initialNumToRender={1}
-          initialScrollIndex={0}
-          onScrollToIndexFailed={() => {}}
+          onViewableItemsChanged={onViewableItemsChanged.current}
+          viewabilityConfig={viewabilityConfig.current}
+          removeClippedSubviews
+          maxToRenderPerBatch={4}
+          windowSize={5}
+          initialNumToRender={3}
         />
       )}
 
@@ -419,7 +476,7 @@ export default function LatestClipsPage() {
         onRequestClose={() => setShowGameFilter(false)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={StyleSheet.absoluteFill}
             activeOpacity={1}
             onPress={() => setShowGameFilter(false)}
@@ -427,10 +484,7 @@ export default function LatestClipsPage() {
           <View style={[styles.filterModal, { paddingBottom: insets.bottom + 20 }]}>
             <View style={styles.filterModalHeader}>
               <Text style={styles.filterModalTitle}>Filter by Game</Text>
-              <TouchableOpacity 
-                onPress={() => setShowGameFilter(false)}
-                style={styles.closeFilterButton}
-              >
+              <TouchableOpacity onPress={() => setShowGameFilter(false)} style={styles.closeFilterButton}>
                 <X size={24} color="#FFF" />
               </TouchableOpacity>
             </View>
@@ -439,18 +493,18 @@ export default function LatestClipsPage() {
               data={[{ id: null, name: 'All Games', imageUrl: '' }, ...allGamesForFilter]}
               renderItem={({ item }) => {
                 const itemId = item.id as number | null;
-                const clipCount = itemId 
+                const clipCount = itemId
                   ? allClips.filter((r: any) => r.game?.id === itemId).length
                   : allClips.length;
                 const hasContent = clipCount > 0 || !itemId;
                 const isSelected = selectedGame === (itemId ? itemId.toString() : null);
-                
+
                 return (
                   <TouchableOpacity
                     style={[
-                      styles.gameFilterThumbnailCard,
-                      isSelected && styles.gameFilterThumbnailActive,
-                      !hasContent && itemId && styles.gameFilterThumbnailDisabled,
+                      styles.gameFilterCard,
+                      isSelected && styles.gameFilterCardActive,
+                      !hasContent && itemId ? styles.gameFilterCardDisabled : null,
                     ]}
                     onPress={() => {
                       if (!hasContent) {
@@ -465,11 +519,8 @@ export default function LatestClipsPage() {
                   >
                     <View style={styles.thumbnailWrapper}>
                       {!itemId ? (
-                        <LinearGradient
-                          colors={['#1E293B', '#131F2A']}
-                          style={styles.allGamesThumbnail}
-                        >
-                          <Gamepad2 size={32} color="#4ADE80" />
+                        <LinearGradient colors={['#1E293B', '#131F2A']} style={styles.allGamesThumbnail}>
+                          <Gamepad2 size={28} color="#4ADE80" />
                         </LinearGradient>
                       ) : (
                         <Image
@@ -479,31 +530,27 @@ export default function LatestClipsPage() {
                           transition={200}
                         />
                       )}
-                      {!hasContent && itemId && (
+                      {!hasContent && itemId ? (
                         <View style={styles.greyedOutOverlay}>
                           <Text style={styles.noContentText}>No Clips</Text>
                         </View>
-                      )}
+                      ) : null}
                       {isSelected && (
-                        <View style={styles.selectedOverlay}>
-                          <View style={styles.selectedBadge}>
-                            <View style={styles.checkmark} />
-                          </View>
-                        </View>
+                        <View style={styles.selectedOverlay} />
                       )}
-                      {hasContent && clipCount > 0 && (
+                      {hasContent && clipCount > 0 ? (
                         <View style={styles.clipCountBadge}>
                           <Text style={styles.clipCountBadgeText}>{clipCount}</Text>
                         </View>
-                      )}
+                      ) : null}
                     </View>
                     <View style={styles.gameThumbnailInfo}>
-                      <Text 
+                      <Text
                         style={[
                           styles.gameThumbnailName,
-                          !hasContent && itemId && styles.gameThumbnailNameDisabled,
-                          isSelected && styles.gameThumbnailNameActive
-                        ]} 
+                          !hasContent && itemId ? styles.gameThumbnailNameDisabled : null,
+                          isSelected ? styles.gameThumbnailNameActive : null,
+                        ]}
                         numberOfLines={2}
                       >
                         {item.name}
@@ -530,87 +577,227 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#131F2A',
   },
-  pageTitleContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+  subHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+    gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#1E293B',
-    gap: 12,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#1E293B',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#334155',
   },
-  headerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 12,
-  },
   headerTitle: {
-    fontSize: 28,
+    flex: 1,
+    fontSize: 20,
     fontWeight: 'bold' as const,
     color: '#FFF',
   },
   clipsCount: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#64748B',
-    fontWeight: '500' as const,
+    fontWeight: '600' as const,
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  filterContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+  filterBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#1E293B',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 8,
     borderWidth: 1,
     borderColor: '#334155',
+    alignSelf: 'flex-start',
   },
   filterText: {
-    flex: 1,
     color: '#FFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600' as const,
   },
-  loadingContainer: {
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   loadingText: {
     color: '#64748B',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500' as const,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 40,
-    gap: 12,
   },
   emptyTitle: {
     color: '#94A3B8',
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600' as const,
-    marginTop: 16,
+    marginTop: 12,
   },
   emptySubtitle: {
     color: '#64748B',
-    fontSize: 15,
+    fontSize: 14,
     textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  listContent: {
+    paddingTop: 8,
+    gap: 2,
+  },
+  clipCard: {
+    marginHorizontal: CARD_PADDING,
+    marginVertical: 8,
+    backgroundColor: '#0F1C28',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#1E293B',
+  },
+  videoContainer: {
+    width: VIDEO_WIDTH,
+    height: VIDEO_HEIGHT,
+    backgroundColor: '#000',
+    position: 'relative' as const,
+  },
+  video: {
+    width: '100%',
+    height: '100%',
+  },
+  videoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  videoTopRow: {
+    position: 'absolute' as const,
+    top: 10,
+    left: 10,
+    right: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  durationBadge: {
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  durationText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  muteButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clipInfo: {
+    padding: 12,
+    gap: 10,
+  },
+  clipInfoTop: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#1E293B',
+  },
+  clipMeta: {
+    flex: 1,
+    gap: 3,
+  },
+  clipTitle: {
+    color: '#F1F5F9',
+    fontSize: 14,
+    fontWeight: '600' as const,
+    lineHeight: 20,
+  },
+  clipMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  clipUsername: {
+    color: '#4ADE80',
+    fontSize: 12,
+    fontWeight: '500' as const,
+  },
+  metaDot: {
+    color: '#475569',
+    fontSize: 12,
+  },
+  clipGame: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '500' as const,
+  },
+  clipActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B',
+    paddingTop: 10,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  statText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '500' as const,
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  actionText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  actionTextActive: {
+    color: '#F43F5E',
+  },
+  actionTextFire: {
+    color: '#F97316',
   },
   modalOverlay: {
     flex: 1,
@@ -634,7 +821,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#1E293B',
   },
   filterModalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold' as const,
     color: '#FFF',
   },
@@ -649,7 +836,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  gameFilterThumbnailCard: {
+  gameFilterCard: {
     flex: 1,
     backgroundColor: '#1E293B',
     borderRadius: 10,
@@ -658,11 +845,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     maxWidth: '32%',
   },
-  gameFilterThumbnailActive: {
+  gameFilterCardActive: {
     borderColor: '#4ADE80',
     borderWidth: 2,
   },
-  gameFilterThumbnailDisabled: {
+  gameFilterCardDisabled: {
     opacity: 0.5,
   },
   thumbnailWrapper: {
@@ -701,37 +888,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(74, 222, 128, 0.15)',
-  },
-  selectedBadge: {
-    position: 'absolute' as const,
-    top: 6,
-    right: 6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#4ADE80',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkmark: {
-    width: 6,
-    height: 10,
-    borderBottomWidth: 2,
-    borderRightWidth: 2,
-    borderColor: '#002E15',
-    transform: [{ rotate: '45deg' }],
-    marginLeft: 1,
-    marginBottom: 2,
+    backgroundColor: 'rgba(74, 222, 128, 0.18)',
   },
   clipCountBadge: {
     position: 'absolute' as const,
-    bottom: 4,
-    left: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 8,
   },
   clipCountBadgeText: {
     color: '#FFF',
@@ -739,18 +905,19 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
   },
   gameThumbnailInfo: {
-    padding: 8,
+    padding: 6,
   },
   gameThumbnailName: {
-    color: '#FFF',
-    fontSize: 11,
-    fontWeight: '600' as const,
-    lineHeight: 14,
+    color: '#CBD5E1',
+    fontSize: 10,
+    fontWeight: '500' as const,
+    textAlign: 'center',
+  },
+  gameThumbnailNameDisabled: {
+    color: '#475569',
   },
   gameThumbnailNameActive: {
     color: '#4ADE80',
-  },
-  gameThumbnailNameDisabled: {
-    color: '#64748B',
+    fontWeight: '700' as const,
   },
 });

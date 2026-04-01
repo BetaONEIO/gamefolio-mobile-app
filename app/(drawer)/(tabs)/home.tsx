@@ -220,25 +220,18 @@ export default function HomeScreen() {
       const token = await getAccessToken();
       console.log('[Home] Fetching feed clips...');
       try {
-        const clips = await api.clips.getFeed(token || undefined, { page: 1, limit: 20 });
-        console.log('[Home] Received feed clips:', clips.length);
-        
-        // Log each clip's thumbnail info for debugging
-        clips.forEach((clip, index) => {
-          console.log(`[Home] Clip ${index + 1}: id=${clip.id}, title="${clip.title}"`);
-          console.log(`  - thumbnailUrl: ${clip.thumbnailUrl || 'NULL'}`);
-          console.log(`  - game imageUrl: ${clip.game?.imageUrl || 'NULL'}`);
-        });
-        
-        // Check for thumbnail issues
-        const uniqueThumbnails = new Set(clips.map(c => c.thumbnailUrl).filter(Boolean));
-        console.log(`[Home] Unique clip thumbnails: ${uniqueThumbnails.size} out of ${clips.length} clips`);
-        
-        if (clips.length === 0) {
-          console.log('[Home] No feed clips from API');
-          return [];
+        const clips = await api.clips.getFeed(token || undefined, { page: 1, limit: 50 });
+        // Filter to only show clips, not reels
+        const onlyClips = clips.filter((c: any) => c.videoType !== 'reel');
+        console.log('[Home] Received feed clips:', onlyClips.length, 'of', clips.length, 'total');
+        if (onlyClips.length === 0) {
+          // Fallback: try getLatest which may have separate clips
+          const latest = await api.clips.getLatest(token || undefined);
+          const latestClipsOnly = (latest || []).filter((c: any) => c.videoType !== 'reel');
+          console.log('[Home] Fallback latest clips:', latestClipsOnly.length);
+          return latestClipsOnly.slice(0, 20);
         }
-        return clips;
+        return onlyClips.slice(0, 20);
       } catch (error) {
         console.log('[Home] Error fetching feed clips:', error);
         return [];
