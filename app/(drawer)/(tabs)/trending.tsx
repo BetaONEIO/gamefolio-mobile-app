@@ -3217,6 +3217,17 @@ export default function TrendingScreen() {
       >
         <View style={styles.filterButtonsRow}>
           <TouchableOpacity
+            style={styles.closeMenuButton}
+            onPress={() => {
+              setMenuVisible(false);
+              setShowFilterDropdown(false);
+              setShowTimeDropdown(false);
+            }}
+          >
+            <X size={20} color="#FFF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.filterButton}
             onPress={() => {
               setShowFilterDropdown(!showFilterDropdown);
@@ -3445,7 +3456,7 @@ export default function TrendingScreen() {
           setShowTimeDropdown(false);
         }}
       >
-        <Settings size={20} color={menuVisible ? '#4ADE80' : '#FFF'} />
+        <Text style={styles.menuClockEmoji}>🕐</Text>
       </TouchableOpacity>
 
       {shareContent && (
@@ -4278,6 +4289,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(74, 222, 128, 0.3)',
     zIndex: 100,
+  },
+  menuClockEmoji: {
+    fontSize: 20,
+  },
+  closeMenuButton: {
+    padding: 8,
+    marginRight: 12,
   },
   filterDropdown: {
     backgroundColor: 'rgba(30, 41, 59, 0.95)',
