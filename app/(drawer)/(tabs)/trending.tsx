@@ -3449,7 +3449,7 @@ export default function TrendingScreen() {
       {renderScreenshotModal()}
 
       <TouchableOpacity
-        style={[styles.menuCogButton, { top: insets.top + 12 }, menuVisible && styles.menuCogButtonActive]}
+        style={[styles.menuCogButton, { top: insets.top + 12 }]}
         onPress={() => {
           setMenuVisible(!menuVisible);
           setShowFilterDropdown(false);
@@ -4289,10 +4289,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(74, 222, 128, 0.3)',
     zIndex: 100,
-  },
-  menuCogButtonActive: {
-    borderColor: '#4ADE80',
-    backgroundColor: 'rgba(74, 222, 128, 0.15)',
   },
   closeMenuButton: {
     padding: 8,
