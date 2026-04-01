@@ -4082,7 +4082,7 @@ const styles = StyleSheet.create({
     pointerEvents: 'box-none',
   },
   clipTopInfo: {
-    marginBottom: 4,
+    marginBottom: 20,
     pointerEvents: 'auto',
   },
   clipBottomActions: {
