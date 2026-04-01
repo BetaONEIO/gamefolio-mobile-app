@@ -1330,49 +1330,23 @@ export default function PublicProfileScreen() {
 
         {/* Content Tabs */}
         {theme.displayNameFontId === 'impact' ? (
-          <View style={[styles.tabsContainer, { backgroundColor: theme.bg, paddingHorizontal: 16, paddingVertical: 4 }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
-                {activeTab === 'Clips' ? (
-                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.zombieTabPillLabel}>CLIPS</Text>
-                    <Text style={styles.zombieTabPillCount}>{clips.length}/15</Text>
-                  </View>
-                ) : (
-                  <>
-                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>CLIPS</Text>
-                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{clips.length}/15</Text>
-                  </>
-                )}
+          <View style={[styles.tabsContainer, { backgroundColor: '#131F2A', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 20 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <TouchableOpacity style={[styles.tab, activeTab === 'Clips' && styles.tabActive]} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
+                <Text style={[styles.tabText, activeTab === 'Clips' && styles.tabTextActive]}>CLIPS</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
-                {activeTab === 'Reels' ? (
-                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.zombieTabPillLabel}>REELS</Text>
-                    <Text style={styles.zombieTabPillCount}>{reels.length}/15</Text>
-                  </View>
-                ) : (
-                  <>
-                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>REELS</Text>
-                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{reels.length}/15</Text>
-                  </>
-                )}
+              <TouchableOpacity style={[styles.tab, activeTab === 'Reels' && styles.tabActive]} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
+                <Text style={[styles.tabText, activeTab === 'Reels' && styles.tabTextActive]}>REELS</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
-                {activeTab === 'Favorites' ? (
-                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.zombieTabPillLabel}>GAMES</Text>
-                  </View>
-                ) : (
-                  <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>GAMES</Text>
-                )}
+              <TouchableOpacity style={[styles.tab, activeTab === 'Favorites' && styles.tabActive]} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
+                <Text style={[styles.tabText, activeTab === 'Favorites' && styles.tabTextActive]}>GAMES</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.zombieTab, styles.zombieScreenshotsBtn]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
-                <Camera size={18} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
-                <Text style={[styles.zombieTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>
-                  {screenshots.length}/10
-                </Text>
-              </TouchableOpacity>
+            </View>
+            <View style={styles.tabsCameraContainer}>
+              <Camera size={16} color={activeTab === 'Screenshots' ? '#4ADE80' : '#94A3B8'} />
+              <Text style={[styles.tabsCameraText, activeTab === 'Screenshots' && { color: '#4ADE80' }]}>
+                {screenshots.length}/10
+              </Text>
             </View>
           </View>
         ) : (
