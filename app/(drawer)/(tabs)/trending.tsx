@@ -3371,6 +3371,7 @@ export default function TrendingScreen() {
 
                 <View style={[styles.reelActionsColumn, { pointerEvents: 'auto' } as any]}>
                   <View style={styles.reelActionButton}>
+                    <Eye size={28} color="#FFF" />
                     <Text style={styles.reelActionCount}>{formatNumber(reels[activeIndex].views)}</Text>
                   </View>
 
