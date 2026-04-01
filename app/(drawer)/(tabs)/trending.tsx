@@ -18,6 +18,7 @@ import {
   ViewToken,
   Keyboard,
   PanResponder,
+  Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -47,6 +48,7 @@ import {
   Check,
   Maximize,
   Search,
+  Send,
 } from 'lucide-react-native';
 import FlameAnimation from '@/components/FlameAnimation';
 import { useAuth } from '@/context/AuthContext';
@@ -1111,6 +1113,224 @@ const ClipItem = React.memo(({
 
 ClipItem.displayName = 'ClipItem';
 
+interface ScreenshotItemProps {
+  item: ScreenshotWithUser;
+  showComments: boolean;
+  onToggleComments: () => void;
+  comments: Comment[];
+  commentText: string;
+  onCommentTextChange: (text: string) => void;
+  onSubmitComment: () => void;
+  isLoadingComments: boolean;
+  onLike: () => void;
+  onFire: () => void;
+  onShare: () => void;
+  onUserPress: (username: string) => void;
+}
+
+const ScreenshotItem = React.memo(({
+  item,
+  showComments,
+  onToggleComments,
+  comments,
+  commentText,
+  onCommentTextChange,
+  onSubmitComment,
+  isLoadingComments,
+  onLike,
+  onFire,
+  onShare,
+  onUserPress,
+}: ScreenshotItemProps) => {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const commentsSlideAnim = useRef(new Animated.Value(0)).current;
+  const commentsListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setKeyboardHeight(e.endCoordinates.height)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardHeight(0)
+    );
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
+
+  useEffect(() => {
+    Animated.spring(commentsSlideAnim, {
+      toValue: showComments ? 1 : 0,
+      useNativeDriver: false,
+      tension: 65,
+      friction: 11,
+    }).start();
+  }, [showComments, commentsSlideAnim]);
+
+  const imageHeight = commentsSlideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [SCREEN_HEIGHT, SCREEN_HEIGHT * 0.35],
+  });
+
+  const commentsHeight = commentsSlideAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, SCREEN_HEIGHT * 0.65],
+  });
+
+  const renderCommentItem = useCallback(({ item: c }: { item: Comment }) => (
+    <TouchableOpacity
+      style={styles.reelCommentItem}
+      onPress={() => onUserPress(c.user.username)}
+      activeOpacity={0.7}
+    >
+      <Image source={{ uri: c.user.avatarUrl }} style={styles.reelCommentAvatar} />
+      <View style={styles.reelCommentContent}>
+        <Text style={styles.reelCommentUsername}>@{c.user.username}</Text>
+        <Text style={styles.reelCommentText}>
+          <CommentText content={c.content} />
+        </Text>
+      </View>
+    </TouchableOpacity>
+  ), [onUserPress]);
+
+  return (
+    <View style={styles.screenshotPageItem}>
+      <Animated.View style={[styles.screenshotPageImageWrapper, { height: imageHeight }]}>
+        <Image
+          source={{ uri: item.imageUrl }}
+          style={styles.screenshotPageImage}
+          resizeMode="contain"
+        />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.75)']}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+      </Animated.View>
+
+      {!showComments && (
+        <View style={[styles.clipFixedOverlay, { paddingBottom: insets.bottom + 60 }]}>
+          <View style={styles.clipTopInfo}>
+            <TouchableOpacity
+              style={styles.reelUserRow}
+              onPress={() => onUserPress(item.user.username)}
+            >
+              <Image source={{ uri: item.user.avatarUrl }} style={styles.reelAvatar} />
+              <Text style={styles.reelUsername}>@{item.user.username}</Text>
+            </TouchableOpacity>
+            <Text style={styles.reelTitle} numberOfLines={2}>{truncateTitle(item.title, 34)}</Text>
+            {item.description ? <ExpandableText text={item.description} maxLength={100} /> : null}
+            {item.game ? (
+              <TouchableOpacity
+                style={styles.reelGameRow}
+                onPress={() => router.push({ pathname: '/game/[id]', params: { id: item.game.id.toString() } })}
+                activeOpacity={0.7}
+              >
+                <Gamepad2 size={14} color="#4ADE80" />
+                <Text style={styles.reelGameText}>{shortenGameName(item.game.name)}</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <View style={styles.clipBottomActions}>
+            <TouchableOpacity style={styles.clipBottomActionButton} onPress={onLike}>
+              <Heart
+                size={24}
+                color={item.isLiked ? '#EF4444' : '#FFF'}
+                fill={item.isLiked ? '#EF4444' : 'transparent'}
+              />
+              <Text style={styles.clipBottomActionText}>{formatNumber(item._count?.likes || 0)}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.clipBottomActionButton} onPress={onFire}>
+              {item.isFired ? (
+                <FlameAnimation isActive={false} size={24} />
+              ) : (
+                <Flame size={24} color="#FFF" fill="transparent" />
+              )}
+              <Text style={styles.clipBottomActionText}>{formatNumber(item._count?.fires || 0)}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.clipBottomActionButton} onPress={onToggleComments}>
+              <MessageSquare size={24} color="#FFF" />
+              <Text style={styles.clipBottomActionText}>{formatNumber(item._count?.comments || 0)}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.clipBottomActionButton} onPress={onShare}>
+              <Share2 size={24} color="#FFF" />
+              <Text style={styles.clipBottomActionText}>Share</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {showComments && (
+        <View style={[styles.miniReelInfo, { paddingTop: insets.top + 50 }]}>
+          <TouchableOpacity
+            style={styles.miniUserRow}
+            onPress={() => onUserPress(item.user.username)}
+          >
+            <Image source={{ uri: item.user.avatarUrl }} style={styles.miniAvatar} />
+            <Text style={styles.miniUsername}>@{item.user.username}</Text>
+          </TouchableOpacity>
+          <Text style={styles.miniTitle} numberOfLines={1}>{truncateTitle(item.title)}</Text>
+        </View>
+      )}
+
+      <Animated.View style={[styles.commentsSection, { height: commentsHeight }]}>
+        <View style={styles.commentsHeader}>
+          <View style={styles.commentsHeaderDragHandle} />
+          <Text style={styles.commentsSectionTitle}>Comments ({item._count?.comments || 0})</Text>
+          <TouchableOpacity style={styles.closeCommentsButton} onPress={onToggleComments}>
+            <X size={22} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+        <View style={[styles.commentsListWrapper, keyboardHeight > 0 && { flex: 1, marginBottom: 0 }]}>
+          {isLoadingComments ? (
+            <View style={styles.commentsLoading}>
+              <ActivityIndicator size="small" color="#4ADE80" />
+            </View>
+          ) : comments.length === 0 ? (
+            <View style={styles.commentsEmpty}>
+              <Text style={styles.commentsEmptyText}>No comments yet</Text>
+            </View>
+          ) : (
+            <FlatList
+              ref={commentsListRef}
+              data={comments}
+              renderItem={renderCommentItem}
+              keyExtractor={(c) => `ss-comment-${c.id}`}
+              style={styles.commentsList}
+              contentContainerStyle={styles.commentsListContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            />
+          )}
+        </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={keyboardHeight}
+        >
+          <View style={[styles.commentInputContainer, keyboardHeight > 0 && { marginBottom: keyboardHeight }]}>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Add a comment..."
+              placeholderTextColor="rgba(255,255,255,0.5)"
+              value={commentText}
+              onChangeText={onCommentTextChange}
+              multiline={false}
+            />
+            <TouchableOpacity style={styles.commentSendButton} onPress={onSubmitComment}>
+              <Send size={20} color="#4ADE80" />
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Animated.View>
+    </View>
+  );
+});
+
+ScreenshotItem.displayName = 'ScreenshotItem';
+
 interface ClipCardItemProps {
   item: ClipWithUser;
   onUserPress: (username: string) => void;
@@ -1325,6 +1545,7 @@ export default function TrendingScreen() {
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ever');
   const [activeIndex, setActiveIndex] = useState(0);
+  const [activeScreenshotIndex, setActiveScreenshotIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [selectedScreenshot, setSelectedScreenshot] = useState<ScreenshotWithUser | null>(null);
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState<number>(0);
@@ -1335,6 +1556,7 @@ export default function TrendingScreen() {
   const [reelCommentText, setReelCommentText] = useState('');
   const [showClipComments, setShowClipComments] = useState(false);
   const [clipCommentText, setClipCommentText] = useState('');
+  const [screenshotCommentText, setScreenshotCommentText] = useState('');
   const [selectedReelGame, setSelectedReelGame] = useState<string | null>(null);
   const [selectedReelGameName, setSelectedReelGameName] = useState<string | null>(null);
   const [selectedClipGame, setSelectedClipGame] = useState<string | null>(null);
@@ -1354,6 +1576,7 @@ export default function TrendingScreen() {
   const [isSearchingGames, setIsSearchingGames] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
+  const screenshotFlatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
 
@@ -1530,6 +1753,40 @@ export default function TrendingScreen() {
     },
   });
 
+  const addScreenshotCommentMutation = useMutation({
+    mutationFn: async ({ screenshotId, content }: { screenshotId: number; content: string }) => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/screenshots/${screenshotId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ content }),
+      });
+      if (!response.ok) throw new Error('Failed to add comment');
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      if (user) {
+        const newComment: Comment = {
+          id: data.id || Date.now(),
+          userId: user.id,
+          content: variables.content,
+          createdAt: new Date().toISOString(),
+          user: { id: user.id, username: user.username, displayName: user.displayName || user.username, avatarUrl: user.avatarUrl || '' },
+        };
+        setLocalScreenshotComments(prev => [...prev, newComment]);
+        queryClient.setQueryData(['screenshots', 'trending', timePeriod], (oldData: ScreenshotWithUser[] | undefined) => {
+          if (!oldData) return oldData;
+          return oldData.map(s =>
+            s.id === variables.screenshotId
+              ? { ...s, _count: { ...s._count, comments: (s._count?.comments || 0) + 1 } }
+              : s
+          );
+        });
+      }
+    },
+  });
+
   useFocusEffect(
     useCallback(() => {
       setIsTabFocused(true);
@@ -1634,7 +1891,7 @@ export default function TrendingScreen() {
     console.log('[Trending] Screenshots count:', screenshotsData?.length || 0);
   }, [contentType, timePeriod, screenshotsData]);
 
-  const { data: screenshotCommentsData } = useQuery({
+  const { data: screenshotCommentsData, isLoading: isLoadingScreenshotComments } = useQuery({
     queryKey: ['screenshots', 'comments', screenshotId],
     queryFn: async () => {
       const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/screenshots/${screenshotId}/comments`);
@@ -1955,6 +2212,7 @@ export default function TrendingScreen() {
 
   const [localReelComments, setLocalReelComments] = useState<Comment[]>([]);
   const [localClipComments, setLocalClipComments] = useState<Comment[]>([]);
+  const [localScreenshotComments, setLocalScreenshotComments] = useState<Comment[]>([]);
 
   useEffect(() => {
     if (reelCommentsData) {
@@ -1975,6 +2233,21 @@ export default function TrendingScreen() {
   useEffect(() => {
     setLocalClipComments([]);
   }, [activeClipId]);
+
+  const activeScreenshotId = screenshots[activeScreenshotIndex]?.id;
+
+  useEffect(() => {
+    if (screenshotId) {
+      setLocalScreenshotComments((screenshotCommentsData as Comment[] | undefined) || []);
+    }
+  }, [screenshotCommentsData, screenshotId]);
+
+  useEffect(() => {
+    setLocalScreenshotComments([]);
+    if (screenshots[activeScreenshotIndex]) {
+      setScreenshotId(screenshots[activeScreenshotIndex].id);
+    }
+  }, [activeScreenshotIndex]);
 
 
 
@@ -2181,13 +2454,31 @@ export default function TrendingScreen() {
     Keyboard.dismiss();
   }, [clipCommentText, activeClipId, user, submitClipComment]);
 
+  const handleScreenshotCommentSubmit = useCallback(() => {
+    if (!screenshotCommentText.trim() || !activeScreenshotId || !user) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    addScreenshotCommentMutation.mutate({ screenshotId: activeScreenshotId, content: screenshotCommentText.trim() });
+    setScreenshotCommentText('');
+    Keyboard.dismiss();
+  }, [screenshotCommentText, activeScreenshotId, user, addScreenshotCommentMutation]);
+
   const onViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index !== null) {
       const newIndex = viewableItems[0].index;
       setShowReelComments(false);
       setShowClipComments(false);
+      setShowScreenshotComments(false);
       Keyboard.dismiss();
       setActiveIndex(newIndex);
+    }
+  });
+
+  const onViewableItemsChangedScreenshotRef = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+      const newIndex = viewableItems[0].index;
+      setShowScreenshotComments(false);
+      Keyboard.dismiss();
+      setActiveScreenshotIndex(newIndex);
     }
   });
 
@@ -2243,6 +2534,32 @@ export default function TrendingScreen() {
       <Image source={{ uri: screenshot.thumbnailUrl || screenshot.imageUrl }} style={styles.screenshotThumbnail} />
     </TouchableOpacity>
   ), [handleScreenshotPress]);
+
+  const renderScreenshotPageItem = useCallback(({ item, index }: { item: ScreenshotWithUser; index: number }) => (
+    <ScreenshotItem
+      item={item}
+      showComments={index === activeScreenshotIndex && showScreenshotComments}
+      onToggleComments={toggleScreenshotComments}
+      comments={index === activeScreenshotIndex ? localScreenshotComments : []}
+      commentText={index === activeScreenshotIndex ? screenshotCommentText : ''}
+      onCommentTextChange={setScreenshotCommentText}
+      onSubmitComment={handleScreenshotCommentSubmit}
+      isLoadingComments={isLoadingScreenshotComments && index === activeScreenshotIndex}
+      onLike={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        likeScreenshotMutation.mutate(item.id);
+      }}
+      onFire={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        fireScreenshotMutation.mutate(item.id);
+      }}
+      onShare={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Share.share({ message: `Check out this screenshot on Gamefolio!` });
+      }}
+      onUserPress={handleUserPress}
+    />
+  ), [activeScreenshotIndex, showScreenshotComments, toggleScreenshotComments, localScreenshotComments, screenshotCommentText, handleScreenshotCommentSubmit, isLoadingScreenshotComments, likeScreenshotMutation, fireScreenshotMutation, handleUserPress]);
 
   const renderEmptyState = useCallback((type: ContentType) => {
     const messages: Record<ContentType, { title: string; message: string }> = {
@@ -2541,16 +2858,22 @@ export default function TrendingScreen() {
     }
 
     return (
-      <View style={styles.screenshotsViewContainer}>
+      <View style={styles.screenshotPageContainer}>
         <FlatList
+          ref={screenshotFlatListRef}
           data={screenshots}
-          renderItem={renderScreenshotCard}
-          keyExtractor={(item) => `screenshot-${item.id}`}
-          numColumns={3}
-          columnWrapperStyle={styles.screenshotsColumnWrapper}
-          contentContainerStyle={[styles.screenshotsContainer, { paddingTop: insets.top + 120 }]}
+          renderItem={renderScreenshotPageItem}
+          keyExtractor={(item) => `screenshot-page-${item.id}`}
+          pagingEnabled
           showsVerticalScrollIndicator={false}
-          ListHeaderComponent={renderScreenshotSlideshow}
+          onViewableItemsChanged={onViewableItemsChangedScreenshotRef.current}
+          viewabilityConfig={viewabilityConfig}
+          getItemLayout={getItemLayout}
+          initialNumToRender={2}
+          maxToRenderPerBatch={3}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === 'android'}
+          decelerationRate="fast"
         />
       </View>
     );
@@ -3585,6 +3908,24 @@ const styles = StyleSheet.create({
   screenshotsViewContainer: {
     flex: 1,
     backgroundColor: '#131F2A',
+  },
+  screenshotPageContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  screenshotPageItem: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+    backgroundColor: '#000',
+    overflow: 'hidden',
+  },
+  screenshotPageImageWrapper: {
+    width: SCREEN_WIDTH,
+    overflow: 'hidden',
+  },
+  screenshotPageImage: {
+    width: '100%',
+    height: '100%',
   },
   reelContainer: {
     width: SCREEN_WIDTH,
