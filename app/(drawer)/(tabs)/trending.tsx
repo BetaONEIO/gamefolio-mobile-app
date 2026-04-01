@@ -3922,10 +3922,14 @@ const styles = StyleSheet.create({
   screenshotPageImageWrapper: {
     width: SCREEN_WIDTH,
     overflow: 'hidden',
+    backgroundColor: '#000',
   },
   screenshotPageImage: {
-    width: '100%',
-    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   reelContainer: {
     width: SCREEN_WIDTH,
