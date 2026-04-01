@@ -1037,7 +1037,6 @@ const ClipItem = React.memo(({
 
             <TouchableOpacity style={styles.clipBottomActionButton} onPress={onShare}>
               <Share2 size={24} color="#FFF" />
-              <Text style={styles.clipBottomActionText}>Share</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1257,7 +1256,6 @@ const ScreenshotItem = React.memo(({
             </TouchableOpacity>
             <TouchableOpacity style={styles.clipBottomActionButton} onPress={onShare}>
               <Share2 size={24} color="#FFF" />
-              <Text style={styles.clipBottomActionText}>Share</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -3385,7 +3383,6 @@ export default function TrendingScreen() {
                     }}
                   >
                     <Share2 size={28} color="#FFF" />
-                    <Text style={styles.reelActionCount}>Share</Text>
                   </TouchableOpacity>
                 </View>
               </View>
