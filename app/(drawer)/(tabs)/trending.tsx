@@ -4021,7 +4021,7 @@ const styles = StyleSheet.create({
   },
   reelInfoSection: {
     flex: 1,
-    marginBottom: 8,
+    marginBottom: 0,
   },
   reelUserRow: {
     flexDirection: 'row',
