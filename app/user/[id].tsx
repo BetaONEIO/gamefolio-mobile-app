@@ -524,27 +524,45 @@ function createStyles(theme: ProfileThemeTokens) {
 
     tabsContainer: {
       marginBottom: 16,
+      backgroundColor: '#131F2A',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      borderRadius: 20,
     },
     tabsContent: {
       paddingBottom: 0,
+      alignItems: 'center',
+      gap: 12,
     },
     tab: {
-      paddingVertical: 12,
-      paddingHorizontal: 4,
-      marginRight: 24,
-      borderBottomWidth: 2,
-      borderBottomColor: 'transparent',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      marginRight: 0,
+      borderRadius: 20,
+      backgroundColor: 'transparent',
     },
     tabActive: {
-      borderBottomColor: theme.tabActiveBorder,
+      backgroundColor: '#4ADE80',
     },
     tabText: {
-      color: theme.muted,
-      fontSize: 16,
+      color: '#94A3B8',
+      fontSize: 14,
       fontWeight: '600',
     },
     tabTextActive: {
-      color: theme.tabActiveText,
+      color: '#002E15',
+    },
+    tabsCameraContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      marginLeft: 'auto',
+      paddingVertical: 8,
+    },
+    tabsCameraText: {
+      color: '#94A3B8',
+      fontWeight: '600',
+      fontSize: 14,
     },
 
     nametagTopColumn: {
@@ -1358,32 +1376,27 @@ export default function PublicProfileScreen() {
             </View>
           </View>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsContainer, { backgroundColor: theme.tabInactiveBg }]} contentContainerStyle={[styles.tabsContent, { paddingHorizontal: 16 }]}>
-            {TABS.map((tab) => {
-              const countMap: Record<string, number> = {
-                Clips: clips.length,
-                Reels: reels.length,
-                Screenshots: screenshots.length,
-                Favorites: favoriteGames.length,
-              };
-              const count = countMap[tab];
-              const label = `${tab} · ${count}`;
-              const isActive = activeTab === tab;
-              return (
-                <TouchableOpacity
-                  key={tab}
-                  style={[
-                    styles.tab,
-                    isActive && styles.tabActive,
-                    isActive && { backgroundColor: theme.tabActiveBg, borderRadius: 8, paddingHorizontal: 12 },
-                  ]}
-                  onPress={() => setActiveTab(tab)}
-                >
-                  <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          <View style={styles.tabsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsContent}>
+              {['Clips', 'Reels', 'Favorites'].map((tab) => {
+                const label = tab === 'Favorites' ? 'Games' : tab;
+                const isActive = activeTab === tab;
+                return (
+                  <TouchableOpacity
+                    key={tab}
+                    style={[styles.tab, isActive && styles.tabActive]}
+                    onPress={() => setActiveTab(tab)}
+                  >
+                    <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+            <View style={styles.tabsCameraContainer}>
+              <Camera size={16} color="#94A3B8" />
+              <Text style={styles.tabsCameraText}>{screenshots.length}/10</Text>
+            </View>
+          </View>
         )}
 
         {/* Tab Content */}
