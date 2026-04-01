@@ -267,6 +267,14 @@ const ReelItem = React.memo(({
   }, []);
 
   useEffect(() => {
+    Animated.timing(menuSlideAnim, {
+      toValue: menuVisible ? 0 : 1,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [menuVisible]);
+
+  useEffect(() => {
     Animated.spring(commentsSlideAnim, {
       toValue: showComments ? 1 : 0,
       useNativeDriver: false,
@@ -1541,6 +1549,8 @@ export default function TrendingScreen() {
   );
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const menuSlideAnim = useRef(new Animated.Value(1)).current;
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ever');
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeScreenshotIndex, setActiveScreenshotIndex] = useState(0);
@@ -3190,7 +3200,21 @@ export default function TrendingScreen() {
 
   const renderHeader = (isReels: boolean) => (
     <>
-      <View style={styles.topHeader}>
+      <Animated.View 
+        style={[
+          styles.topHeader,
+          {
+            transform: [
+              {
+                translateX: menuSlideAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, SCREEN_WIDTH],
+                }),
+              },
+            ],
+          },
+        ]}
+      >
         <View style={styles.filterButtonsRow}>
           <TouchableOpacity
             style={styles.filterButton}
@@ -3234,7 +3258,7 @@ export default function TrendingScreen() {
             <Settings size={18} color={showTimeDropdown ? '#4ADE80' : '#FFF'} />
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
       {showFilterDropdown && (
         <View style={styles.filterDropdown}>
@@ -3412,6 +3436,17 @@ export default function TrendingScreen() {
       )}
 
       {renderScreenshotModal()}
+
+      <TouchableOpacity
+        style={[styles.menuCogButton, { top: insets.top + 12 }]}
+        onPress={() => {
+          setMenuVisible(!menuVisible);
+          setShowFilterDropdown(false);
+          setShowTimeDropdown(false);
+        }}
+      >
+        <Settings size={20} color={menuVisible ? '#4ADE80' : '#FFF'} />
+      </TouchableOpacity>
 
       {shareContent && (
         <ShareClipModal
@@ -4233,6 +4268,16 @@ const styles = StyleSheet.create({
   settingsButtonActive: {
     borderColor: '#4ADE80',
     backgroundColor: 'rgba(74, 222, 128, 0.15)',
+  },
+  menuCogButton: {
+    position: 'absolute',
+    right: 12,
+    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+    padding: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 222, 128, 0.3)',
+    zIndex: 100,
   },
   filterDropdown: {
     backgroundColor: 'rgba(30, 41, 59, 0.95)',
