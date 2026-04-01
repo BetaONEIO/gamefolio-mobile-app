@@ -449,79 +449,6 @@ const ReelItem = React.memo(({
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.reelOverlayContent, { bottom: insets.bottom + 60 }]} pointerEvents="box-none">
-        <View style={styles.reelBottomSection}>
-          <View style={styles.reelInfoSection}>
-            <TouchableOpacity 
-              style={styles.reelUserRow}
-              onPress={() => onUserPress(item.user.username)}
-            >
-              <Image source={{ uri: item.user.avatarUrl }} style={styles.reelAvatar} />
-              <Text style={styles.reelUsername}>@{item.user.username}</Text>
-              <TouchableOpacity style={styles.followButton}>
-                <Text style={styles.followButtonText}>Follow</Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-
-            <Text style={styles.reelTitle} numberOfLines={2}>{truncateTitle(item.title, 34)}</Text>
-            
-            {item.description && (
-              <ExpandableText text={item.description} maxLength={100} />
-            )}
-
-            {item.game && (
-              <TouchableOpacity 
-                style={styles.reelGameRow}
-                onPress={() => router.push({ pathname: '/game/[id]', params: { id: item.game.id.toString() } })}
-                activeOpacity={0.7}
-              >
-                <Gamepad2 size={14} color="#4ADE80" />
-                <Text style={styles.reelGameText}>{shortenGameName(item.game.name)}</Text>
-              </TouchableOpacity>
-            )}
-
-            <View style={styles.reelMusicRow}>
-              <Music2 size={14} color="#FFF" />
-              <Text style={styles.reelMusicText} numberOfLines={1}>Original audio • {item.user.username}</Text>
-            </View>
-          </View>
-
-          <View style={styles.reelActionsColumn}>
-            <View style={styles.reelActionButton}>
-              <Text style={styles.reelActionCount}>{formatNumber(item.views)}</Text>
-            </View>
-
-            <TouchableOpacity style={styles.reelActionButton} onPress={onLike}>
-              <Heart 
-                size={28} 
-                color={item.isLiked ? "#EF4444" : "#FFF"} 
-                fill={item.isLiked ? "#EF4444" : "transparent"}
-              />
-              <Text style={styles.reelActionCount}>{formatNumber(item._count?.likes || 0)}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.reelActionButton} onPress={onFire}>
-              {item.isFired ? (
-                <FlameAnimation isActive={false} size={28} />
-              ) : (
-                <Flame size={28} color="#FFF" fill="transparent" />
-              )}
-              <Text style={styles.reelActionCount}>{formatNumber(item._count?.fires || 0)}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.reelActionButton} onPress={onToggleComments}>
-              <MessageSquare size={28} color="#FFF" />
-              <Text style={styles.reelActionCount}>{formatNumber(item._count?.comments || 0)}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.reelActionButton} onPress={onShare}>
-              <Share2 size={28} color="#FFF" />
-              <Text style={styles.reelActionCount}>Share</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-
       <Animated.View style={[styles.commentsSection, { height: commentsHeight }]}>
         <View style={styles.commentsHeader}>
           <View style={styles.commentsHeaderDragHandle} />
@@ -3047,7 +2974,101 @@ export default function TrendingScreen() {
       {contentType === 'reels' ? (
         <>
           {renderReelsView()}
-          
+
+          {reels.length > 0 && !showReelComments && reels[activeIndex] && (
+            <View style={[styles.reelOverlayContent, { bottom: insets.bottom + 60 }]} pointerEvents="box-none">
+              <View style={styles.reelBottomSection}>
+                <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
+                  <TouchableOpacity
+                    style={styles.reelUserRow}
+                    onPress={() => handleUserPress(reels[activeIndex].user.username)}
+                  >
+                    <Image source={{ uri: reels[activeIndex].user.avatarUrl }} style={styles.reelAvatar} />
+                    <Text style={styles.reelUsername}>@{reels[activeIndex].user.username}</Text>
+                    <TouchableOpacity style={styles.followButton}>
+                      <Text style={styles.followButtonText}>Follow</Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+
+                  <Text style={styles.reelTitle} numberOfLines={2}>{truncateTitle(reels[activeIndex].title, 34)}</Text>
+
+                  {reels[activeIndex].description ? (
+                    <ExpandableText text={reels[activeIndex].description} maxLength={100} />
+                  ) : null}
+
+                  {reels[activeIndex].game ? (
+                    <TouchableOpacity
+                      style={styles.reelGameRow}
+                      onPress={() => router.push({ pathname: '/game/[id]', params: { id: reels[activeIndex].game.id.toString() } })}
+                      activeOpacity={0.7}
+                    >
+                      <Gamepad2 size={14} color="#4ADE80" />
+                      <Text style={styles.reelGameText}>{shortenGameName(reels[activeIndex].game.name)}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+
+                  <View style={styles.reelMusicRow}>
+                    <Music2 size={14} color="#FFF" />
+                    <Text style={styles.reelMusicText} numberOfLines={1}>Original audio • {reels[activeIndex].user.username}</Text>
+                  </View>
+                </View>
+
+                <View style={[styles.reelActionsColumn, { pointerEvents: 'auto' } as any]}>
+                  <View style={styles.reelActionButton}>
+                    <Text style={styles.reelActionCount}>{formatNumber(reels[activeIndex].views)}</Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={styles.reelActionButton}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      likeReelMutate(reels[activeIndex].id);
+                    }}
+                  >
+                    <Heart
+                      size={28}
+                      color={reels[activeIndex].isLiked ? '#EF4444' : '#FFF'}
+                      fill={reels[activeIndex].isLiked ? '#EF4444' : 'transparent'}
+                    />
+                    <Text style={styles.reelActionCount}>{formatNumber(reels[activeIndex]._count?.likes || 0)}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.reelActionButton}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                      fireReelMutate(reels[activeIndex].id);
+                    }}
+                  >
+                    {reels[activeIndex].isFired ? (
+                      <FlameAnimation isActive={false} size={28} />
+                    ) : (
+                      <Flame size={28} color="#FFF" fill="transparent" />
+                    )}
+                    <Text style={styles.reelActionCount}>{formatNumber(reels[activeIndex]._count?.fires || 0)}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.reelActionButton} onPress={toggleReelComments}>
+                    <MessageSquare size={28} color="#FFF" />
+                    <Text style={styles.reelActionCount}>{formatNumber(reels[activeIndex]._count?.comments || 0)}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.reelActionButton}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShareContent(reels[activeIndex]);
+                      setShareModalVisible(true);
+                    }}
+                  >
+                    <Share2 size={28} color="#FFF" />
+                    <Text style={styles.reelActionCount}>Share</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
+
           <View style={[styles.topOverlay, { paddingTop: insets.top + 10 }]}>
             {renderHeader(true)}
           </View>
