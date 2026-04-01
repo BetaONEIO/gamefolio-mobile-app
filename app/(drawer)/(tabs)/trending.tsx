@@ -267,14 +267,6 @@ const ReelItem = React.memo(({
   }, []);
 
   useEffect(() => {
-    Animated.timing(menuSlideAnim, {
-      toValue: menuVisible ? 0 : 1,
-      duration: 300,
-      useNativeDriver: false,
-    }).start();
-  }, [menuVisible]);
-
-  useEffect(() => {
     Animated.spring(commentsSlideAnim, {
       toValue: showComments ? 1 : 0,
       useNativeDriver: false,
@@ -1590,6 +1582,14 @@ export default function TrendingScreen() {
 
   const router = useRouter();
   const { user, getAccessToken } = useAuth();
+
+  useEffect(() => {
+    Animated.timing(menuSlideAnim, {
+      toValue: menuVisible ? 0 : 1,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  }, [menuVisible]);
 
   useEffect(() => {
     const fetchTwitchToken = async () => {
