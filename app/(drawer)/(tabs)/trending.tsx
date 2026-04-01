@@ -1014,7 +1014,7 @@ const ClipItem = React.memo(({
           <View style={styles.clipBottomActions}>
             <TouchableOpacity style={styles.clipBottomActionButton} onPress={onLike}>
               <Heart 
-                size={24} 
+                size={18} 
                 color={item.isLiked ? "#EF4444" : "#FFF"} 
                 fill={item.isLiked ? "#EF4444" : "transparent"}
               />
@@ -1023,20 +1023,20 @@ const ClipItem = React.memo(({
 
             <TouchableOpacity style={styles.clipBottomActionButton} onPress={onFire}>
               {item.isFired ? (
-                <FlameAnimation isActive={false} size={24} />
+                <FlameAnimation isActive={false} size={18} />
               ) : (
-                <Flame size={24} color="#FFF" fill="transparent" />
+                <Flame size={18} color="#FFF" fill="transparent" />
               )}
               <Text style={styles.clipBottomActionText}>{formatNumber(item._count?.fires || 0)}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.clipBottomActionButton} onPress={onToggleComments}>
-              <MessageSquare size={24} color="#FFF" />
+              <MessageSquare size={18} color="#FFF" />
               <Text style={styles.clipBottomActionText}>{formatNumber(item._count?.comments || 0)}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.clipBottomActionButton} onPress={onShare}>
-              <Share2 size={24} color="#FFF" />
+              <Share2 size={18} color="#FFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -1236,7 +1236,7 @@ const ScreenshotItem = React.memo(({
           <View style={styles.clipBottomActions}>
             <TouchableOpacity style={styles.clipBottomActionButton} onPress={onLike}>
               <Heart
-                size={24}
+                size={18}
                 color={item.isLiked ? '#EF4444' : '#FFF'}
                 fill={item.isLiked ? '#EF4444' : 'transparent'}
               />
@@ -1244,18 +1244,18 @@ const ScreenshotItem = React.memo(({
             </TouchableOpacity>
             <TouchableOpacity style={styles.clipBottomActionButton} onPress={onFire}>
               {item.isFired ? (
-                <FlameAnimation isActive={false} size={24} />
+                <FlameAnimation isActive={false} size={18} />
               ) : (
-                <Flame size={24} color="#FFF" fill="transparent" />
+                <Flame size={18} color="#FFF" fill="transparent" />
               )}
               <Text style={styles.clipBottomActionText}>{formatNumber(item._count?.fires || 0)}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.clipBottomActionButton} onPress={onToggleComments}>
-              <MessageSquare size={24} color="#FFF" />
+              <MessageSquare size={18} color="#FFF" />
               <Text style={styles.clipBottomActionText}>{formatNumber(item._count?.comments || 0)}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.clipBottomActionButton} onPress={onShare}>
-              <Share2 size={24} color="#FFF" />
+              <Share2 size={18} color="#FFF" />
             </TouchableOpacity>
           </View>
         </View>
@@ -3982,16 +3982,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   reelAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
     borderColor: '#FFF',
-    marginRight: 10,
+    marginRight: 8,
   },
   reelUsername: {
     color: '#FFF',
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '700' as const,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
@@ -3999,36 +3999,36 @@ const styles = StyleSheet.create({
   },
   followButton: {
     backgroundColor: '#4ADE80',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginLeft: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 5,
+    marginLeft: 8,
   },
   followButtonText: {
     color: '#000',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700' as const,
   },
   reelTitle: {
     color: '#FFF',
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600' as const,
-    marginBottom: 4,
+    marginBottom: 3,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
   reelDescription: {
     color: 'rgba(255,255,255,0.9)',
-    fontSize: 14,
-    marginBottom: 4,
+    fontSize: 12,
+    marginBottom: 3,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
   seeMoreButton: {
     color: '#4ADE80',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600' as const,
     marginTop: 2,
     textShadowColor: 'rgba(0,0,0,0.5)',
@@ -4038,35 +4038,35 @@ const styles = StyleSheet.create({
   reelGameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
+    gap: 4,
+    marginBottom: 3,
   },
   reelGameText: {
     color: '#4ADE80',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600' as const,
   },
   reelMusicRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   reelMusicText: {
     color: '#FFF',
-    fontSize: 12,
+    fontSize: 10,
     flex: 1,
   },
   reelActionsColumn: {
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   reelActionButton: {
     alignItems: 'center',
   },
   reelActionCount: {
     color: '#FFF',
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 10,
+    marginTop: 3,
     fontWeight: '600' as const,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
@@ -4103,7 +4103,7 @@ const styles = StyleSheet.create({
   },
   clipBottomActionText: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '600' as const,
   },
   fullScreenButtonOverlay: {
