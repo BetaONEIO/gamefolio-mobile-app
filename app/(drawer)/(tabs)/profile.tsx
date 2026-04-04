@@ -475,19 +475,30 @@ export default function ProfileScreen() {
           {favoriteGames.length > 0 ? (
             <View style={styles.bannerActionsOverlay}>
               <View style={styles.nametagTopColumn}>
-                <LinearGradient
-                  colors={theme.nametagGradient as [string, string, ...string[]]}
-                  start={{ x: 0, y: 0.5 }}
-                  end={{ x: 1, y: 0.5 }}
-                  style={styles.nametagTopCard}
-                >
-                  {favoriteGames[0].imageUrl ? (
-                    <Image source={{ uri: getImageUrl(favoriteGames[0].imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
-                  ) : null}
-                  <Text style={[styles.nametagTopGameName, { color: theme.isLight ? '#1a1a1a' : '#FFFFFF' }]} numberOfLines={1}>
-                    {favoriteGames[0].name.toUpperCase()}
-                  </Text>
-                </LinearGradient>
+                {activeThemeId === 'cyberpunk' ? (
+                  <View style={styles.nametagTopCard}>
+                    {favoriteGames[0].imageUrl ? (
+                      <Image source={{ uri: getImageUrl(favoriteGames[0].imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
+                    ) : null}
+                    <Text style={[styles.nametagTopGameName, { color: theme.isLight ? '#1a1a1a' : '#FFFFFF' }]} numberOfLines={1}>
+                      {favoriteGames[0].name.toUpperCase()}
+                    </Text>
+                  </View>
+                ) : (
+                  <LinearGradient
+                    colors={theme.nametagGradient as [string, string, ...string[]]}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={styles.nametagTopCard}
+                  >
+                    {favoriteGames[0].imageUrl ? (
+                      <Image source={{ uri: getImageUrl(favoriteGames[0].imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
+                    ) : null}
+                    <Text style={[styles.nametagTopGameName, { color: theme.isLight ? '#1a1a1a' : '#FFFFFF' }]} numberOfLines={1}>
+                      {favoriteGames[0].name.toUpperCase()}
+                    </Text>
+                  </LinearGradient>
+                )}
                 <Text style={styles.nametagLabel}>NAMETAG</Text>
               </View>
             </View>
@@ -624,13 +635,13 @@ export default function ProfileScreen() {
                     { value: profileData.stats.following, label: h.statLabels[2] },
                   ] as { value: number; label: string }[]).map((stat, i) => (
                     <View key={i} style={[styles.statColumn, h.statAlign === 'flex-start' && { alignItems: 'flex-start' }]}>
-                      <Text style={[styles.statNumber, { color: activeThemeId === 'cyberpunk' ? '#00D9FF' : h.statNumberColor, fontSize: h.statNumberSize }]}>{stat.value}</Text>
+                      <Text style={[styles.statNumber, { color: activeThemeId === 'cyberpunk' ? '#00D9FF' : h.statNumberColor, fontSize: h.statNumberSize }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 20 }]}>{stat.value}</Text>
                       {h.statLabelPill ? (
                         <View style={[styles.statLabelPill, { borderColor: h.accent, backgroundColor: h.accentMuted }]}>
-                          <Text style={[styles.statLabelPillText, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : h.accent }]}>{stat.label.toUpperCase()}</Text>
+                          <Text style={[styles.statLabelPillText, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : h.accent }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }]}>{stat.label.toUpperCase()}</Text>
                         </View>
                       ) : (
-                        <Text style={[styles.statLabel, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : h.statLabelColor }]}>{stat.label.toUpperCase()}</Text>
+                        <Text style={[styles.statLabel, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : h.statLabelColor }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }]}>{stat.label.toUpperCase()}</Text>
                       )}
                     </View>
                   ))}
@@ -677,15 +688,15 @@ export default function ProfileScreen() {
                 <View key={index} style={[
                   styles.platformTag,
                   {
-                    backgroundColor: tagBg,
-                    borderColor: tagBorder,
-                    borderWidth: isOutlined ? 1.5 : 0,
+                    backgroundColor: activeThemeId === 'cyberpunk' ? 'transparent' : tagBg,
+                    borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : tagBorder,
+                    borderWidth: activeThemeId === 'cyberpunk' ? 1.5 : (isOutlined ? 1.5 : 0),
                   }
                 ]}>
-                  {platform.type === 'xbox' && <Gamepad2 size={12} color={iconColor} />}
-                  {platform.type === 'ps' && <Gamepad2 size={12} color={iconColor} />}
-                  {platform.type === 'pc' && <Monitor size={12} color={iconColor} />}
-                  <Text style={[styles.platformText, { color: tagTextColor }]}>{platform.name}</Text>
+                  {platform.type === 'xbox' && <Gamepad2 size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : iconColor} />}
+                  {platform.type === 'ps' && <Gamepad2 size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : iconColor} />}
+                  {platform.type === 'pc' && <Monitor size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : iconColor} />}
+                  <Text style={[styles.platformText, { color: activeThemeId === 'cyberpunk' ? '#00D9FF' : tagTextColor }]}>{platform.name}</Text>
                 </View>
               );
             })}
@@ -699,36 +710,36 @@ export default function ProfileScreen() {
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
                 {activeTab === 'Clips' ? (
                   <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.menuTabPillLabel}>CLIPS</Text>
-                    <Text style={styles.menuTabPillCount}>{clips.length}/15</Text>
+                    <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }]}>CLIPS</Text>
+                    <Text style={[styles.menuTabPillCount, activeThemeId === 'cyberpunk' && { color: '#D600FF', fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }]}>{clips.length}/15</Text>
                   </View>
                 ) : (
                   <>
-                    <Text style={[styles.menuTabLabel, { color: theme.muted }]}>CLIPS</Text>
-                    <Text style={[styles.menuTabCount, { color: theme.muted }]}>{clips.length}/15</Text>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 11, color: '#00D9FF' }]}>CLIPS</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9, color: '#D600FF' }]}>{clips.length}/15</Text>
                   </>
                 )}
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
                 {activeTab === 'Reels' ? (
                   <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.menuTabPillLabel}>REELS</Text>
-                    <Text style={styles.menuTabPillCount}>{reels.length}/15</Text>
+                    <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }]}>REELS</Text>
+                    <Text style={[styles.menuTabPillCount, activeThemeId === 'cyberpunk' && { color: '#D600FF', fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }]}>{reels.length}/15</Text>
                   </View>
                 ) : (
                   <>
-                    <Text style={[styles.menuTabLabel, { color: theme.muted }]}>REELS</Text>
-                    <Text style={[styles.menuTabCount, { color: theme.muted }]}>{reels.length}/15</Text>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 11, color: '#00D9FF' }]}>REELS</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9, color: '#D600FF' }]}>{reels.length}/15</Text>
                   </>
                 )}
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
                 {activeTab === 'Favorites' ? (
                   <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.menuTabPillLabel}>GAMES</Text>
+                    <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }]}>GAMES</Text>
                   </View>
                 ) : (
-                  <Text style={[styles.menuTabLabel, { color: theme.muted }]}>GAMES</Text>
+                  <Text style={[styles.menuTabLabel, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 11, color: '#00D9FF' }]}>GAMES</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity style={[styles.menuTab, styles.menuCameraTab]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
