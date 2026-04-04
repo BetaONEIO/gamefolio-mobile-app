@@ -3291,6 +3291,12 @@ export default function TrendingScreen() {
 
           {reels.length > 0 && !showReelComments && showReelOverlay && reels[activeIndex] && (
             <View style={[styles.reelOverlayContent, { bottom: insets.bottom }]} pointerEvents="box-none">
+              <TouchableOpacity 
+                style={[styles.closeOverlayButton, { pointerEvents: 'auto' }]}
+                onPress={() => setShowReelOverlay(false)}
+              >
+                <X size={24} color="#FFF" />
+              </TouchableOpacity>
               <View style={styles.reelBottomSection}>
                 <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
                   <TouchableOpacity
@@ -3393,6 +3399,12 @@ export default function TrendingScreen() {
 
           {clips.length > 0 && !showClipComments && showClipOverlay && clips[activeIndex] && (
             <View style={[styles.reelOverlayContent, { bottom: insets.bottom }]} pointerEvents="box-none">
+              <TouchableOpacity 
+                style={[styles.closeOverlayButton, { pointerEvents: 'auto' }]}
+                onPress={() => setShowClipOverlay(false)}
+              >
+                <X size={24} color="#FFF" />
+              </TouchableOpacity>
               <View style={styles.reelBottomSection}>
                 <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
                   <TouchableOpacity
@@ -3488,6 +3500,12 @@ export default function TrendingScreen() {
 
           {screenshots.length > 0 && !showScreenshotComments && showScreenshotOverlay && screenshots[activeScreenshotIndex] && (
             <View style={[styles.reelOverlayContent, { bottom: insets.bottom }]} pointerEvents="box-none">
+              <TouchableOpacity 
+                style={[styles.closeOverlayButton, { pointerEvents: 'auto' }]}
+                onPress={() => setShowScreenshotOverlay(false)}
+              >
+                <X size={24} color="#FFF" />
+              </TouchableOpacity>
               <View style={styles.reelBottomSection}>
                 <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
                   <TouchableOpacity
@@ -4149,6 +4167,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 16,
+  },
+  closeOverlayButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
   reelBottomSection: {
     flexDirection: 'row',
