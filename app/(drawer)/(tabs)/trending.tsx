@@ -1541,7 +1541,7 @@ export default function TrendingScreen() {
     tab && ['reels', 'clips', 'screenshots'].includes(tab) ? tab : 'reels'
   );
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [showTimeDropdown, setShowTimeDropdown] = useState(true);
+  const [showTimeDropdown, setShowTimeDropdown] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const menuSlideAnim = useRef(new Animated.Value(1)).current;
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ever');
@@ -3453,11 +3453,12 @@ export default function TrendingScreen() {
       <TouchableOpacity
         style={[styles.menuCogButton, { top: insets.top + 12 }]}
         onPress={() => {
-          setShowTimeDropdown(!showTimeDropdown);
+          setMenuVisible(!menuVisible);
           setShowFilterDropdown(false);
+          setShowTimeDropdown(false);
         }}
       >
-        {showTimeDropdown ? (
+        {menuVisible ? (
           <Eye size={20} color="#4ADE80" />
         ) : (
           <EyeOff size={20} color="#4ADE80" />
