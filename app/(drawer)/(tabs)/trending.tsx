@@ -3291,12 +3291,6 @@ export default function TrendingScreen() {
 
           {reels.length > 0 && !showReelComments && showReelOverlay && reels[activeIndex] && (
             <View style={[styles.reelOverlayContent, { bottom: insets.bottom }]} pointerEvents="box-none">
-              <TouchableOpacity 
-                style={[styles.closeOverlayButton, { pointerEvents: 'auto' }]}
-                onPress={() => setShowReelOverlay(false)}
-              >
-                <X size={24} color="#FFF" />
-              </TouchableOpacity>
               <View style={styles.reelBottomSection}>
                 <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
                   <TouchableOpacity
@@ -3399,12 +3393,6 @@ export default function TrendingScreen() {
 
           {clips.length > 0 && !showClipComments && showClipOverlay && clips[activeIndex] && (
             <View style={[styles.reelOverlayContent, { bottom: insets.bottom }]} pointerEvents="box-none">
-              <TouchableOpacity 
-                style={[styles.closeOverlayButton, { pointerEvents: 'auto' }]}
-                onPress={() => setShowClipOverlay(false)}
-              >
-                <X size={24} color="#FFF" />
-              </TouchableOpacity>
               <View style={styles.reelBottomSection}>
                 <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
                   <TouchableOpacity
@@ -3500,12 +3488,6 @@ export default function TrendingScreen() {
 
           {screenshots.length > 0 && !showScreenshotComments && showScreenshotOverlay && screenshots[activeScreenshotIndex] && (
             <View style={[styles.reelOverlayContent, { bottom: insets.bottom }]} pointerEvents="box-none">
-              <TouchableOpacity 
-                style={[styles.closeOverlayButton, { pointerEvents: 'auto' }]}
-                onPress={() => setShowScreenshotOverlay(false)}
-              >
-                <X size={24} color="#FFF" />
-              </TouchableOpacity>
               <View style={styles.reelBottomSection}>
                 <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
                   <TouchableOpacity
@@ -3598,6 +3580,13 @@ export default function TrendingScreen() {
       )}
 
       {renderScreenshotModal()}
+
+      <TouchableOpacity
+        style={[styles.backButton, { top: insets.top + 12 }]}
+        onPress={() => router.back()}
+      >
+        <X size={20} color="#FFF" />
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={[styles.menuCogButton, { top: insets.top + 12 }]}
@@ -4447,6 +4436,17 @@ const styles = StyleSheet.create({
   settingsButtonActive: {
     borderColor: '#4ADE80',
     backgroundColor: 'rgba(74, 222, 128, 0.15)',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
   },
   menuCogButton: {
     position: 'absolute',
