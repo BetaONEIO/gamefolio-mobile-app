@@ -1099,58 +1099,6 @@ export default function PublicProfileScreen() {
 
         </View>
 
-        {!isMe && (
-          <View style={styles.belowBannerRow}>
-            <View style={{ flex: 1 }} />
-            <View style={styles.rightActionsColumn}>
-              <View style={styles.actionsRow}>
-                <TouchableOpacity
-                  style={styles.iconActionBtn}
-                  onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
-                >
-                  <MessageSquare size={18} color="#FFFFFF" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.followBtn, isFollowing && styles.followingBtn]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setIsFollowing(f => !f);
-                  }}
-                >
-                  {isFollowing ? (
-                    <Text style={styles.followBtnTextActive}>Following</Text>
-                  ) : (
-                    <Text style={styles.followBtnText}>Follow</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-              {currentGame ? (
-                <View style={styles.nametagTopColumn}>
-                  <LinearGradient
-                    colors={theme.nametagGradient}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={styles.nametagTopCard}
-                  >
-                    {currentGame.imageUrl ? (
-                      <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
-                    ) : null}
-                    <Text style={styles.nametagTopGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
-                  </LinearGradient>
-                  <Text style={styles.nametagTopLabel}>NAMETAG</Text>
-                </View>
-              ) : null}
-            </View>
-          </View>
-        )}
-
-        {isBirthdayToday(user?.birthday) && (
-          <BirthdayBanner
-            displayName={displayName}
-            isOwnProfile={isMe || false}
-          />
-        )}
-
         {/* User Name / Handle / Badge */}
         <View style={styles.header}>
           <View style={styles.userInfoSection}>
@@ -1208,6 +1156,58 @@ export default function PublicProfileScreen() {
 
           </View>
         </View>
+
+        {!isMe && (
+          <View style={styles.belowBannerRow}>
+            <View style={{ flex: 1 }} />
+            <View style={styles.rightActionsColumn}>
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  style={styles.iconActionBtn}
+                  onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
+                >
+                  <MessageSquare size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.followBtn, isFollowing && styles.followingBtn]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setIsFollowing(f => !f);
+                  }}
+                >
+                  {isFollowing ? (
+                    <Text style={styles.followBtnTextActive}>Following</Text>
+                  ) : (
+                    <Text style={styles.followBtnText}>Follow</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+              {currentGame ? (
+                <View style={styles.nametagTopColumn}>
+                  <LinearGradient
+                    colors={theme.nametagGradient}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={styles.nametagTopCard}
+                  >
+                    {currentGame.imageUrl ? (
+                      <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
+                    ) : null}
+                    <Text style={styles.nametagTopGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
+                  </LinearGradient>
+                  <Text style={styles.nametagTopLabel}>NAMETAG</Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+        )}
+
+        {isBirthdayToday(user?.birthday) && (
+          <BirthdayBanner
+            displayName={displayName}
+            isOwnProfile={isMe || false}
+          />
+        )}
 
         {/* Stats card with floating Collection button */}
         <View style={styles.infoSection}>
