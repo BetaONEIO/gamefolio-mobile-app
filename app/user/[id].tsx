@@ -441,7 +441,6 @@ function createStyles(theme: ProfileThemeTokens) {
 
     bannerSection: {
       position: 'relative',
-      zIndex: 10,
     },
     bannerContainer: {
       height: 180,
