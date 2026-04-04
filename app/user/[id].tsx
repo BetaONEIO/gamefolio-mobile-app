@@ -1242,14 +1242,14 @@ export default function PublicProfileScreen() {
               {
                 backgroundColor: theme.cardBg,
                 borderRadius: theme.cardBorderRadius,
-                borderWidth: 1,
-                borderColor: theme.cardBorder,
+                borderWidth: activeThemeId === 'cyberpunk' ? 2 : 1,
+                borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : theme.cardBorder,
                 overflow: theme.hasDripEffect ? 'visible' : 'hidden',
                 marginBottom: theme.hasDripEffect ? 28 : 4,
-                shadowColor: theme.shadowColor,
+                shadowColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : theme.shadowColor,
                 shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.55,
-                shadowRadius: 16,
+                shadowOpacity: activeThemeId === 'cyberpunk' ? 0.6 : 0.55,
+                shadowRadius: activeThemeId === 'cyberpunk' ? 12 : 16,
                 elevation: 10,
               }
             ]}
@@ -1268,13 +1268,13 @@ export default function PublicProfileScreen() {
                     { value: user._count?.following || 0, label: statFollowing },
                   ] as { value: number; label: string }[]).map((stat, i) => (
                     <View key={i} style={[styles.statColumn, theme.statAlign === 'flex-start' ? { alignItems: 'flex-start' } : undefined]}>
-                      <Text style={[styles.statNumber, { color: theme.statNumberColor, fontSize: theme.statNumberFontSize }]}>{stat.value}</Text>
+                      <Text style={[styles.statNumber, { color: activeThemeId === 'cyberpunk' ? '#00D9FF' : theme.statNumberColor, fontSize: theme.statNumberFontSize }]}>{stat.value}</Text>
                       {theme.statLabelPill ? (
                         <View style={[styles.statLabelPill, { borderColor: theme.accent, backgroundColor: theme.accentMuted }]}>
-                          <Text style={[styles.statLabelPillText, { color: theme.accent }]}>{stat.label.toUpperCase()}</Text>
+                          <Text style={[styles.statLabelPillText, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : theme.accent }]}>{stat.label.toUpperCase()}</Text>
                         </View>
                       ) : (
-                        <Text style={[styles.statLabel, { color: theme.muted }]}>{stat.label.toUpperCase()}</Text>
+                        <Text style={[styles.statLabel, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : theme.muted }]}>{stat.label.toUpperCase()}</Text>
                       )}
                     </View>
                   ))}

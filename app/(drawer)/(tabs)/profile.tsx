@@ -602,10 +602,12 @@ export default function ProfileScreen() {
               {
                 backgroundColor: h.cardBg,
                 borderRadius: h.cardBorderRadius,
-                borderWidth: 1,
-                borderColor: h.cardBorder,
-                shadowColor: theme.shadowColor,
+                borderWidth: activeThemeId === 'cyberpunk' ? 2 : 1,
+                borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : h.cardBorder,
+                shadowColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : theme.shadowColor,
                 shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: activeThemeId === 'cyberpunk' ? 0.6 : 0.55,
+                shadowRadius: activeThemeId === 'cyberpunk' ? 12 : 16,
               },
             ]}
           >
@@ -622,13 +624,13 @@ export default function ProfileScreen() {
                     { value: profileData.stats.following, label: h.statLabels[2] },
                   ] as { value: number; label: string }[]).map((stat, i) => (
                     <View key={i} style={[styles.statColumn, h.statAlign === 'flex-start' && { alignItems: 'flex-start' }]}>
-                      <Text style={[styles.statNumber, { color: h.statNumberColor, fontSize: h.statNumberSize }]}>{stat.value}</Text>
+                      <Text style={[styles.statNumber, { color: activeThemeId === 'cyberpunk' ? '#00D9FF' : h.statNumberColor, fontSize: h.statNumberSize }]}>{stat.value}</Text>
                       {h.statLabelPill ? (
                         <View style={[styles.statLabelPill, { borderColor: h.accent, backgroundColor: h.accentMuted }]}>
-                          <Text style={[styles.statLabelPillText, { color: h.accent }]}>{stat.label.toUpperCase()}</Text>
+                          <Text style={[styles.statLabelPillText, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : h.accent }]}>{stat.label.toUpperCase()}</Text>
                         </View>
                       ) : (
-                        <Text style={[styles.statLabel, { color: h.statLabelColor }]}>{stat.label.toUpperCase()}</Text>
+                        <Text style={[styles.statLabel, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : h.statLabelColor }]}>{stat.label.toUpperCase()}</Text>
                       )}
                     </View>
                   ))}
