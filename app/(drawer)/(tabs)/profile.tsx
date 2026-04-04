@@ -690,7 +690,51 @@ export default function ProfileScreen() {
         ) : null}
 
         {/* Tabs */}
-        {activeTab === 'Collection' ? (
+        {theme.displayNameFontId === 'impact' ? (
+          <View style={[styles.tabsContainer, { backgroundColor: theme.bg, paddingHorizontal: 16, paddingVertical: 12 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
+                {activeTab === 'Clips' ? (
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>CLIPS</Text>
+                    <Text style={styles.menuTabPillCount}>{clips.length}/15</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }]}>CLIPS</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }]}>{clips.length}/15</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
+                {activeTab === 'Reels' ? (
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>REELS</Text>
+                    <Text style={styles.menuTabPillCount}>{reels.length}/15</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }]}>REELS</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }]}>{reels.length}/15</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
+                {activeTab === 'Favorites' ? (
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>GAMES</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.menuTabLabel, { color: theme.muted }]}>GAMES</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.menuTab, styles.menuCameraTab]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
+                <Camera size={20} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
+                <Text style={[styles.menuTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : activeTab === 'Collection' ? (
           <View style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg, paddingHorizontal: 16, paddingVertical: 8 }]}>
             <View style={[styles.tab, { backgroundColor: theme.tabActiveBg, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
               <Hexagon size={16} color='#0f172b' />

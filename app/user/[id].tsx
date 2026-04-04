@@ -1322,49 +1322,95 @@ export default function PublicProfileScreen() {
         ) : null}
 
         {/* Content Tabs */}
-        <View style={[styles.tabsContainer, { backgroundColor: '#131F2A', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 20 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
-              {activeTab === 'Clips' ? (
-                <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
-                  <Text style={styles.menuTabPillLabel}>Clips</Text>
-                  <Text style={styles.menuTabPillCount}>{clips.length}</Text>
-                </View>
-              ) : (
-                <>
-                  <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Clips</Text>
-                  <Text style={[styles.menuTabCount, { color: theme.muted }]}>{clips.length}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
-              {activeTab === 'Reels' ? (
-                <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
-                  <Text style={styles.menuTabPillLabel}>Reels</Text>
-                  <Text style={styles.menuTabPillCount}>{reels.length}</Text>
-                </View>
-              ) : (
-                <>
-                  <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Reels</Text>
-                  <Text style={[styles.menuTabCount, { color: theme.muted }]}>{reels.length}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
-              {activeTab === 'Favorites' ? (
-                <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
-                  <Text style={styles.menuTabPillLabel}>Games</Text>
-                </View>
-              ) : (
-                <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Games</Text>
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.menuTab, { flex: 0, paddingHorizontal: 8 }]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
-              <Camera size={18} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
-              <Text style={[styles.menuTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
-            </TouchableOpacity>
+        {theme.displayNameFontId === 'impact' ? (
+          <View style={[styles.tabsContainer, { backgroundColor: theme.bg, paddingHorizontal: 16, paddingVertical: 12 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
+                {activeTab === 'Clips' ? (
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>CLIPS</Text>
+                    <Text style={styles.menuTabPillCount}>{clips.length}</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }]}>CLIPS</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }]}>{clips.length}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
+                {activeTab === 'Reels' ? (
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>REELS</Text>
+                    <Text style={styles.menuTabPillCount}>{reels.length}</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }]}>REELS</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }]}>{reels.length}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
+                {activeTab === 'Favorites' ? (
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>GAMES</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.menuTabLabel, { color: theme.muted }]}>GAMES</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.menuTab, styles.menuCameraTab]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
+                <Camera size={20} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
+                <Text style={[styles.menuTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={[styles.tabsContainer, { backgroundColor: '#131F2A', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 20 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
+                {activeTab === 'Clips' ? (
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>Clips</Text>
+                    <Text style={styles.menuTabPillCount}>{clips.length}</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Clips</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }]}>{clips.length}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
+                {activeTab === 'Reels' ? (
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>Reels</Text>
+                    <Text style={styles.menuTabPillCount}>{reels.length}</Text>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Reels</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }]}>{reels.length}</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
+                {activeTab === 'Favorites' ? (
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>Games</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Games</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.menuTab, { flex: 0, paddingHorizontal: 8 }]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
+                <Camera size={18} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
+                <Text style={[styles.menuTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Tab Content */}
         <View style={styles.tabContent}>
