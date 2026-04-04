@@ -566,35 +566,35 @@ function createStyles(theme: ProfileThemeTokens) {
       fontWeight: '600',
       fontSize: 14,
     },
-    zombieTab: {
+    menuTab: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: 6,
     },
-    zombieTabPill: {
+    menuTabPill: {
       borderRadius: 100,
       paddingHorizontal: 18,
       paddingVertical: 11,
       alignItems: 'center',
     },
-    zombieTabPillLabel: {
+    menuTabPillLabel: {
       color: '#0f172b',
       fontSize: 13,
       fontWeight: '700',
       letterSpacing: 0.3,
     },
-    zombieTabPillCount: {
+    menuTabPillCount: {
       color: '#ff4646',
       fontSize: 11,
       fontWeight: '600',
       marginTop: 1,
     },
-    zombieTabLabel: {
+    menuTabLabel: {
       fontSize: 13,
       fontWeight: '600',
     },
-    zombieTabCount: {
+    menuTabCount: {
       fontSize: 11,
       fontWeight: '500',
       marginTop: 1,
@@ -1324,44 +1324,44 @@ export default function PublicProfileScreen() {
         {/* Content Tabs */}
         <View style={[styles.tabsContainer, { backgroundColor: '#131F2A', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 20 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
               {activeTab === 'Clips' ? (
-                <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
-                  <Text style={styles.zombieTabPillLabel}>Clips</Text>
-                  <Text style={styles.zombieTabPillCount}>{clips.length}</Text>
+                <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                  <Text style={styles.menuTabPillLabel}>Clips</Text>
+                  <Text style={styles.menuTabPillCount}>{clips.length}</Text>
                 </View>
               ) : (
                 <>
-                  <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>Clips</Text>
-                  <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{clips.length}</Text>
+                  <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Clips</Text>
+                  <Text style={[styles.menuTabCount, { color: theme.muted }]}>{clips.length}</Text>
                 </>
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
               {activeTab === 'Reels' ? (
-                <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
-                  <Text style={styles.zombieTabPillLabel}>Reels</Text>
-                  <Text style={styles.zombieTabPillCount}>{reels.length}</Text>
+                <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                  <Text style={styles.menuTabPillLabel}>Reels</Text>
+                  <Text style={styles.menuTabPillCount}>{reels.length}</Text>
                 </View>
               ) : (
                 <>
-                  <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>Reels</Text>
-                  <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{reels.length}</Text>
+                  <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Reels</Text>
+                  <Text style={[styles.menuTabCount, { color: theme.muted }]}>{reels.length}</Text>
                 </>
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
               {activeTab === 'Favorites' ? (
-                <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
-                  <Text style={styles.zombieTabPillLabel}>Games</Text>
+                <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                  <Text style={styles.menuTabPillLabel}>Games</Text>
                 </View>
               ) : (
-                <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>Games</Text>
+                <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Games</Text>
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.zombieTab, { flex: 0, paddingHorizontal: 8 }]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
+            <TouchableOpacity style={[styles.menuTab, { flex: 0, paddingHorizontal: 8 }]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
               <Camera size={18} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
-              <Text style={[styles.zombieTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
+              <Text style={[styles.menuTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
             </TouchableOpacity>
           </View>
         </View>

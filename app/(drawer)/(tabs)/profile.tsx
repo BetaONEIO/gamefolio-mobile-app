@@ -700,44 +700,44 @@ export default function ProfileScreen() {
         ) : (
           <View style={[styles.tabsContainer, { backgroundColor: '#131F2A', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 20, marginHorizontal: 16, marginBottom: 8 }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
                 {activeTab === 'Clips' ? (
-                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.zombieTabPillLabel}>Clips</Text>
-                    <Text style={styles.zombieTabPillCount}>{clips.length}/15</Text>
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>Clips</Text>
+                    <Text style={styles.menuTabPillCount}>{clips.length}/15</Text>
                   </View>
                 ) : (
                   <>
-                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>Clips</Text>
-                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{clips.length}/15</Text>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Clips</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }]}>{clips.length}/15</Text>
                   </>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
                 {activeTab === 'Reels' ? (
-                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.zombieTabPillLabel}>Reels</Text>
-                    <Text style={styles.zombieTabPillCount}>{reels.length}/15</Text>
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>Reels</Text>
+                    <Text style={styles.menuTabPillCount}>{reels.length}/15</Text>
                   </View>
                 ) : (
                   <>
-                    <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>Reels</Text>
-                    <Text style={[styles.zombieTabCount, { color: theme.muted }]}>{reels.length}/15</Text>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Reels</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }]}>{reels.length}/15</Text>
                   </>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity style={styles.zombieTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
                 {activeTab === 'Favorites' ? (
-                  <View style={[styles.zombieTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={styles.zombieTabPillLabel}>Games</Text>
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                    <Text style={styles.menuTabPillLabel}>Games</Text>
                   </View>
                 ) : (
-                  <Text style={[styles.zombieTabLabel, { color: theme.muted }]}>Games</Text>
+                  <Text style={[styles.menuTabLabel, { color: theme.muted }]}>Games</Text>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.zombieTab, styles.zombieScreenshotsBtn]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
+              <TouchableOpacity style={[styles.menuTab, styles.menuCameraTab]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
                 <Camera size={18} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
-                <Text style={[styles.zombieTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
+                <Text style={[styles.menuTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1180,40 +1180,40 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  zombieTab: {
+  menuTab: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 6,
   },
-  zombieTabPill: {
+  menuTabPill: {
     borderRadius: 100,
     paddingHorizontal: 18,
     paddingVertical: 11,
     alignItems: 'center',
   },
-  zombieTabPillLabel: {
+  menuTabPillLabel: {
     color: '#0f172b',
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
-  zombieTabPillCount: {
+  menuTabPillCount: {
     color: '#ff4646',
     fontSize: 11,
     fontWeight: '600',
     marginTop: 1,
   },
-  zombieTabLabel: {
+  menuTabLabel: {
     fontSize: 13,
     fontWeight: '600',
   },
-  zombieTabCount: {
+  menuTabCount: {
     fontSize: 11,
     fontWeight: '500',
     marginTop: 1,
   },
-  zombieScreenshotsBtn: {
+  menuCameraTab: {
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 6,
