@@ -374,7 +374,12 @@ function createStyles(theme: ProfileThemeTokens) {
       alignItems: 'center',
       justifyContent: 'flex-end',
       gap: 8,
-      marginBottom: 14,
+    },
+    belowBannerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 8,
     },
     followBtn: {
       flexDirection: 'row',
@@ -1088,31 +1093,11 @@ export default function PublicProfileScreen() {
             </View>
           </View>
 
-          <View style={styles.rightColumn}>
-            {!isMe && (
-              <View style={styles.actionsRow}>
-                <TouchableOpacity
-                  style={styles.iconActionBtn}
-                  onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
-                >
-                  <MessageSquare size={18} color="#FFFFFF" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.followBtn, isFollowing && styles.followingBtn]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setIsFollowing(f => !f);
-                  }}
-                >
-                  {isFollowing ? (
-                    <Text style={styles.followBtnTextActive}>Following</Text>
-                  ) : (
-                    <Text style={styles.followBtnText}>Follow</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
-            {!isMe && currentGame ? (
+        </View>
+
+        {!isMe && (
+          <View style={styles.belowBannerRow}>
+            {currentGame ? (
               <View style={styles.nametagTopColumn}>
                 <LinearGradient
                   colors={theme.nametagGradient}
@@ -1127,9 +1112,30 @@ export default function PublicProfileScreen() {
                 </LinearGradient>
                 <Text style={styles.nametagTopLabel}>NAMETAG</Text>
               </View>
-            ) : null}
+            ) : <View style={{ flex: 1 }} />}
+            <View style={styles.actionsRow}>
+              <TouchableOpacity
+                style={styles.iconActionBtn}
+                onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
+              >
+                <MessageSquare size={18} color="#FFFFFF" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.followBtn, isFollowing && styles.followingBtn]}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setIsFollowing(f => !f);
+                }}
+              >
+                {isFollowing ? (
+                  <Text style={styles.followBtnTextActive}>Following</Text>
+                ) : (
+                  <Text style={styles.followBtnText}>Follow</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
 
         {isBirthdayToday(user?.birthday) && (
           <BirthdayBanner
