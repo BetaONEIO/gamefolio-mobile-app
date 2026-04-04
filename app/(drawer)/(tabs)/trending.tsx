@@ -1154,57 +1154,6 @@ const ScreenshotItem = React.memo(({
         />
       </Animated.View>
 
-      {!showComments && (
-        <View style={[styles.clipFixedOverlay, { paddingBottom: insets.bottom + 60 }]}>
-          <View style={styles.clipTopInfo}>
-            <TouchableOpacity
-              style={styles.reelUserRow}
-              onPress={() => onUserPress(item.user.username)}
-            >
-              <Image source={{ uri: item.user.avatarUrl }} style={styles.reelAvatar} />
-              <Text style={styles.reelUsername}>@{item.user.username}</Text>
-            </TouchableOpacity>
-            <Text style={styles.reelTitle} numberOfLines={2}>{truncateTitle(item.title, 34)}</Text>
-            {item.description ? <ExpandableText text={item.description} maxLength={100} /> : null}
-            {item.game ? (
-              <TouchableOpacity
-                style={styles.reelGameRow}
-                onPress={() => router.push({ pathname: '/game/[id]', params: { id: item.game.id.toString() } })}
-                activeOpacity={0.7}
-              >
-                <Gamepad2 size={14} color="#4ADE80" />
-                <Text style={styles.reelGameText}>{shortenGameName(item.game.name)}</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
-
-          <View style={styles.clipBottomActions}>
-            <TouchableOpacity style={styles.clipBottomActionButton} onPress={onLike}>
-              <Heart
-                size={18}
-                color={item.isLiked ? '#EF4444' : '#FFF'}
-                fill={item.isLiked ? '#EF4444' : 'transparent'}
-              />
-              <Text style={styles.clipBottomActionText}>{formatNumber(item._count?.likes || 0)}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.clipBottomActionButton} onPress={onFire}>
-              {item.isFired ? (
-                <FlameAnimation isActive={false} size={18} />
-              ) : (
-                <Flame size={18} color="#FFF" fill="transparent" />
-              )}
-              <Text style={styles.clipBottomActionText}>{formatNumber(item._count?.fires || 0)}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.clipBottomActionButton} onPress={onToggleComments}>
-              <MessageSquare size={18} color="#FFF" />
-              <Text style={styles.clipBottomActionText}>{formatNumber(item._count?.comments || 0)}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.clipBottomActionButton} onPress={onShare}>
-              <Share2 size={18} color="#FFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
 
       {showComments && (
         <View style={[styles.miniReelInfo, { paddingTop: insets.top + 50 }]}>
@@ -3482,7 +3431,94 @@ export default function TrendingScreen() {
       ) : (
         <>
           {renderScreenshotsView()}
-          
+
+          {screenshots.length > 0 && !showScreenshotComments && screenshots[activeScreenshotIndex] && (
+            <View style={[styles.reelOverlayContent, { bottom: insets.bottom }]} pointerEvents="box-none">
+              <View style={styles.reelBottomSection}>
+                <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
+                  <TouchableOpacity
+                    style={styles.reelUserRow}
+                    onPress={() => handleUserPress(screenshots[activeScreenshotIndex].user.username)}
+                  >
+                    <Image source={{ uri: screenshots[activeScreenshotIndex].user.avatarUrl }} style={styles.reelAvatar} />
+                    <Text style={styles.reelUsername}>@{screenshots[activeScreenshotIndex].user.username}</Text>
+                    <TouchableOpacity style={styles.followButton}>
+                      <Text style={styles.followButtonText}>Follow</Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+
+                  <Text style={styles.reelTitle} numberOfLines={2}>{truncateTitle(screenshots[activeScreenshotIndex].title, 34)}</Text>
+
+                  {screenshots[activeScreenshotIndex].description ? (
+                    <ExpandableText text={screenshots[activeScreenshotIndex].description} maxLength={60} />
+                  ) : null}
+
+                  {screenshots[activeScreenshotIndex].game ? (
+                    <TouchableOpacity
+                      style={styles.reelGameRow}
+                      onPress={() => router.push({ pathname: '/game/[id]', params: { id: screenshots[activeScreenshotIndex].game.id.toString() } })}
+                      activeOpacity={0.7}
+                    >
+                      <Gamepad2 size={14} color="#4ADE80" />
+                      <Text style={styles.reelGameText}>{shortenGameName(screenshots[activeScreenshotIndex].game.name)}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+
+                  <View style={[styles.clipBottomActions, { marginBottom: 0, marginTop: 10 }]}>
+                    <TouchableOpacity
+                      style={styles.clipBottomActionButton}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        likeScreenshotMutation.mutate(screenshots[activeScreenshotIndex].id);
+                      }}
+                    >
+                      <Heart
+                        size={18}
+                        color={screenshots[activeScreenshotIndex].isLiked ? '#EF4444' : '#FFF'}
+                        fill={screenshots[activeScreenshotIndex].isLiked ? '#EF4444' : 'transparent'}
+                      />
+                      <Text style={styles.clipBottomActionText}>{formatNumber(screenshots[activeScreenshotIndex]._count?.likes || 0)}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.clipBottomActionButton}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        fireScreenshotMutation.mutate(screenshots[activeScreenshotIndex].id);
+                      }}
+                    >
+                      {screenshots[activeScreenshotIndex].isFired ? (
+                        <FlameAnimation isActive={false} size={18} />
+                      ) : (
+                        <Flame size={18} color="#FFF" fill="transparent" />
+                      )}
+                      <Text style={styles.clipBottomActionText}>{formatNumber(screenshots[activeScreenshotIndex]._count?.fires || 0)}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.clipBottomActionButton}
+                      onPress={toggleScreenshotComments}
+                    >
+                      <MessageSquare size={18} color="#FFF" />
+                      <Text style={styles.clipBottomActionText}>{formatNumber(screenshots[activeScreenshotIndex]._count?.comments || 0)}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.clipBottomActionButton}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setShareContent(screenshots[activeScreenshotIndex]);
+                        setShareModalVisible(true);
+                      }}
+                    >
+                      <Share2 size={18} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
+
           <View style={[styles.topOverlay, { paddingTop: insets.top + 10 }]}>
             {renderHeader(false)}
           </View>
