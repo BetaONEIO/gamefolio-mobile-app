@@ -1140,7 +1140,7 @@ export default function PublicProfileScreen() {
             </View>
           )}
           <View style={styles.userInfoSection}>
-          <View style={[styles.nameRow, { paddingTop: 12 }]}>
+          <View style={[styles.nameRow, { paddingTop: 0 }]}>
             <View style={styles.nameRowLeft}>
             {(() => {
               const userFontId = user?.profileFont;
