@@ -179,6 +179,7 @@ interface ReelItemProps {
   isLoadingComments: boolean;
   isTabFocused: boolean;
   containerHeight: number;
+  onToggleOverlay: () => void;
 }
 
 const ExpandableText = ({ text, maxLength = 100 }: { text: string; maxLength?: number }) => {
@@ -219,6 +220,7 @@ interface ClipItemProps {
   isLoadingComments: boolean;
   isTabFocused: boolean;
   containerHeight: number;
+  onToggleOverlay: () => void;
 }
 
 const ReelItem = React.memo(({ 
@@ -239,6 +241,7 @@ const ReelItem = React.memo(({
   isLoadingComments,
   isTabFocused,
   containerHeight,
+  onToggleOverlay,
 }: ReelItemProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -364,15 +367,24 @@ const ReelItem = React.memo(({
   }, [onLike]);
 
   const lastTap = useRef<number>(0);
+  const tapTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   const handleTap = useCallback(() => {
     const now = Date.now();
     if (now - lastTap.current < 300) {
+      // Double tap
       handleDoubleTap();
+      if (tapTimeout.current) clearTimeout(tapTimeout.current);
     } else {
-      togglePlayPause();
+      // Single tap - toggle overlay after a delay to see if it's part of a double tap
+      if (tapTimeout.current) clearTimeout(tapTimeout.current);
+      tapTimeout.current = setTimeout(() => {
+        togglePlayPause();
+        onToggleOverlay();
+      }, 300);
     }
     lastTap.current = now;
-  }, [handleDoubleTap, togglePlayPause]);
+  }, [handleDoubleTap, togglePlayPause, onToggleOverlay]);
 
   const videoHeight = commentsSlideAnim.interpolate({
     inputRange: [0, 1],
@@ -539,6 +551,7 @@ interface ClipItemProps {
   isLoadingComments: boolean;
   isTabFocused: boolean;
   containerHeight: number;
+  onToggleOverlay: () => void;
 }
 
 const ClipItem = React.memo(({
@@ -559,6 +572,7 @@ const ClipItem = React.memo(({
   isLoadingComments,
   isTabFocused,
   containerHeight,
+  onToggleOverlay,
 }: ClipItemProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -814,18 +828,27 @@ const ClipItem = React.memo(({
   }, [onLike]);
 
   const lastTap = useRef<number>(0);
+  const tapTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   const handleTap = useCallback(() => {
     const now = Date.now();
     if (now - lastTap.current < 300) {
+      // Double tap
       handleDoubleTap();
+      if (tapTimeout.current) clearTimeout(tapTimeout.current);
     } else {
-      if (Platform.OS === 'web' && videoRef.current) {
-        setIsPlaying(!videoRef.current.paused);
-      }
-      setShowControls(prev => !prev);
+      // Single tap - toggle overlay after a delay to see if it's part of a double tap
+      if (tapTimeout.current) clearTimeout(tapTimeout.current);
+      tapTimeout.current = setTimeout(() => {
+        if (Platform.OS === 'web' && videoRef.current) {
+          setIsPlaying(!videoRef.current.paused);
+        }
+        setShowControls(prev => !prev);
+        onToggleOverlay();
+      }, 300);
     }
     lastTap.current = now;
-  }, [handleDoubleTap]);
+  }, [handleDoubleTap, onToggleOverlay]);
 
   const videoHeight = commentsSlideAnim.interpolate({
     inputRange: [0, 1],
@@ -1069,6 +1092,7 @@ interface ScreenshotItemProps {
   onShare: () => void;
   onUserPress: (username: string) => void;
   containerHeight: number;
+  onToggleOverlay: () => void;
 }
 
 const ScreenshotItem = React.memo(({
@@ -1085,6 +1109,7 @@ const ScreenshotItem = React.memo(({
   onShare,
   onUserPress,
   containerHeight,
+  onToggleOverlay,
 }: ScreenshotItemProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -1140,14 +1165,24 @@ const ScreenshotItem = React.memo(({
   ), [onUserPress]);
 
   const lastTap = useRef<number>(0);
+  const tapTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   const handleTap = useCallback(() => {
     const now = Date.now();
     if (now - lastTap.current < 300) {
+      // Double tap
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       onLike();
+      if (tapTimeout.current) clearTimeout(tapTimeout.current);
+    } else {
+      // Single tap - toggle overlay after a delay to see if it's part of a double tap
+      if (tapTimeout.current) clearTimeout(tapTimeout.current);
+      tapTimeout.current = setTimeout(() => {
+        onToggleOverlay();
+      }, 300);
     }
     lastTap.current = now;
-  }, [onLike]);
+  }, [onLike, onToggleOverlay]);
 
   return (
     <View style={[styles.screenshotPageItem, { height: containerHeight }]}>
@@ -1461,6 +1496,9 @@ export default function TrendingScreen() {
   const [showReelComments, setShowReelComments] = useState(false);
   const [reelCommentText, setReelCommentText] = useState('');
   const [showClipComments, setShowClipComments] = useState(false);
+  const [showReelOverlay, setShowReelOverlay] = useState(true);
+  const [showClipOverlay, setShowClipOverlay] = useState(true);
+  const [showScreenshotOverlay, setShowScreenshotOverlay] = useState(true);
   const [clipCommentText, setClipCommentText] = useState('');
   const [screenshotCommentText, setScreenshotCommentText] = useState('');
   const [selectedReelGame, setSelectedReelGame] = useState<string | null>(null);
@@ -2437,8 +2475,9 @@ export default function TrendingScreen() {
       isLoadingComments={isLoadingReelComments}
       isTabFocused={isTabFocused}
       containerHeight={containerHeight}
+      onToggleOverlay={() => setShowReelOverlay(!showReelOverlay)}
     />
-  ), [activeIndex, isMuted, toggleMute, handleUserPress, showReelComments, toggleReelComments, localReelComments, reelCommentText, handleReelCommentSubmit, isLoadingReelComments, isTabFocused, likeReelMutate, fireReelMutate, setShareContent, setShareModalVisible, containerHeight]);
+  ), [activeIndex, isMuted, toggleMute, handleUserPress, showReelComments, toggleReelComments, localReelComments, reelCommentText, handleReelCommentSubmit, isLoadingReelComments, isTabFocused, likeReelMutate, fireReelMutate, setShareContent, setShareModalVisible, containerHeight, showReelOverlay]);
 
 
 
@@ -2476,8 +2515,9 @@ export default function TrendingScreen() {
       }}
       onUserPress={handleUserPress}
       containerHeight={containerHeight}
+      onToggleOverlay={() => setShowScreenshotOverlay(!showScreenshotOverlay)}
     />
-  ), [activeScreenshotIndex, showScreenshotComments, toggleScreenshotComments, localScreenshotComments, screenshotCommentText, handleScreenshotCommentSubmit, isLoadingScreenshotComments, likeScreenshotMutation, fireScreenshotMutation, handleUserPress, containerHeight]);
+  ), [activeScreenshotIndex, showScreenshotComments, toggleScreenshotComments, localScreenshotComments, screenshotCommentText, handleScreenshotCommentSubmit, isLoadingScreenshotComments, likeScreenshotMutation, fireScreenshotMutation, handleUserPress, containerHeight, showScreenshotOverlay]);
 
   const renderEmptyState = useCallback((type: ContentType) => {
     const messages: Record<ContentType, { title: string; message: string }> = {
@@ -2588,8 +2628,9 @@ export default function TrendingScreen() {
       isLoadingComments={isLoadingClipComments}
       isTabFocused={isTabFocused && contentType === 'clips'}
       containerHeight={containerHeight}
+      onToggleOverlay={() => setShowClipOverlay(!showClipOverlay)}
     />
-  ), [activeIndex, isMuted, toggleMute, handleUserPress, isTabFocused, contentType, likeClipMutate, fireClipMutate, showClipComments, toggleClipComments, localClipComments, clipCommentText, handleClipCommentSubmit, isLoadingClipComments, containerHeight]);
+  ), [activeIndex, isMuted, toggleMute, handleUserPress, isTabFocused, contentType, likeClipMutate, fireClipMutate, showClipComments, toggleClipComments, localClipComments, clipCommentText, handleClipCommentSubmit, isLoadingClipComments, containerHeight, showClipOverlay]);
 
   const renderClipsView = () => {
     if (isLoadingClips) return renderLoadingState();
@@ -3247,7 +3288,7 @@ export default function TrendingScreen() {
         <>
           {renderReelsView()}
 
-          {reels.length > 0 && !showReelComments && reels[activeIndex] && (
+          {reels.length > 0 && !showReelComments && showReelOverlay && reels[activeIndex] && (
             <View style={[styles.reelOverlayContent, { bottom: insets.bottom }]} pointerEvents="box-none">
               <View style={styles.reelBottomSection}>
                 <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
@@ -3349,7 +3390,7 @@ export default function TrendingScreen() {
         <>
           {renderClipsView()}
 
-          {clips.length > 0 && !showClipComments && clips[activeIndex] && (
+          {clips.length > 0 && !showClipComments && showClipOverlay && clips[activeIndex] && (
             <View style={[styles.reelOverlayContent, { bottom: insets.bottom }]} pointerEvents="box-none">
               <View style={styles.reelBottomSection}>
                 <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
@@ -3444,7 +3485,7 @@ export default function TrendingScreen() {
         <>
           {renderScreenshotsView()}
 
-          {screenshots.length > 0 && !showScreenshotComments && screenshots[activeScreenshotIndex] && (
+          {screenshots.length > 0 && !showScreenshotComments && showScreenshotOverlay && screenshots[activeScreenshotIndex] && (
             <View style={[styles.reelOverlayContent, { bottom: insets.bottom }]} pointerEvents="box-none">
               <View style={styles.reelBottomSection}>
                 <View style={[styles.reelInfoSection, { pointerEvents: 'auto' } as any]}>
