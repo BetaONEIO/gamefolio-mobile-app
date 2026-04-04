@@ -193,11 +193,12 @@ const ExpandableText = ({ text, maxLength = 100 }: { text: string; maxLength?: n
   return (
     <Text style={styles.reelDescription}>
       {expanded ? text : `${text.substring(0, maxLength)}...`}
-      {!expanded && needsTruncation && (
-        <Text style={styles.seeMoreButton} onPress={() => setExpanded(true)}>
-          {' '}see more
-        </Text>
-      )}
+      <Text 
+        style={styles.seeMoreButton} 
+        onPress={() => setExpanded(!expanded)}
+      >
+        {' '}{expanded ? 'see less' : 'see more'}
+      </Text>
     </Text>
   );
 };
@@ -3306,7 +3307,7 @@ export default function TrendingScreen() {
                   <Text style={styles.reelTitle} numberOfLines={2}>{truncateTitle(reels[activeIndex].title, 34)}</Text>
 
                   {reels[activeIndex].description ? (
-                    <ExpandableText text={reels[activeIndex].description} maxLength={60} />
+                    <ExpandableText text={reels[activeIndex].description} maxLength={20} />
                   ) : null}
 
                   {reels[activeIndex].game ? (
@@ -3408,7 +3409,7 @@ export default function TrendingScreen() {
                   <Text style={styles.reelTitle} numberOfLines={2}>{truncateTitle(clips[activeIndex].title, 34)}</Text>
 
                   {clips[activeIndex].description ? (
-                    <ExpandableText text={clips[activeIndex].description} maxLength={60} />
+                    <ExpandableText text={clips[activeIndex].description} maxLength={20} />
                   ) : null}
 
                   {clips[activeIndex].game ? (
@@ -3503,7 +3504,7 @@ export default function TrendingScreen() {
                   <Text style={styles.reelTitle} numberOfLines={2}>{truncateTitle(screenshots[activeScreenshotIndex].title, 34)}</Text>
 
                   {screenshots[activeScreenshotIndex].description ? (
-                    <ExpandableText text={screenshots[activeScreenshotIndex].description} maxLength={60} />
+                    <ExpandableText text={screenshots[activeScreenshotIndex].description} maxLength={20} />
                   ) : null}
 
                   {screenshots[activeScreenshotIndex].game ? (
@@ -4207,6 +4208,7 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+    maxWidth: '85%',
   },
   seeMoreButton: {
     color: '#4ADE80',
