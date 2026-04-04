@@ -2875,6 +2875,7 @@ export default function TrendingScreen() {
           keyExtractor={(item) => `screenshot-page-${item.id}`}
           pagingEnabled
           showsVerticalScrollIndicator={false}
+          snapToAlignment="start"
           onViewableItemsChanged={onViewableItemsChangedScreenshotRef.current}
           viewabilityConfig={viewabilityConfig}
           getItemLayout={getItemLayout}
@@ -2883,6 +2884,7 @@ export default function TrendingScreen() {
           windowSize={5}
           removeClippedSubviews={Platform.OS === 'android'}
           decelerationRate="fast"
+          disableIntervalMomentum
         />
       </View>
     );
