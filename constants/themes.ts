@@ -401,6 +401,9 @@ const GOTHIC_THEME: ProfileThemeTokens = {
   collectionGradient: ['#c27aff', '#e879f9', '#c27aff'],
   displayNameSize: 22,
   displayNameUppercase: false,
+  displayNameFontId: 'Orbitron',
+  platformTagStyle: 'outlined',
+  platformTagBorderColor: '#c27aff',
 };
 
 const BLOCKS_THEME: ProfileThemeTokens = {
