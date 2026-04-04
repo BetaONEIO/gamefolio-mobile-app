@@ -568,10 +568,7 @@ function createStyles(theme: ProfileThemeTokens) {
     },
 
     nametagTopColumn: {
-      flex: 1,
       alignItems: 'flex-end',
-      justifyContent: 'flex-start',
-      paddingTop: 10,
     },
     nametagTopCard: {
       flexDirection: 'row',
@@ -1085,6 +1082,22 @@ export default function PublicProfileScreen() {
                   )}
                 </TouchableOpacity>
               </View>
+              {currentGame ? (
+                <View style={styles.nametagTopColumn}>
+                  <LinearGradient
+                    colors={theme.nametagGradient}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={styles.nametagTopCard}
+                  >
+                    {currentGame.imageUrl ? (
+                      <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
+                    ) : null}
+                    <Text style={styles.nametagTopGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
+                  </LinearGradient>
+                  <Text style={styles.nametagTopLabel}>NAMETAG</Text>
+                </View>
+              ) : null}
             </View>
           )}
         </View>
@@ -1125,22 +1138,6 @@ export default function PublicProfileScreen() {
               </View>
             </View>
           </View>
-          {currentGame ? (
-            <View style={styles.nametagTopColumn}>
-              <LinearGradient
-                colors={theme.nametagGradient}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={styles.nametagTopCard}
-              >
-                {currentGame.imageUrl ? (
-                  <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
-                ) : null}
-                <Text style={styles.nametagTopGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
-              </LinearGradient>
-              <Text style={styles.nametagTopLabel}>NAMETAG</Text>
-            </View>
-          ) : null}
         </View>
 
         {/* User Name / Handle / Badge */}
