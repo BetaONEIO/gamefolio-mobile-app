@@ -612,9 +612,9 @@ export default function ProfileScreen() {
               styles.infoBorderContainer,
               {
                 backgroundColor: h.cardBg,
-                borderRadius: h.cardBorderRadius,
-                borderWidth: activeThemeId === 'cyberpunk' ? 2 : 1,
-                borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : h.cardBorder,
+                borderRadius: activeThemeId === 'neo' ? 8 : h.cardBorderRadius,
+                borderWidth: activeThemeId === 'cyberpunk' ? 2 : (activeThemeId === 'neo' ? 1 : 1),
+                borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : h.cardBorder),
                 shadowColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : theme.shadowColor,
                 shadowOffset: { width: 0, height: 0 },
                 shadowOpacity: activeThemeId === 'cyberpunk' ? 0.6 : 0.55,
@@ -691,6 +691,7 @@ export default function ProfileScreen() {
                     backgroundColor: activeThemeId === 'cyberpunk' ? 'transparent' : (activeThemeId === 'neo' ? 'transparent' : tagBg),
                     borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : tagBorder),
                     borderWidth: activeThemeId === 'cyberpunk' ? 1.5 : (activeThemeId === 'neo' ? 1.5 : (isOutlined ? 1.5 : 0)),
+                    borderRadius: activeThemeId === 'neo' ? 0 : 16,
                   }
                 ]}>
                   {platform.type === 'xbox' && <Gamepad2 size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : iconColor)} />}
@@ -709,7 +710,7 @@ export default function ProfileScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
                 {activeTab === 'Clips' ? (
-                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent, borderRadius: activeThemeId === 'neo' ? 0 : 100 }]}>
                     <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9 }]}>CLIPS</Text>
                     <Text style={[styles.menuTabPillCount, activeThemeId === 'cyberpunk' && { color: '#D600FF', fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }, activeThemeId === 'neo' && { color: '#00FF00', fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 8 }]}>{clips.length}/15</Text>
                   </View>

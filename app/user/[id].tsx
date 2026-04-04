@@ -1250,9 +1250,9 @@ export default function PublicProfileScreen() {
               styles.infoBorderContainer,
               {
                 backgroundColor: theme.cardBg,
-                borderRadius: theme.cardBorderRadius,
-                borderWidth: activeThemeId === 'cyberpunk' ? 2 : 1,
-                borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : theme.cardBorder,
+                borderRadius: activeThemeId === 'neo' ? 8 : theme.cardBorderRadius,
+                borderWidth: activeThemeId === 'cyberpunk' ? 2 : (activeThemeId === 'neo' ? 1 : 1),
+                borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : theme.cardBorder),
                 overflow: theme.hasDripEffect ? 'visible' : 'hidden',
                 marginBottom: theme.hasDripEffect ? 28 : 4,
                 shadowColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : theme.shadowColor,
@@ -1317,7 +1317,7 @@ export default function PublicProfileScreen() {
               const iconColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : '#FFF';
               const tagTextColor = isOutlined ? (theme.platformTagBorderColor || theme.accent) : '#FFF';
               return (
-                <View key={i} style={[styles.platformTag, { backgroundColor: activeThemeId === 'cyberpunk' ? 'transparent' : (activeThemeId === 'neo' ? 'transparent' : tagBg), borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : tagBorder), borderWidth: activeThemeId === 'cyberpunk' ? 1.5 : (activeThemeId === 'neo' ? 1.5 : (isOutlined ? 1.5 : 0)) }]}>
+                <View key={i} style={[styles.platformTag, { backgroundColor: activeThemeId === 'cyberpunk' ? 'transparent' : (activeThemeId === 'neo' ? 'transparent' : tagBg), borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : tagBorder), borderWidth: activeThemeId === 'cyberpunk' ? 1.5 : (activeThemeId === 'neo' ? 1.5 : (isOutlined ? 1.5 : 0)), borderRadius: activeThemeId === 'neo' ? 0 : 16 }]}>
                   {p.type === 'xbox' && <Gamepad2 size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : iconColor)} />}
                   {p.type === 'ps' && <Gamepad2 size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : iconColor)} />}
                   {p.type === 'pc' && <Monitor size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : iconColor)} />}
@@ -1336,7 +1336,7 @@ export default function PublicProfileScreen() {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
                 {activeTab === 'Clips' ? (
-                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent, borderRadius: activeThemeId === 'neo' ? 0 : 100 }]}>
                     <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9 }]}>CLIPS</Text>
                     <Text style={[styles.menuTabPillCount, activeThemeId === 'cyberpunk' && { color: '#D600FF', fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }, activeThemeId === 'neo' && { color: '#00FF00', fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 8 }]}>{clips.length}</Text>
                   </View>
@@ -1349,7 +1349,7 @@ export default function PublicProfileScreen() {
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
                 {activeTab === 'Reels' ? (
-                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent, borderRadius: activeThemeId === 'neo' ? 0 : 100 }]}>
                     <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9 }]}>REELS</Text>
                     <Text style={[styles.menuTabPillCount, activeThemeId === 'cyberpunk' && { color: '#D600FF', fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }, activeThemeId === 'neo' && { color: '#00FF00', fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 8 }]}>{reels.length}</Text>
                   </View>
@@ -1362,7 +1362,7 @@ export default function PublicProfileScreen() {
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
                 {activeTab === 'Favorites' ? (
-                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
+                  <View style={[styles.menuTabPill, { backgroundColor: theme.accent, borderRadius: activeThemeId === 'neo' ? 0 : 100 }]}>
                     <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9 }]}>GAMES</Text>
                   </View>
                 ) : (
