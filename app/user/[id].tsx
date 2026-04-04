@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
 import { useMemo } from 'react';
 import Svg, { Path, Ellipse } from 'react-native-svg';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Play, Camera, Flag, UserX, FolderHeart } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Play, Camera, FolderHeart } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1105,20 +1105,7 @@ export default function PublicProfileScreen() {
                   <Text style={styles.nametagTopLabel}>NAMETAG</Text>
                 </View>
               ) : null}
-              <TouchableOpacity
-                style={[styles.followBtn, isFollowing && styles.followingBtn]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setIsFollowing(f => !f);
-                }}
-              >
-                {isFollowing ? (
-                  <Text style={styles.followBtnTextActive}>Following</Text>
-                ) : (
-                  <Text style={styles.followBtnText}>Follow</Text>
-                )}
-              </TouchableOpacity>
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <TouchableOpacity
                   style={styles.iconActionBtn}
                   onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
@@ -1126,17 +1113,17 @@ export default function PublicProfileScreen() {
                   <MessageSquare size={18} color="#FFFFFF" />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[styles.blockBtn, isBlocked && styles.blockBtnActive]}
-                  onPress={handleToggleBlock}
-                  disabled={blockMutation.isPending}
+                  style={[styles.followBtn, isFollowing && styles.followingBtn]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setIsFollowing(f => !f);
+                  }}
                 >
-                  <UserX size={14} color={isBlocked ? '#FFFFFF' : '#F97316'} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.reportBtn}
-                  onPress={() => setIsReportModalVisible(true)}
-                >
-                  <Flag size={14} color="#EF4444" />
+                  {isFollowing ? (
+                    <Text style={styles.followBtnTextActive}>Following</Text>
+                  ) : (
+                    <Text style={styles.followBtnText}>Follow</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </View>
