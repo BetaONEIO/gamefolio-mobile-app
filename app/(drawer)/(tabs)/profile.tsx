@@ -690,7 +690,7 @@ export default function ProfileScreen() {
         ) : null}
 
         {/* Tabs */}
-        {theme.displayNameFontId === 'impact' ? (
+        {theme.displayNameFontId === 'impact' || theme.displayNameFontId === 'Orbitron' ? (
           <View style={[styles.tabsContainer, { backgroundColor: theme.bg, paddingHorizontal: 16, paddingVertical: 12 }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
