@@ -376,10 +376,11 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     bannerActionsOverlay: {
       position: 'absolute',
-      bottom: 12,
+      top: 192,
       right: 16,
       alignItems: 'flex-end',
       gap: 8,
+      zIndex: 10,
     },
     followBtn: {
       flexDirection: 'row',
@@ -440,6 +441,7 @@ function createStyles(theme: ProfileThemeTokens) {
 
     bannerSection: {
       position: 'relative',
+      zIndex: 10,
     },
     bannerContainer: {
       height: 180,
