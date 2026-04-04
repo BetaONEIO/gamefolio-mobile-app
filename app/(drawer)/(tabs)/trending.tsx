@@ -178,6 +178,7 @@ interface ReelItemProps {
   onSubmitComment: () => void;
   isLoadingComments: boolean;
   isTabFocused: boolean;
+  containerHeight: number;
 }
 
 const ExpandableText = ({ text, maxLength = 100 }: { text: string; maxLength?: number }) => {
@@ -217,6 +218,7 @@ interface ClipItemProps {
   onSubmitComment: () => void;
   isLoadingComments: boolean;
   isTabFocused: boolean;
+  containerHeight: number;
 }
 
 const ReelItem = React.memo(({ 
@@ -236,6 +238,7 @@ const ReelItem = React.memo(({
   onSubmitComment,
   isLoadingComments,
   isTabFocused,
+  containerHeight,
 }: ReelItemProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -399,7 +402,7 @@ const ReelItem = React.memo(({
   ), [onUserPress]);
 
   return (
-    <View style={styles.reelContainer}>
+    <View style={[styles.reelContainer, { height: containerHeight }]}>
       <View style={styles.reelVideoWrapper}>
         <TouchableOpacity 
           activeOpacity={1} 
@@ -535,6 +538,7 @@ interface ClipItemProps {
   onSubmitComment: () => void;
   isLoadingComments: boolean;
   isTabFocused: boolean;
+  containerHeight: number;
 }
 
 const ClipItem = React.memo(({
@@ -554,6 +558,7 @@ const ClipItem = React.memo(({
   onSubmitComment,
   isLoadingComments,
   isTabFocused,
+  containerHeight,
 }: ClipItemProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -850,7 +855,7 @@ const ClipItem = React.memo(({
   ), [onUserPress]);
 
   return (
-    <View style={styles.reelContainer}>
+    <View style={[styles.reelContainer, { height: containerHeight }]}>
       <Animated.View style={[styles.videoSection, { height: videoHeight, justifyContent: 'center' }]}>
         <View style={{ width: '100%', aspectRatio: 16/9 }}>
           <TouchableOpacity 
@@ -1126,6 +1131,7 @@ interface ScreenshotItemProps {
   onFire: () => void;
   onShare: () => void;
   onUserPress: (username: string) => void;
+  containerHeight: number;
 }
 
 const ScreenshotItem = React.memo(({
@@ -1141,6 +1147,7 @@ const ScreenshotItem = React.memo(({
   onFire,
   onShare,
   onUserPress,
+  containerHeight,
 }: ScreenshotItemProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -1196,7 +1203,7 @@ const ScreenshotItem = React.memo(({
   ), [onUserPress]);
 
   return (
-    <View style={styles.screenshotPageItem}>
+    <View style={[styles.screenshotPageItem, { height: containerHeight }]}>
       <Animated.View style={[styles.screenshotPageImageWrapper, { height: imageHeight }]}>
         <Image
           source={{ uri: item.imageUrl }}
@@ -1575,6 +1582,8 @@ export default function TrendingScreen() {
   const [topGames, setTopGames] = useState<Game[]>([]);
   const [contentGames, setContentGames] = useState<Game[]>([]);
   const [isSearchingGames, setIsSearchingGames] = useState(false);
+
+  const [containerHeight, setContainerHeight] = useState(SCREEN_HEIGHT);
 
   const flatListRef = useRef<FlatList>(null);
   const screenshotFlatListRef = useRef<FlatList>(null);
@@ -2496,10 +2505,10 @@ export default function TrendingScreen() {
   }).current;
 
   const getItemLayout = useCallback((_: any, index: number) => ({
-    length: SCREEN_HEIGHT,
-    offset: SCREEN_HEIGHT * index,
+    length: containerHeight,
+    offset: containerHeight * index,
     index,
-  }), []);
+  }), [containerHeight]);
 
   const renderReelItem = useCallback(({ item, index }: { item: ClipWithUser; index: number }) => (
     <ReelItem
@@ -2529,8 +2538,9 @@ export default function TrendingScreen() {
       onSubmitComment={handleReelCommentSubmit}
       isLoadingComments={isLoadingReelComments}
       isTabFocused={isTabFocused}
+      containerHeight={containerHeight}
     />
-  ), [activeIndex, isMuted, toggleMute, handleUserPress, showReelComments, toggleReelComments, localReelComments, reelCommentText, handleReelCommentSubmit, isLoadingReelComments, isTabFocused, likeReelMutate, fireReelMutate, setShareContent, setShareModalVisible]);
+  ), [activeIndex, isMuted, toggleMute, handleUserPress, showReelComments, toggleReelComments, localReelComments, reelCommentText, handleReelCommentSubmit, isLoadingReelComments, isTabFocused, likeReelMutate, fireReelMutate, setShareContent, setShareModalVisible, containerHeight]);
 
 
 
@@ -2567,8 +2577,9 @@ export default function TrendingScreen() {
         Share.share({ message: `Check out this screenshot on Gamefolio!` });
       }}
       onUserPress={handleUserPress}
+      containerHeight={containerHeight}
     />
-  ), [activeScreenshotIndex, showScreenshotComments, toggleScreenshotComments, localScreenshotComments, screenshotCommentText, handleScreenshotCommentSubmit, isLoadingScreenshotComments, likeScreenshotMutation, fireScreenshotMutation, handleUserPress]);
+  ), [activeScreenshotIndex, showScreenshotComments, toggleScreenshotComments, localScreenshotComments, screenshotCommentText, handleScreenshotCommentSubmit, isLoadingScreenshotComments, likeScreenshotMutation, fireScreenshotMutation, handleUserPress, containerHeight]);
 
   const renderEmptyState = useCallback((type: ContentType) => {
     const messages: Record<ContentType, { title: string; message: string }> = {
@@ -2678,8 +2689,9 @@ export default function TrendingScreen() {
       onSubmitComment={handleClipCommentSubmit}
       isLoadingComments={isLoadingClipComments}
       isTabFocused={isTabFocused && contentType === 'clips'}
+      containerHeight={containerHeight}
     />
-  ), [activeIndex, isMuted, toggleMute, handleUserPress, isTabFocused, contentType, likeClipMutate, fireClipMutate, showClipComments, toggleClipComments, localClipComments, clipCommentText, handleClipCommentSubmit, isLoadingClipComments]);
+  ), [activeIndex, isMuted, toggleMute, handleUserPress, isTabFocused, contentType, likeClipMutate, fireClipMutate, showClipComments, toggleClipComments, localClipComments, clipCommentText, handleClipCommentSubmit, isLoadingClipComments, containerHeight]);
 
   const renderClipsView = () => {
     if (isLoadingClips) return renderLoadingState();
@@ -3327,7 +3339,10 @@ export default function TrendingScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      onLayout={(e) => setContainerHeight(e.nativeEvent.layout.height)}
+    >
       <StatusBar barStyle="light-content" />
       
       {contentType === 'reels' ? (
