@@ -27,6 +27,7 @@ import {
   Film,
   Camera,
   Eye,
+  EyeOff,
   Heart,
   Flame,
   MessageSquare,
@@ -1539,7 +1540,7 @@ export default function TrendingScreen() {
   const [contentType, setContentType] = useState<ContentType>(
     tab && ['reels', 'clips', 'screenshots'].includes(tab) ? tab : 'reels'
   );
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(true);
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const menuSlideAnim = useRef(new Animated.Value(1)).current;
@@ -3452,12 +3453,15 @@ export default function TrendingScreen() {
       <TouchableOpacity
         style={[styles.menuCogButton, { top: insets.top + 12 }]}
         onPress={() => {
-          setMenuVisible(!menuVisible);
-          setShowFilterDropdown(false);
+          setShowFilterDropdown(!showFilterDropdown);
           setShowTimeDropdown(false);
         }}
       >
-        <Settings size={20} color={menuVisible ? '#4ADE80' : '#FFF'} />
+        {showFilterDropdown ? (
+          <Eye size={20} color="#4ADE80" />
+        ) : (
+          <EyeOff size={20} color="#4ADE80" />
+        )}
       </TouchableOpacity>
 
       {shareContent && (
