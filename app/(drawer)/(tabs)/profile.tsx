@@ -635,13 +635,13 @@ export default function ProfileScreen() {
                     { value: profileData.stats.following, label: h.statLabels[2] },
                   ] as { value: number; label: string }[]).map((stat, i) => (
                     <View key={i} style={[styles.statColumn, h.statAlign === 'flex-start' && { alignItems: 'flex-start' }]}>
-                      <Text style={[styles.statNumber, { color: activeThemeId === 'cyberpunk' ? '#00D9FF' : h.statNumberColor, fontSize: h.statNumberSize }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 20 }]}>{stat.value}</Text>
+                      <Text style={[styles.statNumber, { color: activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : h.statNumberColor), fontSize: h.statNumberSize }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 20 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 20 }]}>{stat.value}</Text>
                       {h.statLabelPill ? (
                         <View style={[styles.statLabelPill, { borderColor: h.accent, backgroundColor: h.accentMuted }]}>
-                          <Text style={[styles.statLabelPillText, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : h.accent }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }]}>{stat.label.toUpperCase()}</Text>
+                          <Text style={[styles.statLabelPillText, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : (activeThemeId === 'neo' ? '#00FF00' : h.accent) }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 8.5 }]}>{stat.label.toUpperCase()}</Text>
                         </View>
                       ) : (
-                        <Text style={[styles.statLabel, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : h.statLabelColor }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }]}>{stat.label.toUpperCase()}</Text>
+                        <Text style={[styles.statLabel, { color: activeThemeId === 'cyberpunk' ? '#D600FF' : (activeThemeId === 'neo' ? '#00FF00' : h.statLabelColor) }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 8.5 }]}>{stat.label.toUpperCase()}</Text>
                       )}
                     </View>
                   ))}
@@ -688,15 +688,15 @@ export default function ProfileScreen() {
                 <View key={index} style={[
                   styles.platformTag,
                   {
-                    backgroundColor: activeThemeId === 'cyberpunk' ? 'transparent' : tagBg,
-                    borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : tagBorder,
-                    borderWidth: activeThemeId === 'cyberpunk' ? 1.5 : (isOutlined ? 1.5 : 0),
+                    backgroundColor: activeThemeId === 'cyberpunk' ? 'transparent' : (activeThemeId === 'neo' ? 'transparent' : tagBg),
+                    borderColor: activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : tagBorder),
+                    borderWidth: activeThemeId === 'cyberpunk' ? 1.5 : (activeThemeId === 'neo' ? 1.5 : (isOutlined ? 1.5 : 0)),
                   }
                 ]}>
-                  {platform.type === 'xbox' && <Gamepad2 size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : iconColor} />}
-                  {platform.type === 'ps' && <Gamepad2 size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : iconColor} />}
-                  {platform.type === 'pc' && <Monitor size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : iconColor} />}
-                  <Text style={[styles.platformText, { color: activeThemeId === 'cyberpunk' ? '#00D9FF' : tagTextColor }]}>{platform.name}</Text>
+                  {platform.type === 'xbox' && <Gamepad2 size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : iconColor)} />}
+                  {platform.type === 'ps' && <Gamepad2 size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : iconColor)} />}
+                  {platform.type === 'pc' && <Monitor size={12} color={activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : iconColor)} />}
+                  <Text style={[styles.platformText, { color: activeThemeId === 'cyberpunk' ? '#00D9FF' : (activeThemeId === 'neo' ? '#00FF00' : tagTextColor) }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 11.5 }]}>{platform.name}</Text>
                 </View>
               );
             })}
@@ -710,36 +710,36 @@ export default function ProfileScreen() {
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
                 {activeTab === 'Clips' ? (
                   <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }]}>CLIPS</Text>
-                    <Text style={[styles.menuTabPillCount, activeThemeId === 'cyberpunk' && { color: '#D600FF', fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }]}>{clips.length}/15</Text>
+                    <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9 }]}>CLIPS</Text>
+                    <Text style={[styles.menuTabPillCount, activeThemeId === 'cyberpunk' && { color: '#D600FF', fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }, activeThemeId === 'neo' && { color: '#00FF00', fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 8 }]}>{clips.length}/15</Text>
                   </View>
                 ) : (
                   <>
-                    <Text style={[styles.menuTabLabel, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 11, color: '#00D9FF' }]}>CLIPS</Text>
-                    <Text style={[styles.menuTabCount, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9, color: '#D600FF' }]}>{clips.length}/15</Text>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 11, color: '#00D9FF' }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 11, color: '#00FF00' }]}>CLIPS</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9, color: '#D600FF' }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9, color: '#00FF00' }]}>{clips.length}/15</Text>
                   </>
                 )}
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Reels')} activeOpacity={0.8}>
                 {activeTab === 'Reels' ? (
                   <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }]}>REELS</Text>
-                    <Text style={[styles.menuTabPillCount, activeThemeId === 'cyberpunk' && { color: '#D600FF', fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }]}>{reels.length}/15</Text>
+                    <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9 }]}>REELS</Text>
+                    <Text style={[styles.menuTabPillCount, activeThemeId === 'cyberpunk' && { color: '#D600FF', fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }, activeThemeId === 'neo' && { color: '#00FF00', fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 8 }]}>{reels.length}/15</Text>
                   </View>
                 ) : (
                   <>
-                    <Text style={[styles.menuTabLabel, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 11, color: '#00D9FF' }]}>REELS</Text>
-                    <Text style={[styles.menuTabCount, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9, color: '#D600FF' }]}>{reels.length}/15</Text>
+                    <Text style={[styles.menuTabLabel, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 11, color: '#00D9FF' }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 11, color: '#00FF00' }]}>REELS</Text>
+                    <Text style={[styles.menuTabCount, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9, color: '#D600FF' }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9, color: '#00FF00' }]}>{reels.length}/15</Text>
                   </>
                 )}
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Favorites')} activeOpacity={0.8}>
                 {activeTab === 'Favorites' ? (
                   <View style={[styles.menuTabPill, { backgroundColor: theme.accent }]}>
-                    <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }]}>GAMES</Text>
+                    <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9 }]}>GAMES</Text>
                   </View>
                 ) : (
-                  <Text style={[styles.menuTabLabel, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 11, color: '#00D9FF' }]}>GAMES</Text>
+                  <Text style={[styles.menuTabLabel, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 11, color: '#00D9FF' }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 11, color: '#00FF00' }]}>GAMES</Text>
                 )}
               </TouchableOpacity>
               <TouchableOpacity style={[styles.menuTab, styles.menuCameraTab]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
