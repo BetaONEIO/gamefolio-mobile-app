@@ -339,6 +339,7 @@ const NEO_THEME: ProfileThemeTokens = {
   collectionGradient: ['#00ff41', '#39ff14', '#00ff41'],
   displayNameSize: 20,
   displayNameUppercase: false,
+  displayNameFontId: 'Orbitron',
 };
 
 const GOTHIC_THEME: ProfileThemeTokens = {
