@@ -185,7 +185,8 @@ export default function ProfileScreen() {
   const [profileSectionTab, setProfileSectionTab] = useState<'stats' | 'collection'>('stats');
   const router = useRouter();
   const { user, getAccessToken } = useAuth();
-  const theme = useMemo(() => getProfileTheme((user as any)?.profileTheme), [user]);
+  const activeThemeId = (user as any)?.profileTheme ?? null;
+  const theme = useMemo(() => getProfileTheme(activeThemeId), [user]);
   const h = useMemo(() => createHeaderStyles(theme), [theme]);
   const displayFont = useMemo(() => FONT_STYLES.find(f => f.id === (theme.displayNameFontId || 'default')), [theme]);
   
@@ -432,9 +433,9 @@ export default function ProfileScreen() {
   return (
     <View style={[styles.container, { backgroundColor: h.containerBg }]}>
       <AppHeader onOpenLevelTracker={() => setIsLevelModalVisible(true)} />
-      {(user as any)?.profileTheme && (
+      {activeThemeId && (
         <View style={[StyleSheet.absoluteFill, { opacity: 0.45 }]} pointerEvents="none">
-          <ThemeBackgroundEffect themeId={(user as any).profileTheme} />
+          <ThemeBackgroundEffect themeId={activeThemeId} />
         </View>
       )}
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
