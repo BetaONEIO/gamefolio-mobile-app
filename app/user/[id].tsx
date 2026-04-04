@@ -380,6 +380,7 @@ function createStyles(theme: ProfileThemeTokens) {
       alignItems: 'flex-start',
       justifyContent: 'space-between',
       marginBottom: 8,
+      paddingHorizontal: 16,
     },
     rightActionsColumn: {
       alignItems: 'flex-end',
