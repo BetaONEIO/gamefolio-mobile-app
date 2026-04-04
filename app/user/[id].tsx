@@ -1105,27 +1105,6 @@ export default function PublicProfileScreen() {
                   <Text style={styles.nametagTopLabel}>NAMETAG</Text>
                 </View>
               ) : null}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'flex-end' }}>
-                <TouchableOpacity
-                  style={styles.iconActionBtn}
-                  onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
-                >
-                  <MessageSquare size={18} color="#FFFFFF" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.followBtn, isFollowing && styles.followingBtn]}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setIsFollowing(f => !f);
-                  }}
-                >
-                  {isFollowing ? (
-                    <Text style={styles.followBtnTextActive}>Following</Text>
-                  ) : (
-                    <Text style={styles.followBtnText}>Follow</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
             </View>
           ) : null}
         </View>
@@ -1135,6 +1114,30 @@ export default function PublicProfileScreen() {
             displayName={displayName}
             isOwnProfile={isMe || false}
           />
+        )}
+
+        {!isMe && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, justifyContent: 'flex-end', paddingHorizontal: 16, paddingVertical: 12 }}>
+            <TouchableOpacity
+              style={styles.iconActionBtn}
+              onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
+            >
+              <MessageSquare size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.followBtn, isFollowing && styles.followingBtn]}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setIsFollowing(f => !f);
+              }}
+            >
+              {isFollowing ? (
+                <Text style={styles.followBtnTextActive}>Following</Text>
+              ) : (
+                <Text style={styles.followBtnText}>Follow</Text>
+              )}
+            </TouchableOpacity>
+          </View>
         )}
 
         {/* User Name / Handle / Badge */}
