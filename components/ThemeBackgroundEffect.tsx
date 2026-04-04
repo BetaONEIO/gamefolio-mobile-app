@@ -304,7 +304,10 @@ function CyberpunkEffect() {
     );
 
     const sweepLoop = Animated.loop(
-      Animated.timing(sweepAnim, { toValue: 1, duration: 9000, useNativeDriver: true })
+      Animated.sequence([
+        Animated.timing(sweepAnim, { toValue: 1, duration: 9000, useNativeDriver: true }),
+        Animated.timing(sweepAnim, { toValue: 0, duration: 0, useNativeDriver: true }),
+      ])
     );
 
     const glitchLoop = Animated.loop(
