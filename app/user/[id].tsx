@@ -377,9 +377,13 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     belowBannerRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
       marginBottom: 8,
+    },
+    rightActionsColumn: {
+      alignItems: 'flex-end',
+      gap: 8,
     },
     followBtn: {
       flexDirection: 'row',
@@ -1097,42 +1101,45 @@ export default function PublicProfileScreen() {
 
         {!isMe && (
           <View style={styles.belowBannerRow}>
-            {currentGame ? (
-              <View style={styles.nametagTopColumn}>
-                <LinearGradient
-                  colors={theme.nametagGradient}
-                  start={{ x: 0, y: 0.5 }}
-                  end={{ x: 1, y: 0.5 }}
-                  style={styles.nametagTopCard}
+            <View style={{ flex: 1 }} />
+            <View style={styles.rightActionsColumn}>
+              <View style={styles.actionsRow}>
+                <TouchableOpacity
+                  style={styles.iconActionBtn}
+                  onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
                 >
-                  {currentGame.imageUrl ? (
-                    <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
-                  ) : null}
-                  <Text style={styles.nametagTopGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
-                </LinearGradient>
-                <Text style={styles.nametagTopLabel}>NAMETAG</Text>
+                  <MessageSquare size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.followBtn, isFollowing && styles.followingBtn]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setIsFollowing(f => !f);
+                  }}
+                >
+                  {isFollowing ? (
+                    <Text style={styles.followBtnTextActive}>Following</Text>
+                  ) : (
+                    <Text style={styles.followBtnText}>Follow</Text>
+                  )}
+                </TouchableOpacity>
               </View>
-            ) : <View style={{ flex: 1 }} />}
-            <View style={styles.actionsRow}>
-              <TouchableOpacity
-                style={styles.iconActionBtn}
-                onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
-              >
-                <MessageSquare size={18} color="#FFFFFF" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.followBtn, isFollowing && styles.followingBtn]}
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setIsFollowing(f => !f);
-                }}
-              >
-                {isFollowing ? (
-                  <Text style={styles.followBtnTextActive}>Following</Text>
-                ) : (
-                  <Text style={styles.followBtnText}>Follow</Text>
-                )}
-              </TouchableOpacity>
+              {currentGame ? (
+                <View style={styles.nametagTopColumn}>
+                  <LinearGradient
+                    colors={theme.nametagGradient}
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={styles.nametagTopCard}
+                  >
+                    {currentGame.imageUrl ? (
+                      <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
+                    ) : null}
+                    <Text style={styles.nametagTopGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
+                  </LinearGradient>
+                  <Text style={styles.nametagTopLabel}>NAMETAG</Text>
+                </View>
+              ) : null}
             </View>
           </View>
         )}
