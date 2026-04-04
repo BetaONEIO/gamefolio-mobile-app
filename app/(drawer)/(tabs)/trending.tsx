@@ -1139,14 +1139,26 @@ const ScreenshotItem = React.memo(({
     </TouchableOpacity>
   ), [onUserPress]);
 
+  const lastTap = useRef<number>(0);
+  const handleTap = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTap.current < 300) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      onLike();
+    }
+    lastTap.current = now;
+  }, [onLike]);
+
   return (
     <View style={[styles.screenshotPageItem, { height: containerHeight }]}>
       <Animated.View style={[styles.screenshotPageImageWrapper, { height: imageHeight }]}>
-        <Image
-          source={{ uri: item.imageUrl }}
-          style={styles.screenshotPageImage}
-          resizeMode="contain"
-        />
+        <TouchableOpacity activeOpacity={1} style={styles.screenshotTouchable} onPress={handleTap}>
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={styles.screenshotPageImage}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.75)']}
           style={StyleSheet.absoluteFillObject}
@@ -4053,6 +4065,9 @@ const styles = StyleSheet.create({
   screenshotPageImage: {
     width: '100%',
     height: '100%',
+  },
+  screenshotTouchable: {
+    flex: 1,
   },
   reelContainer: {
     width: SCREEN_WIDTH,
