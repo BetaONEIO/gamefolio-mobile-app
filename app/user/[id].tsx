@@ -1087,26 +1087,24 @@ export default function PublicProfileScreen() {
             </View>
           </View>
 
-          {!isMe ? (
-            <View style={styles.rightColumn}>
-              {currentGame ? (
-                <View style={styles.nametagTopColumn}>
-                  <LinearGradient
-                    colors={theme.nametagGradient}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={styles.nametagTopCard}
-                  >
-                    {currentGame.imageUrl ? (
-                      <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
-                    ) : null}
-                    <Text style={styles.nametagTopGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
-                  </LinearGradient>
-                  <Text style={styles.nametagTopLabel}>NAMETAG</Text>
-                </View>
-              ) : null}
-            </View>
-          ) : null}
+          <View style={styles.rightColumn}>
+            {!isMe && currentGame ? (
+              <View style={styles.nametagTopColumn}>
+                <LinearGradient
+                  colors={theme.nametagGradient}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={styles.nametagTopCard}
+                >
+                  {currentGame.imageUrl ? (
+                    <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
+                  ) : null}
+                  <Text style={styles.nametagTopGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
+                </LinearGradient>
+                <Text style={styles.nametagTopLabel}>NAMETAG</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
 
         {isBirthdayToday(user?.birthday) && (
