@@ -455,7 +455,7 @@ function createStyles(theme: ProfileThemeTokens) {
       flexDirection: 'row',
       alignItems: 'flex-start',
       justifyContent: 'space-between',
-      marginBottom: 8,
+      marginBottom: 0,
     },
     avatarWrapper: {
       position: 'relative',
