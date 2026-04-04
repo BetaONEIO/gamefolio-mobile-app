@@ -698,7 +698,7 @@ export default function ProfileScreen() {
             </View>
           </View>
         ) : (
-          <View style={[styles.tabsContainer, { backgroundColor: '#131F2A', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 20, marginHorizontal: 16, marginBottom: 8 }]}>
+          <View style={[styles.tabsContainer, { backgroundColor: '#131F2A', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 20, marginHorizontal: 0, marginBottom: 8 }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
                 {activeTab === 'Clips' ? (
