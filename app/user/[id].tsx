@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
 import { useMemo } from 'react';
 import Svg, { Path, Ellipse } from 'react-native-svg';
-import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, UserPlus, Mail, Play, Camera, Flag, UserX, FolderHeart } from 'lucide-react-native';
+import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Play, Camera, Flag, UserX, FolderHeart } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -379,36 +379,31 @@ function createStyles(theme: ProfileThemeTokens) {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.followBtnBg,
+      backgroundColor: '#FFFFFF',
       height: 44,
-      borderRadius: 10,
+      borderRadius: 100,
       gap: 6,
-      shadowColor: theme.followBtnBg,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.2,
-      shadowRadius: 6,
-      elevation: 3,
+      paddingHorizontal: 20,
     },
     followingBtn: {
-      backgroundColor: theme.iconBtnBg,
+      backgroundColor: 'rgba(255,255,255,0.15)',
     },
     followBtnText: {
-      color: theme.followBtnTextColor,
-      fontSize: 13,
-      fontWeight: '800',
+      color: '#0F172A',
+      fontSize: 15,
+      fontWeight: '700',
     },
     followBtnTextActive: {
       color: '#FFF',
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '700',
     },
     iconActionBtn: {
-      width: 40,
-      height: 40,
-      borderRadius: 10,
-      backgroundColor: theme.iconBtnBg,
-      borderWidth: 0.5,
-      borderColor: theme.iconBtnBorder,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: 'rgba(15, 23, 42, 0.75)',
+      borderWidth: 0,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -1120,10 +1115,7 @@ export default function PublicProfileScreen() {
                 {isFollowing ? (
                   <Text style={styles.followBtnTextActive}>Following</Text>
                 ) : (
-                  <>
-                    <UserPlus size={14} color={theme.followBtnTextColor} />
-                    <Text style={styles.followBtnText}>Follow</Text>
-                  </>
+                  <Text style={styles.followBtnText}>Follow</Text>
                 )}
               </TouchableOpacity>
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
@@ -1131,7 +1123,7 @@ export default function PublicProfileScreen() {
                   style={styles.iconActionBtn}
                   onPress={() => router.push({ pathname: '/conversation/[id]', params: { id: userId?.toString() || 'unknown', username } })}
                 >
-                  <Mail size={16} color={theme.memberSinceColor} />
+                  <MessageSquare size={18} color="#FFFFFF" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.blockBtn, isBlocked && styles.blockBtnActive]}
@@ -1256,14 +1248,6 @@ export default function PublicProfileScreen() {
           >
             {profileSectionTab === 'stats' ? (
               <View style={[styles.infoBorderInner, { paddingTop: 14, paddingBottom: 22 }]}>
-                {theme.hasStatsGradientBar && (
-                  <LinearGradient
-                    colors={theme.statsTopGradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.statsGradientBar}
-                  />
-                )}
                 <View style={[
                   styles.statsRowCompact,
                   { borderBottomWidth: 0, paddingBottom: 0, marginBottom: 0 },
