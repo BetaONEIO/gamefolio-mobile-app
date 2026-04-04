@@ -568,8 +568,10 @@ function createStyles(theme: ProfileThemeTokens) {
     },
 
     nametagTopColumn: {
+      flex: 1,
       alignItems: 'flex-end',
-      marginBottom: 8,
+      justifyContent: 'flex-start',
+      paddingTop: 10,
     },
     nametagTopCard: {
       flexDirection: 'row',
@@ -1037,7 +1039,12 @@ export default function PublicProfileScreen() {
       ) : null}
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
-
+        {isBirthdayToday(user?.birthday) && (
+          <BirthdayBanner
+            displayName={displayName}
+            isOwnProfile={isMe || false}
+          />
+        )}
         {/* Banner */}
         <View style={styles.bannerSection}>
           <View style={styles.bannerContainer}>
@@ -1078,22 +1085,6 @@ export default function PublicProfileScreen() {
                   )}
                 </TouchableOpacity>
               </View>
-              {currentGame ? (
-                <View style={styles.nametagTopColumn}>
-                  <LinearGradient
-                    colors={theme.nametagGradient}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={styles.nametagTopCard}
-                  >
-                    {currentGame.imageUrl ? (
-                      <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
-                    ) : null}
-                    <Text style={styles.nametagTopGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
-                  </LinearGradient>
-                  <Text style={styles.nametagTopLabel}>NAMETAG</Text>
-                </View>
-              ) : null}
             </View>
           )}
         </View>
@@ -1134,7 +1125,22 @@ export default function PublicProfileScreen() {
               </View>
             </View>
           </View>
-
+          {currentGame ? (
+            <View style={styles.nametagTopColumn}>
+              <LinearGradient
+                colors={theme.nametagGradient}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={styles.nametagTopCard}
+              >
+                {currentGame.imageUrl ? (
+                  <Image source={{ uri: getImageUrl(currentGame.imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
+                ) : null}
+                <Text style={styles.nametagTopGameName} numberOfLines={1}>{currentGame.name.toUpperCase()}</Text>
+              </LinearGradient>
+              <Text style={styles.nametagTopLabel}>NAMETAG</Text>
+            </View>
+          ) : null}
         </View>
 
         {/* User Name / Handle / Badge */}
@@ -1175,32 +1181,11 @@ export default function PublicProfileScreen() {
           <Text style={[styles.handle, { color: theme.textHandle }]}>{handle}</Text>
           <UserTypeBadge userType={user.userType} showUserType={user.showUserType !== false} />
           {user.bio ? (
-            <Text style={[styles.bio, { marginTop: 16 }]} numberOfLines={3}>{user.bio}</Text>
+            <Text style={[styles.bio, { marginTop: 16 }]}>{user.bio}</Text>
           ) : null}
-
-          <View style={styles.badgesRow}>
-            {user.isPro && (
-              <View style={styles.streamerBadge}>
-                <Text style={styles.streamerText}>PRO</Text>
-              </View>
-            )}
-            {user.isOnline && (
-              <View style={[styles.streamerBadge, styles.onlineBadge]}>
-                <View style={styles.onlineDot} />
-                <Text style={styles.streamerText}>ONLINE</Text>
-              </View>
-            )}
-          </View>
 
           </View>
         </View>
-
-        {isBirthdayToday(user?.birthday) && (
-          <BirthdayBanner
-            displayName={displayName}
-            isOwnProfile={isMe || false}
-          />
-        )}
 
         {/* Stats card with floating Collection button */}
         <View style={styles.infoSection}>
@@ -1217,7 +1202,7 @@ export default function PublicProfileScreen() {
             >
               <FolderHeart size={14} color='#0f172b' />
               <Text style={styles.collectionButtonText}>
-                {profileSectionTab === 'collection' ? 'Stats' : 'Collection'}
+                Collection
               </Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -1227,7 +1212,7 @@ export default function PublicProfileScreen() {
               {
                 backgroundColor: theme.cardBg,
                 borderRadius: theme.cardBorderRadius,
-                borderWidth: 0.5,
+                borderWidth: 1,
                 borderColor: theme.cardBorder,
                 overflow: theme.hasDripEffect ? 'visible' : 'hidden',
                 marginBottom: theme.hasDripEffect ? 28 : 4,
