@@ -444,38 +444,54 @@ export default function ProfileScreen() {
             isOwnProfile={true} 
           />
         )}
-        <TouchableOpacity 
-          style={styles.bannerContainer} 
-          onPress={() => setIsBannerModalVisible(true)}
-          activeOpacity={0.9}
-        >
-
-        {profileData.banner ? (
-          <>
-            <Image source={{ uri: profileData.banner }} style={styles.banner} resizeMode="cover" />
-          </>
-        ) : (
-          <>
-            <View style={[styles.banner, { backgroundColor: h.accentMuted }]} />
-          </>
-        )}
-        <LinearGradient
-          colors={['transparent', h.containerBg]}
-          locations={[0.3, 1]}
-          style={styles.bannerFadeGradient}
-        />
-        
-        <TouchableOpacity 
-          style={styles.bannerShareButton} 
-          onPress={(e) => {
-            e.stopPropagation();
-            setIsShareModalVisible(true);
-          }}
-          activeOpacity={0.8}
-        >
-          <Share2 size={20} color="#FFF" />
-        </TouchableOpacity>
-      </TouchableOpacity>
+        <View style={styles.bannerSection}>
+          <TouchableOpacity 
+            style={styles.bannerContainer} 
+            onPress={() => setIsBannerModalVisible(true)}
+            activeOpacity={0.9}
+          >
+            {profileData.banner ? (
+              <Image source={{ uri: profileData.banner }} style={styles.banner} resizeMode="cover" />
+            ) : (
+              <View style={[styles.banner, { backgroundColor: h.accentMuted }]} />
+            )}
+            <LinearGradient
+              colors={['transparent', h.containerBg]}
+              locations={[0.3, 1]}
+              style={styles.bannerFadeGradient}
+            />
+            <TouchableOpacity 
+              style={styles.bannerShareButton} 
+              onPress={(e) => {
+                e.stopPropagation();
+                setIsShareModalVisible(true);
+              }}
+              activeOpacity={0.8}
+            >
+              <Share2 size={20} color="#FFF" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+          {favoriteGames.length > 0 ? (
+            <View style={styles.bannerActionsOverlay}>
+              <View style={styles.nametagTopColumn}>
+                <LinearGradient
+                  colors={theme.nametagGradient as [string, string, ...string[]]}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={styles.nametagTopCard}
+                >
+                  {favoriteGames[0].imageUrl ? (
+                    <Image source={{ uri: getImageUrl(favoriteGames[0].imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
+                  ) : null}
+                  <Text style={[styles.nametagTopGameName, { color: theme.isLight ? '#1a1a1a' : '#FFFFFF' }]} numberOfLines={1}>
+                    {favoriteGames[0].name.toUpperCase()}
+                  </Text>
+                </LinearGradient>
+                <Text style={styles.nametagLabel}>NAMETAG</Text>
+              </View>
+            </View>
+          ) : null}
+        </View>
 
       <View style={styles.content}>
         {/* Profile picture and action buttons row below banner */}
@@ -504,24 +520,6 @@ export default function ProfileScreen() {
               </TouchableOpacity>
             </View>
           </View>
-          {favoriteGames.length > 0 ? (
-            <View style={styles.nametagTopColumn}>
-              <LinearGradient
-                colors={theme.nametagGradient as [string, string, ...string[]]}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={styles.nametagTopCard}
-              >
-                {favoriteGames[0].imageUrl ? (
-                  <Image source={{ uri: getImageUrl(favoriteGames[0].imageUrl) }} style={styles.nametagTopImg} resizeMode="contain" />
-                ) : null}
-                <Text style={[styles.nametagTopGameName, { color: theme.isLight ? '#1a1a1a' : '#FFFFFF' }]} numberOfLines={1}>
-                  {favoriteGames[0].name.toUpperCase()}
-                </Text>
-              </LinearGradient>
-              <Text style={styles.nametagLabel}>NAMETAG</Text>
-            </View>
-          ) : null}
         </View>
 
         {/* Profile Header */}
@@ -1068,6 +1066,17 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  bannerSection: {
+    position: 'relative',
+  },
+  bannerActionsOverlay: {
+    position: 'absolute',
+    top: 192,
+    right: 16,
+    alignItems: 'flex-end',
+    gap: 8,
+    zIndex: 10,
   },
   bannerContainer: {
     height: 180,
@@ -1918,10 +1927,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   nametagTopColumn: {
-    flex: 1,
     alignItems: 'flex-end',
-    justifyContent: 'flex-start',
-    paddingTop: 10,
   },
   nametagLabel: {
     color: '#6b7a8a',
