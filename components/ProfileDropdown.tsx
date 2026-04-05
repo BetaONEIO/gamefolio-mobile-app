@@ -116,12 +116,6 @@ export default function ProfileDropdown({ visible, onClose, topOffset, onOpenLev
                 <Text style={styles.menuText}>Profile & Appearance</Text>
               </TouchableOpacity>
 
-              {/* Admin Panel */}
-              <TouchableOpacity style={styles.menuItem} onPress={onClose}>
-                <Shield size={20} color="#94A3B8" strokeWidth={1.5} />
-                <Text style={styles.menuText}>Admin Panel</Text>
-              </TouchableOpacity>
-
               {/* Logout */}
               <TouchableOpacity
                 style={styles.menuItem}
