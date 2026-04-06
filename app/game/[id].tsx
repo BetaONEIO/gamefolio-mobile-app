@@ -459,9 +459,6 @@ export default function GameDetailScreen() {
             activeOpacity={0.7}
           >
             <Camera size={16} color={contentType === 'screenshots' ? '#131F2A' : '#94A3B8'} />
-            <Text style={[styles.contentTypeTabText, contentType === 'screenshots' && styles.contentTypeTabTextActive]}>
-              Photos
-            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.settingsButton}
