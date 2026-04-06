@@ -320,7 +320,7 @@ export default function GameDetailScreen() {
           <ImageBackground 
             source={{ uri: item.videoType === 'reel' ? getReelThumbnail(item) : getClipThumbnail(item) }} 
             style={styles.reelGridThumbnail} 
-            imageStyle={{ borderRadius: 12 }}
+            imageStyle={{ borderRadius: 16 }}
           >
             <LinearGradient
               colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.8)']}
@@ -544,7 +544,7 @@ export default function GameDetailScreen() {
               <ImageBackground
                 source={{ uri: getScreenshotThumbnail(item) }}
                 style={styles.screenshotGridThumbnail}
-                imageStyle={{ borderRadius: 8 }}
+                imageStyle={{ borderRadius: 16 }}
               >
                 <LinearGradient
                   colors={['transparent', 'rgba(0,0,0,0.6)']}
@@ -952,7 +952,7 @@ const styles = StyleSheet.create({
   reelGridCard: {
     width: (SCREEN_WIDTH - 36) / 2,
     backgroundColor: '#1E293B',
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   reelGridThumbnail: {
@@ -1032,7 +1032,7 @@ const styles = StyleSheet.create({
     width: (SCREEN_WIDTH - 32) / 3,
     aspectRatio: 0.75,
     backgroundColor: '#1E293B',
-    borderRadius: 8,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   screenshotGridThumbnail: {

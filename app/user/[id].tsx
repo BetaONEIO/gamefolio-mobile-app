@@ -649,7 +649,7 @@ function createStyles(theme: ProfileThemeTokens) {
     clipCard: {
       width: '100%',
       aspectRatio: 16 / 9,
-      borderRadius: 12,
+      borderRadius: 16,
       overflow: 'hidden',
       backgroundColor: '#1E293B',
       position: 'relative',
@@ -806,7 +806,7 @@ function createStyles(theme: ProfileThemeTokens) {
     },
     screenshotCard: {
       backgroundColor: '#1E293B',
-      borderRadius: 12,
+      borderRadius: 16,
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: '#334155',

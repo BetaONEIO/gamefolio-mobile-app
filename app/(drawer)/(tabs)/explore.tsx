@@ -1015,7 +1015,7 @@ const styles = StyleSheet.create({
   gameCard: {
     width: '47%',
     backgroundColor: '#1E2D3C',
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
     marginBottom: 16,
     marginHorizontal: '1.5%',
