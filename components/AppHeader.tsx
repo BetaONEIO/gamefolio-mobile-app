@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, TextInput, Animated, Keyboard, Platform, Modal, ScrollView, ActivityIndicator, Linking } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import { BlurView } from 'expo-blur';
-import { Bell, Menu, Plus, Search, ChevronLeft, X, Hash, User, Gamepad2, BadgeCheck, Gift, Settings, Palette, Crown, HelpCircle, LogOut, ChevronRight, Trophy, Star, Shield, Flame } from 'lucide-react-native';
+import { Bell, Menu, Plus, Search, ChevronLeft, X, Hash, User, Gamepad2, BadgeCheck, Gift, Settings, Palette, Crown, HelpCircle, LogOut, ChevronRight, Trophy, Star, Flame } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRouter, useSegments } from 'expo-router';
 import { DrawerActions } from '@react-navigation/native';
@@ -790,21 +790,6 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
                 <Palette size={18} color="#94A3B8" strokeWidth={1.5} />
               </View>
               <Text style={styles.profileMenuItemLabel}>Profile & Appearance</Text>
-            </TouchableOpacity>
-
-            {/* Admin Panel */}
-            <TouchableOpacity
-              style={styles.profileMenuItem}
-              onPress={() => {
-                closeProfileMenu();
-                Linking.openURL('https://app.gamefolio.com/admin');
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={styles.profileMenuItemIcon}>
-                <Shield size={18} color="#94A3B8" strokeWidth={1.5} />
-              </View>
-              <Text style={styles.profileMenuItemLabel}>Admin Panel</Text>
             </TouchableOpacity>
 
             {/* Logout */}
