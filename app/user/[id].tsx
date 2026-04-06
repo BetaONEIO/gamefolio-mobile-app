@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Dimensions, ActivityIndicator, ScrollView, ImageBackground } from 'react-native';
 import { useMemo } from 'react';
 import Svg, { Path, Ellipse } from 'react-native-svg';
 import { Share2, Check, Heart, Flame, Monitor, Gamepad2, MessageSquare, Eye, Play, Camera, FolderHeart } from 'lucide-react-native';
@@ -808,42 +808,29 @@ function createStyles(theme: ProfileThemeTokens) {
       backgroundColor: '#1E293B',
       borderRadius: 16,
       overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: '#334155',
     },
     screenshotImage: {
       width: '100%',
       height: 200,
+      backgroundColor: '#2D3748',
+      justifyContent: 'flex-end',
     },
-    screenshotContent: {
-      padding: 12,
-      paddingTop: 20,
+    screenshotGridInfo: {
+      padding: 6,
+      gap: 2,
     },
-    screenshotTitle: {
+    screenshotGridTitle: {
       color: '#FFF',
-      fontSize: 16,
-      fontWeight: 'bold',
-      marginBottom: 4,
+      fontSize: 10,
+      fontWeight: '600' as const,
+      textShadowColor: 'rgba(0,0,0,0.5)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 2,
     },
-    screenshotHandle: {
-      color: '#CBD5E1',
-      fontSize: 14,
-      marginBottom: 8,
-    },
-    screenshotFooter: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    screenshotStats: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 16,
-    },
-    statItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
+    screenshotGridUser: {
+      color: '#94A3B8',
+      fontSize: 9,
+      fontWeight: '500' as const,
     },
     statVal: {
       color: '#94A3B8',
@@ -1521,32 +1508,24 @@ export default function PublicProfileScreen() {
                     }}
                     activeOpacity={0.8}
                   >
-                    <Image source={{ uri: getScreenshotThumbnail(item) }} style={styles.screenshotImage} resizeMode="cover" />
-                    <View style={styles.screenshotContent}>
-                      <Text style={styles.screenshotTitle} numberOfLines={1}>{item.title}</Text>
-                      <Text style={styles.screenshotHandle}>{user.username ? `@${user.username}` : ''}</Text>
-                      {item.game ? (
-                        <View style={[styles.gameTag, { marginBottom: 12 }]}>
-                          <Text style={styles.gameTagText}>{item.game.name}</Text>
-                        </View>
-                      ) : null}
-                      <View style={styles.screenshotFooter}>
-                        <View style={styles.screenshotStats}>
-                          <View style={styles.statItem}>
-                            <Heart size={16} color="#94A3B8" />
-                            <Text style={styles.statVal}>{item._count?.likes || 0}</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <Flame size={16} color="#94A3B8" />
-                            <Text style={styles.statVal}>{0}</Text>
-                          </View>
-                          <View style={styles.statItem}>
-                            <MessageSquare size={16} color="#94A3B8" />
-                            <Text style={styles.statVal}>{item._count?.comments || 0}</Text>
-                          </View>
-                        </View>
+                    <ImageBackground
+                      source={{ uri: getScreenshotThumbnail(item) }}
+                      style={styles.screenshotImage}
+                      imageStyle={{ borderRadius: 16 }}
+                    >
+                      <LinearGradient
+                        colors={['transparent', 'rgba(0,0,0,0.8)']}
+                        style={StyleSheet.absoluteFill}
+                      />
+                      <View style={styles.screenshotGridInfo}>
+                        {item.title ? (
+                          <Text style={styles.screenshotGridTitle} numberOfLines={1}>{item.title}</Text>
+                        ) : null}
+                        {user.username ? (
+                          <Text style={styles.screenshotGridUser} numberOfLines={1}>@{user.username}</Text>
+                        ) : null}
                       </View>
-                    </View>
+                    </ImageBackground>
                   </TouchableOpacity>
                 ))
               )}
