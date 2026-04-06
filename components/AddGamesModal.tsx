@@ -93,7 +93,30 @@ export default function AddGamesModal({ visible, onClose }: AddGamesModalProps) 
       const data = await response.json();
       
       if (data.data) {
-        setGames(data.data);
+        // Filter out non-gaming categories
+        const excludedCategories = [
+          'Just Chatting',
+          'Music',
+          'Art',
+          'Talk Shows & Podcasts',
+          'ASMR',
+          'Pools, Hot Tubs, and Beaches',
+          'Sports',
+          'Travel & Outdoors',
+          'Science & Technology',
+          'Food & Drink',
+          'Beauty & Body Art',
+          'Special Events',
+          'IRL',
+          'Makers & Crafting',
+          'Politics',
+          'Animals, Aquariums, and Zoos'
+        ];
+        
+        const filteredGames = data.data.filter((game: TwitchGame) => 
+          !excludedCategories.includes(game.name)
+        );
+        setGames(filteredGames);
       }
     } catch (error) {
       console.error('Error fetching games:', error);
