@@ -43,8 +43,6 @@ const { width } = Dimensions.get('window');
 const HORIZONTAL_PADDING = 16;
 
 const GAME_CATEGORIES: Record<string, string> = {
-  'League of Legends': 'MOBA',
-  'Dota 2': 'MOBA',
   'Teamfight Tactics': 'Strategy',
   'Legends of Runeterra': 'Card Game',
   'Grand Theft Auto V': 'Open World',
