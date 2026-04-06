@@ -1660,16 +1660,17 @@ export const api = {
         token,
       }),
     
-    searchGames: (query: string, limit: number = 10, token?: string) => {
+    searchGames: async (query: string, limit: number = 10, token?: string) => {
       const trimmedQuery = query?.trim();
       if (!trimmedQuery || trimmedQuery.length === 0) {
         console.log('[API] Skipping searchGames - empty query');
-        return Promise.resolve({ games: [] as TwitchGame[] });
+        return { games: [] as TwitchGame[] };
       }
-      return apiFetch<{ games: TwitchGame[] }>(`/api/twitch/games/search?q=${encodeURIComponent(trimmedQuery)}&limit=${limit}`, {
+      const games = await apiFetch<TwitchGame[]>(`/api/twitch/games/search?q=${encodeURIComponent(trimmedQuery)}&limit=${limit}`, {
         method: 'GET',
         token,
       });
+      return { games };
     },
   },
 
