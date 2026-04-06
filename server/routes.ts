@@ -3975,7 +3975,9 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         return res.status(404).json({ message: "Game not found" });
       }
 
-      let clips = await storage.getClipsByGameId(gameId, limit);
+      let clips = (await storage.getClipsByGameId(gameId, limit * 5)).filter(
+        (c) => c.videoType === 'clip' || !c.videoType
+      );
 
       // Also include clips with relevant hashtags
       // Get the game name to search for hashtag variations
@@ -3985,8 +3987,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         const gameNameNoSpaces = gameName.replace(/\s+/g, '');
         const gameHashtag = `#${gameNameNoSpaces}`;
 
-        // Search for additional clips with hashtags
-        const hashtagClips = await storage.searchClips(gameHashtag);
+        // Search for additional clips with hashtags (clips only)
+        const hashtagClips = (await storage.searchClips(gameHashtag)).filter(
+          (c) => c.videoType === 'clip' || !c.videoType
+        );
 
         // Merge clips and remove duplicates
         const clipIds = new Set(clips.map(c => c.id));
