@@ -801,17 +801,22 @@ function createStyles(theme: ProfileThemeTokens) {
       fontWeight: 'bold',
     },
     screenshotsList: {
-      gap: 10,
+      flexDirection: 'row' as const,
+      flexWrap: 'wrap' as const,
+      gap: 8,
       paddingBottom: 20,
+      justifyContent: 'space-between' as const,
     },
     screenshotCard: {
+      width: '48%',
+      aspectRatio: 0.75,
       backgroundColor: '#1E293B',
       borderRadius: 16,
       overflow: 'hidden',
     },
     screenshotImage: {
       width: '100%',
-      height: 200,
+      height: '100%',
       backgroundColor: '#2D3748',
       justifyContent: 'flex-end',
     },
@@ -826,11 +831,6 @@ function createStyles(theme: ProfileThemeTokens) {
       textShadowColor: 'rgba(0,0,0,0.5)',
       textShadowOffset: { width: 0, height: 1 },
       textShadowRadius: 2,
-    },
-    screenshotGridUser: {
-      color: '#94A3B8',
-      fontSize: 9,
-      fontWeight: '500' as const,
     },
     statVal: {
       color: '#94A3B8',
@@ -1520,9 +1520,6 @@ export default function PublicProfileScreen() {
                       <View style={styles.screenshotGridInfo}>
                         {item.title ? (
                           <Text style={styles.screenshotGridTitle} numberOfLines={1}>{item.title}</Text>
-                        ) : null}
-                        {user.username ? (
-                          <Text style={styles.screenshotGridUser} numberOfLines={1}>@{user.username}</Text>
                         ) : null}
                       </View>
                     </ImageBackground>
