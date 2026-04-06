@@ -8,7 +8,17 @@ if (!process.env.BREVO_API_KEY) {
 
 const apiInstance = new brevo.TransactionalEmailsApi();
 if (process.env.BREVO_API_KEY) {
-  apiInstance.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_API_KEY);
+  try {
+    // Try to set API key using the standard pattern
+    if (apiInstance.authentications && apiInstance.authentications['api-key']) {
+      apiInstance.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
+    } else if (typeof apiInstance.setApiKey === 'function') {
+      apiInstance.setApiKey('api-key', process.env.BREVO_API_KEY);
+    }
+    console.log('✅ Brevo API key configured successfully');
+  } catch (error) {
+    console.error('❌ Failed to configure Brevo API key:', error);
+  }
 }
 
 const FROM_EMAIL = 'noreply@gamefolio.com';
