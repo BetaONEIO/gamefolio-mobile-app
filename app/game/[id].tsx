@@ -68,19 +68,8 @@ export default function GameDetailScreen() {
       console.log('[GameDetail] Fetching game with ID:', gameId);
       
       try {
-        const topGames = await api.games.getTopGames(100, token || undefined);
-        console.log('[GameDetail] Top games fetched:', topGames?.games?.length || 0);
-        console.log('[GameDetail] First game ID type:', typeof topGames?.games?.[0]?.id);
-        console.log('[GameDetail] Looking for game ID:', gameId, 'type:', typeof gameId);
-        
-        if (!topGames || !topGames.games || !Array.isArray(topGames.games)) {
-          console.log('[GameDetail] Invalid response from API');
-          return { game: null };
-        }
-        
-        const game = topGames.games.find(g => g.id === gameId || g.id === String(gameId));
-        console.log('[GameDetail] Found game:', game ? game.name : 'not found');
-        
+        const game = await api.games.getGame(gameId!, token || undefined);
+        console.log('[GameDetail] Game fetched:', game ? game.name : 'not found');
         return { game: game || null };
       } catch (error) {
         console.error('[GameDetail] Error fetching game:', error);
