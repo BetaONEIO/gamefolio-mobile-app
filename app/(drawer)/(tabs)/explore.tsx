@@ -35,120 +35,6 @@ interface Game {
 const { width } = Dimensions.get('window');
 const HORIZONTAL_PADDING = 16;
 
-
-const FALLBACK_GAMES: TwitchGame[] = [
-  { id: '21779', name: 'League of Legends', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/21779-{width}x{height}.jpg' },
-  { id: '32982', name: 'Grand Theft Auto V', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32982_IGDB-{width}x{height}.jpg' },
-  { id: '32399', name: 'Counter-Strike 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32399_IGDB-{width}x{height}.jpg' },
-  { id: '33214', name: 'Fortnite', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/33214-{width}x{height}.jpg' },
-  { id: '516575', name: 'VALORANT', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/516575-{width}x{height}.jpg' },
-  { id: '27471', name: 'Minecraft', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/27471_IGDB-{width}x{height}.jpg' },
-  { id: '512710', name: 'Call of Duty: Warzone', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512710-{width}x{height}.jpg' },
-  { id: '29595', name: 'Dota 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/29595-{width}x{height}.jpg' },
-  { id: '263490', name: 'Rust', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/263490_IGDB-{width}x{height}.jpg' },
-  { id: '511224', name: 'Apex Legends', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/511224-{width}x{height}.jpg' },
-  { id: '460630', name: 'Tom Clancy\'s Rainbow Six Siege', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/460630_IGDB-{width}x{height}.jpg' },
-  { id: '518203', name: 'Sports', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/518203-{width}x{height}.jpg' },
-  { id: '493057', name: "PUBG: BATTLEGROUNDS", boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/493057-{width}x{height}.jpg' },
-  { id: '30921', name: 'Rocket League', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/30921-{width}x{height}.jpg' },
-  { id: '512953', name: 'Elden Ring', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512953_IGDB-{width}x{height}.jpg' },
-  { id: '490100', name: 'Lost Ark', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490100-{width}x{height}.jpg' },
-  { id: '386821', name: 'Black Desert Online', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/386821_IGDB-{width}x{height}.jpg' },
-  { id: '65632', name: 'DayZ', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/65632-{width}x{height}.jpg' },
-  { id: '489171', name: 'Dead by Daylight', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/489171-{width}x{height}.jpg' },
-  { id: '19618', name: 'Old School RuneScape', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/19618-{width}x{height}.jpg' },
-  { id: '458562', name: 'RuneScape', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/458562-{width}x{height}.jpg' },
-  { id: '18122', name: 'World of Warcraft', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/18122-{width}x{height}.jpg' },
-  { id: '488552', name: 'Overwatch 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/488552-{width}x{height}.jpg' },
-  { id: '24241', name: 'Final Fantasy XIV Online', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/24241_IGDB-{width}x{height}.jpg' },
-  { id: '515025', name: 'Diablo IV', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/515025-{width}x{height}.jpg' },
-  { id: '29307', name: 'Path of Exile', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/29307-{width}x{height}.jpg' },
-  { id: '138585', name: 'Hearthstone', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/138585-{width}x{height}.jpg' },
-  { id: '490422', name: 'Teamfight Tactics', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490422-{width}x{height}.jpg' },
-  { id: '511312', name: 'Escape From Tarkov', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/511312-{width}x{height}.jpg' },
-  { id: '491168', name: 'Among Us', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/491168-{width}x{height}.jpg' },
-  { id: '491931', name: 'Fall Guys', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/491931-{width}x{height}.jpg' },
-  { id: '27284', name: 'Terraria', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/27284-{width}x{height}.jpg' },
-  { id: '491115', name: 'Genshin Impact', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/491115-{width}x{height}.jpg' },
-  { id: '21548', name: 'StarCraft II', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/21548-{width}x{height}.jpg' },
-  { id: '32507', name: 'The Witcher 3: Wild Hunt', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32507_IGDB-{width}x{height}.jpg' },
-  { id: '491487', name: 'Phasmophobia', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/491487-{width}x{height}.jpg' },
-  { id: '2748', name: 'Magic: The Gathering', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/2748-{width}x{height}.jpg' },
-  { id: '513143', name: 'Baldur\'s Gate 3', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/513143-{width}x{height}.jpg' },
-  { id: '494552', name: 'Valheim', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/494552-{width}x{height}.jpg' },
-  { id: '32959', name: 'The Elder Scrolls V: Skyrim', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32959_IGDB-{width}x{height}.jpg' },
-  { id: '490744', name: 'Stardew Valley', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490744-{width}x{height}.jpg' },
-  { id: '488190', name: 'Pokémon Sword/Shield', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/488190-{width}x{height}.jpg' },
-  { id: '461067', name: 'Legends of Runeterra', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/461067-{width}x{height}.jpg' },
-  { id: '518014', name: 'Resident Evil Village', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/518014-{width}x{height}.jpg' },
-  { id: '493959', name: 'Red Dead Redemption 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/493959-{width}x{height}.jpg' },
-  { id: '417752', name: 'Talk Shows & Podcasts', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/417752-{width}x{height}.jpg' },
-  { id: '506461', name: 'World of Tanks', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/506461-{width}x{height}.jpg' },
-  { id: '506416', name: 'World of Warships', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/506416-{width}x{height}.jpg' },
-  { id: '491118', name: 'Destiny 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/497057-{width}x{height}.jpg' },
-  { id: '505884', name: 'Dark Souls III', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490292-{width}x{height}.jpg' },
-  { id: '29433', name: 'Dark Souls', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/29433-{width}x{height}.jpg' },
-  { id: '490377', name: 'Sea of Thieves', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490377-{width}x{height}.jpg' },
-  { id: '512804', name: 'Hogwarts Legacy', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512804-{width}x{height}.jpg' },
-  { id: '517924', name: 'Honkai: Star Rail', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/517924-{width}x{height}.jpg' },
-  { id: '519508', name: 'Palworld', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/519508-{width}x{height}.jpg' },
-  { id: '491931', name: 'Hades', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/510592-{width}x{height}.jpg' },
-  { id: '32383', name: 'The Binding of Isaac: Rebirth', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32383-{width}x{height}.jpg' },
-  { id: '10535', name: 'Hollow Knight', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490846-{width}x{height}.jpg' },
-  { id: '491459', name: 'Celeste', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/491459-{width}x{height}.jpg' },
-  { id: '313398', name: 'Splatoon 3', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512648-{width}x{height}.jpg' },
-  { id: '497057', name: 'Call of Duty: Modern Warfare III', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/1678052513-{width}x{height}.jpg' },
-  { id: '6013', name: 'Call of Duty: Black Ops III', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/489401-{width}x{height}.jpg' },
-  { id: '26936', name: 'Battlefield 1', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/488980-{width}x{height}.jpg' },
-  { id: '512093', name: 'Battlefield 2042', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512093-{width}x{height}.jpg' },
-  { id: '33214', name: 'The Sims 4', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/369252-{width}x{height}.jpg' },
-  { id: '7251', name: 'Cities: Skylines', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/369252-{width}x{height}.jpg' },
-  { id: '12924', name: 'Age of Empires II', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/13389-{width}x{height}.jpg' },
-  { id: '512636', name: 'Age of Empires IV', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512636-{width}x{height}.jpg' },
-  { id: '21353', name: 'Civilization VI', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/492552-{width}x{height}.jpg' },
-  { id: '27053', name: 'Crusader Kings III', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512236-{width}x{height}.jpg' },
-  { id: '491115', name: 'Total War: Warhammer III', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512673-{width}x{height}.jpg' },
-  { id: '6564', name: 'XCOM 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/490154-{width}x{height}.jpg' },
-  { id: '20714', name: 'Warframe', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/66170-{width}x{height}.jpg' },
-  { id: '29452', name: 'Virtual Casino', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/29452-{width}x{height}.jpg' },
-  { id: '509659', name: 'Slots', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/509659-{width}x{height}.jpg' },
-  { id: '509660', name: 'Poker', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/509660-{width}x{height}.jpg' },
-  { id: '743', name: 'Chess', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/743-{width}x{height}.jpg' },
-  { id: '23936', name: 'Don\'t Starve Together', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/287260-{width}x{height}.jpg' },
-  { id: '32507', name: 'Satisfactory', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/508455-{width}x{height}.jpg' },
-  { id: '488635', name: 'Factorio', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/488635-{width}x{height}.jpg' },
-  { id: '491000', name: 'Roblox', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/23020-{width}x{height}.jpg' },
-  { id: '11450', name: 'VRChat', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/499003-{width}x{height}.jpg' },
-  { id: '32982', name: 'Disney Dreamlight Valley', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/1612756642-{width}x{height}.jpg' },
-  { id: '7563', name: 'Slime Rancher', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/488621-{width}x{height}.jpg' },
-  { id: '512980', name: 'MultiVersus', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512980-{width}x{height}.jpg' },
-  { id: '16282', name: 'Super Smash Bros. Ultimate', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/504461-{width}x{height}.jpg' },
-  { id: '20447', name: 'Super Smash Bros. Melee', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/16282-{width}x{height}.jpg' },
-  { id: '1229', name: 'Super Mario 64', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/1229-{width}x{height}.jpg' },
-  { id: '2692', name: 'The Legend of Zelda: Ocarina of Time', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/11557-{width}x{height}.jpg' },
-  { id: '493597', name: 'The Legend of Zelda: Tears of the Kingdom', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/493597-{width}x{height}.jpg' },
-  { id: '493597', name: 'The Legend of Zelda: Breath of the Wild', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/493597-{width}x{height}.jpg' },
-  { id: '8933', name: 'Animal Crossing: New Horizons', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/509538-{width}x{height}.jpg' },
-  { id: '6369', name: 'Mario Kart 8', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/313558-{width}x{height}.jpg' },
-  { id: '374245', name: 'Mario Party Superstars', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512700-{width}x{height}.jpg' },
-  { id: '16466', name: 'Spider-Man', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/497480-{width}x{height}.jpg' },
-  { id: '15866', name: 'Uncharted 4: A Thief\'s End', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/461457-{width}x{height}.jpg' },
-  { id: '29552', name: 'God of War', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/6369-{width}x{height}.jpg' },
-  { id: '514974', name: 'God of War Ragnarök', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/514974-{width}x{height}.jpg' },
-  { id: '22566', name: 'Bloodborne', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/460636-{width}x{height}.jpg' },
-  { id: '459064', name: 'Sekiro: Shadows Die Twice', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/506415-{width}x{height}.jpg' },
-  { id: '6556', name: 'Monster Hunter: World', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/497467-{width}x{height}.jpg' },
-  { id: '9431', name: 'Monster Hunter Rise', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/511352-{width}x{height}.jpg' },
-  { id: '497480', name: 'Dragon Ball FighterZ', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/497480-{width}x{height}.jpg' },
-  { id: '488615', name: 'Street Fighter 6', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/9431-{width}x{height}.jpg' },
-  { id: '8365', name: 'Tekken 8', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/515481-{width}x{height}.jpg' },
-  { id: '19619', name: 'Mortal Kombat 1', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/518284-{width}x{height}.jpg' },
-  { id: '26566', name: 'NBA 2K24', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/518012-{width}x{height}.jpg' },
-  { id: '12924', name: 'FIFA 23', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/1869092879-{width}x{height}.jpg' },
-  { id: '512938', name: 'EA Sports FC 24', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/1181770504-{width}x{height}.jpg' },
-  { id: '30921', name: 'Fall Guys', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/512980-{width}x{height}.jpg' },
-];
-
 const formatTwitchBoxArt = (url: string | undefined, width: number = 285, height: number = 380): string | undefined => {
   if (!url) return undefined;
   return url.replace('{width}', String(width)).replace('{height}', String(height));
@@ -181,14 +67,10 @@ export default function ExploreScreen() {
         console.log('[Explore] Fetching top games, cursor:', pageParam);
         const result = await api.games.getTopGames(20, token || undefined, pageParam);
         console.log('[Explore] Received top games:', result.games?.length, 'nextCursor:', result.nextCursor);
-        if (result.games && result.games.length > 0) {
-          return result;
-        }
-        console.log('[Explore] No games from API, using fallback games');
-        return { games: FALLBACK_GAMES, nextCursor: undefined };
+        return result;
       } catch (error) {
-        console.log('[Explore] API error, using fallback games:', error);
-        return { games: FALLBACK_GAMES, nextCursor: undefined };
+        console.log('[Explore] API error:', error);
+        return { games: [], nextCursor: undefined };
       }
     },
     initialPageParam: undefined as string | undefined,
