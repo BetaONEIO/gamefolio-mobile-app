@@ -178,7 +178,31 @@ class TwitchApiService {
         }
       });
       
-      return response.data.data.map((game: any) => {
+      // Filter out non-gaming categories
+      const excludedCategories = [
+        'Just Chatting',
+        'Music',
+        'Art',
+        'Talk Shows & Podcasts',
+        'ASMR',
+        'Pools, Hot Tubs, and Beaches',
+        'Sports',
+        'Travel & Outdoors',
+        'Science & Technology',
+        'Food & Drink',
+        'Beauty & Body Art',
+        'Special Events',
+        'IRL',
+        'Makers & Crafting',
+        'Politics',
+        'Animals, Aquariums, and Zoos'
+      ];
+
+      const filteredGames = response.data.data.filter((game: any) => 
+        !excludedCategories.includes(game.name)
+      );
+      
+      return filteredGames.map((game: any) => {
         let boxArtUrl = game.box_art_url;
         
         // Handle both possible template formats - use higher resolution for crisp display
