@@ -40,7 +40,6 @@ const FALLBACK_GAMES: TwitchGame[] = [
   { id: '21779', name: 'League of Legends', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/21779-{width}x{height}.jpg' },
   { id: '32982', name: 'Grand Theft Auto V', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32982_IGDB-{width}x{height}.jpg' },
   { id: '32399', name: 'Counter-Strike 2', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/32399_IGDB-{width}x{height}.jpg' },
-  { id: '509658', name: 'Just Chatting', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/509658-{width}x{height}.jpg' },
   { id: '33214', name: 'Fortnite', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/33214-{width}x{height}.jpg' },
   { id: '516575', name: 'VALORANT', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/516575-{width}x{height}.jpg' },
   { id: '27471', name: 'Minecraft', boxArt: 'https://static-cdn.jtvnw.net/ttv-boxart/27471_IGDB-{width}x{height}.jpg' },
