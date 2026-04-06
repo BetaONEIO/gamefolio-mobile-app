@@ -164,7 +164,7 @@ export default function ForgotPasswordScreen() {
                 <ActivityIndicator size="small" color={colors.buttonText} />
               ) : (
                 <>
-                  <Text style={styles.mainButtonText}>Send Reset Link</Text>
+                  <Text style={styles.mainButtonText}>Lets reset</Text>
                   <ArrowRight size={24} color="#002E15" strokeWidth={2.5} />
                 </>
               )}
