@@ -323,22 +323,27 @@ export default function GameDetailScreen() {
             imageStyle={{ borderRadius: 16 }}
           >
             <LinearGradient
-              colors={['rgba(0,0,0,0.3)', 'transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.reelGridGradient}
+              colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.85)']}
+              style={StyleSheet.absoluteFill}
             />
-            <View style={styles.reelDurationBadge}>
-              <Text style={styles.reelDurationText}>
-                {formatDuration(item.duration || 0)}
-              </Text>
+            <View style={styles.reelGridOverlay}>
+              <View style={styles.cardTopRow}>
+                <View />
+                <View style={styles.reelDurationBadge}>
+                  <Text style={styles.reelDurationText}>
+                    {formatDuration(item.duration || 0)}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.reelGridInfo}>
+                <Text style={styles.reelGridTitle} numberOfLines={2}>{truncateTitle(item.title, 34)}</Text>
+                <Text style={styles.reelGridUsername}>@{item.user?.username}</Text>
+                <View style={styles.reelGameTag}>
+                  <Text style={styles.reelGameTagText} numberOfLines={1}>{game?.name}</Text>
+                </View>
+              </View>
             </View>
           </ImageBackground>
-          <View style={styles.reelGridInfo}>
-            <Text style={styles.reelGridTitle} numberOfLines={2}>{truncateTitle(item.title, 34)}</Text>
-            <Text style={styles.reelGridUsername}>@{item.user?.username}</Text>
-            <View style={styles.reelGameTag}>
-              <Text style={styles.reelGameTagText} numberOfLines={1}>{game?.name}</Text>
-            </View>
-          </View>
         </TouchableOpacity>
       );
     }
@@ -355,33 +360,36 @@ export default function GameDetailScreen() {
         >
           <ImageBackground source={{ uri: item.videoType === 'reel' ? getReelThumbnail(item) : getClipThumbnail(item) }} style={styles.contentThumbnail} imageStyle={{ borderRadius: 16 }}>
             <LinearGradient
-              colors={['rgba(0,0,0,0.6)', 'transparent', 'transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.contentGradient}
+              colors={['rgba(0,0,0,0.5)', 'transparent', 'rgba(0,0,0,0.85)']}
+              style={StyleSheet.absoluteFill}
             />
             <View style={styles.contentOverlay}>
-              <View style={styles.contentTopStats}>
-                <View style={styles.statBadge}>
-                  <Eye size={12} color="#FFF" style={{ marginRight: 4 }} />
-                  <Text style={styles.statText}>{formatNumber(item.views || 0)}</Text>
-                </View>
-                <View style={styles.durationBadge}>
-                  <Text style={styles.statText}>
-                    {Math.floor((item.duration || 0) / 60)}:{String(Math.floor((item.duration || 0) % 60)).padStart(2, '0')}
-                  </Text>
+              <View style={styles.cardTopRow}>
+                <View style={styles.topBadgesLeft} />
+                <View style={styles.statsBadgesRight}>
+                  {(item.duration || 0) > 0 && (
+                    <View style={styles.statsBadge}>
+                      <Text style={styles.statsText}>
+                        {Math.floor((item.duration || 0) / 60)}:{String(Math.floor((item.duration || 0) % 60)).padStart(2, '0')}
+                      </Text>
+                    </View>
+                  )}
+                  <View style={styles.statsBadge}>
+                    <Eye size={12} color="#FFF" />
+                    <Text style={styles.statsText}>{formatNumber(item.views || 0)}</Text>
+                  </View>
                 </View>
               </View>
               <View style={styles.contentInfo}>
-                <TouchableOpacity 
-                  style={styles.userRow}
+                <Text style={styles.contentTitle} numberOfLines={1}>{item.title}</Text>
+                <TouchableOpacity
                   onPress={(e) => {
                     e.stopPropagation();
                     router.push({ pathname: '/user/[id]', params: { id: item.user.username } });
                   }}
                 >
-                  <Image source={{ uri: item.user.avatarUrl }} style={styles.userAvatar} />
                   <Text style={styles.contentUsername}>@{item.user?.username}</Text>
                 </TouchableOpacity>
-                <Text style={styles.contentTitle} numberOfLines={2}>{truncateTitle(item.title, 34)}</Text>
               </View>
             </View>
           </ImageBackground>
@@ -547,13 +555,22 @@ export default function GameDetailScreen() {
                 imageStyle={{ borderRadius: 16 }}
               >
                 <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.6)']}
-                  style={styles.screenshotGridGradient}
+                  colors={['transparent', 'rgba(0,0,0,0.8)']}
+                  style={StyleSheet.absoluteFill}
                 />
+                <View style={styles.screenshotGridInfo}>
+                  {item.title ? (
+                    <Text style={styles.screenshotGridTitle} numberOfLines={1}>{item.title}</Text>
+                  ) : null}
+                  {item.user ? (
+                    <Text style={styles.screenshotGridUser} numberOfLines={1}>@{item.user.username}</Text>
+                  ) : null}
+                </View>
               </ImageBackground>
             </TouchableOpacity>
           )}
           keyExtractor={(item) => `screenshot-${item.id}`}
+          key="screenshots-3col"
           numColumns={3}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.screenshotsGridContent}
@@ -561,6 +578,7 @@ export default function GameDetailScreen() {
         />
       ) : contentType === 'reels' ? (
         <FlatList
+          key="reels-2col"
           data={reels}
           renderItem={renderContentItem}
           keyExtractor={(item) => `reel-${item.id}`}
@@ -571,6 +589,7 @@ export default function GameDetailScreen() {
         />
       ) : (
         <FlatList
+          key="clips-1col"
           data={clips}
           renderItem={renderContentItem}
           keyExtractor={(item) => `clip-${item.id}`}
@@ -805,10 +824,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E293B',
     position: 'relative' as const,
   },
-  contentGradient: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 16,
-  },
   contentThumbnail: {
     width: '100%',
     height: '100%',
@@ -820,110 +835,24 @@ const styles = StyleSheet.create({
     padding: 14,
     justifyContent: 'space-between',
   },
-  contentTopStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   contentInfo: {
-    gap: 6,
-  },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  userAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: '#FFF',
-    backgroundColor: '#2D3748',
-  },
-  durationBadge: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  statBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 6,
-  },
-  statText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600' as const,
-  },
-  statsDivider: {
-    width: 1,
-    height: 12,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    gap: 4,
   },
   contentTitle: {
     color: '#FFF',
-    fontSize: 15,
-    fontWeight: '600' as const,
-    marginBottom: 8,
+    fontSize: 16,
+    fontWeight: 'bold' as const,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
   contentUsername: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '600' as const,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  contentGameTag: {
-    backgroundColor: '#4ADE80',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: 'flex-start' as const,
-    marginTop: 4,
-  },
-  contentGameTagText: {
-    color: '#002E15',
-    fontSize: 10,
-    fontWeight: 'bold' as const,
-  },
-  contentEngagement: {
-    flexDirection: 'row' as const,
-    gap: 16,
-  },
-  engagementItem: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: 4,
-  },
-  engagementText: {
-    color: '#FFF',
+    color: '#94A3B8',
     fontSize: 12,
-    fontWeight: '600' as const,
+    fontWeight: '500' as const,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
-  },
-  reelBadge: {
-    position: 'absolute' as const,
-    top: 8,
-    right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(74,222,128,0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   reelsModalContainer: {
     flex: 1,
@@ -949,9 +878,36 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
+  cardTopRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'flex-start' as const,
+  },
+  topBadgesLeft: {
+    flexDirection: 'row' as const,
+    gap: 4,
+  },
+  statsBadgesRight: {
+    flexDirection: 'row' as const,
+    gap: 4,
+    alignItems: 'center' as const,
+  },
+  statsBadge: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  statsText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
   reelGridCard: {
     width: (SCREEN_WIDTH - 36) / 2,
-    backgroundColor: '#1E293B',
     borderRadius: 16,
     overflow: 'hidden',
   },
@@ -959,14 +915,14 @@ const styles = StyleSheet.create({
     width: '100%',
     height: (SCREEN_WIDTH - 36) / 2 * 1.4,
     backgroundColor: '#2D3748',
+    justifyContent: 'space-between' as const,
   },
-  reelGridGradient: {
+  reelGridOverlay: {
     ...StyleSheet.absoluteFillObject,
+    padding: 10,
+    justifyContent: 'space-between' as const,
   },
   reelDurationBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -978,46 +934,35 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
   },
   reelGridInfo: {
-    padding: 10,
+    gap: 3,
   },
   reelGridTitle: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600' as const,
-    marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   reelGridUsername: {
     color: '#94A3B8',
-    fontSize: 12,
-    marginBottom: 6,
+    fontSize: 11,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   reelGameTag: {
     backgroundColor: '#4ADE80',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 5,
+    alignSelf: 'flex-start' as const,
+    marginTop: 2,
   },
   reelGameTagText: {
     color: '#002E15',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700' as const,
-  },
-  reelGridStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  reelStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  reelStatText: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '600' as const,
   },
   screenshotsGridContent: {
     paddingHorizontal: 8,
@@ -1039,30 +984,23 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: '#2D3748',
+    justifyContent: 'flex-end' as const,
   },
-  screenshotGridGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  screenshotOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+  screenshotGridInfo: {
     padding: 6,
+    gap: 2,
   },
-  screenshotStats: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  screenshotStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  screenshotStatText: {
+  screenshotGridTitle: {
     color: '#FFF',
     fontSize: 10,
-    fontWeight: '700' as const,
+    fontWeight: '600' as const,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  screenshotGridUser: {
+    color: '#94A3B8',
+    fontSize: 9,
+    fontWeight: '500' as const,
   },
 });
