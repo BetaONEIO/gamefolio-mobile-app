@@ -7,19 +7,18 @@ if (!process.env.BREVO_API_KEY) {
   console.warn("BREVO_API_KEY not set - email functionality will be disabled");
 }
 
-const apiInstance = new brevo.TransactionalEmailsApi();
+// Configure Brevo API instance
+let apiInstance = new brevo.TransactionalEmailsApi();
+
+// Initialize default API client for Brevo
+const ApiClient = brevo.ApiClient.instance;
+ApiClient.defaultHeaders['api-key'] = process.env.BREVO_API_KEY || '';
+
+// Also create new instance with configured client
+apiInstance = new brevo.TransactionalEmailsApi();
+
 if (process.env.BREVO_API_KEY) {
-  try {
-    // Try to set API key using the standard pattern
-    if (apiInstance.authentications && apiInstance.authentications['api-key']) {
-      apiInstance.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
-    } else if (typeof apiInstance.setApiKey === 'function') {
-      apiInstance.setApiKey('api-key', process.env.BREVO_API_KEY);
-    }
-    console.log('✅ Brevo API key configured successfully');
-  } catch (error) {
-    console.error('❌ Failed to configure Brevo API key:', error);
-  }
+  console.log('✅ Brevo API key configured successfully');
 }
 
 const FROM_EMAIL = 'noreply@gamefolio.com';
