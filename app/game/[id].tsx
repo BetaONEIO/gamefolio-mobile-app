@@ -790,8 +790,8 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
   },
   clipsScrollContent: {
-    paddingTop: (SCREEN_HEIGHT - (SCREEN_WIDTH * (9/16) + 60)) / 2,
-    paddingBottom: (SCREEN_HEIGHT - (SCREEN_WIDTH * (9/16) + 60)) / 2 + 100,
+    paddingTop: 8,
+    paddingBottom: 100,
     paddingHorizontal: 16,
   },
   carouselCard: {
