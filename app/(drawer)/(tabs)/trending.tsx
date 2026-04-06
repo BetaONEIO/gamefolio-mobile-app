@@ -4230,7 +4230,7 @@ const styles = StyleSheet.create({
     maxWidth: '85%',
   },
   seeMoreButton: {
-    color: '#4ADE80',
+    color: '#FFF',
     fontSize: 12,
     fontWeight: '600' as const,
     marginTop: 2,
@@ -4245,7 +4245,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   reelGameText: {
-    color: '#4ADE80',
+    color: '#FFF',
     fontSize: 11,
     fontWeight: '600' as const,
   },
