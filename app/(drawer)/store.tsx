@@ -2295,7 +2295,7 @@ const styles = StyleSheet.create({
   mintSummaryValue: { fontSize: 14, fontWeight: '600' as const, color: '#FFFFFF' },
   mintTotalLabelBold: { fontSize: 16, fontWeight: '700' as const, color: '#FFFFFF' },
   mintTotalValueGreen: { fontSize: 18, fontWeight: '700' as const, color: '#4ADE80' },
-  tabsScrollWrap: { flexShrink: 0 },
+  tabsScrollWrap: { flexShrink: 0, maxHeight: 60 },
   loadingState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
   loadingText: { fontSize: 14, color: '#94A3B8' },
   categoryFilters: { paddingHorizontal: 20, gap: 8, paddingBottom: 4, paddingTop: 4 },
