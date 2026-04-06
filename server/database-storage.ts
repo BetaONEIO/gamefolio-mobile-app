@@ -597,8 +597,11 @@ export class DatabaseStorage implements IStorage {
 
   async getTrendingGames(limit: number = 10): Promise<Game[]> {
     try {
-      // Just get all games and then sort them by highest ID (newest)
-      const allGames = await db.select().from(games).orderBy(desc(games.id)).limit(limit);
+      // Filter out non-gaming categories
+      const excludedGames = ['Just Chatting', 'Music', 'Art', 'Talk Shows & Podcasts', 'ASMR', 'Pools, Hot Tubs, and Beaches', 'Sports', 'Travel & Outdoors', 'Science & Technology', 'Food & Drink', 'Beauty & Body Art', 'Special Events', 'IRL', 'Makers & Crafting', 'Politics', 'Animals, Aquariums, and Zoos'];
+      
+      // Get games excluding non-gaming categories, sorted by newest
+      const allGames = await db.select().from(games).where(sql`${games.name} NOT IN (${excludedGames.map(g => `'${g}'`).join(',')})`).orderBy(desc(games.id)).limit(limit);
       return allGames;
     } catch (error) {
       console.error("Error in getTrendingGames:", error);
