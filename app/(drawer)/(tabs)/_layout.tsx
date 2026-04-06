@@ -94,7 +94,6 @@ export default function TabLayout() {
         name="trending"
         options={{
           title: "Trending",
-          headerShown: true,
           tabBarIcon: ({ color }) => <Flame color={color} size={24} />,
         }}
       />
