@@ -1029,6 +1029,50 @@ export const api = {
       
       return { success: true, message: data.message || 'Password reset successfully' };
     },
+
+    verifyResetCode: async (email: string, code: string): Promise<{ success: boolean; message: string; verified: boolean }> => {
+      console.log('[API] 🔵 Verifying password reset code');
+      const baseUrl = API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      
+      const response = await fetch(`${baseUrl}/api/auth/verify-reset-code`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, code }),
+      });
+      
+      const data = await response.json();
+      console.log('[API] Verify reset code response:', response.status, data);
+      
+      if (!response.ok) {
+        throw new APIError(data.message || 'Invalid or expired code', response.status, data);
+      }
+      
+      return { success: true, message: data.message || 'Code verified', verified: true };
+    },
+
+    resetPasswordWithCode: async (email: string, code: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+      console.log('[API] 🔵 Resetting password with code');
+      const baseUrl = API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '');
+      
+      const response = await fetch(`${baseUrl}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, code, newPassword }),
+      });
+      
+      const data = await response.json();
+      console.log('[API] Reset password with code response:', response.status, data);
+      
+      if (!response.ok) {
+        throw new APIError(data.message || 'Failed to reset password', response.status, data);
+      }
+      
+      return { success: true, message: data.message || 'Password reset successfully' };
+    },
   },
 
   clips: {

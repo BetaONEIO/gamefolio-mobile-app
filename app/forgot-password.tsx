@@ -75,6 +75,13 @@ export default function ForgotPasswordScreen() {
       const result = await api.auth.forgotPassword(email.trim().toLowerCase());
       console.log('[ForgotPassword] Success:', result);
       setEmailSent(true);
+      // Navigate to code verification after 500ms
+      setTimeout(() => {
+        router.push({
+          pathname: '/reset-password-code',
+          params: { email: email.trim().toLowerCase() }
+        });
+      }, 500);
     } catch (error) {
       console.error('[ForgotPassword] Error:', error);
       if (error instanceof APIError) {
@@ -88,58 +95,7 @@ export default function ForgotPasswordScreen() {
   };
 
   if (emailSent) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
-        <Stack.Screen options={{ headerShown: false }} />
-        <StatusBar style="light" />
-        
-        <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => router.back()} 
-            style={styles.backButton}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <ChevronLeft size={24} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.successContainer}>
-          <View style={styles.successIconContainer}>
-            <CheckCircle size={64} color={colors.primary} />
-          </View>
-          
-          <Text style={styles.successTitle}>Check your email</Text>
-          <Text style={styles.successSubtitle}>
-            We&apos;ve sent a password reset link to
-          </Text>
-          <View style={styles.emailBadge}>
-            <Mail size={16} color={colors.primary} />
-            <Text style={styles.emailBadgeText}>{email}</Text>
-          </View>
-          <Text style={styles.successNote}>
-            Click the link in the email to reset your password. If you don&apos;t see it, check your spam folder.
-          </Text>
-
-          <TouchableOpacity 
-            style={styles.mainButton}
-            activeOpacity={0.8}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.mainButtonText}>Back to Login</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.resendButton}
-            activeOpacity={0.7}
-            onPress={() => {
-              setEmailSent(false);
-            }}
-          >
-            <Text style={styles.resendButtonText}>Didn&apos;t receive the email? Try again</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
+    return null; // Will navigate to next screen
   }
 
   return (

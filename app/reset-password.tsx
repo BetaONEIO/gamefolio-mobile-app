@@ -21,14 +21,15 @@ import CustomAlert from '@/components/CustomAlert';
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const [token, setToken] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [code, setCode] = useState<string>('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
-  const [tokenError, setTokenError] = useState(false);
+  const [paramsError, setParamsError] = useState(false);
   const [alertConfig, setAlertConfig] = useState<{
     visible: boolean;
     title: string;
@@ -52,15 +53,23 @@ export default function ResetPasswordScreen() {
   };
 
   useEffect(() => {
+    const emailFromParams = params.email as string;
+    const codeFromParams = params.code as string;
     const tokenFromParams = params.token as string;
-    if (tokenFromParams) {
-      console.log('[ResetPassword] Token received from params');
-      setToken(tokenFromParams);
+
+    if (emailFromParams && codeFromParams) {
+      console.log('[ResetPassword] Email and code received from params');
+      setEmail(emailFromParams);
+      setCode(codeFromParams);
+    } else if (tokenFromParams) {
+      console.log('[ResetPassword] Token received from params (email link flow)');
+      setEmail('');
+      setCode(tokenFromParams);
     } else {
-      console.log('[ResetPassword] No token in params');
-      setTokenError(true);
+      console.log('[ResetPassword] No email/code or token in params');
+      setParamsError(true);
     }
-  }, [params.token]);
+  }, [params.email, params.code, params.token]);
 
   const showAlert = (title: string, message: string, type: 'error' | 'success' = 'error') => {
     setAlertConfig({ visible: true, title, message, type });
@@ -84,23 +93,32 @@ export default function ResetPasswordScreen() {
 
   const handleResetPassword = async () => {
     if (!validatePassword()) return;
-    if (!token) {
-      showAlert('Error', 'Invalid or missing reset token');
-      return;
-    }
 
     setIsLoading(true);
     console.log('[ResetPassword] Resetting password...');
 
     try {
-      const result = await api.auth.resetPassword(token, password);
+      let result;
+      // Use code flow if email and code are available, otherwise use token flow
+      if (email && code && !code.includes('-')) {
+        // 6-digit code flow
+        result = await api.auth.resetPasswordWithCode(email, code, password);
+      } else if (code) {
+        // Token flow (for email links)
+        result = await api.auth.resetPassword(code, password);
+      } else {
+        showAlert('Error', 'Invalid or missing reset information');
+        setIsLoading(false);
+        return;
+      }
+
       console.log('[ResetPassword] Success:', result);
       setResetSuccess(true);
     } catch (error) {
       console.error('[ResetPassword] Error:', error);
       if (error instanceof APIError) {
         if (error.message.toLowerCase().includes('expired') || error.message.toLowerCase().includes('invalid')) {
-          setTokenError(true);
+          setParamsError(true);
         }
         showAlert('Error', error.message);
       } else {
@@ -111,7 +129,7 @@ export default function ResetPasswordScreen() {
     }
   };
 
-  if (tokenError) {
+  if (paramsError) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
         <Stack.Screen options={{ headerShown: false }} />
@@ -132,9 +150,9 @@ export default function ResetPasswordScreen() {
             <AlertCircle size={64} color={colors.error} />
           </View>
           
-          <Text style={styles.errorTitle}>Invalid or Expired Link</Text>
+          <Text style={styles.errorTitle}>Invalid or Expired</Text>
           <Text style={styles.errorSubtitle}>
-            This password reset link is invalid or has expired. Reset links are valid for 1 hour.
+            This password reset code is invalid or has expired. Reset codes are valid for 15 minutes.
           </Text>
 
           <TouchableOpacity 
@@ -142,7 +160,7 @@ export default function ResetPasswordScreen() {
             activeOpacity={0.8}
             onPress={() => router.push('/forgot-password')}
           >
-            <Text style={styles.mainButtonText}>Request New Link</Text>
+            <Text style={styles.mainButtonText}>Request New Code</Text>
             <ArrowRight size={24} color="#002E15" strokeWidth={2.5} />
           </TouchableOpacity>
 
