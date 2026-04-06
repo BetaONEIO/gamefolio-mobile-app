@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, FlatList, ActivityIndicator, Dimensions, Modal, StatusBar, ViewToken, Keyboard, ImageBackground } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Eye, Play, Settings, Camera, X } from 'lucide-react-native';
+import { Eye, Play, Settings, Camera, X, Heart, Flame, MessageSquare } from 'lucide-react-native';
 import { truncateTitle } from '@/constants/formatters';
 import { getClipThumbnail, getReelThumbnail, getScreenshotThumbnail } from '@/utils/thumbnails';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -545,36 +545,48 @@ export default function GameDetailScreen() {
           data={screenshots}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.screenshotGridCard}
+              style={styles.screenshotCard}
               onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
-              <ImageBackground
+              <Image
                 source={{ uri: getScreenshotThumbnail(item) }}
-                style={styles.screenshotGridThumbnail}
-                imageStyle={{ borderRadius: 16 }}
-              >
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.8)']}
-                  style={StyleSheet.absoluteFill}
-                />
-                <View style={styles.screenshotGridInfo}>
-                  {item.title ? (
-                    <Text style={styles.screenshotGridTitle} numberOfLines={1}>{item.title}</Text>
-                  ) : null}
-                  {item.user ? (
-                    <Text style={styles.screenshotGridUser} numberOfLines={1}>@{item.user.username}</Text>
-                  ) : null}
+                style={styles.screenshotCardImage}
+                resizeMode="cover"
+              />
+              <View style={styles.screenshotCardBody}>
+                <Text style={styles.screenshotCardTitle} numberOfLines={1}>{item.title}</Text>
+                {item.user ? (
+                  <TouchableOpacity onPress={(e) => { e.stopPropagation(); router.push({ pathname: '/user/[id]', params: { id: item.user!.username } }); }}>
+                    <Text style={styles.screenshotCardUser}>@{item.user.username}</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {item.game ? (
+                  <View style={styles.screenshotCardTag}>
+                    <Text style={styles.screenshotCardTagText}>{item.game.name}</Text>
+                  </View>
+                ) : null}
+                <View style={styles.screenshotCardStats}>
+                  <View style={styles.screenshotCardStat}>
+                    <Heart size={15} color="#94A3B8" />
+                    <Text style={styles.screenshotCardStatText}>{item._count?.likes || 0}</Text>
+                  </View>
+                  <View style={styles.screenshotCardStat}>
+                    <Flame size={15} color="#94A3B8" />
+                    <Text style={styles.screenshotCardStatText}>{item._count?.fires || 0}</Text>
+                  </View>
+                  <View style={styles.screenshotCardStat}>
+                    <MessageSquare size={15} color="#94A3B8" />
+                    <Text style={styles.screenshotCardStatText}>{item._count?.comments || 0}</Text>
+                  </View>
                 </View>
-              </ImageBackground>
+              </View>
             </TouchableOpacity>
           )}
           keyExtractor={(item) => `screenshot-${item.id}`}
-          key="screenshots-3col"
-          numColumns={3}
+          key="screenshots-1col"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.screenshotsGridContent}
-          columnWrapperStyle={styles.screenshotsGridRow}
+          contentContainerStyle={styles.screenshotsListContent}
         />
       ) : contentType === 'reels' ? (
         <FlatList
@@ -964,43 +976,61 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700' as const,
   },
-  screenshotsGridContent: {
-    paddingHorizontal: 8,
-    paddingTop: 8,
+  screenshotsListContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
     paddingBottom: 100,
+    gap: 12,
   },
-  screenshotsGridRow: {
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  screenshotGridCard: {
-    width: (SCREEN_WIDTH - 32) / 3,
-    aspectRatio: 0.75,
+  screenshotCard: {
     backgroundColor: '#1E293B',
     borderRadius: 16,
     overflow: 'hidden',
   },
-  screenshotGridThumbnail: {
+  screenshotCardImage: {
     width: '100%',
-    height: '100%',
+    height: 200,
     backgroundColor: '#2D3748',
-    justifyContent: 'flex-end' as const,
   },
-  screenshotGridInfo: {
-    padding: 6,
-    gap: 2,
+  screenshotCardBody: {
+    padding: 12,
+    gap: 4,
   },
-  screenshotGridTitle: {
+  screenshotCardTitle: {
     color: '#FFF',
-    fontSize: 10,
-    fontWeight: '600' as const,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    fontSize: 16,
+    fontWeight: 'bold' as const,
   },
-  screenshotGridUser: {
+  screenshotCardUser: {
     color: '#94A3B8',
-    fontSize: 9,
-    fontWeight: '500' as const,
+    fontSize: 13,
+  },
+  screenshotCardTag: {
+    backgroundColor: '#4ADE80',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    alignSelf: 'flex-start' as const,
+    marginTop: 4,
+  },
+  screenshotCardTagText: {
+    color: '#002E15',
+    fontSize: 11,
+    fontWeight: '700' as const,
+  },
+  screenshotCardStats: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 16,
+    marginTop: 6,
+  },
+  screenshotCardStat: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 5,
+  },
+  screenshotCardStatText: {
+    color: '#94A3B8',
+    fontSize: 13,
   },
 });
