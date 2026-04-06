@@ -1666,7 +1666,7 @@ export const api = {
         console.log('[API] Skipping searchGames - empty query');
         return Promise.resolve({ games: [] as TwitchGame[] });
       }
-      return apiFetch<{ games: TwitchGame[] }>(`/api/twitch/games/search?query=${encodeURIComponent(trimmedQuery)}&limit=${limit}`, {
+      return apiFetch<{ games: TwitchGame[] }>(`/api/twitch/games/search?q=${encodeURIComponent(trimmedQuery)}&limit=${limit}`, {
         method: 'GET',
         token,
       });
