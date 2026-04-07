@@ -34,9 +34,9 @@ const formatDuration = (seconds: number) => {
 export default function GameDetailScreen() {
   const router = useRouter();
   const { id, name, boxArt } = useLocalSearchParams();
-  const gameId = Array.isArray(id) ? id[0] : id;
-  const gameName = Array.isArray(name) ? name[0] : name;
-  const gameBoxArt = Array.isArray(boxArt) ? boxArt[0] : boxArt;
+  const gameId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
+  const gameName = typeof name === 'string' ? name : Array.isArray(name) ? name[0] : '';
+  const gameBoxArt = typeof boxArt === 'string' ? boxArt : Array.isArray(boxArt) ? boxArt[0] : '';
   const { getAccessToken, user } = useAuth();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
@@ -68,7 +68,8 @@ export default function GameDetailScreen() {
       console.log('[GameDetail] Fetching game with ID:', gameId);
       
       try {
-        const game = await api.games.getGame(gameId!, token || undefined);
+        if (!gameId) return null;
+        const game = await api.games.getGame(gameId, token || undefined);
         console.log('[GameDetail] Game fetched:', game ? game.name : 'not found');
         return { game: game || null };
       } catch (error) {
@@ -96,7 +97,8 @@ export default function GameDetailScreen() {
     queryFn: async () => {
       const token = await getAccessToken();
       try {
-        const result = await api.games.getGameClips(gameId!, token || undefined, 50);
+        if (!gameId) return [];
+        const result = await api.games.getGameClips(gameId, token || undefined, 50);
         return applySortToClips(result, sortOption);
       } catch (error) {
         console.log('[GameDetail] Error fetching clips:', error);
@@ -111,7 +113,8 @@ export default function GameDetailScreen() {
     queryFn: async () => {
       const token = await getAccessToken();
       try {
-        const result = await api.games.getGameReels(gameId!, token || undefined, 50);
+        if (!gameId) return [];
+        const result = await api.games.getGameReels(gameId, token || undefined, 50);
         return applySortToClips(result, sortOption);
       } catch (error) {
         console.log('[GameDetail] Error fetching reels:', error);
@@ -126,7 +129,8 @@ export default function GameDetailScreen() {
     queryFn: async () => {
       const token = await getAccessToken();
       try {
-        return await api.games.getGameScreenshots(gameId!, token || undefined, 50);
+        if (!gameId) return [];
+        return await api.games.getGameScreenshots(gameId, token || undefined, 50);
       } catch (error) {
         console.log('[GameDetail] Error fetching screenshots:', error);
         return [];
