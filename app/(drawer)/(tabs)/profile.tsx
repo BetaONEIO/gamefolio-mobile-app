@@ -705,7 +705,21 @@ export default function ProfileScreen() {
         ) : null}
 
         {/* Tabs */}
-        {theme.displayNameFontId === 'impact' || theme.displayNameFontId === 'Orbitron' ? (
+        {activeTab === 'Collection' ? (
+          <View style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg, paddingHorizontal: 16, paddingVertical: 8 }]}>
+            <LinearGradient
+              colors={theme.collectionGradient as [string, string, ...string[]]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={{ flex: 1, borderRadius: 100, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              <Hexagon size={16} color='#0f172b' strokeWidth={2.5} />
+              <Text style={{ color: '#0f172b', fontWeight: '800', fontSize: 15, letterSpacing: 0.2 }}>
+                NFTs  ({ownedNfts.length})
+              </Text>
+            </LinearGradient>
+          </View>
+        ) : theme.displayNameFontId === 'impact' || theme.displayNameFontId === 'Orbitron' ? (
           <View style={[styles.tabsContainer, { backgroundColor: theme.bg, paddingHorizontal: 16, paddingVertical: 12 }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <TouchableOpacity style={styles.menuTab} onPress={() => setActiveTab('Clips')} activeOpacity={0.8}>
@@ -748,20 +762,6 @@ export default function ProfileScreen() {
                 <Text style={[styles.menuTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        ) : activeTab === 'Collection' ? (
-          <View style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg, paddingHorizontal: 16, paddingVertical: 8 }]}>
-            <LinearGradient
-              colors={theme.collectionGradient as [string, string, ...string[]]}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={{ flex: 1, borderRadius: 100, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-            >
-              <Hexagon size={16} color='#0f172b' strokeWidth={2.5} />
-              <Text style={{ color: '#0f172b', fontWeight: '800', fontSize: 15, letterSpacing: 0.2 }}>
-                NFTs  ({ownedNfts.length})
-              </Text>
-            </LinearGradient>
           </View>
         ) : (
           <View style={[styles.tabsContainer, { backgroundColor: '#131F2A', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 20, marginHorizontal: 0, marginBottom: 8 }]}>
