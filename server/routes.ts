@@ -7161,6 +7161,24 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // Avatar Border Routes (Lootbox Rewards)
   // ==========================================
 
+  // GET /api/profile-borders — returns all active borders + user's selectedBorderId
+  app.get("/api/profile-borders", hybridAuth, async (req, res) => {
+    try {
+      const allBorders = await db
+        .select()
+        .from(profileBorders)
+        .where(eq(profileBorders.isActive, true))
+        .orderBy(profileBorders.name);
+
+      const selectedBorderId = (req as any).user?.selectedBorderId ?? null;
+
+      return res.json({ borders: allBorders, selectedBorderId });
+    } catch (err) {
+      console.error("Error fetching profile borders:", err);
+      return res.status(500).json({ message: "Error fetching profile borders" });
+    }
+  });
+
   // Get user's unlocked avatar borders
   app.get("/api/user/avatar-borders", async (req, res) => {
     if (!req.isAuthenticated()) {

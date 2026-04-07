@@ -188,9 +188,13 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
   const { data: profileBordersData } = useQuery({
     queryKey: ['/api/profile-borders'],
     queryFn: async () => {
-      const token = await getAccessToken();
-      if (!token) return null;
-      return api.profileBorders.getAll(token);
+      try {
+        const token = await getAccessToken();
+        if (!token) return null;
+        return await api.profileBorders.getAll(token);
+      } catch {
+        return null;
+      }
     },
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
