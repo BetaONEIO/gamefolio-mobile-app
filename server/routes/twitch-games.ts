@@ -9,9 +9,8 @@ const router = express.Router();
 router.get('/twitch/games/top', async (req: express.Request, res: express.Response) => {
   try {
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
-    const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
+    const cursor = req.query.cursor as string | undefined;
 
-    // Helper to map any game object to the expected { id, name, boxArt } shape
     const toClientGame = (g: any) => ({
       id: String(g.id),
       name: g.name,
@@ -20,11 +19,13 @@ router.get('/twitch/games/top', async (req: express.Request, res: express.Respon
     });
 
     let games: any[] = [];
+    let nextCursor: string | undefined = undefined;
     let usedFallback = false;
 
     try {
-      const raw = await twitchApi.getTopGames(limit, offset);
-      games = (raw || []).map(toClientGame);
+      const result = await twitchApi.getTopGames(limit, cursor);
+      games = (result.games || []).map(toClientGame);
+      nextCursor = result.nextCursor;
     } catch (twitchErr) {
       console.warn('Twitch top games failed, falling back to DB:', twitchErr);
       usedFallback = true;
@@ -34,14 +35,14 @@ router.get('/twitch/games/top', async (req: express.Request, res: express.Respon
     if (!games || games.length === 0) {
       const dbGames = await storage.getTrendingGames(limit);
       games = dbGames.map(toClientGame);
+      nextCursor = undefined;
       usedFallback = true;
     }
 
-    res.json({ games, nextCursor: undefined, source: usedFallback ? 'db' : 'twitch' });
+    res.json({ games, nextCursor, source: usedFallback ? 'db' : 'twitch' });
   } catch (error) {
     console.error('Error fetching top games from Twitch:', error);
 
-    // Last resort: return DB games
     try {
       const dbGames = await storage.getTrendingGames(20);
       const games = dbGames.map((g: any) => ({

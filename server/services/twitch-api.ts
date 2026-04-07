@@ -82,25 +82,25 @@ class TwitchApiService {
   }
   
   /**
-   * Get top games from Twitch API
+   * Get top games from Twitch API with cursor-based pagination
    */
-  async getTopGames(limit: number = 20, offset: number = 0): Promise<TwitchGame[]> {
+  async getTopGames(limit: number = 20, cursor?: string): Promise<{ games: TwitchGame[], nextCursor?: string }> {
     if (!this.isConfigured()) {
       throw new Error('Twitch API credentials not configured');
     }
     
     try {
       const token = await this.getAccessToken();
-      
-      // Fetch a large number of games to support pagination
+
+      const params: Record<string, any> = { first: Math.min(limit, 100) };
+      if (cursor) params.after = cursor;
+
       const response = await axios.get('https://api.twitch.tv/helix/games/top', {
         headers: {
           'Client-ID': this.clientId,
           'Authorization': `Bearer ${token}`
         },
-        params: {
-          first: 100 // Maximum allowed by Twitch API
-        }
+        params
       });
       
       // Filter out non-gaming categories
@@ -123,18 +123,13 @@ class TwitchApiService {
         'Animals, Aquariums, and Zoos'
       ];
 
-      const allGames = response.data.data.filter((game: any) => 
+      const filteredGames = (response.data.data || []).filter((game: any) => 
         !excludedCategories.includes(game.name)
       );
 
-      // Apply offset and limit for pagination
-      const paginatedGames = allGames.slice(offset, offset + limit);
-
-      // Return the paginated games with properly formatted URLs
-      return paginatedGames.map((game: any) => {
-        let boxArtUrl = game.box_art_url;
+      const games = filteredGames.map((game: any) => {
+        let boxArtUrl = game.box_art_url || '';
         
-        // Handle both possible template formats - use higher resolution for crisp display
         if (boxArtUrl.includes('{width}x{height}')) {
           boxArtUrl = boxArtUrl.replace('{width}x{height}', '600x800');
         } else if (boxArtUrl.includes('{width}') && boxArtUrl.includes('{height}')) {
@@ -148,6 +143,10 @@ class TwitchApiService {
           igdb_id: game.igdb_id
         };
       });
+
+      const nextCursor = response.data.pagination?.cursor || undefined;
+
+      return { games, nextCursor };
     } catch (error) {
       console.error('Error fetching top games from Twitch:', error);
       throw new Error('Failed to fetch top games from Twitch API');
