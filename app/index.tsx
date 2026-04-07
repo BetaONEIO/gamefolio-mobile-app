@@ -174,7 +174,7 @@ export default function LoginScreen() {
 
   // Handle web OAuth return — detects ?code= and ?provider= in URL after redirect back
   useEffect(() => {
-    if (Platform.OS !== 'web') return;
+    if (typeof window === 'undefined' || Platform.OS !== 'web') return;
     try {
       const url = new URL(window.location.href);
       const code = url.searchParams.get('code');
