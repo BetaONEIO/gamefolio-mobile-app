@@ -90,7 +90,7 @@ export default function HelpScreen() {
     if (method === 'email') {
       Linking.openURL('mailto:support@gamefolio.com');
     } else {
-      Linking.openURL('https://discord.gg/gamefolio');
+      Linking.openURL('https://discord.gg/AaknCAYNnp');
     }
   };
 
