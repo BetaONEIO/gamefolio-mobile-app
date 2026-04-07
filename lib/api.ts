@@ -2290,7 +2290,7 @@ export const api = {
 
     markAllRead: async (token: string): Promise<void> => {
       try {
-        await apiFetch('/api/notifications/read', {
+        await apiFetch('/api/notifications/mark-all-read', {
           method: 'POST',
           token,
         });
@@ -2301,7 +2301,7 @@ export const api = {
 
     markRead: async (notificationId: number, token: string): Promise<void> => {
       try {
-        await apiFetch(`/api/notifications/${notificationId}/read`, {
+        await apiFetch(`/api/notifications/${notificationId}/mark-read`, {
           method: 'POST',
           token,
         });
@@ -2323,7 +2323,7 @@ export const api = {
 
     clearAll: async (token: string): Promise<void> => {
       try {
-        await apiFetch('/api/notifications', {
+        await apiFetch('/api/notifications/delete-all', {
           method: 'DELETE',
           token,
         });
