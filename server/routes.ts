@@ -2257,11 +2257,17 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const { supabaseStorage } = await import('./supabase-storage');
       const slidesWithSignedUrls = await Promise.all(
         slides.map(async (slide) => {
-          if (slide.imageUrl && slide.imageUrl.includes('supabase.co') && slide.imageUrl.includes('gamefolio-media')) {
-            const signedUrl = await supabaseStorage.convertToSignedUrl(slide.imageUrl);
-            return { ...slide, imageUrl: signedUrl || slide.imageUrl };
+          let imageUrl = slide.imageUrl;
+          // Convert relative URLs to absolute using the production domain so mobile clients can load them
+          if (imageUrl && imageUrl.startsWith('/')) {
+            imageUrl = `${PRODUCTION_API_URL}${imageUrl}`;
           }
-          return slide;
+          // Convert Supabase storage URLs to signed URLs
+          if (imageUrl && imageUrl.includes('supabase.co') && imageUrl.includes('gamefolio-media')) {
+            const signedUrl = await supabaseStorage.convertToSignedUrl(imageUrl);
+            imageUrl = signedUrl || imageUrl;
+          }
+          return { ...slide, imageUrl };
         })
       );
 

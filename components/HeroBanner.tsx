@@ -67,7 +67,10 @@ export default function HeroBanner({ contentPadding = 16 }: HeroBannerProps) {
       const token = await getAccessToken().catch(() => null);
       const headers: Record<string, string> = {};
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch(`${Env.BACKEND_URL}/api/hero-slides`, { headers });
+      const res = await fetch(`${Env.BACKEND_URL}/api/hero-slides`, {
+        headers,
+        credentials: 'include',
+      });
       if (!res.ok) throw new Error('Failed to fetch hero slides');
       return res.json();
     },
