@@ -19,7 +19,8 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 
 interface ShareClipModalProps {
@@ -52,6 +53,25 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
   
   const handle = (clip.user?.handle || clip.user?.username || 'user').replace('@', '');
   const clipUrl = `https://app.gamefolio.com/@${handle}/clip/${clip.id}`;
+
+  const { data: ownerProfile } = useQuery({
+    queryKey: ['/api/users', handle, 'profile'],
+    queryFn: async () => {
+      if (!handle || handle === 'user') return null;
+      const token = await getAccessToken();
+      return api.users.getProfile(handle, token ?? undefined);
+    },
+    enabled: !!handle && handle !== 'user' && visible,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const ownerUser = ownerProfile?.user;
+  const themeAccent = ownerUser?.accentColor || '#4ADE80';
+  const themeBg = ownerUser?.backgroundColor || '#0B2232';
+  const accentIsLight = ['#FFF', '#FFFFFF', '#FACC15', '#FDE68A', '#fffaec', '#f0f0f2', '#fce7f3'].some(
+    (c) => themeAccent.toLowerCase().startsWith(c.toLowerCase().slice(0, 4))
+  );
+  const accentIconColor = accentIsLight ? '#000' : '#FFF';
 
   const copyToClipboard = async () => {
     await Clipboard.setStringAsync(clipUrl);
@@ -177,9 +197,15 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
           {/* Clip Preview */}
           <View style={styles.previewContainer}>
             <Image source={imageSource} style={styles.previewImage} />
+            <LinearGradient
+              colors={[`${themeBg}00`, `${themeBg}99`]}
+              style={StyleSheet.absoluteFillObject}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+            />
             <View style={styles.playButtonContainer}>
-              <View style={styles.playButton}>
-                <Play size={24} color="#000" fill="#000" style={{ marginLeft: 4 }} />
+              <View style={[styles.playButton, { backgroundColor: themeAccent }]}>
+                <Play size={24} color={accentIconColor} fill={accentIconColor} style={{ marginLeft: 4 }} />
               </View>
             </View>
           </View>
@@ -199,11 +225,11 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
                 />
               </View>
               <TouchableOpacity 
-                style={[styles.gfShareButton, !username && styles.disabledButton]} 
+                style={[styles.gfShareButton, { backgroundColor: username ? themeAccent : undefined }, !username && styles.disabledButton]} 
                 onPress={handleGamefolioShare}
                 disabled={!username}
               >
-                <Send size={18} color={username ? "#000" : "#64748B"} />
+                <Send size={18} color={username ? accentIconColor : "#64748B"} />
               </TouchableOpacity>
             </View>
           </View>
