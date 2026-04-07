@@ -2221,6 +2221,8 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         allowedVisibilities.push("logged_in");
         if (isPro) {
           allowedVisibilities.push("pro_only");
+        } else {
+          allowedVisibilities.push("non_pro");
         }
         if (isNewUser) {
           allowedVisibilities.push("new_users");

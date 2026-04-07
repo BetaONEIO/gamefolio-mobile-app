@@ -14,6 +14,8 @@ import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Video, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { Env } from '@/constants/Env';
+import { useAuth } from '@/context/AuthContext';
+import { useRevenueCat } from '@/context/RevenueCatContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -49,16 +51,23 @@ interface HeroBannerProps {
   contentPadding?: number;
 }
 
+const PRO_UPGRADE_LINKS = ['/pro', '/subscribe', '/premium', '/manage-subscription', '/(drawer)/manage-subscription'];
+
 export default function HeroBanner({ contentPadding = 16 }: HeroBannerProps) {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const [currentSlide, setCurrentSlide] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { getAccessToken } = useAuth();
+  const { isPro } = useRevenueCat();
 
   const { data: slides, isLoading } = useQuery<HeroSlide[]>({
     queryKey: ['/api/hero-slides'],
     queryFn: async () => {
-      const res = await fetch(`${Env.BACKEND_URL}/api/hero-slides`);
+      const token = await getAccessToken().catch(() => null);
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch(`${Env.BACKEND_URL}/api/hero-slides`, { headers });
       if (!res.ok) throw new Error('Failed to fetch hero slides');
       return res.json();
     },
@@ -77,7 +86,10 @@ export default function HeroBanner({ contentPadding = 16 }: HeroBannerProps) {
     retry: 1,
   });
 
-  const activeSlides = (slides && slides.length > 0) ? slides : FALLBACK_SLIDES;
+  const rawSlides = (slides && slides.length > 0) ? slides : FALLBACK_SLIDES;
+  const activeSlides = isPro
+    ? rawSlides.filter(s => !PRO_UPGRADE_LINKS.some(l => s.buttonLink?.startsWith(l)))
+    : rawSlides;
   const intervalMs = ((settings?.intervalSeconds) || 6) * 1000;
 
   const goToSlide = useCallback((idx: number) => {
