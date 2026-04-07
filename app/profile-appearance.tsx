@@ -18,7 +18,7 @@ import ProfilePictureModal from '@/components/ProfilePictureModal';
 import ProfileBorderModal, { AvatarBorder } from '@/components/ProfileBorderModal';
 import CustomAlert from '@/components/CustomAlert';
 import AppearanceStudioModal from '@/components/AppearanceStudioModal';
-import { SELECTABLE_PROFILE_THEMES, type ProfileThemeName } from '@/constants/themes';
+import { type ProfileThemeName } from '@/constants/themes';
 
 type TabType = 'profile' | 'platform';
 
@@ -604,35 +604,6 @@ export default function ProfileAppearance() {
                       />
                     </View>
                   )}
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Profile Page Theme</Text>
-                  <Text style={styles.inputHelper}>Choose a design theme for your public profile page.</Text>
-                  <View style={styles.profileThemesRow}>
-                    {SELECTABLE_PROFILE_THEMES.map((t) => {
-                      const isActive = selectedProfileTheme === t.id;
-                      return (
-                        <TouchableOpacity
-                          key={t.id}
-                          style={[styles.profileThemeCard, isActive && styles.profileThemeCardActive]}
-                          onPress={() => setSelectedProfileTheme(isActive ? null : t.id)}
-                          activeOpacity={0.8}
-                        >
-                          <View style={[styles.profileThemeSwatch, { backgroundColor: t.bg }]}>
-                            <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[1] }]} />
-                            <View style={[styles.profileThemeAccentDot, { backgroundColor: t.preview[2], marginLeft: 6 }]} />
-                          </View>
-                          <Text style={[styles.profileThemeLabel, isActive && styles.profileThemeLabelActive]}>{t.name}</Text>
-                          {isActive && (
-                            <View style={styles.profileThemeCheck}>
-                              <Check size={12} color="#FFF" />
-                            </View>
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
                 </View>
 
                 {renderSaveButton(handleSaveProfile)}
