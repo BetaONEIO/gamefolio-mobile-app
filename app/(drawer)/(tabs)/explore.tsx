@@ -42,8 +42,9 @@ const formatTwitchBoxArt = (url: string | undefined, width: number = 285, height
 };
 
 const getGameImageUrl = (game: Game | TwitchGame) => {
-  const boxArt = 'boxArt' in game ? game.boxArt : undefined;
-  const icon = 'icon' in game ? game.icon : undefined;
+  if (!game) return undefined;
+  const boxArt = typeof game === 'object' && game && 'boxArt' in game ? game.boxArt : undefined;
+  const icon = typeof game === 'object' && game && 'icon' in game ? game.icon : undefined;
   return formatTwitchBoxArt(boxArt, 285, 380) || formatTwitchBoxArt(icon, 285, 380) || boxArt || icon;
 };
 
@@ -272,6 +273,7 @@ export default function ExploreScreen() {
               ) : displayedGames.length > 0 ? (
                 <View style={styles.gamesGrid}>
                   {displayedGames.map((game, index) => {
+                    if (!game) return null;
                     const imageUrl = getGameImageUrl(game);
                     return (
                       <TouchableOpacity
@@ -308,6 +310,7 @@ export default function ExploreScreen() {
           ) : (
             <View style={styles.gamesGrid}>
               {displayedGames.map((game, index) => {
+                if (!game) return null;
                 const imageUrl = getGameImageUrl(game);
                 return (
                   <TouchableOpacity
