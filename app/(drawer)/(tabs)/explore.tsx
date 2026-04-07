@@ -148,7 +148,7 @@ export default function ExploreScreen() {
     router.push({ 
       pathname: '/game/[id]', 
       params: { 
-        id: game.id,
+        id: game.id.toString(),
         name: game.name,
         boxArt: imageUrl || '',
       } 
