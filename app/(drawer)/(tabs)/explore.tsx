@@ -28,7 +28,8 @@ import LevelDetailsModal from '@/components/LevelDetailsModal';
 interface Game {
   id: string;
   name: string;
-  boxArt: string;
+  boxArt?: string;
+  icon?: string;
 }
 
 
@@ -38,6 +39,12 @@ const HORIZONTAL_PADDING = 16;
 const formatTwitchBoxArt = (url: string | undefined, width: number = 285, height: number = 380): string | undefined => {
   if (!url) return undefined;
   return url.replace('{width}', String(width)).replace('{height}', String(height));
+};
+
+const getGameImageUrl = (game: Game | TwitchGame) => {
+  const boxArt = 'boxArt' in game ? game.boxArt : undefined;
+  const icon = 'icon' in game ? game.icon : undefined;
+  return formatTwitchBoxArt(boxArt, 285, 380) || formatTwitchBoxArt(icon, 285, 380) || boxArt || icon;
 };
 
 export default function ExploreScreen() {
@@ -144,7 +151,7 @@ export default function ExploreScreen() {
   const handleGamePress = useCallback((game: Game | TwitchGame) => {
     console.log('[Explore] Selected game:', game.name);
     Keyboard.dismiss();
-    const imageUrl = formatTwitchBoxArt(game.boxArt, 285, 380) || formatTwitchBoxArt((game as any).icon, 285, 380) || game.boxArt || (game as any).icon;
+    const imageUrl = getGameImageUrl(game);
     router.push({ 
       pathname: '/game/[id]', 
       params: { 
@@ -265,7 +272,7 @@ export default function ExploreScreen() {
               ) : displayedGames.length > 0 ? (
                 <View style={styles.gamesGrid}>
                   {displayedGames.map((game, index) => {
-                    const imageUrl = formatTwitchBoxArt(game.boxArt, 285, 380) || formatTwitchBoxArt(game.icon, 285, 380);
+                    const imageUrl = getGameImageUrl(game);
                     return (
                       <TouchableOpacity
                         key={`${game.id}-${index}`}
@@ -301,7 +308,7 @@ export default function ExploreScreen() {
           ) : (
             <View style={styles.gamesGrid}>
               {displayedGames.map((game, index) => {
-                const imageUrl = formatTwitchBoxArt(game.boxArt, 285, 380) || formatTwitchBoxArt(game.icon, 285, 380);
+                const imageUrl = getGameImageUrl(game);
                 return (
                   <TouchableOpacity
                     key={`${game.id}-${index}`}
