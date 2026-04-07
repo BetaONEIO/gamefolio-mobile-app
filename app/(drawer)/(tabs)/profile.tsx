@@ -753,7 +753,10 @@ export default function ProfileScreen() {
           <View style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg, paddingHorizontal: 16, paddingVertical: 8 }]}>
             <View style={[styles.tab, { backgroundColor: theme.tabActiveBg, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
               <Hexagon size={16} color='#0f172b' />
-              <Text style={[styles.tabText, { color: '#0f172b', fontWeight: '600' }]}>NFT Collection · {ownedNfts.length}</Text>
+              <Text style={[styles.tabText, { color: '#0f172b', fontWeight: '700' }]}>NFT's</Text>
+              <View style={{ backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 }}>
+                <Text style={[styles.tabText, { color: '#0f172b', fontWeight: '700', fontSize: 11 }]}>{ownedNfts.length}</Text>
+              </View>
             </View>
           </View>
         ) : (
