@@ -10,21 +10,51 @@ router.get('/twitch/games/top', async (req: express.Request, res: express.Respon
   try {
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
     const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
-    const games = await twitchApi.getTopGames(limit, offset);
 
-    res.json(games);
+    // Helper to map any game object to the expected { id, name, boxArt } shape
+    const toClientGame = (g: any) => ({
+      id: String(g.id),
+      name: g.name,
+      boxArt: g.boxArt || g.box_art_url || g.imageUrl || '',
+      igdb_id: g.igdb_id,
+    });
+
+    let games: any[] = [];
+    let usedFallback = false;
+
+    try {
+      const raw = await twitchApi.getTopGames(limit, offset);
+      games = (raw || []).map(toClientGame);
+    } catch (twitchErr) {
+      console.warn('Twitch top games failed, falling back to DB:', twitchErr);
+      usedFallback = true;
+    }
+
+    // Fall back to database games if Twitch returned nothing
+    if (!games || games.length === 0) {
+      const dbGames = await storage.getTrendingGames(limit);
+      games = dbGames.map(toClientGame);
+      usedFallback = true;
+    }
+
+    res.json({ games, nextCursor: undefined, source: usedFallback ? 'db' : 'twitch' });
   } catch (error) {
     console.error('Error fetching top games from Twitch:', error);
 
-    // Return a user-friendly error with fallback suggestion
-    if (error instanceof Error && error.message.includes('credentials not configured')) {
-      res.status(503).json({
-        message: 'Twitch API integration is not configured. Please set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET environment variables.',
-        fallback: 'You can still browse existing games in the database.'
-      });
-    } else {
-      res.status(500).json({ message: 'Failed to fetch top games from Twitch' });
+    // Last resort: return DB games
+    try {
+      const dbGames = await storage.getTrendingGames(20);
+      const games = dbGames.map((g: any) => ({
+        id: String(g.id),
+        name: g.name,
+        boxArt: g.imageUrl || '',
+      }));
+      return res.json({ games, nextCursor: undefined, source: 'db' });
+    } catch (dbErr) {
+      console.error('DB fallback also failed:', dbErr);
     }
+
+    res.status(500).json({ message: 'Failed to fetch top games', games: [] });
   }
 });
 
