@@ -87,9 +87,10 @@ export default function ExploreScreen() {
   });
   const { refetch: refetchTopGames, fetchNextPage, hasNextPage, isFetchingNextPage } = topGamesQuery;
 
-  const allGames = React.useMemo(() => 
-    topGamesQuery.data?.pages.flatMap(page => page.games) || []
-  , [topGamesQuery.data?.pages]);
+  const allGames = React.useMemo(() => {
+    const pages = topGamesQuery.data?.pages ?? [];
+    return pages.flatMap(page => page?.games ?? []).filter(Boolean);
+  }, [topGamesQuery.data?.pages]);
 
   const searchQuery_api = useQuery({
     queryKey: ['games', 'search', debouncedSearch],
@@ -238,13 +239,7 @@ export default function ExploreScreen() {
         </View>
       </View>
 
-      {topGamesQuery.isLoading && !searchQuery.trim() ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator color="#4ADE80" size="large" />
-          <Text style={styles.loadingText}>Loading games...</Text>
-        </View>
-      ) : (
-        <ScrollView
+      <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
@@ -263,6 +258,12 @@ export default function ExploreScreen() {
             />
           }
         >
+          {topGamesQuery.isLoading && allGames.length === 0 && !searchQuery.trim() ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="#4ADE80" size="large" />
+              <Text style={styles.loadingText}>Loading games...</Text>
+            </View>
+          ) : null}
           {searchQuery.trim().length > 0 ? (
             <>
               {searchQuery_api.isLoading ? (
@@ -349,7 +350,6 @@ export default function ExploreScreen() {
             </View>
           )}
         </ScrollView>
-      )}
 
       <LevelDetailsModal
         visible={isLevelModalVisible}
