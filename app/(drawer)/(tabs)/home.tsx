@@ -732,7 +732,7 @@ export default function HomeScreen() {
                               style={styles.gameTag}
                               onPress={(e) => {
                                 e.stopPropagation();
-                                router.push({ pathname: '/game/[id]', params: { id: clip.game.id.toString() } });
+                                router.push({ pathname: '/game/[id]', params: { id: clip.game.id.toString(), name: clip.game.name, boxArt: clip.game.imageUrl || '' } });
                               }}
                               activeOpacity={0.7}
                             >
@@ -914,7 +914,7 @@ export default function HomeScreen() {
                         style={styles.gameTag}
                         onPress={(e) => {
                           e.stopPropagation();
-                          router.push({ pathname: '/game/[id]', params: { id: reel.game.id.toString() } });
+                          router.push({ pathname: '/game/[id]', params: { id: reel.game.id.toString(), name: reel.game.name, boxArt: reel.game.imageUrl || '' } });
                         }}
                         activeOpacity={0.7}
                       >
@@ -995,7 +995,7 @@ export default function HomeScreen() {
                           style={styles.gameTag}
                           onPress={(e) => {
                             e.stopPropagation();
-                            router.push({ pathname: '/game/[id]', params: { id: shot.game!.id.toString() } });
+                            router.push({ pathname: '/game/[id]', params: { id: shot.game!.id.toString(), name: shot.game!.name, boxArt: shot.game!.imageUrl || '' } });
                           }}
                           activeOpacity={0.7}
                         >

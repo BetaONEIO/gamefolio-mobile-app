@@ -391,11 +391,12 @@ export default function GameDetailScreen() {
     );
   };
 
-  const game = gameData?.game || (gameName && gameBoxArt ? {
-    id: gameId || '',
-    name: gameName,
-    boxArt: gameBoxArt,
-  } as TwitchGame : null);
+  const rawGame = gameData?.game as any;
+  const game: TwitchGame | null = rawGame
+    ? { ...rawGame, boxArt: rawGame.boxArt || rawGame.imageUrl || '' }
+    : (gameName || gameBoxArt
+      ? { id: gameId || '', name: gameName, boxArt: gameBoxArt } as TwitchGame
+      : null);
   const isLoading = isLoadingGame || (contentType === 'clips' && isLoadingClips) || (contentType === 'reels' && isLoadingReels) || (contentType === 'screenshots' && isLoadingScreenshots);
   const activeCount = contentType === 'clips' ? clips.length : contentType === 'reels' ? reels.length : screenshots.length;
 

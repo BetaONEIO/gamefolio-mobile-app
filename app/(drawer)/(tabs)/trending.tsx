@@ -2763,7 +2763,7 @@ export default function TrendingScreen() {
               {featuredScreenshot.game && (
                 <TouchableOpacity 
                   style={styles.featuredGameRow}
-                  onPress={() => router.push({ pathname: '/game/[id]', params: { id: featuredScreenshot.game.id.toString() } })}
+                  onPress={() => router.push({ pathname: '/game/[id]', params: { id: featuredScreenshot.game.id.toString(), name: featuredScreenshot.game.name, boxArt: featuredScreenshot.game.imageUrl || '' } })}
                   activeOpacity={0.7}
                 >
                   <Gamepad2 size={16} color="#4ADE80" />
@@ -3313,7 +3313,7 @@ export default function TrendingScreen() {
                   {reels[activeIndex].game ? (
                     <TouchableOpacity
                       style={styles.reelGameRow}
-                      onPress={() => router.push({ pathname: '/game/[id]', params: { id: reels[activeIndex].game.id.toString() } })}
+                      onPress={() => router.push({ pathname: '/game/[id]', params: { id: reels[activeIndex].game.id.toString(), name: reels[activeIndex].game.name, boxArt: reels[activeIndex].game.imageUrl || '' } })}
                       activeOpacity={0.7}
                     >
                       <Gamepad2 size={14} color="#4ADE80" />
@@ -3415,7 +3415,7 @@ export default function TrendingScreen() {
                   {clips[activeIndex].game ? (
                     <TouchableOpacity
                       style={styles.reelGameRow}
-                      onPress={() => router.push({ pathname: '/game/[id]', params: { id: clips[activeIndex].game.id.toString() } })}
+                      onPress={() => router.push({ pathname: '/game/[id]', params: { id: clips[activeIndex].game.id.toString(), name: clips[activeIndex].game.name, boxArt: clips[activeIndex].game.imageUrl || '' } })}
                       activeOpacity={0.7}
                     >
                       <Gamepad2 size={14} color="#4ADE80" />
@@ -3510,7 +3510,7 @@ export default function TrendingScreen() {
                   {screenshots[activeScreenshotIndex].game ? (
                     <TouchableOpacity
                       style={styles.reelGameRow}
-                      onPress={() => router.push({ pathname: '/game/[id]', params: { id: screenshots[activeScreenshotIndex].game.id.toString() } })}
+                      onPress={() => router.push({ pathname: '/game/[id]', params: { id: screenshots[activeScreenshotIndex].game.id.toString(), name: screenshots[activeScreenshotIndex].game.name, boxArt: screenshots[activeScreenshotIndex].game.imageUrl || '' } })}
                       activeOpacity={0.7}
                     >
                       <Gamepad2 size={14} color="#4ADE80" />
