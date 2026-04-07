@@ -89,7 +89,7 @@ export default function ExploreScreen() {
 
   const allGames = React.useMemo(() => {
     const pages = topGamesQuery.data?.pages ?? [];
-    return pages.flatMap(page => page?.games ?? []).filter(Boolean);
+    return pages.flatMap(page => Array.isArray(page?.games) ? page.games : []).filter(Boolean);
   }, [topGamesQuery.data?.pages]);
 
   const searchQuery_api = useQuery({
@@ -310,7 +310,7 @@ export default function ExploreScreen() {
             </>
           ) : (
             <View style={styles.gamesGrid}>
-              {displayedGames.map((game, index) => {
+              {displayedGames.length > 0 ? displayedGames.map((game, index) => {
                 if (!game) return null;
                 const imageUrl = getGameImageUrl(game);
                 return (
@@ -340,7 +340,15 @@ export default function ExploreScreen() {
                     </View>
                   </TouchableOpacity>
                 );
-              })}
+              }) : (
+                <View style={styles.emptyContainer}>
+                  <View style={styles.emptyIcon}>
+                    <Search size={40} color="#4ADE80" />
+                  </View>
+                  <Text style={styles.emptyTitle}>No games available</Text>
+                  <Text style={styles.emptyMessage}>Try again in a moment</Text>
+                </View>
+              )}
             </View>
           )}
           {isFetchingNextPage && !searchQuery.trim() && (
