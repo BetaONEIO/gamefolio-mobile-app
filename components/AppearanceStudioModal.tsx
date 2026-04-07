@@ -419,11 +419,12 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
     }
   };
 
-  const renderProfilePreviewCard = (bgColor: string, accentColor: string, nameColor: string) => {
+  const renderProfilePreviewCard = (bgColor: string, accentColor: string, nameColor: string, statColor?: string) => {
     const followerCount = (user as any)?._count?.followers || 0;
     const followingCount = (user as any)?._count?.following || 0;
     const uploadsCount = (user as any)?._count?.clips || 0;
     const followBtnTextColor = accentColor === '#FFFFFF' ? '#000' : '#FFF';
+    const statNumColor = statColor || nameColor;
     return (
       <View style={[styles.previewCard, { backgroundColor: bgColor }]}>
         <ThemeBackgroundEffect themeId={selectedProfileTheme} />
@@ -459,17 +460,17 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
         <View style={styles.pvStatsCard}>
           <View style={styles.pvStatsRow}>
             <View style={styles.pvStatCol}>
-              <Text style={[styles.pvStatNum, { color: nameColor }]}>{uploadsCount}</Text>
+              <Text style={[styles.pvStatNum, { color: statNumColor }]}>{uploadsCount}</Text>
               <Text style={[styles.pvStatLabel, { color: accentColor }]}>Videos</Text>
             </View>
             <View style={styles.pvStatDivider} />
             <View style={styles.pvStatCol}>
-              <Text style={[styles.pvStatNum, { color: nameColor }]}>{followerCount}</Text>
+              <Text style={[styles.pvStatNum, { color: statNumColor }]}>{followerCount}</Text>
               <Text style={[styles.pvStatLabel, { color: accentColor }]}>Followers</Text>
             </View>
             <View style={styles.pvStatDivider} />
             <View style={styles.pvStatCol}>
-              <Text style={[styles.pvStatNum, { color: nameColor }]}>{followingCount}</Text>
+              <Text style={[styles.pvStatNum, { color: statNumColor }]}>{followingCount}</Text>
               <Text style={[styles.pvStatLabel, { color: accentColor }]}>Following</Text>
             </View>
           </View>
@@ -489,7 +490,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
       <Text style={styles.sectionTitle}>Profile Studio</Text>
       <Text style={styles.sectionSubtitle}>Customize your Gamefolio presence</Text>
 
-      {renderProfilePreviewCard(themeBg, themeAccent, displayNameColor)}
+      {renderProfilePreviewCard(themeBg, themeAccent, displayNameColor, activeThemeData?.isLight ? (activeThemeData?.statNumberColor || '#333333') : undefined)}
 
       <View style={styles.quickActions}>
         <Text style={styles.quickActionsTitle}>Quick Actions</Text>
@@ -853,7 +854,7 @@ export default function AppearanceStudioModal({ visible, onClose, onSaved }: App
         <Text style={styles.sectionTitle}>Profile Theme</Text>
         <Text style={styles.sectionSubtitle}>Choose a themed design for your public profile</Text>
 
-        {renderProfilePreviewCard(previewBg, previewAccent, displayNameColor)}
+        {renderProfilePreviewCard(previewBg, previewAccent, displayNameColor, activeThemeData?.isLight ? (activeThemeData?.statNumberColor || '#333333') : undefined)}
 
         {themesLoading ? (
           <View style={styles.themesLoadingContainer}>
