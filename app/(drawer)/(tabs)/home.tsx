@@ -602,7 +602,7 @@ export default function HomeScreen() {
         {(!user || !user.isPro) && !proPromoDismissed ? (
           <TouchableOpacity
             style={styles.proPromoCard}
-            onPress={() => router.push('/manage-subscription' as any)}
+            onPress={() => router.push('/(drawer)/manage-subscription' as any)}
             activeOpacity={0.85}
           >
             <LinearGradient

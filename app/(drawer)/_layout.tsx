@@ -86,6 +86,13 @@ export default function DrawerLayout() {
           headerShown: false,
         }}
       />
+      <Drawer.Screen
+        name="manage-subscription"
+        options={{
+          headerShown: false,
+          drawerItemStyle: { display: 'none' },
+        }}
+      />
     </Drawer>
     </AuthGuard>
   );

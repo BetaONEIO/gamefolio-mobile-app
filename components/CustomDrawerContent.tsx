@@ -187,7 +187,7 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
         {isPro ? (
           <TouchableOpacity 
             style={styles.proStatusContainer}
-            onPress={() => navigate('/manage-subscription')}
+            onPress={() => navigate('/(drawer)/manage-subscription')}
             activeOpacity={0.8}
           >
             <View style={styles.proStatusBadge}>

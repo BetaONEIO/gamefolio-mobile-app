@@ -754,7 +754,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
             {/* Go Pro */}
             <TouchableOpacity
               style={styles.profileMenuItem}
-              onPress={() => navigateFromProfileMenu('/manage-subscription')}
+              onPress={() => navigateFromProfileMenu('/(drawer)/manage-subscription')}
               activeOpacity={0.7}
             >
               <View style={styles.profileMenuItemIcon}>

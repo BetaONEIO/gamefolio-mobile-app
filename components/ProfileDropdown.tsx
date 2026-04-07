@@ -82,7 +82,7 @@ export default function ProfileDropdown({ visible, onClose, topOffset, onOpenLev
                 style={styles.menuItem}
                 onPress={() => {
                   onClose();
-                  router.push('/manage-subscription');
+                  router.push('/(drawer)/manage-subscription' as any);
                 }}
               >
                 <Star size={20} color="#FACC15" fill={isPro ? '#FACC15' : 'transparent'} strokeWidth={1.5} />
