@@ -118,6 +118,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isUnavailable, setIsUnavailable] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const authTokenRef = useRef(authTokens?.accessToken);
   authTokenRef.current = authTokens?.accessToken;
@@ -157,6 +158,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
     const token = authTokenRef.current;
     if (!token) return;
     if (unavailableRef.current) return;
+    setIsLoading(true);
     try {
       const [list, count] = await Promise.all([
         api.notifications.list(token),
@@ -172,6 +174,8 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
       } else {
         console.log('[Notifications] Failed to fetch notifications from API');
       }
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -340,6 +344,7 @@ export const [NotificationsProvider, useNotifications] = createContextHook(() =>
     notifications,
     unreadCount,
     isUnavailable,
+    isLoading,
     markAllRead,
     clearAll,
     removeNotification,

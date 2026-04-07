@@ -79,6 +79,7 @@ export default function NotificationsScreen() {
   const {
     notifications,
     isUnavailable,
+    isLoading,
     markAllRead,
     clearAll,
     removeNotification,
@@ -255,7 +256,7 @@ export default function NotificationsScreen() {
         keyExtractor={item => item.id.toString()}
         ListEmptyComponent={ListEmpty}
         onRefresh={fetchNotifications}
-        refreshing={false}
+        refreshing={isLoading}
         contentContainerStyle={[
           styles.listContent,
           { paddingTop: headerHeight, paddingBottom: insets.bottom + 16 },
