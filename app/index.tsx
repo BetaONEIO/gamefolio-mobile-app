@@ -172,10 +172,45 @@ export default function LoginScreen() {
     };
   }, [handleOAuthCallback, isGoogleLoading]);
 
+  // Handle web OAuth return — detects ?code= and ?provider= in URL after redirect back
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    try {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get('code');
+      const provider = url.searchParams.get('provider') as 'google' | 'discord' | null;
+      const authError = url.searchParams.get('auth_error');
+
+      if (authError) {
+        window.history.replaceState({}, '', window.location.pathname);
+        showAlert('Login Failed', decodeURIComponent(authError));
+        return;
+      }
+
+      if (code && provider) {
+        window.history.replaceState({}, '', window.location.pathname);
+        if (provider === 'google') setIsGoogleLoading(true);
+        else setIsDiscordLoading(true);
+        handleOAuthCallback(code, provider);
+      }
+    } catch (e) {
+      console.error('[Web OAuth] Error parsing URL for OAuth callback:', e);
+    }
+  }, [handleOAuthCallback]);
+
   // Google OAuth - Backend initiated flow (same as Discord)
   const handleGoogleLogin = async () => {
     if (!IS_NATIVE) {
-      showAlert('Mobile Only', 'Google login is only available on the mobile app');
+      setIsGoogleLoading(true);
+      try {
+        const returnTo = typeof window !== 'undefined' ? window.location.href.split('?')[0] : '';
+        const { authUrl } = await api.auth.googleWebInit(returnTo);
+        window.location.href = authUrl;
+      } catch (error: any) {
+        console.error('[Google OAuth] Web init error:', error);
+        showAlert('Google Login Failed', error.message || 'Failed to start Google login');
+        setIsGoogleLoading(false);
+      }
       return;
     }
 
@@ -220,7 +255,16 @@ export default function LoginScreen() {
   // Discord OAuth - Backend initiated flow
   const handleDiscordLogin = async () => {
     if (!IS_NATIVE) {
-      showAlert('Mobile Only', 'Discord login is only available on the mobile app');
+      setIsDiscordLoading(true);
+      try {
+        const returnTo = typeof window !== 'undefined' ? window.location.href.split('?')[0] : '';
+        const { authUrl } = await api.auth.discordWebInit(returnTo);
+        window.location.href = authUrl;
+      } catch (error: any) {
+        console.error('[Discord OAuth] Web init error:', error);
+        showAlert('Discord Login Failed', error.message || 'Failed to start Discord login');
+        setIsDiscordLoading(false);
+      }
       return;
     }
 

@@ -102,7 +102,27 @@ const scryptAsync = promisify(scrypt);
 const router = Router();
 
 // In-memory store for OAuth state tokens and auth codes (expires after 10 minutes)
-const oauthStateStore = new Map<string, { createdAt: number; platform: string }>();
+const oauthStateStore = new Map<string, {
+  createdAt: number;
+  platform: string;
+  flow?: 'mobile' | 'web';
+  redirectTo?: string;
+}>();
+
+/**
+ * Determine the base URL to use for OAuth callback redirect URIs.
+ * In dev, uses the Replit dev domain (no port - proxied via HTTPS).
+ * In production, uses SITE_URL.
+ */
+function getCallbackBaseUrl(): string {
+  // When running in dev with Replit, use the Replit dev domain
+  // This ensures OAuth codes are stored on the SAME server the app exchanges them from
+  if (process.env.NODE_ENV !== 'production' && process.env.REPLIT_DEV_DOMAIN) {
+    return `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  }
+  return process.env.SITE_URL || 'https://app.gamefolio.com';
+}
+
 const mobileAuthCodes = new Map<string, { createdAt: number; tokens: { accessToken: string; refreshToken: string }; userId: number; needsOnboarding: boolean; isNewUser: boolean }>();
 
 // Cleanup expired entries every 5 minutes
@@ -702,7 +722,7 @@ router.post('/auth/mobile/google', async (req: Request, res: Response) => {
  * Returns the Google OAuth URL that the mobile app should open in a browser
  */
 router.get('/auth/mobile/google/init', (req: Request, res: Response) => {
-  const baseUrl = process.env.SITE_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  const baseUrl = getCallbackBaseUrl();
   const redirectUri = `${baseUrl}/api/auth/mobile/google/callback`;
 
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
@@ -763,7 +783,7 @@ router.get('/auth/mobile/google/callback', async (req: Request, res: Response) =
       return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Invalid authentication state')}`);
     }
 
-    const baseUrl = process.env.SITE_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    const baseUrl = getCallbackBaseUrl();
     const redirectUri = `${baseUrl}/api/auth/mobile/google/callback`;
 
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -867,7 +887,7 @@ router.get('/auth/mobile/google/callback', async (req: Request, res: Response) =
  * Includes state parameter for CSRF protection
  */
 router.get('/auth/mobile/discord/init', (req: Request, res: Response) => {
-  const baseUrl = process.env.SITE_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+  const baseUrl = getCallbackBaseUrl();
   const redirectUri = `${baseUrl}/api/auth/mobile/discord/callback`;
 
   const discordClientId = process.env.DISCORD_CLIENT_ID;
@@ -925,7 +945,7 @@ router.get('/auth/mobile/discord/callback', async (req: Request, res: Response) 
       return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Invalid authentication state')}`);
     }
 
-    const baseUrl = process.env.SITE_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+    const baseUrl = getCallbackBaseUrl();
     const redirectUri = `${baseUrl}/api/auth/mobile/discord/callback`;
 
     // Exchange authorization code for access token
@@ -1209,6 +1229,318 @@ router.post('/auth/mobile/exchange', async (req: Request, res: Response) => {
       success: false,
       message: 'Failed to exchange auth code'
     });
+  }
+});
+
+/**
+ * Initiate Google OAuth for web browsers
+ * Returns the Google OAuth URL. Frontend redirects window.location there.
+ * Accepts ?returnTo=<url> to know where to send the user back after auth.
+ */
+router.get('/auth/web/google/init', (req: Request, res: Response) => {
+  const returnTo = (req.query.returnTo as string) || '';
+  const baseUrl = getCallbackBaseUrl();
+  const redirectUri = `${baseUrl}/api/auth/web/google/callback`;
+
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+  if (!googleClientId || !googleClientSecret) {
+    return res.status(500).json({ message: 'Google OAuth is not configured on this server.' });
+  }
+
+  const state = generateSecureCode();
+  oauthStateStore.set(state, {
+    createdAt: Date.now(),
+    platform: 'google',
+    flow: 'web',
+    redirectTo: returnTo,
+  });
+
+  const googleAuthUrl =
+    `https://accounts.google.com/o/oauth2/v2/auth?` +
+    `client_id=${googleClientId}&` +
+    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+    `response_type=code&` +
+    `scope=${encodeURIComponent('openid email profile')}&` +
+    `state=${state}&` +
+    `access_type=offline&` +
+    `prompt=select_account`;
+
+  console.log('[Google Web Init] Auth URL generated, redirectUri:', redirectUri);
+  res.json({ authUrl: googleAuthUrl, redirectUri, state });
+});
+
+/**
+ * Google OAuth callback for web browsers
+ * Processes code, stores a one-time auth code, redirects to frontend with ?code=xxx&provider=google
+ */
+router.get('/auth/web/google/callback', async (req: Request, res: Response) => {
+  const fallback = process.env.SITE_URL || 'https://app.gamefolio.com';
+
+  try {
+    const { code, error: oauthError, state } = req.query;
+
+    const stateEntry = state ? oauthStateStore.get(String(state)) : null;
+    const redirectTo = stateEntry?.redirectTo || fallback;
+
+    if (oauthError) {
+      console.error('[Google Web Callback] OAuth error:', oauthError);
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent(String(oauthError))}`);
+    }
+
+    if (!code) {
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('No authorization code received')}`);
+    }
+
+    if (!state || !stateEntry) {
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Invalid authentication state')}`);
+    }
+
+    oauthStateStore.delete(String(state));
+
+    if (stateEntry.platform !== 'google' || stateEntry.flow !== 'web') {
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Invalid authentication state')}`);
+    }
+
+    const baseUrl = getCallbackBaseUrl();
+    const redirectUri = `${baseUrl}/api/auth/web/google/callback`;
+
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID!,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+        code: String(code),
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      console.error('[Google Web Callback] Token exchange failed:', await tokenResponse.text());
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Failed to exchange authorization code')}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+
+    if (!userInfoResponse.ok) {
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Failed to fetch Google user info')}`);
+    }
+
+    const googleUser = await userInfoResponse.json();
+    const { id, email, name, picture } = googleUser;
+
+    if (!id || !email) {
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Google account missing required info')}`);
+    }
+
+    let user = await storage.getUserByEmail?.(email);
+    let isNewUser = false;
+
+    if (!user) {
+      isNewUser = true;
+      const timestamp = Date.now().toString().slice(-6);
+      const tempUsername = `temp_${id.substring(0, 8)}_${timestamp}`;
+      user = await storage.createUser({
+        username: tempUsername.toLowerCase(),
+        displayName: name || email.split('@')[0],
+        email: email.toLowerCase(),
+        password: '',
+        emailVerified: true,
+        avatarUrl: picture || null,
+        bannerUrl: null,
+        authProvider: 'google',
+        externalId: id,
+        userType: null,
+        ageRange: null,
+      });
+    }
+
+    const needsOnboarding = !user.userType || user.username.startsWith('temp_');
+
+    if (!isNewUser && !user.avatarUrl && picture) {
+      user = await storage.updateUser(user.id, { avatarUrl: picture, authProvider: 'google', externalId: id }) || user;
+    }
+
+    try {
+      await storage.updateUserLoginTime(user.id, 0);
+      await StreakService.updateLoginStreak(user.id);
+    } catch (err) {
+      console.error('[Google Web Callback] Error updating login time/streak:', err);
+    }
+
+    const tokens = JWTService.generateTokenPair(user);
+    const authCode = generateSecureCode();
+    mobileAuthCodes.set(authCode, { createdAt: Date.now(), tokens, userId: user.id, needsOnboarding, isNewUser });
+
+    console.log('[Google Web Callback] Success, redirecting. User:', user.username, 'isNew:', isNewUser);
+    const sep = redirectTo.includes('?') ? '&' : '?';
+    return res.redirect(`${redirectTo}${sep}code=${authCode}&provider=google`);
+  } catch (error) {
+    console.error('[Google Web Callback] Error:', error);
+    return res.redirect(`${fallback}?auth_error=${encodeURIComponent('Google authentication failed')}`);
+  }
+});
+
+/**
+ * Initiate Discord OAuth for web browsers
+ * Returns the Discord OAuth URL. Frontend redirects window.location there.
+ */
+router.get('/auth/web/discord/init', (req: Request, res: Response) => {
+  const returnTo = (req.query.returnTo as string) || '';
+  const baseUrl = getCallbackBaseUrl();
+  const redirectUri = `${baseUrl}/api/auth/web/discord/callback`;
+
+  const discordClientId = process.env.DISCORD_CLIENT_ID;
+
+  if (!discordClientId) {
+    return res.status(500).json({ message: 'Discord OAuth is not configured on this server.' });
+  }
+
+  const state = generateSecureCode();
+  oauthStateStore.set(state, {
+    createdAt: Date.now(),
+    platform: 'discord',
+    flow: 'web',
+    redirectTo: returnTo,
+  });
+
+  const discordAuthUrl =
+    `https://discord.com/api/oauth2/authorize?` +
+    `client_id=${discordClientId}&` +
+    `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+    `response_type=code&` +
+    `scope=${encodeURIComponent('identify email')}&` +
+    `state=${state}`;
+
+  console.log('[Discord Web Init] Auth URL generated, redirectUri:', redirectUri);
+  res.json({ authUrl: discordAuthUrl, redirectUri, state });
+});
+
+/**
+ * Discord OAuth callback for web browsers
+ * Processes code, stores a one-time auth code, redirects to frontend with ?code=xxx&provider=discord
+ */
+router.get('/auth/web/discord/callback', async (req: Request, res: Response) => {
+  const fallback = process.env.SITE_URL || 'https://app.gamefolio.com';
+
+  try {
+    const { code, error: oauthError, state } = req.query;
+
+    const stateEntry = state ? oauthStateStore.get(String(state)) : null;
+    const redirectTo = stateEntry?.redirectTo || fallback;
+
+    if (oauthError) {
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent(String(oauthError))}`);
+    }
+
+    if (!code) {
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('No authorization code received')}`);
+    }
+
+    if (!state || !stateEntry) {
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Invalid authentication state')}`);
+    }
+
+    oauthStateStore.delete(String(state));
+
+    if (stateEntry.platform !== 'discord' || stateEntry.flow !== 'web') {
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Invalid authentication state')}`);
+    }
+
+    const baseUrl = getCallbackBaseUrl();
+    const redirectUri = `${baseUrl}/api/auth/web/discord/callback`;
+
+    const tokenResponse = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      body: new URLSearchParams({
+        client_id: process.env.DISCORD_CLIENT_ID!,
+        client_secret: process.env.DISCORD_CLIENT_SECRET!,
+        code: String(code),
+        grant_type: 'authorization_code',
+        redirect_uri: redirectUri,
+        scope: 'identify email',
+      }).toString(),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+
+    if (!tokenResponse.ok) {
+      console.error('[Discord Web Callback] Token exchange failed:', await tokenResponse.text());
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Failed to exchange authorization code')}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+
+    const userResponse = await fetch('https://discord.com/api/users/@me', {
+      headers: { Authorization: `${tokenData.token_type} ${tokenData.access_token}` },
+    });
+
+    if (!userResponse.ok) {
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Failed to fetch Discord user info')}`);
+    }
+
+    const discordUser = await userResponse.json();
+    const { id, username, discriminator, email, avatar } = discordUser;
+
+    if (!id || !email) {
+      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Discord account missing email. Please ensure your email is verified on Discord.')}`);
+    }
+
+    let user = await storage.getUserByEmail?.(email);
+    let isNewUser = false;
+
+    if (!user) {
+      isNewUser = true;
+      const displayName = discriminator ? `${username}#${discriminator}` : username;
+      const timestamp = Date.now().toString().slice(-6);
+      const tempUsername = `temp_${id.substring(0, 8)}_${timestamp}`;
+      const avatarUrl = avatar ? `https://cdn.discordapp.com/avatars/${id}/${avatar}.png` : null;
+
+      user = await storage.createUser({
+        username: tempUsername.toLowerCase(),
+        displayName,
+        email: email.toLowerCase(),
+        password: '',
+        emailVerified: true,
+        avatarUrl,
+        bannerUrl: null,
+        authProvider: 'discord',
+        externalId: id,
+        userType: null,
+        ageRange: null,
+      });
+    }
+
+    const needsOnboarding = !user.userType || user.username.startsWith('temp_');
+
+    if (!isNewUser && !user.avatarUrl && avatar) {
+      const avatarUrl = `https://cdn.discordapp.com/avatars/${id}/${avatar}.png`;
+      user = await storage.updateUser(user.id, { avatarUrl, authProvider: 'discord', externalId: id }) || user;
+    }
+
+    try {
+      await storage.updateUserLoginTime(user.id, 0);
+      await StreakService.updateLoginStreak(user.id);
+    } catch (err) {
+      console.error('[Discord Web Callback] Error updating login time/streak:', err);
+    }
+
+    const tokens = JWTService.generateTokenPair(user);
+    const authCode = generateSecureCode();
+    mobileAuthCodes.set(authCode, { createdAt: Date.now(), tokens, userId: user.id, needsOnboarding, isNewUser });
+
+    console.log('[Discord Web Callback] Success, redirecting. User:', user.username, 'isNew:', isNewUser);
+    const sep = redirectTo.includes('?') ? '&' : '?';
+    return res.redirect(`${redirectTo}${sep}code=${authCode}&provider=discord`);
+  } catch (error) {
+    console.error('[Discord Web Callback] Error:', error);
+    return res.redirect(`${fallback}?auth_error=${encodeURIComponent('Discord authentication failed')}`);
   }
 });
 

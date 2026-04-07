@@ -963,6 +963,22 @@ export const api = {
       });
     },
 
+    // Web OAuth flow - Google (browser redirect)
+    googleWebInit: async (returnTo: string) => {
+      console.log('[API] 🔵 Initializing Google web OAuth...');
+      return apiFetch<{ authUrl: string }>(`/api/auth/web/google/init?returnTo=${encodeURIComponent(returnTo)}`, {
+        method: 'GET',
+      });
+    },
+
+    // Web OAuth flow - Discord (browser redirect)
+    discordWebInit: async (returnTo: string) => {
+      console.log('[API] 🔵 Initializing Discord web OAuth...');
+      return apiFetch<{ authUrl: string }>(`/api/auth/web/discord/init?returnTo=${encodeURIComponent(returnTo)}`, {
+        method: 'GET',
+      });
+    },
+
     // Mobile OAuth flow - Exchange code for tokens
     mobileExchange: async (code: string) => {
       console.log('[API] 🔵 Exchanging OAuth code for tokens...');
