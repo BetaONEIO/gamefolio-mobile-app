@@ -892,12 +892,13 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     borderWidth: 2,
     borderColor: '#334155',
-    borderRadius: 10,
+    borderRadius: 18,
     overflow: 'hidden',
   },
   avatar: {
     width: 36,
     height: 36,
+    borderRadius: 18,
   },
   modalContainer: {
     flex: 1,
