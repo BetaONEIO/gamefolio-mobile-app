@@ -188,6 +188,7 @@ export default function ProfileScreen() {
   const activeThemeId = (user as any)?.profileTheme ?? null;
   const theme = useMemo(() => getProfileTheme(activeThemeId), [user]);
   const h = useMemo(() => createHeaderStyles(theme), [theme]);
+  const selectedBorderColor = (user as any)?.profileBorderColor || theme.avatarBorderColor;
   const displayFont = useMemo(() => FONT_STYLES.find(f => f.id === (theme.displayNameFontId || 'default')), [theme]);
   
   // Fetch profile stats (clips count, followers, following) using REST
@@ -518,7 +519,7 @@ export default function ProfileScreen() {
             <TouchableOpacity onPress={() => setIsProfileModalVisible(true)}>
                 <Image 
                   source={{ uri: profileData.avatar }} 
-                  style={[styles.avatar, { borderColor: theme.avatarBorderColor }]} 
+                  style={[styles.avatar, { borderColor: selectedBorderColor }]} 
                 />
                 <View style={[styles.onlineIndicator, { borderColor: h.containerBg }]} />
             </TouchableOpacity>
@@ -1004,7 +1005,7 @@ export default function ProfileScreen() {
         onClose={() => setIsProfileModalVisible(false)}
         imageUrl={profileData.avatar}
         username={profileData.handle}
-        borderColor={theme.avatarBorderColor}
+        borderColor={selectedBorderColor}
       />
 
       <ProfileBannerModal
@@ -1041,7 +1042,7 @@ export default function ProfileScreen() {
           bio: profileData.bio,
           avatarUrl: profileData.avatar,
           bannerUrl: profileData.banner,
-          borderColor: theme.avatarBorderColor,
+          borderColor: selectedBorderColor,
           level: profileData.level,
           totalXP: profileData.totalXP,
           verified: profileData.verified,
