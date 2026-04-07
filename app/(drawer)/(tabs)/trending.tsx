@@ -3025,7 +3025,9 @@ export default function TrendingScreen() {
 
                     {screenshotComments.slice(0, 3).map((c) => (
                       <View key={c.id} style={styles.commentItem}>
-                        <Image source={{ uri: c.user.avatarUrl }} style={styles.commentAvatar} />
+                        <TouchableOpacity onPress={() => handleUserPress(c.user.username)} activeOpacity={0.7}>
+                          <Image source={{ uri: c.user.avatarUrl }} style={styles.commentAvatar} />
+                        </TouchableOpacity>
                         <View style={styles.commentContent}>
                           <Text style={styles.commentText}>
                             <Text style={styles.commentUsername}>{c.user.displayName}</Text>{' '}
@@ -3089,7 +3091,9 @@ export default function TrendingScreen() {
                 <ScrollView style={styles.fullScreenCommentsList} showsVerticalScrollIndicator={false}>
                   {screenshotComments.map((c) => (
                     <View key={c.id} style={styles.commentItem}>
-                      <Image source={{ uri: c.user.avatarUrl }} style={styles.commentAvatar} />
+                      <TouchableOpacity onPress={() => handleUserPress(c.user.username)} activeOpacity={0.7}>
+                        <Image source={{ uri: c.user.avatarUrl }} style={styles.commentAvatar} />
+                      </TouchableOpacity>
                       <View style={styles.commentContent}>
                         <Text style={styles.commentText}>
                           <Text style={styles.commentUsername}>{c.user.displayName}</Text>{' '}
