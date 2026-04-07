@@ -751,13 +751,17 @@ export default function ProfileScreen() {
           </View>
         ) : activeTab === 'Collection' ? (
           <View style={[styles.tabsContainer, { borderBottomColor: h.dividerColor, backgroundColor: h.tabBg, paddingHorizontal: 16, paddingVertical: 8 }]}>
-            <View style={[styles.tab, { backgroundColor: theme.tabActiveBg, borderRadius: 100, paddingHorizontal: 16, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }]}>
-              <Hexagon size={16} color='#0f172b' />
-              <Text style={[styles.tabText, { color: '#0f172b', fontWeight: '700' }]}>NFT's</Text>
-              <View style={{ backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 }}>
-                <Text style={[styles.tabText, { color: '#0f172b', fontWeight: '700', fontSize: 11 }]}>{ownedNfts.length}</Text>
-              </View>
-            </View>
+            <LinearGradient
+              colors={theme.collectionGradient as [string, string, ...string[]]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={{ flex: 1, borderRadius: 100, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              <Hexagon size={16} color='#0f172b' strokeWidth={2.5} />
+              <Text style={{ color: '#0f172b', fontWeight: '800', fontSize: 15, letterSpacing: 0.2 }}>
+                NFTs  ({ownedNfts.length})
+              </Text>
+            </LinearGradient>
           </View>
         ) : (
           <View style={[styles.tabsContainer, { backgroundColor: '#131F2A', paddingHorizontal: 16, paddingVertical: 4, borderRadius: 20, marginHorizontal: 0, marginBottom: 8 }]}>
