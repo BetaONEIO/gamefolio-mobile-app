@@ -2594,6 +2594,7 @@ export default function TrendingScreen() {
         maxToRenderPerBatch={3}
         windowSize={5}
         initialNumToRender={2}
+        extraData={reelCommentText}
       />
     );
   };
@@ -2673,6 +2674,7 @@ export default function TrendingScreen() {
         maxToRenderPerBatch={3}
         windowSize={5}
         initialNumToRender={2}
+        extraData={clipCommentText}
       />
     );
   };
@@ -2837,6 +2839,7 @@ export default function TrendingScreen() {
           removeClippedSubviews={Platform.OS === 'android'}
           decelerationRate="fast"
           disableIntervalMomentum
+          extraData={screenshotCommentText}
         />
       </View>
     );
