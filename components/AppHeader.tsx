@@ -760,7 +760,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
               <View style={styles.profileMenuItemIcon}>
                 <Star size={18} color="#FACC15" fill={isPro ? '#FACC15' : 'transparent'} strokeWidth={1.5} />
               </View>
-              <Text style={styles.profileMenuItemLabel}>Go Pro</Text>
+              <Text style={styles.profileMenuItemLabel}>{isPro ? 'Manage Pro' : 'Go Pro'}</Text>
             </TouchableOpacity>
 
             <View style={styles.profileMenuDivider} />

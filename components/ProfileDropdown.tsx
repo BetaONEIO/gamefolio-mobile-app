@@ -82,11 +82,11 @@ export default function ProfileDropdown({ visible, onClose, topOffset, onOpenLev
                 style={styles.menuItem}
                 onPress={() => {
                   onClose();
-                  router.push('/(drawer)/(tabs)/profile');
+                  router.push('/manage-subscription');
                 }}
               >
                 <Star size={20} color="#FACC15" fill={isPro ? '#FACC15' : 'transparent'} strokeWidth={1.5} />
-                <Text style={styles.menuText}>Go Pro</Text>
+                <Text style={styles.menuText}>{isPro ? 'Manage Pro' : 'Go Pro'}</Text>
               </TouchableOpacity>
 
               <View style={styles.divider} />
