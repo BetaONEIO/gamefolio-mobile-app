@@ -727,12 +727,10 @@ export default function ProfileScreen() {
                 {activeTab === 'Clips' ? (
                   <View style={[styles.menuTabPill, { backgroundColor: activeThemeId === 'neo' ? '#00FF00' : theme.accent, borderRadius: activeThemeId === 'neo' ? 0 : 100 }]}>
                     <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9, color: '#0f172b' }]}>CLIPS</Text>
-                    <Text style={[styles.menuTabPillCount, activeThemeId === 'cyberpunk' && { color: '#D600FF', fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }, activeThemeId === 'neo' && { color: '#0f172b', fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 8 }]}>{clips.length}/15</Text>
                   </View>
                 ) : (
                   <>
                     <Text style={[styles.menuTabLabel, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 11, color: '#00D9FF' }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 11, color: '#00FF00' }]}>CLIPS</Text>
-                    <Text style={[styles.menuTabCount, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9, color: '#D600FF' }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9, color: '#00FF00' }]}>{clips.length}/15</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -740,12 +738,10 @@ export default function ProfileScreen() {
                 {activeTab === 'Reels' ? (
                   <View style={[styles.menuTabPill, { backgroundColor: activeThemeId === 'neo' ? '#00FF00' : theme.accent, borderRadius: activeThemeId === 'neo' ? 0 : 100 }]}>
                     <Text style={[styles.menuTabPillLabel, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9 }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9, color: '#0f172b' }]}>REELS</Text>
-                    <Text style={[styles.menuTabPillCount, activeThemeId === 'cyberpunk' && { color: '#D600FF', fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 8 }, activeThemeId === 'neo' && { color: '#0f172b', fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 8 }]}>{reels.length}/15</Text>
                   </View>
                 ) : (
                   <>
                     <Text style={[styles.menuTabLabel, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 11, color: '#00D9FF' }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 11, color: '#00FF00' }]}>REELS</Text>
-                    <Text style={[styles.menuTabCount, { color: theme.muted }, activeThemeId === 'cyberpunk' && { fontFamily: 'Orbitron', letterSpacing: 2.5, fontWeight: '900', fontSize: 9, color: '#D600FF' }, activeThemeId === 'neo' && { fontFamily: 'JetBrains Mono', letterSpacing: 1.5, fontWeight: '700', fontSize: 9, color: '#00FF00' }]}>{reels.length}/15</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -760,7 +756,6 @@ export default function ProfileScreen() {
               </TouchableOpacity>
               <TouchableOpacity style={[styles.menuTab, styles.menuCameraTab]} onPress={() => setActiveTab('Screenshots')} activeOpacity={0.8}>
                 <Camera size={20} color={activeTab === 'Screenshots' ? theme.accent : theme.muted} />
-                <Text style={[styles.menuTabCount, { color: activeTab === 'Screenshots' ? theme.accent : theme.muted, marginTop: 2 }]}>{screenshots.length}/10</Text>
               </TouchableOpacity>
             </View>
           </View>
