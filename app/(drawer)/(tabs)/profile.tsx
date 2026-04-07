@@ -1055,6 +1055,8 @@ export default function ProfileScreen() {
           backgroundColor: theme.bg,
           cardBgColor: theme.cardBg,
           cardBorderColor: theme.cardBorder,
+          platformTagStyle: theme.platformTagStyle,
+          platformTagBorderColor: theme.platformTagBorderColor,
         }}
       />
 

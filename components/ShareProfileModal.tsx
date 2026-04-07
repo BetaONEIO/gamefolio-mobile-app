@@ -56,6 +56,8 @@ interface ProfileData {
   backgroundColor?: string;
   cardBgColor?: string;
   cardBorderColor?: string;
+  platformTagStyle?: 'solid' | 'outlined';
+  platformTagBorderColor?: string;
 }
 
 interface ShareProfileModalProps {
@@ -75,6 +77,12 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
   const avatarRingColor = profile.borderColor  || accent;
 
   const accentFaint  = `${accent}1A`;
+
+  const isOutlined   = profile.platformTagStyle === 'outlined';
+  const tagBorderColor = profile.platformTagBorderColor || accent;
+  const tagBg        = isOutlined ? 'transparent' : undefined;
+  const tagBorderWidth = isOutlined ? 1.5 : 0;
+  const tagTextColor = isOutlined ? tagBorderColor : '#FFF';
   
   const profileUrl = `https://app.gamefolio.com/@${profile.username}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(profileUrl)}&bgcolor=131F2A&color=FFFFFF`;
@@ -231,11 +239,21 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
               {profile.platforms && profile.platforms.length > 0 && (
                 <View style={styles.platformsSection}>
                   {profile.platforms.map((platform, index) => (
-                    <View key={index} style={[styles.platformTag, { backgroundColor: platform.color }]}>
-                      {platform.type === 'xbox' && <Gamepad2 size={12} color="#FFF" />}
-                      {platform.type === 'ps' && <Gamepad2 size={12} color="#FFF" />}
-                      {platform.type === 'pc' && <Monitor size={12} color="#FFF" />}
-                      <Text style={styles.platformText}>{platform.name}</Text>
+                    <View
+                      key={index}
+                      style={[
+                        styles.platformTag,
+                        {
+                          backgroundColor: isOutlined ? 'transparent' : platform.color,
+                          borderColor: isOutlined ? tagBorderColor : 'transparent',
+                          borderWidth: tagBorderWidth,
+                        },
+                      ]}
+                    >
+                      {platform.type === 'xbox' && <Gamepad2 size={12} color={tagTextColor} />}
+                      {platform.type === 'ps' && <Gamepad2 size={12} color={tagTextColor} />}
+                      {platform.type === 'pc' && <Monitor size={12} color={tagTextColor} />}
+                      <Text style={[styles.platformText, { color: tagTextColor }]}>{platform.name}</Text>
                     </View>
                   ))}
                 </View>
