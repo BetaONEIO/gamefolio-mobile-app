@@ -184,6 +184,35 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
     enabled: !!user?.username,
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: profileBordersData } = useQuery({
+    queryKey: ['/api/profile-borders'],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      if (!token) return null;
+      return api.profileBorders.getAll(token);
+    },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const getRarityColor = (rarity: string) => {
+    switch (rarity) {
+      case 'common': return '#94A3B8';
+      case 'rare': return '#3B82F6';
+      case 'epic': return '#A855F7';
+      case 'legendary': return '#FFD700';
+      default: return '#94A3B8';
+    }
+  };
+
+  const selectedBorder = profileBordersData?.borders?.find(
+    (b) => b.id === profileBordersData?.selectedBorderId
+  );
+  const avatarBorderColor = selectedBorder
+    ? getRarityColor(selectedBorder.rarity)
+    : (user?.accentColor || '#334155');
+
   const [isNotificationDropdownVisible, setIsNotificationDropdownVisible] = useState(false);
   const [isUploadDropdownVisible, setIsUploadDropdownVisible] = useState(false);
   const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -413,7 +442,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
 
           {!hideProfile && (
             <TouchableOpacity 
-              style={styles.avatarContainer}
+              style={[styles.avatarContainer, { borderColor: avatarBorderColor }]}
               onPress={openProfileMenu}
               activeOpacity={0.8}
             >
@@ -706,7 +735,7 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
                 source={{ uri: getEffectiveAvatarUrl(selfProfile?.user) || getEffectiveAvatarUrl(user) || undefined }}
                 placeholder={{ uri: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=100&auto=format&fit=crop' }}
                 contentFit="cover"
-                style={styles.profileMenuAvatar}
+                style={[styles.profileMenuAvatar, { borderColor: avatarBorderColor }]}
               />
               <View style={styles.profileMenuUserInfo}>
                 <Text style={styles.profileMenuDisplayName} numberOfLines={1}>
