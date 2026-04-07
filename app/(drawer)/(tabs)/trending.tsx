@@ -49,7 +49,6 @@ import {
   Check,
   Maximize,
   Search,
-  Send,
 } from 'lucide-react-native';
 import FlameAnimation from '@/components/FlameAnimation';
 import { useAuth } from '@/context/AuthContext';
@@ -173,9 +172,7 @@ interface ReelItemProps {
   showComments: boolean;
   onToggleComments: () => void;
   comments: Comment[];
-  commentText: string;
-  onCommentTextChange: (text: string) => void;
-  onSubmitComment: () => void;
+  onSubmitComment: (text: string) => void;
   isLoadingComments: boolean;
   isTabFocused: boolean;
   containerHeight: number;
@@ -215,9 +212,7 @@ interface ClipItemProps {
   showComments: boolean;
   onToggleComments: () => void;
   comments: Comment[];
-  commentText: string;
-  onCommentTextChange: (text: string) => void;
-  onSubmitComment: () => void;
+  onSubmitComment: (text: string) => void;
   isLoadingComments: boolean;
   isTabFocused: boolean;
   containerHeight: number;
@@ -236,8 +231,6 @@ const ReelItem = React.memo(({
   showComments,
   onToggleComments,
   comments,
-  commentText,
-  onCommentTextChange,
   onSubmitComment,
   isLoadingComments,
   isTabFocused,
@@ -249,6 +242,7 @@ const ReelItem = React.memo(({
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [localCommentText, setLocalCommentText] = useState('');
   const playIconOpacity = useRef(new Animated.Value(0)).current;
   const commentsSlideAnim = useRef(new Animated.Value(0)).current;
   const commentsListRef = useRef<FlatList>(null);
@@ -511,16 +505,16 @@ const ReelItem = React.memo(({
               style={styles.reelCommentInput}
               placeholder="Add a comment..."
               placeholderTextColor="#64748B"
-              value={commentText}
-              onChangeText={onCommentTextChange}
+              value={localCommentText}
+              onChangeText={setLocalCommentText}
               multiline
             />
             <TouchableOpacity
-              style={[styles.reelPostButton, !commentText && styles.reelPostButtonDisabled]}
-              disabled={!commentText}
-              onPress={onSubmitComment}
+              style={[styles.reelPostButton, !localCommentText && styles.reelPostButtonDisabled]}
+              disabled={!localCommentText}
+              onPress={() => { onSubmitComment(localCommentText); setLocalCommentText(''); }}
             >
-              <Text style={[styles.reelPostButtonText, commentText && styles.reelPostButtonTextActive]}>
+              <Text style={[styles.reelPostButtonText, localCommentText && styles.reelPostButtonTextActive]}>
                 Post
               </Text>
             </TouchableOpacity>
@@ -546,9 +540,7 @@ interface ClipItemProps {
   showComments: boolean;
   onToggleComments: () => void;
   comments: Comment[];
-  commentText: string;
-  onCommentTextChange: (text: string) => void;
-  onSubmitComment: () => void;
+  onSubmitComment: (text: string) => void;
   isLoadingComments: boolean;
   isTabFocused: boolean;
   containerHeight: number;
@@ -567,8 +559,6 @@ const ClipItem = React.memo(({
   showComments,
   onToggleComments,
   comments,
-  commentText,
-  onCommentTextChange,
   onSubmitComment,
   isLoadingComments,
   isTabFocused,
@@ -581,6 +571,7 @@ const ClipItem = React.memo(({
   const [showPlayIcon, setShowPlayIcon] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [localCommentText, setLocalCommentText] = useState('');
   const [duration, setDuration] = useState(item.duration || 0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isSeeking, setIsSeeking] = useState(false);
@@ -1052,16 +1043,16 @@ const ClipItem = React.memo(({
               style={styles.reelCommentInput}
               placeholder="Add a comment..."
               placeholderTextColor="#64748B"
-              value={commentText}
-              onChangeText={onCommentTextChange}
+              value={localCommentText}
+              onChangeText={setLocalCommentText}
               multiline
             />
             <TouchableOpacity
-              style={[styles.reelPostButton, !commentText && styles.reelPostButtonDisabled]}
-              disabled={!commentText}
-              onPress={onSubmitComment}
+              style={[styles.reelPostButton, !localCommentText && styles.reelPostButtonDisabled]}
+              disabled={!localCommentText}
+              onPress={() => { onSubmitComment(localCommentText); setLocalCommentText(''); }}
             >
-              <Text style={[styles.reelPostButtonText, commentText && styles.reelPostButtonTextActive]}>
+              <Text style={[styles.reelPostButtonText, localCommentText && styles.reelPostButtonTextActive]}>
                 Post
               </Text>
             </TouchableOpacity>
@@ -1084,9 +1075,7 @@ interface ScreenshotItemProps {
   showComments: boolean;
   onToggleComments: () => void;
   comments: Comment[];
-  commentText: string;
-  onCommentTextChange: (text: string) => void;
-  onSubmitComment: () => void;
+  onSubmitComment: (text: string) => void;
   isLoadingComments: boolean;
   onLike: () => void;
   onFire: () => void;
@@ -1101,8 +1090,6 @@ const ScreenshotItem = React.memo(({
   showComments,
   onToggleComments,
   comments,
-  commentText,
-  onCommentTextChange,
   onSubmitComment,
   isLoadingComments,
   onLike,
@@ -1115,6 +1102,7 @@ const ScreenshotItem = React.memo(({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [localCommentText, setLocalCommentText] = useState('');
   const commentsSlideAnim = useRef(new Animated.Value(0)).current;
   const commentsListRef = useRef<FlatList>(null);
 
@@ -1255,12 +1243,18 @@ const ScreenshotItem = React.memo(({
               style={styles.commentInput}
               placeholder="Add a comment..."
               placeholderTextColor="rgba(255,255,255,0.5)"
-              value={commentText}
-              onChangeText={onCommentTextChange}
+              value={localCommentText}
+              onChangeText={setLocalCommentText}
               multiline={false}
             />
-            <TouchableOpacity style={styles.commentSendButton} onPress={onSubmitComment}>
-              <Send size={20} color="#4ADE80" />
+            <TouchableOpacity
+              style={[styles.reelPostButton, !localCommentText && styles.reelPostButtonDisabled]}
+              disabled={!localCommentText}
+              onPress={() => { onSubmitComment(localCommentText); setLocalCommentText(''); }}
+            >
+              <Text style={[styles.reelPostButtonText, localCommentText && styles.reelPostButtonTextActive]}>
+                Post
+              </Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -1495,13 +1489,10 @@ export default function TrendingScreen() {
   const [showScreenshotComments, setShowScreenshotComments] = useState(false);
   const [screenshotId, setScreenshotId] = useState<number | null>(null);
   const [showReelComments, setShowReelComments] = useState(false);
-  const [reelCommentText, setReelCommentText] = useState('');
   const [showClipComments, setShowClipComments] = useState(false);
   const [showReelOverlay, setShowReelOverlay] = useState(true);
   const [showClipOverlay, setShowClipOverlay] = useState(true);
   const [showScreenshotOverlay, setShowScreenshotOverlay] = useState(true);
-  const [clipCommentText, setClipCommentText] = useState('');
-  const [screenshotCommentText, setScreenshotCommentText] = useState('');
   const [selectedReelGame, setSelectedReelGame] = useState<string | null>(null);
   const [selectedReelGameName, setSelectedReelGameName] = useState<string | null>(null);
   const [selectedClipGame, setSelectedClipGame] = useState<string | null>(null);
@@ -2385,37 +2376,34 @@ export default function TrendingScreen() {
   const { mutate: submitReelComment } = addReelCommentMutation;
   const { mutate: submitClipComment } = addClipCommentMutation;
 
-  const handleReelCommentSubmit = useCallback(() => {
-    if (!reelCommentText.trim() || !activeReelId || !user) return;
+  const handleReelCommentSubmit = useCallback((text: string) => {
+    if (!text.trim() || !activeReelId || !user) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     submitReelComment({
       clipId: activeReelId,
-      content: reelCommentText.trim(),
+      content: text.trim(),
     });
-    setReelCommentText('');
     Keyboard.dismiss();
-  }, [reelCommentText, activeReelId, user, submitReelComment]);
+  }, [activeReelId, user, submitReelComment]);
 
-  const handleClipCommentSubmit = useCallback(() => {
-    if (!clipCommentText.trim() || !activeClipId || !user) return;
+  const handleClipCommentSubmit = useCallback((text: string) => {
+    if (!text.trim() || !activeClipId || !user) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     submitClipComment({
       clipId: activeClipId,
-      content: clipCommentText.trim(),
+      content: text.trim(),
     });
-    setClipCommentText('');
     Keyboard.dismiss();
-  }, [clipCommentText, activeClipId, user, submitClipComment]);
+  }, [activeClipId, user, submitClipComment]);
 
-  const handleScreenshotCommentSubmit = useCallback(() => {
-    if (!screenshotCommentText.trim() || !activeScreenshotId || !user) return;
+  const handleScreenshotCommentSubmit = useCallback((text: string) => {
+    if (!text.trim() || !activeScreenshotId || !user) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    addScreenshotCommentMutation.mutate({ screenshotId: activeScreenshotId, content: screenshotCommentText.trim() });
-    setScreenshotCommentText('');
+    addScreenshotCommentMutation.mutate({ screenshotId: activeScreenshotId, content: text.trim() });
     Keyboard.dismiss();
-  }, [screenshotCommentText, activeScreenshotId, user, addScreenshotCommentMutation]);
+  }, [activeScreenshotId, user, addScreenshotCommentMutation]);
 
   const onViewableItemsChangedRef = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index !== null) {
@@ -2470,15 +2458,13 @@ export default function TrendingScreen() {
       showComments={index === activeIndex && showReelComments}
       onToggleComments={toggleReelComments}
       comments={index === activeIndex ? localReelComments : []}
-      commentText={reelCommentText}
-      onCommentTextChange={setReelCommentText}
       onSubmitComment={handleReelCommentSubmit}
       isLoadingComments={isLoadingReelComments}
       isTabFocused={isTabFocused}
       containerHeight={containerHeight}
       onToggleOverlay={() => setShowReelOverlay(!showReelOverlay)}
     />
-  ), [activeIndex, isMuted, toggleMute, handleUserPress, showReelComments, toggleReelComments, localReelComments, reelCommentText, handleReelCommentSubmit, isLoadingReelComments, isTabFocused, likeReelMutate, fireReelMutate, setShareContent, setShareModalVisible, containerHeight, showReelOverlay]);
+  ), [activeIndex, isMuted, toggleMute, handleUserPress, showReelComments, toggleReelComments, localReelComments, handleReelCommentSubmit, isLoadingReelComments, isTabFocused, likeReelMutate, fireReelMutate, setShareContent, setShareModalVisible, containerHeight, showReelOverlay]);
 
 
 
@@ -2498,8 +2484,6 @@ export default function TrendingScreen() {
       showComments={index === activeScreenshotIndex && showScreenshotComments}
       onToggleComments={toggleScreenshotComments}
       comments={index === activeScreenshotIndex ? localScreenshotComments : []}
-      commentText={index === activeScreenshotIndex ? screenshotCommentText : ''}
-      onCommentTextChange={setScreenshotCommentText}
       onSubmitComment={handleScreenshotCommentSubmit}
       isLoadingComments={isLoadingScreenshotComments && index === activeScreenshotIndex}
       onLike={() => {
@@ -2518,7 +2502,7 @@ export default function TrendingScreen() {
       containerHeight={containerHeight}
       onToggleOverlay={() => setShowScreenshotOverlay(!showScreenshotOverlay)}
     />
-  ), [activeScreenshotIndex, showScreenshotComments, toggleScreenshotComments, localScreenshotComments, screenshotCommentText, handleScreenshotCommentSubmit, isLoadingScreenshotComments, likeScreenshotMutation, fireScreenshotMutation, handleUserPress, containerHeight, showScreenshotOverlay]);
+  ), [activeScreenshotIndex, showScreenshotComments, toggleScreenshotComments, localScreenshotComments, handleScreenshotCommentSubmit, isLoadingScreenshotComments, likeScreenshotMutation, fireScreenshotMutation, handleUserPress, containerHeight, showScreenshotOverlay]);
 
   const renderEmptyState = useCallback((type: ContentType) => {
     const messages: Record<ContentType, { title: string; message: string }> = {
@@ -2594,7 +2578,7 @@ export default function TrendingScreen() {
         maxToRenderPerBatch={3}
         windowSize={5}
         initialNumToRender={2}
-        extraData={reelCommentText}
+        extraData={localReelComments}
       />
     );
   };
@@ -2624,15 +2608,13 @@ export default function TrendingScreen() {
       showComments={index === activeIndex && showClipComments}
       onToggleComments={toggleClipComments}
       comments={index === activeIndex ? localClipComments : []}
-      commentText={clipCommentText}
-      onCommentTextChange={setClipCommentText}
       onSubmitComment={handleClipCommentSubmit}
       isLoadingComments={isLoadingClipComments}
       isTabFocused={isTabFocused && contentType === 'clips'}
       containerHeight={containerHeight}
       onToggleOverlay={() => setShowClipOverlay(!showClipOverlay)}
     />
-  ), [activeIndex, isMuted, toggleMute, handleUserPress, isTabFocused, contentType, likeClipMutate, fireClipMutate, showClipComments, toggleClipComments, localClipComments, clipCommentText, handleClipCommentSubmit, isLoadingClipComments, containerHeight, showClipOverlay]);
+  ), [activeIndex, isMuted, toggleMute, handleUserPress, isTabFocused, contentType, likeClipMutate, fireClipMutate, showClipComments, toggleClipComments, localClipComments, handleClipCommentSubmit, isLoadingClipComments, containerHeight, showClipOverlay]);
 
   const renderClipsView = () => {
     if (isLoadingClips) return renderLoadingState();
@@ -2674,7 +2656,7 @@ export default function TrendingScreen() {
         maxToRenderPerBatch={3}
         windowSize={5}
         initialNumToRender={2}
-        extraData={clipCommentText}
+        extraData={localClipComments}
       />
     );
   };
@@ -2839,7 +2821,7 @@ export default function TrendingScreen() {
           removeClippedSubviews={Platform.OS === 'android'}
           decelerationRate="fast"
           disableIntervalMomentum
-          extraData={screenshotCommentText}
+          extraData={localScreenshotComments}
         />
       </View>
     );
