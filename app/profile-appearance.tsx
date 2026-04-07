@@ -685,11 +685,11 @@ export default function ProfileAppearance() {
       <ConfirmationModal
         visible={modalVisible}
         title="Unsaved Changes"
-        message="Changes haven't been made. Do you want to continue or return?"
+        message="You have unsaved changes. Are you sure you want to leave?"
         onCancel={handleCancelLeave}
         onConfirm={handleConfirmLeave}
-        cancelText="Return"
-        confirmText="Continue"
+        cancelText="Keep Editing"
+        confirmText="Discard Changes"
       />
 
       <ImageEditorModal
