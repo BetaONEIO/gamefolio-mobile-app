@@ -58,6 +58,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
 import { shortenGameName, formatNumber as formatNum, truncateTitle } from '@/constants/formatters';
+import { Env } from '@/constants/Env';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { CommentText } from '@/utils/parseCommentText';
@@ -1703,7 +1704,7 @@ export default function TrendingScreen() {
     mutationFn: async ({ screenshotId, content }: { screenshotId: number; content: string }) => {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/screenshots/${screenshotId}/comments`, {
+      const response = await fetch(`${Env.BACKEND_URL}/api/screenshots/${screenshotId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ content }),
@@ -1840,7 +1841,7 @@ export default function TrendingScreen() {
   const { data: screenshotCommentsData, isLoading: isLoadingScreenshotComments } = useQuery({
     queryKey: ['screenshots', 'comments', screenshotId],
     queryFn: async () => {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/screenshots/${screenshotId}/comments`);
+      const response = await fetch(`${Env.BACKEND_URL}/api/screenshots/${screenshotId}/comments`);
       if (!response.ok) throw new Error('Failed to fetch comments');
       return response.json();
     },
@@ -2138,7 +2139,7 @@ export default function TrendingScreen() {
   const { data: reelCommentsData, isLoading: isLoadingReelComments } = useQuery({
     queryKey: ['clips', 'comments', activeReelId],
     queryFn: async () => {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/clips/${activeReelId}/comments`);
+      const response = await fetch(`${Env.BACKEND_URL}/api/clips/${activeReelId}/comments`);
       if (!response.ok) throw new Error('Failed to fetch comments');
       return response.json();
     },
@@ -2149,7 +2150,7 @@ export default function TrendingScreen() {
   const { data: clipCommentsData, isLoading: isLoadingClipComments } = useQuery({
     queryKey: ['clips', 'comments', activeClipId],
     queryFn: async () => {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/clips/${activeClipId}/comments`);
+      const response = await fetch(`${Env.BACKEND_URL}/api/clips/${activeClipId}/comments`);
       if (!response.ok) throw new Error('Failed to fetch comments');
       return response.json();
     },
@@ -2202,7 +2203,7 @@ export default function TrendingScreen() {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
       
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/clips/${clipId}/comments`, {
+      const response = await fetch(`${Env.BACKEND_URL}/api/clips/${clipId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2241,7 +2242,7 @@ export default function TrendingScreen() {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
       
-      const response = await fetch(`${process.env.EXPO_PUBLIC_BACKEND_URL}/api/clips/${clipId}/comments`, {
+      const response = await fetch(`${Env.BACKEND_URL}/api/clips/${clipId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -5372,6 +5373,15 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B',
+    backgroundColor: '#131F2A',
+  },
+  commentInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#1E293B',
     backgroundColor: '#131F2A',
