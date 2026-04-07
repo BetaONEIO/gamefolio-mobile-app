@@ -34,7 +34,7 @@ type FilterType = 'owned' | 'sold';
 const RARITY_COLORS: Record<string, string> = {
   LEGENDARY: '#F59E0B',
   EPIC: '#A855F7',
-  RARE: '#3B82F6',
+  RARE: '#4ADE80',
   COMMON: '#94A3B8',
 };
 
@@ -76,7 +76,7 @@ function getRarityCardColors(rarity: string): [string, string, string] {
     case 'EPIC':
       return ['#3B0764', '#4C1D95', '#5B21B6'];
     case 'RARE':
-      return ['#1E3A5F', '#1E40AF', '#1D4ED8'];
+      return ['#0A2318', '#14532D', '#166534'];
     default:
       return ['#0F172A', '#1E293B', '#1E293B'];
   }
