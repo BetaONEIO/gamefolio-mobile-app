@@ -108,6 +108,8 @@ export default function HeroBanner({ contentPadding = 16 }: HeroBannerProps) {
     const link = slide.buttonLink || '/upload';
     if (link === '/upload' || link === '/(drawer)/(tabs)/create') {
       router.push('/(drawer)/(tabs)/create');
+    } else if (link === '/pro' || link === '/subscribe' || link === '/premium') {
+      router.push('/manage-subscription' as any);
     } else if (link.startsWith('/')) {
       router.push(link as any);
     }
