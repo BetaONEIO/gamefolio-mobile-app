@@ -1034,7 +1034,7 @@ export default function ProfileScreen() {
           bio: profileData.bio,
           avatarUrl: profileData.avatar,
           bannerUrl: profileData.banner,
-          borderColor: user?.accentColor || '#4ADE80',
+          borderColor: theme.avatarBorderColor,
           level: profileData.level,
           totalXP: profileData.totalXP,
           verified: profileData.verified,
@@ -1051,6 +1051,10 @@ export default function ProfileScreen() {
             name: game.name,
             imageUrl: game.imageUrl,
           })),
+          accentColor: theme.accent,
+          backgroundColor: theme.bg,
+          cardBgColor: theme.cardBg,
+          cardBorderColor: theme.cardBorder,
         }}
       />
 

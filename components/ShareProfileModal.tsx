@@ -52,6 +52,10 @@ interface ProfileData {
   userType?: string;
   badges?: string[];
   games?: Game[];
+  accentColor?: string;
+  backgroundColor?: string;
+  cardBgColor?: string;
+  cardBorderColor?: string;
 }
 
 interface ShareProfileModalProps {
@@ -63,6 +67,14 @@ interface ShareProfileModalProps {
 export default function ShareProfileModal({ visible, onClose, profile }: ShareProfileModalProps) {
   const [copied, setCopied] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
+
+  const accent       = profile.accentColor    || '#4ADE80';
+  const modalBg      = profile.backgroundColor || '#131F2A';
+  const cardBg       = profile.cardBgColor     || '#1E293B';
+  const cardBorder   = profile.cardBorderColor || '#334155';
+  const avatarRingColor = profile.borderColor  || accent;
+
+  const accentFaint  = `${accent}1A`;
   
   const profileUrl = `https://app.gamefolio.com/@${profile.username}`;
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(profileUrl)}&bgcolor=131F2A&color=FFFFFF`;
@@ -111,7 +123,7 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
           />
         </BlurView>
         
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { backgroundColor: modalBg, borderColor: cardBorder }]}>
           <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
             <View style={styles.header}>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
@@ -119,7 +131,7 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
               </TouchableOpacity>
             </View>
 
-            <View style={styles.profileCard}>
+            <View style={[styles.profileCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
               <View style={styles.bannerSection}>
                 {profile.bannerUrl ? (
                   <Image 
@@ -128,14 +140,14 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
                   />
                 ) : (
                   <LinearGradient
-                    colors={['#1E293B', '#334155']}
+                    colors={[cardBorder, cardBg]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.cardBannerFallback}
                   />
                 )}
                 <LinearGradient
-                  colors={['transparent', 'rgba(30,41,59,0.8)', '#1E293B']}
+                  colors={['transparent', `${cardBg}CC`, cardBg]}
                   locations={[0, 0.6, 1]}
                   style={styles.bannerOverlay}
                 />
@@ -145,9 +157,9 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
                 <View style={styles.avatarWrapper}>
                   <Image 
                     source={{ uri: profile.avatarUrl }} 
-                    style={styles.avatar} 
+                    style={[styles.avatar, { borderColor: cardBg }]}
                   />
-                  <View style={[styles.avatarRing, profile.borderColor ? { borderColor: profile.borderColor } : undefined]} />
+                  <View style={[styles.avatarRing, { borderColor: avatarRingColor }]} />
                 </View>
               </View>
               
@@ -182,10 +194,10 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
                 {topGames.length > 0 && (
                   <View style={styles.gamesRow}>
                     {topGames.map((game, index) => (
-                      <View key={game.id || index} style={styles.gameItem}>
+                      <View key={game.id || index} style={[styles.gameItem, { borderColor: cardBorder }]}>
                         <Image 
                           source={{ uri: getImageUrl(game.imageUrl) }} 
-                          style={styles.gameImage} 
+                          style={[styles.gameImage, { backgroundColor: cardBg }]}
                         />
                       </View>
                     ))}
@@ -193,7 +205,7 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
                 )}
               </View>
               
-              <View style={styles.cardDivider} />
+              <View style={[styles.cardDivider, { backgroundColor: cardBorder }]} />
               
               <View style={styles.engagementSection}>
                 <View style={styles.engagementItem}>
@@ -233,30 +245,30 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Share Profile</Text>
               <TouchableOpacity 
-                style={styles.shareInAppButton}
+                style={[styles.shareInAppButton, { backgroundColor: accent }]}
                 onPress={shareNative}
               >
-                <FontAwesome5 name="share" size={16} color="#FFF" />
-                <Text style={styles.shareInAppText}>Share Gamefolio Link</Text>
+                <FontAwesome5 name="share" size={16} color={modalBg} />
+                <Text style={[styles.shareInAppText, { color: modalBg }]}>Share Gamefolio Link</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Profile Link</Text>
               <View style={styles.linkContainer}>
-                <View style={styles.linkInput}>
+                <View style={[styles.linkInput, { backgroundColor: cardBg, borderColor: cardBorder }]}>
                   <Text style={styles.linkText} numberOfLines={1}>{profileUrl}</Text>
                 </View>
                 <TouchableOpacity 
-                  style={[styles.copyButton, copied && styles.copiedButton]} 
+                  style={[styles.copyButton, { borderColor: accent }, copied && { backgroundColor: accentFaint }]} 
                   onPress={copyToClipboard}
                 >
                   {copied ? (
-                    <Check size={16} color="#4ADE80" />
+                    <Check size={16} color={accent} />
                   ) : (
-                    <Copy size={16} color="#4ADE80" />
+                    <Copy size={16} color={accent} />
                   )}
-                  <Text style={styles.copyButtonText}>
+                  <Text style={[styles.copyButtonText, { color: accent }]}>
                     {copied ? 'Copied!' : 'Copy Link'}
                   </Text>
                 </TouchableOpacity>
@@ -266,12 +278,12 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>QR Code</Text>
               <TouchableOpacity 
-                style={styles.qrCodeToggle}
+                style={[styles.qrCodeToggle, { backgroundColor: cardBg, borderColor: cardBorder }]}
                 onPress={() => setShowQRCode(!showQRCode)}
               >
                 <View style={styles.qrCodeToggleContent}>
-                  <QrCode size={20} color="#4ADE80" />
-                  <Text style={styles.qrCodeToggleText}>
+                  <QrCode size={20} color={accent} />
+                  <Text style={[styles.qrCodeToggleText, { color: accent }]}>
                     {showQRCode ? 'Hide QR Code' : 'Show QR Code'}
                   </Text>
                 </View>
@@ -279,7 +291,7 @@ export default function ShareProfileModal({ visible, onClose, profile }: SharePr
               
               {showQRCode && (
                 <View style={styles.qrCodeContainer}>
-                  <View style={styles.qrCodeWrapper}>
+                  <View style={[styles.qrCodeWrapper, { backgroundColor: modalBg, borderColor: cardBorder }]}>
                     <Image 
                       source={{ uri: qrCodeUrl }} 
                       style={styles.qrCodeImage}
@@ -313,10 +325,8 @@ const styles = StyleSheet.create({
     width: '92%',
     maxWidth: 480,
     maxHeight: '85%',
-    backgroundColor: '#131F2A',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1E293B',
     overflow: 'hidden',
   },
   header: {
@@ -340,9 +350,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#1E293B',
     borderWidth: 1,
-    borderColor: '#334155',
   },
   bannerSection: {
     height: 100,
@@ -377,9 +385,7 @@ const styles = StyleSheet.create({
     width: 90,
     height: 90,
     borderRadius: 45,
-    backgroundColor: '#1E293B',
     borderWidth: 3,
-    borderColor: '#1E293B',
   },
   avatarRing: {
     position: 'absolute',
@@ -389,7 +395,6 @@ const styles = StyleSheet.create({
     bottom: -3,
     borderRadius: 48,
     borderWidth: 3,
-    borderColor: '#4ADE80',
   },
   userInfo: {
     alignItems: 'center',
@@ -461,16 +466,13 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#334155',
   },
   gameImage: {
     width: 36,
     height: 48,
-    backgroundColor: '#1E293B',
   },
   cardDivider: {
     height: 1,
-    backgroundColor: '#334155',
     marginHorizontal: 16,
   },
   engagementSection: {
@@ -532,12 +534,10 @@ const styles = StyleSheet.create({
   },
   linkInput: {
     flex: 1,
-    backgroundColor: '#1E293B',
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#334155',
     justifyContent: 'center',
   },
   linkText: {
@@ -550,16 +550,11 @@ const styles = StyleSheet.create({
     gap: 6,
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#4ADE80',
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  copiedButton: {
-    backgroundColor: 'rgba(74, 222, 128, 0.1)',
-  },
   copyButtonText: {
-    color: '#4ADE80',
     fontSize: 13,
     fontWeight: '500',
   },
@@ -568,22 +563,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    backgroundColor: '#4ADE80',
     borderRadius: 8,
     paddingVertical: 14,
     paddingHorizontal: 20,
   },
   shareInAppText: {
-    color: '#131F2A',
     fontSize: 15,
     fontWeight: '600',
   },
   qrCodeToggle: {
-    backgroundColor: '#1E293B',
     borderRadius: 8,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#334155',
   },
   qrCodeToggleContent: {
     flexDirection: 'row',
@@ -592,7 +583,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   qrCodeToggleText: {
-    color: '#4ADE80',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -601,11 +591,9 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   qrCodeWrapper: {
-    backgroundColor: '#131F2A',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#334155',
   },
   qrCodeImage: {
     width: 200,

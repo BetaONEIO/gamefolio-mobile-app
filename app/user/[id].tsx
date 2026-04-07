@@ -1602,6 +1602,7 @@ export default function PublicProfileScreen() {
           bio: user?.bio || '',
           avatarUrl,
           bannerUrl: user?.bannerUrl ?? undefined,
+          borderColor: theme.avatarBorderColor,
           level: user?.level || 1,
           totalXP: user?.totalXP || 0,
           verified: user?.emailVerified || false,
@@ -1612,6 +1613,10 @@ export default function PublicProfileScreen() {
           },
           engagement: { likes: 0, fires: 0, streak: user?.currentStreak || 0 },
           games: favoriteGames.map((g: any) => ({ id: g.id, name: g.name, imageUrl: g.imageUrl })),
+          accentColor: theme.accent,
+          backgroundColor: theme.bg,
+          cardBgColor: theme.cardBg,
+          cardBorderColor: theme.cardBorder,
         }}
       />
     </View>
