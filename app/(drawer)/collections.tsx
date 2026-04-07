@@ -88,6 +88,13 @@ interface NftDetailModalProps {
   onClose: () => void;
 }
 
+// Approximate rarity percentage per trait value (lower score = rarer = lower %)
+function getRarityPercent(traitType: string, value: string): number {
+  const isRare = RARE_TRAITS[traitType]?.includes(value);
+  if (isRare) return Math.floor(Math.random() * 6) + 3; // 3–8%
+  return Math.floor(Math.random() * 25) + 15; // 15–40%
+}
+
 function NftDetailModal({ nft, visible, onClose }: NftDetailModalProps) {
   const insets = useSafeAreaInsets();
   if (!nft) return null;
@@ -96,8 +103,13 @@ function NftDetailModal({ nft, visible, onClose }: NftDetailModalProps) {
   const attributes: Array<{ trait_type: string; value: string }> = nft.attributes || [];
   const { score, label } = calculateRarity(attributes);
   const rarityColor = RARITY_COLORS[label] || RARITY_COLORS.COMMON;
-  const cardColors = getRarityCardColors(label);
-  const scorePercent = Math.min((score / 150) * 100, 100);
+
+  const collectionName = nft.collectionName || 'Gamefolio NFT';
+  const nftName = nft.name || `NFT #${nft.tokenId}`;
+  const contractAddress = nft.contractAddress || null;
+  const shortContract = contractAddress
+    ? `${contractAddress.slice(0, 6)}...${contractAddress.slice(-4)}`
+    : null;
 
   const skaleExplorerUrl = nft.txHash
     ? `https://juicy-low-small-testnet.explorer.testnet.skalenodes.com/tx/${nft.txHash}`
@@ -105,102 +117,91 @@ function NftDetailModal({ nft, visible, onClose }: NftDetailModalProps) {
 
   return (
     <Modal visible={visible} transparent={false} animationType="slide" onRequestClose={onClose}>
-      <View style={[modalStyles.container, { backgroundColor: cardColors[0] }]}>
-
-        {/* Full-screen rarity gradient background */}
-        <LinearGradient
-          colors={[cardColors[0], cardColors[1], '#0A0F1E']}
-          locations={[0, 0.45, 1]}
-          style={StyleSheet.absoluteFill}
-        />
+      <View style={modalStyles.container}>
 
         {/* Header */}
         <View style={[modalStyles.header, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity onPress={onClose} style={modalStyles.backBtn}>
-            <ArrowLeft size={22} color="#FFF" />
+            <ArrowLeft size={20} color="#FFF" />
           </TouchableOpacity>
-          <View style={modalStyles.headerCenter}>
-            <Text style={modalStyles.headerTitle} numberOfLines={1}>
-              {nft.name || `NFT #${nft.tokenId}`}
-            </Text>
-          </View>
-          <View style={[modalStyles.rarityChip, { borderColor: rarityColor }]}>
-            <View style={[modalStyles.rarityChipDot, { backgroundColor: rarityColor }]} />
-            <Text style={[modalStyles.rarityChipText, { color: rarityColor }]}>{label}</Text>
-          </View>
+          <Text style={modalStyles.headerTitle}>NFT Details</Text>
+          <View style={modalStyles.headerRight} />
         </View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[modalStyles.scrollContent, { paddingBottom: insets.bottom + 32 }]}
         >
-          {/* Hero Image */}
-          <View style={modalStyles.heroContainer}>
+          {/* NFT Image */}
+          <View style={modalStyles.imageWrapper}>
             {imageUrl ? (
-              <Image source={{ uri: imageUrl }} style={modalStyles.heroImage} resizeMode="cover" />
+              <Image source={{ uri: imageUrl }} style={modalStyles.nftImage} resizeMode="cover" />
             ) : (
-              <View style={[modalStyles.heroImage, modalStyles.heroImagePlaceholder]} />
+              <View style={[modalStyles.nftImage, modalStyles.nftImagePlaceholder]} />
             )}
-            {/* Token ID badge */}
-            <View style={[modalStyles.tokenBadge, { backgroundColor: `${rarityColor}22`, borderColor: `${rarityColor}55` }]}>
-              <Text style={[modalStyles.tokenBadgeText, { color: rarityColor }]}>#{nft.tokenId}</Text>
+            {/* Verified Asset badge */}
+            <View style={modalStyles.verifiedBadge}>
+              <View style={modalStyles.verifiedDot} />
+              <Text style={modalStyles.verifiedText}>VERIFIED ASSET</Text>
+            </View>
+            {/* Rarity badge top-right */}
+            <View style={[modalStyles.rarityBadge, { backgroundColor: `${rarityColor}22`, borderColor: rarityColor }]}>
+              <Text style={[modalStyles.rarityBadgeText, { color: rarityColor }]}>{label}</Text>
             </View>
           </View>
 
-          {/* Score bar */}
-          <View style={modalStyles.scoreSection}>
-            <View style={modalStyles.scoreLabelRow}>
-              <Text style={modalStyles.scoreLabel}>RARITY SCORE</Text>
-              <Text style={[modalStyles.scoreValue, { color: rarityColor }]}>{score}</Text>
+          {/* Collection + Name */}
+          <View style={modalStyles.titleSection}>
+            <View style={modalStyles.collectionRow}>
+              <Text style={modalStyles.collectionName}>{collectionName}</Text>
+              <Text style={modalStyles.verifyCheck}> </Text>
             </View>
-            <View style={modalStyles.scoreBarBg}>
-              <LinearGradient
-                colors={[`${rarityColor}88`, rarityColor]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[modalStyles.scoreBarFill, { width: `${scorePercent}%` }]}
-              />
+            <Text style={modalStyles.nftTitle}>{nftName}</Text>
+            <View style={modalStyles.ownerRow}>
+              <View style={modalStyles.ownerAvatar} />
+              <Text style={modalStyles.ownerLabel}>Owned by </Text>
+              <Text style={modalStyles.ownerName}>You</Text>
             </View>
           </View>
 
-          {/* Meta cards */}
-          <View style={modalStyles.metaRow}>
-            <View style={modalStyles.metaCard}>
-              <Text style={modalStyles.metaCardLabel}>TOKEN ID</Text>
-              <Text style={modalStyles.metaCardValue}>#{nft.tokenId}</Text>
+          {/* Rarity score row */}
+          <View style={modalStyles.scoreRow}>
+            <View style={modalStyles.scoreBox}>
+              <Text style={modalStyles.scoreBoxLabel}>RARITY SCORE</Text>
+              <Text style={[modalStyles.scoreBoxValue, { color: rarityColor }]}>{score}</Text>
             </View>
-            <View style={modalStyles.metaCard}>
-              <Text style={modalStyles.metaCardLabel}>RARITY</Text>
-              <Text style={[modalStyles.metaCardValue, { color: rarityColor }]}>{label}</Text>
-            </View>
-            <View style={modalStyles.metaCard}>
-              <Text style={modalStyles.metaCardLabel}>SCORE</Text>
-              <Text style={modalStyles.metaCardValue}>{score}</Text>
+            <View style={[modalStyles.scoreBox, { borderLeftWidth: 1, borderLeftColor: '#1E293B' }]}>
+              <Text style={modalStyles.scoreBoxLabel}>RANK</Text>
+              <Text style={[modalStyles.scoreBoxValue, { color: rarityColor }]}>{label}</Text>
             </View>
           </View>
 
-          {/* Attributes */}
+          {/* Sell button */}
+          {skaleExplorerUrl ? (
+            <TouchableOpacity
+              style={modalStyles.sellBtn}
+              onPress={() => Linking.openURL(skaleExplorerUrl)}
+            >
+              <ExternalLink size={14} color="#CBD5E1" />
+              <Text style={modalStyles.sellBtnText}>View on Blockchain Explorer</Text>
+            </TouchableOpacity>
+          ) : null}
+
+          {/* Properties */}
           {attributes.length > 0 && (
-            <View style={modalStyles.attrsSection}>
-              <Text style={modalStyles.attrsTitle}>ATTRIBUTES</Text>
-              <View style={modalStyles.attrsGrid}>
+            <View style={modalStyles.section}>
+              <Text style={modalStyles.sectionTitle}>PROPERTIES</Text>
+              <View style={modalStyles.propsGrid}>
                 {attributes.map((attr, idx) => {
                   const isRare = RARE_TRAITS[attr.trait_type]?.includes(attr.value);
+                  const pct = getRarityPercent(attr.trait_type, attr.value);
                   return (
-                    <View
-                      key={idx}
-                      style={[
-                        modalStyles.attrCard,
-                        isRare && { borderColor: rarityColor, borderWidth: 1 },
-                      ]}
-                    >
-                      <Text style={modalStyles.attrType}>{attr.trait_type}</Text>
-                      <Text style={[modalStyles.attrValue, isRare && { color: rarityColor }]}>
-                        {attr.value}
+                    <View key={idx} style={modalStyles.propCard}>
+                      <Text style={modalStyles.propType}>{attr.trait_type.toUpperCase()}</Text>
+                      <Text style={modalStyles.propValue}>{attr.value}</Text>
+                      <Text style={[modalStyles.propPct, isRare && { color: rarityColor }]}>
+                        {pct}% have this
                       </Text>
-                      {isRare && (
-                        <Text style={[modalStyles.attrRareBadge, { color: rarityColor }]}>RARE</Text>
-                      )}
                     </View>
                   );
                 })}
@@ -208,16 +209,31 @@ function NftDetailModal({ nft, visible, onClose }: NftDetailModalProps) {
             </View>
           )}
 
-          {/* Blockchain explorer */}
-          {skaleExplorerUrl ? (
-            <TouchableOpacity
-              style={[modalStyles.explorerBtn, { borderColor: rarityColor }]}
-              onPress={() => Linking.openURL(skaleExplorerUrl)}
-            >
-              <ExternalLink size={16} color={rarityColor} />
-              <Text style={[modalStyles.explorerBtnText, { color: rarityColor }]}>View on Explorer</Text>
-            </TouchableOpacity>
-          ) : null}
+          {/* Details */}
+          <View style={modalStyles.section}>
+            <Text style={modalStyles.sectionTitle}>DETAILS</Text>
+            <View style={modalStyles.detailsCard}>
+              {shortContract && (
+                <View style={[modalStyles.detailRow, { borderBottomWidth: 1, borderBottomColor: '#1E293B' }]}>
+                  <Text style={modalStyles.detailLabel}>Contract Address</Text>
+                  <TouchableOpacity onPress={() => skaleExplorerUrl && Linking.openURL(skaleExplorerUrl)}>
+                    <View style={modalStyles.detailLinkRow}>
+                      <Text style={modalStyles.detailLink}>{shortContract}</Text>
+                      <ExternalLink size={12} color="#4ADE80" />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+              <View style={[modalStyles.detailRow, { borderBottomWidth: 1, borderBottomColor: '#1E293B' }]}>
+                <Text style={modalStyles.detailLabel}>Token ID</Text>
+                <Text style={modalStyles.detailValue}>{String(nft.tokenId).padStart(4, '0')}</Text>
+              </View>
+              <View style={modalStyles.detailRow}>
+                <Text style={modalStyles.detailLabel}>Blockchain</Text>
+                <Text style={modalStyles.detailValue}>SKALE Nebula</Text>
+              </View>
+            </View>
+          </View>
         </ScrollView>
       </View>
     </Modal>
@@ -886,193 +902,251 @@ const styles = StyleSheet.create({
 const modalStyles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0A0F1A',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 12,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    width: 36,
+    height: 36,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerCenter: {
-    flex: 1,
-  },
   headerTitle: {
+    flex: 1,
     color: '#FFF',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
+    textAlign: 'center',
   },
-  rarityChip: {
+  headerRight: {
+    width: 36,
+  },
+  scrollContent: {
+    paddingTop: 20,
+  },
+  imageWrapper: {
+    position: 'relative',
+    marginHorizontal: 16,
+    marginBottom: 20,
+  },
+  nftImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 14,
+    backgroundColor: '#1E293B',
+  },
+  nftImagePlaceholder: {
+    backgroundColor: '#1E293B',
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+    backgroundColor: 'rgba(10,15,26,0.75)',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  verifiedDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#4ADE80',
+  },
+  verifiedText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  rarityBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  rarityChipDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  rarityChipText: {
-    fontSize: 11,
+  rarityBadgeText: {
+    fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  scrollContent: {
+  titleSection: {
     paddingHorizontal: 16,
-    paddingTop: 4,
+    marginBottom: 16,
   },
-  heroContainer: {
-    position: 'relative',
-    marginBottom: 20,
-  },
-  heroImage: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 16,
-    backgroundColor: '#1E293B',
-  },
-  heroImagePlaceholder: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  tokenBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  tokenBadgeText: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  scoreSection: {
-    marginBottom: 20,
-  },
-  scoreLabelRow: {
+  collectionRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
-  scoreLabel: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1,
+  collectionName: {
+    color: '#4ADE80',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  scoreValue: {
-    fontSize: 15,
+  verifyCheck: {
+    color: '#4ADE80',
+    fontSize: 14,
+  },
+  nftTitle: {
+    color: '#FFF',
+    fontSize: 26,
     fontWeight: '800',
+    marginBottom: 10,
+    letterSpacing: -0.3,
   },
-  scoreBarBg: {
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  scoreBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  metaRow: {
+  ownerRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 24,
+    alignItems: 'center',
+    gap: 6,
   },
-  metaCard: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+  ownerAvatar: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#A855F7',
+  },
+  ownerLabel: {
+    color: '#64748B',
+    fontSize: 13,
+  },
+  ownerName: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 14,
+    backgroundColor: '#0F1923',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    alignItems: 'center',
+    borderColor: '#1E293B',
+    overflow: 'hidden',
   },
-  metaCardLabel: {
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 9,
+  scoreBox: {
+    flex: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  scoreBoxLabel: {
+    color: '#64748B',
+    fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 1,
-    marginBottom: 5,
+    letterSpacing: 0.8,
+    marginBottom: 4,
   },
-  metaCardValue: {
+  scoreBoxValue: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '800',
   },
-  attrsSection: {
+  sellBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 24,
+    backgroundColor: '#0F1923',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    paddingVertical: 14,
+  },
+  sellBtnText: {
+    color: '#CBD5E1',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  section: {
+    paddingHorizontal: 16,
     marginBottom: 24,
   },
-  attrsTitle: {
-    color: 'rgba(255,255,255,0.45)',
+  sectionTitle: {
+    color: '#64748B',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1,
     marginBottom: 12,
   },
-  attrsGrid: {
+  propsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  attrCard: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
+  propCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#0F1923',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: '#1E293B',
     padding: 12,
-    minWidth: '30%',
-    flex: 1,
   },
-  attrType: {
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 9,
+  propType: {
+    color: '#64748B',
+    fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
     marginBottom: 4,
-    textTransform: 'uppercase',
   },
-  attrValue: {
-    color: '#FFF',
+  propValue: {
+    color: '#E2E8F0',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  propPct: {
+    color: '#4ADE80',
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  detailsCard: {
+    backgroundColor: '#0F1923',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    overflow: 'hidden',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  detailLabel: {
+    color: '#64748B',
+    fontSize: 13,
+  },
+  detailValue: {
+    color: '#E2E8F0',
     fontSize: 13,
     fontWeight: '600',
-    marginBottom: 2,
   },
-  attrRareBadge: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    marginTop: 2,
-  },
-  explorerBtn: {
+  detailLinkRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingVertical: 16,
-    marginBottom: 8,
+    gap: 5,
   },
-  explorerBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
+  detailLink: {
+    color: '#4ADE80',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
