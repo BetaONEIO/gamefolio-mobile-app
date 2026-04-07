@@ -680,6 +680,7 @@ export default function ProfileAppearance() {
         onClose={() => setViewProfileVisible(false)}
         imageUrl={avatar || ''}
         username={displayName || user?.username || 'User'}
+        borderColor={user?.accentColor || '#4ADE80'}
       />
 
       <CustomAlert

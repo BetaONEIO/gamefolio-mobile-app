@@ -997,6 +997,7 @@ export default function ProfileScreen() {
         onClose={() => setIsProfileModalVisible(false)}
         imageUrl={profileData.avatar}
         username={profileData.handle}
+        borderColor={theme.avatarBorderColor}
       />
 
       <ProfileBannerModal

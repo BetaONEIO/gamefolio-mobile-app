@@ -1558,6 +1558,7 @@ export default function PublicProfileScreen() {
         imageUrl={avatarUrl}
         username={handle}
         viewOnly={true}
+        borderColor={theme.avatarBorderColor}
       />
       <ProfileBannerModal
         visible={isBannerModalVisible}

@@ -8,6 +8,7 @@ interface ProfilePictureModalProps {
   username: string;
   onRemove?: () => void;
   viewOnly?: boolean;
+  borderColor?: string;
 }
 
 const { width } = Dimensions.get('window');
@@ -19,6 +20,7 @@ export default function ProfilePictureModal({
   username,
   onRemove,
   viewOnly = false,
+  borderColor = '#4ADE80',
 }: ProfilePictureModalProps) {
   const hasImage = !!imageUrl;
 
@@ -44,7 +46,7 @@ export default function ProfilePictureModal({
           </View>
 
           <View style={styles.content}>
-            <View style={styles.largeImageContainer}>
+            <View style={[styles.largeImageContainer, { borderColor }]}>
               {hasImage ? (
                 <Image 
                   source={{ uri: imageUrl }} 
@@ -139,7 +141,6 @@ const styles = StyleSheet.create({
     borderRadius: (width * 0.7) / 2,
     overflow: 'hidden',
     borderWidth: 4,
-    borderColor: '#4ADE80',
     backgroundColor: '#1E293B',
     position: 'relative',
   },

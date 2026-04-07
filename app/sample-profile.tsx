@@ -614,6 +614,7 @@ export default function SampleProfileScreen() {
         imageUrl={displayProfile.avatar}
         username={displayProfile.handle}
         viewOnly={true}
+        borderColor={accentColor}
       />
 
       <ProfileBannerModal
