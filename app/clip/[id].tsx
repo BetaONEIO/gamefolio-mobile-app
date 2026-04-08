@@ -1,6 +1,6 @@
 import { useAuth } from '@/context/AuthContext';
 import { View, Text, StyleSheet, Image, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Dimensions, ScrollView, Keyboard, Modal, StatusBar, PanResponder, GestureResponderEvent, LayoutChangeEvent, FlatList, Animated } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import ShareClipModal from '@/components/ShareClipModal';
 import ReportModal from '@/components/ReportModal';
 
@@ -363,6 +363,20 @@ export default function ClipDetailScreen() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allClips, clipId]);
+
+  // Sync URL param to the currently visible clip once when navigating away (blur).
+  // This ensures that back-links / share URLs reflect the last-seen clip without
+  // causing per-swipe query churn.
+  useFocusEffect(
+    useCallback(() => {
+      return () => {
+        const currentId = allClipsRef.current[currentClipIndexRef.current]?.id?.toString();
+        if (currentId && currentId !== clipId) {
+          router.setParams({ id: currentId });
+        }
+      };
+    }, [clipId, router])
+  );
 
   const EMOJI_OPTIONS = ['😮', '💯', '🎮', '👏', '🤣', '😍', '💀', '🤯'];
 
