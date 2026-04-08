@@ -462,10 +462,11 @@ const styles = StyleSheet.create({
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+    flexShrink: 1,
   },
   titleIcon: {
-    transform: [{ rotate: '-45deg' }],
+    marginTop: 1,
   },
   title: {
     color: '#FFF',
