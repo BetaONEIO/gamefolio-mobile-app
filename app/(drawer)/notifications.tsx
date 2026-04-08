@@ -94,6 +94,11 @@ export default function NotificationsScreen() {
       markRead(notification.id);
     }
 
+    if (notification.type === 'follow_request') {
+      router.push('/(drawer)/follow-requests' as any);
+      return;
+    }
+
     if (notification.actionUrl) {
       router.push(notification.actionUrl as any);
       return;
@@ -108,9 +113,6 @@ export default function NotificationsScreen() {
         if (notification.fromUser?.id || notification.fromUserId) {
           router.push(`/user/${notification.fromUser?.id || notification.fromUserId}` as any);
         }
-        break;
-      case 'follow_request':
-        router.push('/(drawer)/follow-requests' as any);
         break;
       case 'like':
       case 'flame':
