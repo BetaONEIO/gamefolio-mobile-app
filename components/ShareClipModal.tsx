@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -11,7 +11,8 @@ import {
   Platform, 
   Share as RNShare,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  FlatList,
 } from 'react-native';
 import { X as XIcon, Play, Copy, Share2, Send, Check, Trash2 } from 'lucide-react-native';
 
@@ -22,6 +23,13 @@ import { api } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+
+interface UserSuggestion {
+  id: number;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
 
 interface ShareClipModalProps {
   visible: boolean;
@@ -47,6 +55,11 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
   const [username, setUsername] = useState('');
   const [copied, setCopied] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [suggestions, setSuggestions] = useState<UserSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserSuggestion | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { getAccessToken } = useAuth();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -73,6 +86,52 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
   );
   const accentIconColor = accentIsLight ? '#000' : '#FFF';
 
+  useEffect(() => {
+    if (!visible) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      setSelectedUser(null);
+      setUsername('');
+    }
+  }, [visible]);
+
+  const handleUsernameChange = (text: string) => {
+    setUsername(text);
+    setSelectedUser(null);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    const trimmed = text.trim();
+    if (trimmed.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setSearchLoading(true);
+      try {
+        const token = await getAccessToken();
+        const result = await api.users.search(trimmed, token ?? undefined);
+        setSuggestions(result.users ?? []);
+        setShowSuggestions((result.users ?? []).length > 0);
+      } catch {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      } finally {
+        setSearchLoading(false);
+      }
+    }, 300);
+  };
+
+  const handleSelectUser = (user: UserSuggestion) => {
+    setSelectedUser(user);
+    setUsername(user.username);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    Haptics.selectionAsync();
+  };
+
   const copyToClipboard = async () => {
     await Clipboard.setStringAsync(clipUrl);
     setCopied(true);
@@ -83,8 +142,8 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
     try {
       await RNShare.share({
         message: `Check out this clip: ${clipUrl}`,
-        url: clipUrl, // iOS
-        title: clip.title, // Android
+        url: clipUrl,
+        title: clip.title,
       });
     } catch (error) {
       console.error(error);
@@ -94,14 +153,13 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
   const handleGamefolioShare = () => {
     console.log(`Sharing to Gamefolio user: ${username}`);
     setUsername('');
+    setSelectedUser(null);
   };
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
-      
-      console.log(`[Delete] Deleting ${contentType}:`, clip.id);
       
       if (contentType === 'screenshot') {
         return api.screenshots.delete(String(clip.id), token);
@@ -110,7 +168,6 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
       }
     },
     onSuccess: () => {
-      console.log(`[Delete] ${contentType} deleted successfully`);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
       queryClient.invalidateQueries({ queryKey: ['clips'] });
@@ -125,7 +182,6 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
       router.back();
     },
     onError: (error: any) => {
-      console.error(`[Delete] Error:`, error);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert(
         'Delete Failed',
@@ -149,7 +205,6 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
     setShowDeleteConfirm(false);
   };
 
-  // Determine image source - prioritize thumbnail from clip
   const imageSource = clip.thumbnail 
     ? { uri: clip.thumbnail }
     : clip.thumbnailUrl
@@ -174,7 +229,10 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
         <TouchableOpacity 
           style={styles.backdrop} 
           activeOpacity={1} 
-          onPress={onClose} 
+          onPress={() => {
+            setShowSuggestions(false);
+            onClose();
+          }} 
         />
         
         <View style={styles.modalContainer}>
@@ -213,24 +271,67 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
           {/* Share on Gamefolio Section */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Share on Gamefolio</Text>
-            <View style={styles.gamefolioRow}>
-              <View style={styles.inputWrapper}>
-                <Text style={styles.atSymbol}>@</Text>
-                <TextInput
-                  style={styles.usernameInput}
-                  placeholder="username tag"
-                  placeholderTextColor="#64748B"
-                  value={username}
-                  onChangeText={setUsername}
-                />
+            <View style={styles.gamefolioColumn}>
+              <View style={styles.gamefolioRow}>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.atSymbol}>@</Text>
+                  <TextInput
+                    style={styles.usernameInput}
+                    placeholder="tag a user"
+                    placeholderTextColor="#64748B"
+                    value={username}
+                    onChangeText={handleUsernameChange}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  {searchLoading && (
+                    <ActivityIndicator size="small" color="#64748B" style={{ marginRight: 8 }} />
+                  )}
+                </View>
+                <TouchableOpacity 
+                  style={[
+                    styles.gfShareButton,
+                    { backgroundColor: username ? themeAccent : undefined },
+                    !username && styles.disabledButton,
+                  ]} 
+                  onPress={handleGamefolioShare}
+                  disabled={!username}
+                >
+                  <Send size={18} color={username ? accentIconColor : "#64748B"} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity 
-                style={[styles.gfShareButton, { backgroundColor: username ? themeAccent : undefined }, !username && styles.disabledButton]} 
-                onPress={handleGamefolioShare}
-                disabled={!username}
-              >
-                <Send size={18} color={username ? accentIconColor : "#64748B"} />
-              </TouchableOpacity>
+
+              {/* User suggestions dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                  {suggestions.slice(0, 5).map((user) => (
+                    <TouchableOpacity
+                      key={user.id}
+                      style={styles.suggestionRow}
+                      onPress={() => handleSelectUser(user)}
+                      activeOpacity={0.7}
+                    >
+                      {user.avatarUrl ? (
+                        <Image source={{ uri: user.avatarUrl }} style={styles.suggestionAvatar} />
+                      ) : (
+                        <View style={styles.suggestionAvatarPlaceholder}>
+                          <Text style={styles.suggestionAvatarInitial}>
+                            {(user.displayName || user.username || '?')[0].toUpperCase()}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.suggestionInfo}>
+                        <Text style={styles.suggestionDisplayName} numberOfLines={1}>
+                          {user.displayName || user.username}
+                        </Text>
+                        <Text style={styles.suggestionUsername} numberOfLines={1}>
+                          @{user.username}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           </View>
 
@@ -344,10 +445,7 @@ const styles = StyleSheet.create({
     borderColor: '#1E293B',
     padding: 24,
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
@@ -364,7 +462,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   titleIcon: {
-    transform: [{ rotate: '-45deg' }], // Slight rotation for effect if needed
+    transform: [{ rotate: '-45deg' }],
   },
   title: {
     color: '#FFF',
@@ -450,7 +548,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3B82F6', // Blue as in screenshot
+    backgroundColor: '#3B82F6',
     borderRadius: 8,
     padding: 10,
     gap: 8,
@@ -459,6 +557,10 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 14,
     fontWeight: '500',
+  },
+  gamefolioColumn: {
+    flexDirection: 'column',
+    gap: 0,
   },
   gamefolioRow: {
     flexDirection: 'row',
@@ -495,7 +597,55 @@ const styles = StyleSheet.create({
   disabledButton: {
     backgroundColor: '#334155',
   },
-
+  suggestionsContainer: {
+    marginTop: 4,
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    overflow: 'hidden',
+  },
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#0F1F2E',
+  },
+  suggestionAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#334155',
+  },
+  suggestionAvatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  suggestionAvatarInitial: {
+    color: '#94A3B8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  suggestionInfo: {
+    flex: 1,
+  },
+  suggestionDisplayName: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  suggestionUsername: {
+    color: '#64748B',
+    fontSize: 12,
+    marginTop: 1,
+  },
   deleteSection: {
     paddingTop: 16,
     borderTopWidth: 1,
