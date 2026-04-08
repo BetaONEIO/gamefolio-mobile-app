@@ -81,6 +81,12 @@ export default function DrawerLayout() {
         }}
       />
       <Drawer.Screen
+        name="refer-a-friend"
+        options={{
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
         name="game-categories"
         options={{
           headerShown: false,

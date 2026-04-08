@@ -61,6 +61,7 @@ import claimAssetRewardRoute from "./routes/asset-rewards/claim/route";
 import getAvatarBordersRoute from "./routes/user/get-avatar-borders/route";
 import updateAvatarBorderRoute from "./routes/user/update-avatar-border/route";
 import updateBirthdayRoute from "./routes/user/update-birthday/route";
+import getReferralStatsRoute from "./routes/user/get-referral-stats/route";
 import getUserAvatarBorderRoute from "./routes/users/get-avatar-border/route";
 import getSampleProfileRoute from "./routes/users/get-sample-profile/route";
 import getSampleClipsRoute from "./routes/clips/get-sample-clips/route";
@@ -92,6 +93,7 @@ export const appRouter = createTRPCRouter({
     getAvatarBorders: getAvatarBordersRoute,
     updateAvatarBorder: updateAvatarBorderRoute,
     updateBirthday: updateBirthdayRoute,
+    getReferralStats: getReferralStatsRoute,
   }),
   tags: createTRPCRouter({
     getTrending: getTrendingTagsRoute,

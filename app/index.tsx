@@ -76,6 +76,7 @@ export default function LoginScreen() {
     message: '',
     type: 'error',
   });
+  const [referralCode, setReferralCode] = useState('');
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [usernameAvailability, setUsernameAvailability] = useState<{
@@ -319,6 +320,7 @@ export default function LoginScreen() {
   useEffect(() => {
     if (params.ref) {
       setIsLogin(false);
+      setReferralCode(String(params.ref));
       console.log('[Login] Referral code detected:', params.ref);
     }
   }, [params.ref]);
@@ -520,6 +522,7 @@ export default function LoginScreen() {
           displayName: username,
           email,
           password,
+          referralCode: referralCode.trim() || undefined,
         });
 
         console.log('[Register] Success:', result.user.username);
@@ -912,6 +915,25 @@ export default function LoginScreen() {
                   </View>
                 </View>
 
+                {/* Referral Code (optional) */}
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.label}>Referral Code (optional)</Text>
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      style={[styles.input, { paddingLeft: 0 }]}
+                      placeholder="Enter a friend's referral code"
+                      placeholderTextColor={colors.textDim}
+                      value={referralCode}
+                      onChangeText={setReferralCode}
+                      autoCapitalize="none"
+                      editable={!isLoading}
+                    />
+                  </View>
+                  <Text style={styles.referralHint}>
+                    Have a friend's code? Enter it to earn 250 XP each!
+                  </Text>
+                </View>
+
                 {/* Terms */}
                 <Text style={styles.termsText}>
                   By creating an account, you agree to our{' '}
@@ -1212,6 +1234,12 @@ const styles = StyleSheet.create({
   radioCircleSelected: {
     borderColor: '#4ADE80',
     backgroundColor: '#4ADE80',
+  },
+  referralHint: {
+    color: '#4ADE80',
+    fontSize: 12,
+    marginTop: 6,
+    marginLeft: 4,
   },
   termsText: {
     color: '#94A3B8',

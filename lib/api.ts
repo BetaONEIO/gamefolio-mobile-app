@@ -342,6 +342,7 @@ export interface RegisterRequest {
   displayName: string;
   email: string;
   password: string;
+  referralCode?: string;
 }
 
 export interface User {
@@ -724,6 +725,7 @@ export const api = {
           email: data.email.toLowerCase(),
           password: data.password,
           displayName: data.displayName || data.username,
+          ...(data.referralCode ? { referralCode: data.referralCode } : {}),
         }),
       });
 

@@ -24,6 +24,7 @@ import {
   Check,
   Bell,
   HelpCircle,
+  Gift,
 } from 'lucide-react-native';
 import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, Animated, LayoutChangeEvent, Pressable } from 'react-native';
@@ -304,6 +305,12 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             label="Profile & Appearance"
             onPress={() => navigate('/profile-appearance')}
             isActive={pathname.includes('profile-appearance')}
+          />
+          <NavItem
+            icon={Gift}
+            label="Refer a Friend"
+            onPress={() => navigate('/(drawer)/refer-a-friend')}
+            isActive={pathname.includes('refer-a-friend')}
           />
           <NavItem
             icon={HelpCircle}
