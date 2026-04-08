@@ -35,6 +35,7 @@ import {
 } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { api } from '@/lib/api';
@@ -108,6 +109,7 @@ interface ClipItemProps {
   onSubmitComment: () => void;
   isLoadingComments: boolean;
   isTabFocused: boolean;
+  itemHeight: number;
 }
 
 const ClipItem = React.memo(({
@@ -127,6 +129,7 @@ const ClipItem = React.memo(({
   onSubmitComment,
   isLoadingComments,
   isTabFocused,
+  itemHeight,
 }: ClipItemProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -256,11 +259,11 @@ const ClipItem = React.memo(({
 
   const videoHeight = commentsSlideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [SCREEN_HEIGHT, SCREEN_HEIGHT * 0.35],
+    outputRange: [itemHeight, itemHeight * 0.35],
   });
   const commentsHeight = commentsSlideAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, SCREEN_HEIGHT * 0.65],
+    outputRange: [0, itemHeight * 0.65],
   });
 
   const renderCommentItem = useCallback(({ item: c }: { item: Comment }) => (
@@ -276,7 +279,7 @@ const ClipItem = React.memo(({
   ), [onUserPress]);
 
   return (
-    <View style={styles.clipContainer}>
+    <View style={[styles.clipContainer, { height: itemHeight }]}>
       <Animated.View style={[styles.videoSection, { height: videoHeight, justifyContent: 'center' }]}>
         <View style={{ width: '100%', aspectRatio: 16 / 9 }}>
           <TouchableOpacity activeOpacity={1} style={styles.videoTouchable} onPress={handleTap}>
@@ -461,7 +464,7 @@ const ClipItem = React.memo(({
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? SCREEN_HEIGHT * 0.35 + 60 : 0}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? itemHeight * 0.35 + 60 : 0}
           style={styles.commentInputWrapper}
         >
           <View style={[styles.commentInputContainer, { paddingBottom: Math.max(insets.bottom, 8) + 60 }]}>
@@ -502,6 +505,8 @@ export default function LatestClipsPage() {
   const flatListRef = useRef<FlatList>(null);
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
+  const ITEM_HEIGHT = SCREEN_HEIGHT - tabBarHeight;
   const { getAccessToken, user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -693,10 +698,10 @@ export default function LatestClipsPage() {
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 });
 
   const getItemLayout = useCallback((_: any, index: number) => ({
-    length: SCREEN_HEIGHT,
-    offset: SCREEN_HEIGHT * index,
+    length: ITEM_HEIGHT,
+    offset: ITEM_HEIGHT * index,
     index,
-  }), []);
+  }), [ITEM_HEIGHT]);
 
   const renderClipItem = useCallback(({ item, index }: { item: ClipWithUser; index: number }) => (
     <ClipItem
@@ -724,8 +729,9 @@ export default function LatestClipsPage() {
       onSubmitComment={handleCommentSubmit}
       isLoadingComments={isLoadingClipComments}
       isTabFocused={isTabFocused}
+      itemHeight={ITEM_HEIGHT}
     />
-  ), [activeIndex, isMuted, toggleMute, handleUserPress, isTabFocused, likeClipMutation, fireClipMutation, showClipComments, toggleClipComments, localClipComments, clipCommentText, handleCommentSubmit, isLoadingClipComments]);
+  ), [activeIndex, isMuted, toggleMute, handleUserPress, isTabFocused, likeClipMutation, fireClipMutation, showClipComments, toggleClipComments, localClipComments, clipCommentText, handleCommentSubmit, isLoadingClipComments, ITEM_HEIGHT]);
 
   return (
     <View style={styles.container}>
