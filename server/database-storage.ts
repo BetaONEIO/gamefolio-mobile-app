@@ -628,6 +628,7 @@ export class DatabaseStorage implements IStorage {
             emailVerified: users.emailVerified,
             nftProfileTokenId: users.nftProfileTokenId,
             nftProfileImageUrl: users.nftProfileImageUrl,
+            activeProfilePicType: users.activeProfilePicType,
           },
           game: {
             id: games.id,
@@ -2084,6 +2085,7 @@ export class DatabaseStorage implements IStorage {
           role: users.role,
           nftProfileTokenId: users.nftProfileTokenId,
           nftProfileImageUrl: users.nftProfileImageUrl,
+          activeProfilePicType: users.activeProfilePicType,
           selectedVerificationBadgeId: users.selectedVerificationBadgeId
         }
       })

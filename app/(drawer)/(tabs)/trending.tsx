@@ -65,6 +65,7 @@ import { CommentText } from '@/utils/parseCommentText';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as Haptics from 'expo-haptics';
 import ShareClipModal from '@/components/ShareClipModal';
+import { resolveUserAvatarUrl } from '@/lib/image-utils';
 
 import Slider from '@react-native-community/slider';
 
@@ -75,6 +76,8 @@ interface UserBasic {
   username: string;
   displayName: string;
   avatarUrl: string;
+  nftProfileImageUrl?: string | null;
+  activeProfilePicType?: string | null;
 }
 
 interface Game {
@@ -398,7 +401,7 @@ const ReelItem = React.memo(({
       onPress={() => onUserPress(c.user.username)}
       activeOpacity={0.7}
     >
-      <Image source={{ uri: c.user.avatarUrl }} style={styles.reelCommentAvatar} />
+      <Image source={{ uri: resolveUserAvatarUrl(c.user) || undefined }} style={styles.reelCommentAvatar} />
       <View style={styles.reelCommentContent}>
         <Text style={styles.reelCommentText}>
           <Text style={styles.reelCommentUsername}>{c.user.displayName}</Text>{' '}
@@ -859,7 +862,7 @@ const ClipItem = React.memo(({
       onPress={() => onUserPress(c.user.username)}
       activeOpacity={0.7}
     >
-      <Image source={{ uri: c.user.avatarUrl }} style={styles.reelCommentAvatar} />
+      <Image source={{ uri: resolveUserAvatarUrl(c.user) || undefined }} style={styles.reelCommentAvatar} />
       <View style={styles.reelCommentContent}>
         <Text style={styles.reelCommentText}>
           <Text style={styles.reelCommentUsername}>{c.user.displayName}</Text>{' '}
@@ -993,7 +996,7 @@ const ClipItem = React.memo(({
               style={styles.miniUserRow}
               onPress={() => onUserPress(item.user.username)}
             >
-              <Image source={{ uri: item.user.avatarUrl }} style={styles.miniAvatar} />
+              <Image source={{ uri: resolveUserAvatarUrl(item.user) || undefined }} style={styles.miniAvatar} />
               <Text style={styles.miniUsername}>@{item.user.username}</Text>
             </TouchableOpacity>
             <Text style={styles.miniTitle} numberOfLines={1}>{truncateTitle(item.title)}</Text>
@@ -1144,7 +1147,7 @@ const ScreenshotItem = React.memo(({
       onPress={() => onUserPress(c.user.username)}
       activeOpacity={0.7}
     >
-      <Image source={{ uri: c.user.avatarUrl }} style={styles.reelCommentAvatar} />
+      <Image source={{ uri: resolveUserAvatarUrl(c.user) || undefined }} style={styles.reelCommentAvatar} />
       <View style={styles.reelCommentContent}>
         <Text style={styles.reelCommentUsername}>@{c.user.username}</Text>
         <Text style={styles.reelCommentText}>
@@ -1198,7 +1201,7 @@ const ScreenshotItem = React.memo(({
             style={styles.miniUserRow}
             onPress={() => onUserPress(item.user.username)}
           >
-            <Image source={{ uri: item.user.avatarUrl }} style={styles.miniAvatar} />
+            <Image source={{ uri: resolveUserAvatarUrl(item.user) || undefined }} style={styles.miniAvatar} />
             <Text style={styles.miniUsername}>@{item.user.username}</Text>
           </TouchableOpacity>
           <Text style={styles.miniTitle} numberOfLines={1}>{truncateTitle(item.title)}</Text>
@@ -1390,7 +1393,7 @@ const ClipCardItem = React.memo(({ item, onUserPress, onLike, onFire, onShare }:
           onPress={() => onUserPress(item.user.username)}
           activeOpacity={0.7}
         >
-          <Image source={{ uri: item.user.avatarUrl }} style={styles.twitterAvatar} />
+          <Image source={{ uri: resolveUserAvatarUrl(item.user) || undefined }} style={styles.twitterAvatar} />
           <View style={styles.twitterUserInfo}>
             <View style={styles.twitterNameRow}>
               <Text style={styles.twitterDisplayName}>{item.user.displayName}</Text>
@@ -1719,7 +1722,7 @@ export default function TrendingScreen() {
           userId: user.id,
           content: variables.content,
           createdAt: new Date().toISOString(),
-          user: { id: user.id, username: user.username, displayName: user.displayName || user.username, avatarUrl: user.avatarUrl || '' },
+          user: { id: user.id, username: user.username, displayName: user.displayName || user.username, avatarUrl: resolveUserAvatarUrl(user) || '', nftProfileImageUrl: user.nftProfileImageUrl, activeProfilePicType: user.activeProfilePicType },
         };
         setLocalScreenshotComments(prev => [...prev, newComment]);
         queryClient.setQueryData(['screenshots', 'trending', timePeriod], (oldData: ScreenshotWithUser[] | undefined) => {
@@ -2226,7 +2229,9 @@ export default function TrendingScreen() {
             id: user.id,
             username: user.username,
             displayName: user.displayName || user.username,
-            avatarUrl: user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
+            avatarUrl: resolveUserAvatarUrl(user) || '',
+            nftProfileImageUrl: user.nftProfileImageUrl,
+            activeProfilePicType: user.activeProfilePicType,
           },
         };
         setLocalReelComments(prev => [newComment, ...prev]);
@@ -2265,7 +2270,9 @@ export default function TrendingScreen() {
             id: user.id,
             username: user.username,
             displayName: user.displayName || user.username,
-            avatarUrl: user.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop',
+            avatarUrl: resolveUserAvatarUrl(user) || '',
+            nftProfileImageUrl: user.nftProfileImageUrl,
+            activeProfilePicType: user.activeProfilePicType,
           },
         };
         setLocalClipComments(prev => [newComment, ...prev]);
@@ -2730,7 +2737,7 @@ export default function TrendingScreen() {
                 activeOpacity={0.7}
               >
                 <Image 
-                  source={{ uri: featuredScreenshot.user.avatarUrl }} 
+                  source={{ uri: resolveUserAvatarUrl(featuredScreenshot.user) || undefined }} 
                   style={styles.featuredAvatar}
                 />
                 <View style={styles.featuredUserInfo}>
@@ -2921,7 +2928,7 @@ export default function TrendingScreen() {
                   }}
                 >
                   <Image
-                    source={{ uri: selectedScreenshot.user.avatarUrl }}
+                    source={{ uri: resolveUserAvatarUrl(selectedScreenshot.user) || undefined }}
                     style={styles.modalAvatar}
                   />
                   <View>
@@ -3026,7 +3033,7 @@ export default function TrendingScreen() {
                     {screenshotComments.slice(0, 3).map((c) => (
                       <View key={c.id} style={styles.commentItem}>
                         <TouchableOpacity onPress={() => handleUserPress(c.user.username)} activeOpacity={0.7}>
-                          <Image source={{ uri: c.user.avatarUrl }} style={styles.commentAvatar} />
+                          <Image source={{ uri: resolveUserAvatarUrl(c.user) || undefined }} style={styles.commentAvatar} />
                         </TouchableOpacity>
                         <View style={styles.commentContent}>
                           <Text style={styles.commentText}>
@@ -3092,7 +3099,7 @@ export default function TrendingScreen() {
                   {screenshotComments.map((c) => (
                     <View key={c.id} style={styles.commentItem}>
                       <TouchableOpacity onPress={() => handleUserPress(c.user.username)} activeOpacity={0.7}>
-                        <Image source={{ uri: c.user.avatarUrl }} style={styles.commentAvatar} />
+                        <Image source={{ uri: resolveUserAvatarUrl(c.user) || undefined }} style={styles.commentAvatar} />
                       </TouchableOpacity>
                       <View style={styles.commentContent}>
                         <Text style={styles.commentText}>
@@ -3287,7 +3294,7 @@ export default function TrendingScreen() {
                     style={styles.reelUserRow}
                     onPress={() => handleUserPress(reels[activeIndex].user.username)}
                   >
-                    <Image source={{ uri: reels[activeIndex].user.avatarUrl }} style={styles.reelAvatar} />
+                    <Image source={{ uri: resolveUserAvatarUrl(reels[activeIndex].user) || undefined }} style={styles.reelAvatar} />
                     <Text style={styles.reelUsername}>@{reels[activeIndex].user.username}</Text>
                     <TouchableOpacity style={styles.followButton}>
                       <Text style={styles.followButtonText}>Follow</Text>
@@ -3389,7 +3396,7 @@ export default function TrendingScreen() {
                     style={styles.reelUserRow}
                     onPress={() => handleUserPress(clips[activeIndex].user.username)}
                   >
-                    <Image source={{ uri: clips[activeIndex].user.avatarUrl }} style={styles.reelAvatar} />
+                    <Image source={{ uri: resolveUserAvatarUrl(clips[activeIndex].user) || undefined }} style={styles.reelAvatar} />
                     <Text style={styles.reelUsername}>@{clips[activeIndex].user.username}</Text>
                     <TouchableOpacity style={styles.followButton}>
                       <Text style={styles.followButtonText}>Follow</Text>
@@ -3484,7 +3491,7 @@ export default function TrendingScreen() {
                     style={styles.reelUserRow}
                     onPress={() => handleUserPress(screenshots[activeScreenshotIndex].user.username)}
                   >
-                    <Image source={{ uri: screenshots[activeScreenshotIndex].user.avatarUrl }} style={styles.reelAvatar} />
+                    <Image source={{ uri: resolveUserAvatarUrl(screenshots[activeScreenshotIndex].user) || undefined }} style={styles.reelAvatar} />
                     <Text style={styles.reelUsername}>@{screenshots[activeScreenshotIndex].user.username}</Text>
                     <TouchableOpacity style={styles.followButton}>
                       <Text style={styles.followButtonText}>Follow</Text>

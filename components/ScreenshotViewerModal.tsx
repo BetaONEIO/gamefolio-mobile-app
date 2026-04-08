@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/context/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { resolveUserAvatarUrl } from '@/lib/image-utils';
 import * as Haptics from 'expo-haptics';
 import FlameAnimation from '@/components/FlameAnimation';
 import { CommentText } from '@/utils/parseCommentText';
@@ -73,6 +74,8 @@ interface Screenshot {
     username: string;
     displayName?: string;
     avatarUrl: string;
+    nftProfileImageUrl?: string | null;
+    activeProfilePicType?: string | null;
   };
   game?: { id: number; name: string };
   _count?: { likes?: number; comments?: number; fires?: number };
@@ -462,7 +465,7 @@ export default function ScreenshotViewerModal({
             <View style={styles.userRowContainer}>
               <TouchableOpacity style={styles.userRow} onPress={handleUserPress}>
                 <Image 
-                  source={{ uri: currentScreenshot.user?.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop' }} 
+                  source={{ uri: resolveUserAvatarUrl(currentScreenshot.user) || undefined }} 
                   style={styles.avatar} 
                 />
                 <Text style={styles.username}>@{(currentScreenshot.user?.username || handle || '').replace(/^@+/, '')}</Text>
@@ -540,7 +543,7 @@ export default function ScreenshotViewerModal({
                         onClose();
                         router.push({ pathname: '/user/[id]', params: { id: commentItem.user.username } });
                       }}>
-                        <Image source={{ uri: commentItem.user.avatarUrl }} style={styles.inlineCommentAvatar} />
+                        <Image source={{ uri: resolveUserAvatarUrl(commentItem.user) || undefined }} style={styles.inlineCommentAvatar} />
                       </TouchableOpacity>
                       <View style={styles.inlineCommentContent}>
                         <Text style={styles.inlineCommentText} numberOfLines={2}>
@@ -603,7 +606,7 @@ export default function ScreenshotViewerModal({
                         onClose();
                         router.push({ pathname: '/user/[id]', params: { id: commentItem.user.username } });
                       }}>
-                        <Image source={{ uri: commentItem.user.avatarUrl }} style={styles.commentAvatar} />
+                        <Image source={{ uri: resolveUserAvatarUrl(commentItem.user) || undefined }} style={styles.commentAvatar} />
                       </TouchableOpacity>
                       <View style={styles.commentContent}>
                         <Text style={styles.commentText}>

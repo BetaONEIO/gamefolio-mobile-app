@@ -89,8 +89,12 @@ export async function signClipData(clip: any): Promise<any> {
     signUrl(clip.videoUrl),
     signUrl(clip.thumbnailUrl),
   ]);
-  if (signed.user?.avatarUrl) {
-    signed.user = { ...signed.user, avatarUrl: await signUrl(clip.user.avatarUrl) };
+  if (signed.user) {
+    const [signedAvatar, signedNftAvatar] = await Promise.all([
+      signUrl(clip.user.avatarUrl),
+      signUrl(clip.user.nftProfileImageUrl),
+    ]);
+    signed.user = { ...signed.user, avatarUrl: signedAvatar, nftProfileImageUrl: signedNftAvatar };
   }
   return signed;
 }
@@ -102,8 +106,12 @@ export async function signScreenshotData(screenshot: any): Promise<any> {
     signUrl(screenshot.imageUrl),
     signUrl(screenshot.thumbnailUrl),
   ]);
-  if (signed.user?.avatarUrl) {
-    signed.user = { ...signed.user, avatarUrl: await signUrl(screenshot.user.avatarUrl) };
+  if (signed.user) {
+    const [signedAvatar, signedNftAvatar] = await Promise.all([
+      signUrl(screenshot.user.avatarUrl),
+      signUrl(screenshot.user.nftProfileImageUrl),
+    ]);
+    signed.user = { ...signed.user, avatarUrl: signedAvatar, nftProfileImageUrl: signedNftAvatar };
   }
   return signed;
 }
@@ -111,11 +119,22 @@ export async function signScreenshotData(screenshot: any): Promise<any> {
 export async function signUserData(user: any): Promise<any> {
   if (!user) return user;
   const signed = { ...user };
-  [signed.avatarUrl, signed.bannerUrl] = await Promise.all([
+  [signed.avatarUrl, signed.bannerUrl, signed.nftProfileImageUrl] = await Promise.all([
     signUrl(user.avatarUrl),
     signUrl(user.bannerUrl),
+    signUrl(user.nftProfileImageUrl),
   ]);
   return signed;
+}
+
+export function resolveUserAvatarUrl(user: { avatarUrl?: string | null; nftProfileImageUrl?: string | null; activeProfilePicType?: string | null } | null | undefined): string | null {
+  if (!user) return null;
+  const rawUrl = (user.activeProfilePicType === 'nft' && user.nftProfileImageUrl)
+    ? user.nftProfileImageUrl
+    : user.avatarUrl;
+  if (!rawUrl) return null;
+  if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) return rawUrl;
+  return `${Env.BACKEND_URL}${rawUrl}`;
 }
 
 export function resolveNftImageUrl(image?: string | null): string | null {
