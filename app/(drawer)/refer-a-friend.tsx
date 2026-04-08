@@ -11,7 +11,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import { ArrowLeft, Copy, Users, Star, Gift, Share2, CheckCircle } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
-import { useQuery } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/context/AuthContext';
 import { LinearGradient } from 'expo-linear-gradient';
