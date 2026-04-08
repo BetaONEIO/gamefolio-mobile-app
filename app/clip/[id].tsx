@@ -1344,12 +1344,21 @@ export default function ClipDetailScreen() {
                   }}
                 />
               ) : playerInstance ? (
-                <VideoView
-                  player={playerInstance}
-                  style={styles.video}
-                  contentFit="cover"
-                  nativeControls={false}
-                />
+                <>
+                  <VideoView
+                    player={playerInstance}
+                    style={styles.video}
+                    contentFit="cover"
+                    nativeControls={false}
+                  />
+                  {/* Transparent overlay to capture taps — VideoView (native) absorbs touch events
+                      and prevents the parent TouchableOpacity from receiving them on iOS/Android */}
+                  <TouchableOpacity
+                    activeOpacity={1}
+                    onPress={handleVideoPress}
+                    style={styles.videoTapOverlay}
+                  />
+                </>
               ) : (
                 <Image
                   source={{ uri: clipItem.thumbnailUrl }}
@@ -1845,12 +1854,19 @@ export default function ClipDetailScreen() {
               }}
             />
           ) : playerInstance ? (
-            <VideoView
-              player={playerInstance}
-              style={styles.video}
-              contentFit="cover"
-              nativeControls={false}
-            />
+            <>
+              <VideoView
+                player={playerInstance}
+                style={styles.video}
+                contentFit="cover"
+                nativeControls={false}
+              />
+              <TouchableOpacity
+                activeOpacity={1}
+                onPress={handleVideoPress}
+                style={styles.videoTapOverlay}
+              />
+            </>
           ) : (
             <Image
               source={{ uri: clip.thumbnailUrl }}
@@ -2500,6 +2516,13 @@ const styles = StyleSheet.create({
   video: {
     width: '100%',
     height: '100%',
+  },
+  videoTapOverlay: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   playOverlay: {
     position: 'absolute' as const,
