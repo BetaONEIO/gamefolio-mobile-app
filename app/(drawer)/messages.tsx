@@ -203,7 +203,7 @@ export default function MessagesScreen() {
       >
         <TouchableOpacity
           style={styles.avatarContainer}
-          onPress={() => router.push({ pathname: '/user/[id]', params: { id: item.recipientId.toString() } })}
+          onPress={() => router.push({ pathname: '/user/[id]', params: { id: item.recipient.username } })}
           activeOpacity={0.8}
           hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         >

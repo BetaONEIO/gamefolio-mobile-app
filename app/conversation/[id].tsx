@@ -259,7 +259,7 @@ export default function ConversationScreen() {
 
   const handleAvatarPress = useCallback(() => {
     console.log('[Conversation] Avatar pressed for user:', otherUser.username);
-    router.push({ pathname: '/user/[id]', params: { id: recipientId.toString() } });
+    router.push({ pathname: '/user/[id]', params: { id: otherUser.username } });
   }, [otherUser.username, recipientId, router]);
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
