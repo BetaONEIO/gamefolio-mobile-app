@@ -25,6 +25,7 @@ import {
   Bell,
   HelpCircle,
   Gift,
+  Zap,
 } from 'lucide-react-native';
 import React, { useState, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, Image, Animated, LayoutChangeEvent, Pressable } from 'react-native';
@@ -289,6 +290,18 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             onPress={() => navigate('/(drawer)/(tabs)/profile')}
             isActive={pathname.includes('profile')}
           />
+          <NavItem
+            icon={Zap}
+            label="Level Tracker"
+            onPress={() => navigate('/(drawer)/level-tracker')}
+            isActive={pathname.includes('level-tracker')}
+          />
+          <NavItem
+            icon={Gift}
+            label="Refer a Friend"
+            onPress={() => navigate('/(drawer)/refer-a-friend')}
+            isActive={pathname.includes('refer-a-friend')}
+          />
         </View>
 
         {/* Settings Section */}
@@ -305,12 +318,6 @@ export default function CustomDrawerContent(props: DrawerContentComponentProps) 
             label="Profile & Appearance"
             onPress={() => navigate('/profile-appearance')}
             isActive={pathname.includes('profile-appearance')}
-          />
-          <NavItem
-            icon={Gift}
-            label="Refer a Friend"
-            onPress={() => navigate('/(drawer)/refer-a-friend')}
-            isActive={pathname.includes('refer-a-friend')}
           />
           <NavItem
             icon={HelpCircle}
