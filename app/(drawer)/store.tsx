@@ -208,6 +208,32 @@ export default function StorePage() {
   });
   const marketplaceListings = listingsData?.listings ?? [];
 
+  const listingsNeedingImages = marketplaceListings
+    .filter(l => !l.image_url)
+    .map(l => l.token_id)
+    .slice(0, 20);
+
+  const { data: batchMetadata } = useQuery<Record<number, { image: string | null }>>({
+    queryKey: ['/api/nft/metadata/batch', listingsNeedingImages],
+    queryFn: async () => {
+      if (listingsNeedingImages.length === 0) return {};
+      const res = await fetch(`${Env.BACKEND_URL}/api/nft/metadata/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tokenIds: listingsNeedingImages }),
+      });
+      if (!res.ok) return {};
+      const data = await res.json();
+      const map: Record<number, { image: string | null }> = {};
+      for (const nft of data.nfts || []) {
+        if (nft.tokenId != null) map[nft.tokenId] = { image: nft.image || null };
+      }
+      return map;
+    },
+    enabled: listingsNeedingImages.length > 0 && (activeTab === 'buy' || activeTab === 'watchlist'),
+    staleTime: 300000,
+  });
+
   const { data: ownedNFTs = [], isLoading: nftsLoading } = useQuery<OwnedNFT[]>({
     queryKey: ['/api/nfts/owned', user?.id],
     queryFn: async () => {
@@ -846,9 +872,23 @@ export default function StorePage() {
             const canAfford = gfBalance >= listing.listed_price;
             const isOwnListing = listing.user_id === user?.id;
             const sellerName = listing.display_name || listing.username || 'Unknown';
-            const listingImageUrl = resolveNftImageUrl(listing.image_url);
+            const rawImageUrl = listing.image_url || batchMetadata?.[listing.token_id]?.image || null;
+            const listingImageUrl = resolveNftImageUrl(rawImageUrl);
             return (
-              <View key={listing.token_id} style={styles.nftCard}>
+              <TouchableOpacity
+                key={listing.token_id}
+                style={styles.nftCard}
+                activeOpacity={0.85}
+                onPress={() => router.push({
+                  pathname: '/nft/[id]',
+                  params: {
+                    id: listing.token_id,
+                    listedPrice: listing.listed_price,
+                    sellerName: listing.display_name || listing.username || '',
+                    sellerId: listing.user_id,
+                  },
+                })}
+              >
                 <View style={styles.nftImageContainer}>
                   {listingImageUrl ? (
                     <Image
@@ -866,7 +906,7 @@ export default function StorePage() {
                   </View>
                   <TouchableOpacity
                     style={styles.heartButton}
-                    onPress={() => handleToggleWatchlist(listing)}
+                    onPress={(e) => { e.stopPropagation?.(); handleToggleWatchlist(listing); }}
                     activeOpacity={0.7}
                   >
                     <Heart
@@ -892,7 +932,7 @@ export default function StorePage() {
 
                     <TouchableOpacity
                       style={[styles.buyButton, (!canAfford || isOwnListing) && { opacity: 0.5 }]}
-                      onPress={() => !isOwnListing && canAfford && handleBuyListing(listing)}
+                      onPress={(e) => { e.stopPropagation?.(); !isOwnListing && canAfford && handleBuyListing(listing); }}
                       activeOpacity={0.8}
                     >
                       <ShoppingCart size={14} color="#020617" />
@@ -900,7 +940,7 @@ export default function StorePage() {
                     </TouchableOpacity>
                   </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
