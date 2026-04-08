@@ -10,7 +10,8 @@ import {
 import { Copy, Users, Star, Gift, Share2, CheckCircle } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import { trpc } from '@/lib/trpc';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import AppHeader from '@/components/AppHeader';
 
@@ -22,13 +23,19 @@ const HOW_STEPS = [
 ];
 
 export default function ReferAFriendScreen() {
-  const { user } = useAuth();
+  const { user, getAccessToken } = useAuth();
   const [copiedLink, setCopiedLink] = React.useState(false);
   const [copiedCode, setCopiedCode] = React.useState(false);
 
-  const { data: stats, isLoading, isError } = trpc.user.getReferralStats.useQuery(undefined, {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['referral-stats', user?.id],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      return api.users.getReferralStats(token);
+    },
     enabled: !!user,
-    retry: 1,
+    retry: false,
   });
 
   const referralLink = stats?.referralLink ?? (user ? `https://gamefolio.app/ref/${user.id}` : '');

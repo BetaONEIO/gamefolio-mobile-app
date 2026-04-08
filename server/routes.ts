@@ -2525,6 +2525,25 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
+  // Get authenticated user's referral stats
+  app.get("/api/user/referral-stats", hybridAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any).id;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      res.json({
+        referralCode: String(userId),
+        referralLink: `https://gamefolio.app/ref/${userId}`,
+        referralCount: 0,
+        totalXpEarned: 0,
+      });
+    } catch (error) {
+      console.error("Error fetching referral stats:", error);
+      res.status(500).json({ message: "Error fetching referral stats" });
+    }
+  });
+
   // Get user's XP history (actual XP earnings from various sources)
   app.get("/api/user/:userId/xp-history", hybridAuth, async (req, res) => {
     try {

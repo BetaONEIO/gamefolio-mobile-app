@@ -1563,6 +1563,18 @@ export const api = {
       });
     },
 
+    getReferralStats: async (token: string) => {
+      return apiFetch<{
+        referralCode: string;
+        referralLink: string;
+        referralCount: number;
+        totalXpEarned: number;
+      }>('/api/user/referral-stats', {
+        method: 'GET',
+        token,
+      });
+    },
+
     getProfile: async (username: string, token?: string) => {
       const response = await apiFetch<any>(`/api/users/${username}`, {
         method: 'GET',
