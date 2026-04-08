@@ -1412,7 +1412,7 @@ export default function ClipDetailScreen() {
                   styles.controlsOverlay, 
                   { opacity: showControls || isHovering || !isPlaying ? 1 : 0 }
                 ]} 
-                pointerEvents={showControls || isHovering || !isPlaying ? 'auto' : 'none'}
+                pointerEvents={showControls || isHovering || !isPlaying ? 'box-none' : 'none'}
               >
                 <View style={styles.controlsGradient} />
 
@@ -1916,7 +1916,7 @@ export default function ClipDetailScreen() {
               styles.controlsOverlay, 
               { opacity: showControls || isHovering || !isPlaying ? 1 : 0 }
             ]} 
-            pointerEvents={showControls || isHovering || !isPlaying ? 'auto' : 'none'}
+            pointerEvents={showControls || isHovering || !isPlaying ? 'box-none' : 'none'}
           >
             <View style={styles.controlsGradient} />
 
