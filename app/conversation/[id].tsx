@@ -25,7 +25,6 @@ import {
 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import UserProfilePreviewModal from '@/components/UserProfilePreviewModal';
 import { api, Message } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
@@ -51,7 +50,6 @@ export default function ConversationScreen() {
   const isNewConversation = params.isNew === 'true';
   
   const [inputText, setInputText] = useState('');
-  const [isProfilePreviewVisible, setIsProfilePreviewVisible] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const flatListRef = useRef<FlatList>(null);
@@ -261,8 +259,8 @@ export default function ConversationScreen() {
 
   const handleAvatarPress = useCallback(() => {
     console.log('[Conversation] Avatar pressed for user:', otherUser.username);
-    setIsProfilePreviewVisible(true);
-  }, [otherUser.username]);
+    router.push({ pathname: '/user/[id]', params: { id: recipientId.toString() } });
+  }, [otherUser.username, recipientId, router]);
 
   const renderMessage = ({ item, index }: { item: Message; index: number }) => {
     const isCurrentUser = user ? item.senderId === user.id : false;
@@ -448,36 +446,6 @@ export default function ConversationScreen() {
           activeOpacity={1}
         />
       )}
-
-      <UserProfilePreviewModal
-        visible={isProfilePreviewVisible}
-        onClose={() => {
-          console.log('[Conversation] Closing profile preview modal');
-          setIsProfilePreviewVisible(false);
-        }}
-        user={{
-          id: otherUser.id.toString(),
-          username: otherUser.username,
-          displayName: otherUser.displayName,
-          avatarUrl: otherUser.avatarUrl,
-          bannerUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=300&fit=crop',
-          isOnline: otherUser.isOnline,
-          level: 25,
-          verified: true,
-          bio: 'Gaming enthusiast | Content creator',
-          stats: {
-            uploads: 42,
-            followers: 1250,
-            following: 380,
-          },
-          engagement: {
-            likes: 5400,
-            fires: 2100,
-            streak: 14,
-          },
-          favoriteGames: ['Fortnite', 'Call of Duty', 'Apex Legends'],
-        }}
-      />
     </View>
   );
 }

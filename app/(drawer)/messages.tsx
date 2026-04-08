@@ -201,12 +201,17 @@ export default function MessagesScreen() {
         onPress={() => handleConversationPress(item)}
         activeOpacity={0.7}
       >
-        <View style={styles.avatarContainer}>
+        <TouchableOpacity
+          style={styles.avatarContainer}
+          onPress={() => router.push({ pathname: '/user/[id]', params: { id: item.recipientId.toString() } })}
+          activeOpacity={0.8}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        >
           <Image 
             source={{ uri: item.recipient.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&h=100&fit=crop' }} 
             style={styles.avatar} 
           />
-        </View>
+        </TouchableOpacity>
         <View style={styles.conversationContent}>
           <View style={styles.conversationHeader}>
             <Text style={styles.username} numberOfLines={1}>
