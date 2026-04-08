@@ -285,7 +285,7 @@ export default function ClipDetailScreen() {
     },
   });
 
-  // Fetch the specific clip first
+  // Fetch the specific clip first (used only for deep-link entry and reel branch)
   const { data: clip, isLoading } = useQuery<Clip>({
     queryKey: ['clip', clipId],
     queryFn: async () => {
@@ -297,18 +297,85 @@ export default function ClipDetailScreen() {
       return clipData;
     },
     enabled: !!clipId,
+    staleTime: 60000,
   });
 
-  // Query to check if user has fired this clip - THIS IS THE SOURCE OF TRUTH FROM BACKEND
-  const { data: userFireStatus } = useQuery({
-    queryKey: ['clip', clipId, 'fire-status', currentUser?.id],
+  // Fetch clips for swipe navigation - either from specific user or general feed
+  // When contentType is specified, only browse that type (clips or reels)
+  const { data: feedClips = [] } = useQuery<Clip[]>({
+    queryKey: fromUsername ? ['userClips', fromUsername, browseContentType] : ['clips', 'feed', browseContentType],
     queryFn: async () => {
-      if (!currentUser?.id || !clipId) return { hasFired: false, userReactionId: null, fireCount: 0 };
+      const token = await getAccessToken();
+      try {
+        if (fromUsername) {
+          console.log('[ClipDetail] Fetching content from user:', fromUsername, 'contentType:', browseContentType);
+          const userClips = await api.users.getUserClips(fromUsername);
+          if (browseContentType === 'reel') {
+            return userClips.filter((c: Clip) => c.videoType === 'reel');
+          } else if (browseContentType === 'clip') {
+            return userClips.filter((c: Clip) => c.videoType !== 'reel');
+          }
+          return userClips.filter((c: Clip) => c.videoType !== 'reel');
+        } else {
+          console.log('[ClipDetail] Fetching all clips for swipe navigation');
+          const clips = await api.clips.getFeed(token || undefined, { page: 1, limit: 50 });
+          return clips.filter((c: Clip) => c.videoType !== 'reel');
+        }
+      } catch (error) {
+        console.log('[ClipDetail] Error fetching clips:', error);
+        return [];
+      }
+    },
+    staleTime: 60000,
+  });
+
+  // Combine clips: ensure the current clip is always in the list
+  const allClips = React.useMemo(() => {
+    if (!clip) return feedClips;
+    const clipExistsInFeed = feedClips.some(c => c.id.toString() === clipId);
+    if (clipExistsInFeed) {
+      return feedClips;
+    }
+    // Prepend the current clip if it's not in the feed (deep-linked clip not in feed)
+    return [clip, ...feedClips];
+  }, [feedClips, clip, clipId]);
+
+  const allClipsRef = useRef(allClips);
+  allClipsRef.current = allClips;
+
+  // activeClip is the currently visible clip — drives all per-clip queries, never the URL param
+  const activeClip = allClips[currentClipIndex] || null;
+  const activeClipId = activeClip?.id?.toString() || clipId;
+
+  const isOwnClip = activeClip?.userId === currentUser?.id || clip?.userId === currentUser?.id;
+
+  // Find the index of current clip in all clips (only sync when URL param changes, not on swipe)
+  useEffect(() => {
+    if (allClips.length > 0 && clipId) {
+      const index = allClips.findIndex(c => c.id.toString() === clipId);
+      if (index !== -1 && index !== currentClipIndexRef.current) {
+        setCurrentClipIndex(index);
+        // Scroll to the clip without animation on initial load
+        setTimeout(() => {
+          clipsFlatListRef.current?.scrollToIndex({ index, animated: false });
+        }, 100);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allClips, clipId]);
+
+  const EMOJI_OPTIONS = ['😮', '💯', '🎮', '👏', '🤣', '😍', '💀', '🤯'];
+
+  // Query to check if user has fired the ACTIVE (currently visible) clip — keyed on activeClipId
+  const { data: userFireStatus } = useQuery({
+    queryKey: ['clip', activeClipId, 'fire-status', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id || !activeClipId) return { hasFired: false, userReactionId: null, fireCount: 0 };
       try {
         const token = await getGamefolioToken();
         if (!token) return { hasFired: false, userReactionId: null, fireCount: 0 };
-        console.log('[ClipDetail] 🔍 BACKEND CHECK - Fetching fire status for clip:', clipId, 'user:', currentUser.id);
-        const reactions = await api.clips.getReactions(clipId, token);
+        console.log('[ClipDetail] 🔍 BACKEND CHECK - Fetching fire status for clip:', activeClipId, 'user:', currentUser.id);
+        const reactions = await api.clips.getReactions(activeClipId, token);
         const fireReactions = reactions.filter(r => r.emoji === '🔥');
         const userFireReaction = fireReactions.find(r => Number(r.userId) === Number(currentUser.id));
         const userHasFired = !!userFireReaction;
@@ -319,29 +386,25 @@ export default function ClipDetailScreen() {
         return { hasFired: false, userReactionId: null, fireCount: 0 };
       }
     },
-    enabled: !!clipId && !!currentUser?.id,
-    staleTime: 0, // Always refetch to get accurate status
+    enabled: !!activeClipId && !!currentUser?.id,
+    staleTime: 60000,
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
-  const isOwnClip = clip?.userId === currentUser?.id;
-
-  const EMOJI_OPTIONS = ['😮', '💯', '🎮', '👏', '🤣', '😍', '💀', '🤯'];
-
   const { data: allReactions = [], refetch: refetchReactions } = useQuery({
-    queryKey: ['clip', clipId, 'all-reactions'],
+    queryKey: ['clip', activeClipId, 'all-reactions'],
     queryFn: async () => {
-      if (!clipId) return [];
+      if (!activeClipId) return [];
       try {
         const token = await getGamefolioToken();
-        return await api.clips.getReactions(clipId, token || undefined);
+        return await api.clips.getReactions(activeClipId, token || undefined);
       } catch {
         return [];
       }
     },
-    enabled: !!clipId,
-    staleTime: 30000,
+    enabled: !!activeClipId,
+    staleTime: 60000,
   });
 
   const emojiCounts = React.useMemo(() => {
@@ -364,9 +427,9 @@ export default function ClipDetailScreen() {
     const existing = emojiCounts[emoji];
     try {
       if (existing?.userReacted && existing.reactionId) {
-        await api.clips.deleteReaction(clipId!, existing.reactionId, token);
+        await api.clips.deleteReaction(activeClipId!, existing.reactionId, token);
       } else {
-        await api.clips.fire(clipId!, token, emoji);
+        await api.clips.fire(activeClipId!, token, emoji);
       }
       refetchReactions();
     } catch (e) {
@@ -376,74 +439,27 @@ export default function ClipDetailScreen() {
 
   const { mutate: deleteClip } = deleteClipMutation;
   const handleDeleteClip = useCallback(() => {
-    if (!clipId) return;
+    if (!activeClipId) return;
     setIsDeleting(true);
-    deleteClip(clipId);
-  }, [clipId, deleteClip]);
+    deleteClip(activeClipId);
+  }, [activeClipId, deleteClip]);
 
-  // Fetch clips for horizontal scrolling - either from specific user or general feed
-  // When contentType is specified, only browse that type (clips or reels)
-  const { data: feedClips = [] } = useQuery<Clip[]>({
-    queryKey: fromUsername ? ['userClips', fromUsername, browseContentType] : ['clips', 'feed', browseContentType],
-    queryFn: async () => {
-      const token = await getAccessToken();
-      try {
-        if (fromUsername) {
-          console.log('[ClipDetail] Fetching content from user:', fromUsername, 'contentType:', browseContentType);
-          const userClips = await api.users.getUserClips(fromUsername);
-          // Filter based on content type - if coming from Clips tab, only show clips; if from Reels tab, only show reels
-          if (browseContentType === 'reel') {
-            return userClips.filter((c: Clip) => c.videoType === 'reel');
-          } else if (browseContentType === 'clip') {
-            return userClips.filter((c: Clip) => c.videoType !== 'reel');
-          }
-          // Default: only clips (not reels) for backward compatibility
-          return userClips.filter((c: Clip) => c.videoType !== 'reel');
-        } else {
-          console.log('[ClipDetail] Fetching all clips for swipe navigation');
-          const clips = await api.clips.getFeed(token || undefined, { page: 1, limit: 50 });
-          return clips.filter((c: Clip) => c.videoType !== 'reel');
-        }
-      } catch (error) {
-        console.log('[ClipDetail] Error fetching clips:', error);
-        return [];
-      }
-    },
-  });
-
-  // Combine clips: ensure the current clip is always in the list
-  const allClips = React.useMemo(() => {
-    if (!clip) return feedClips;
-    
-    const clipExistsInFeed = feedClips.some(c => c.id.toString() === clipId);
-    if (clipExistsInFeed) {
-      return feedClips;
-    }
-    // Prepend the current clip if it's not in the feed
-    return [clip, ...feedClips];
-  }, [feedClips, clip, clipId]);
-
-  const allClipsRef = useRef(allClips);
-  allClipsRef.current = allClips;
-
-  // Find the index of current clip in all clips (only sync when URL param changes, not on swipe)
+  // Fast seed from in-memory feed data when swiping — avoids waiting for API round-trip
   useEffect(() => {
-    if (allClips.length > 0 && clipId) {
-      const index = allClips.findIndex(c => c.id.toString() === clipId);
-      if (index !== -1 && index !== currentClipIndexRef.current) {
-        setCurrentClipIndex(index);
-        // Scroll to the clip without animation on initial load
-        setTimeout(() => {
-          clipsFlatListRef.current?.scrollToIndex({ index, animated: false });
-        }, 100);
-      }
-    }
+    if (!activeClip || isFireInProgress.current || isLikeInProgress.current) return;
+    setLocalIsLiked(activeClip.isLiked === true);
+    setLocalIsFired(activeClip.isFired === true);
+    setLocalLikeCount(activeClip._count?.likes || 0);
+    setLocalFireCount(activeClip._count?.fires || 0);
+    setLocalUserReactionId(null);
+    // Reset lastSyncedClipId so the backend sync effect will run for this clip
+    lastSyncedClipId.current = null;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allClips, clipId]);
+  }, [currentClipIndex]);
 
   useEffect(() => {
     // Only sync on initial load or clip change - don't continuously override local state
-    if (lastSyncedClipId.current === clipId) {
+    if (lastSyncedClipId.current === activeClipId) {
       return;
     }
     
@@ -453,8 +469,8 @@ export default function ClipDetailScreen() {
       return;
     }
     
-    // Initial sync from backend data
-    if (clip && userFireStatus) {
+    // Backend sync: override feed-seeded values with accurate backend data
+    if (activeClip && userFireStatus) {
       const backendHasFired = userFireStatus.hasFired === true;
       const backendFireCount = userFireStatus.fireCount ?? 0;
       
@@ -466,28 +482,28 @@ export default function ClipDetailScreen() {
       setLocalIsFired(backendHasFired);
       setLocalFireCount(backendFireCount);
       setLocalUserReactionId(userFireStatus.userReactionId ?? null);
-      setLocalIsLiked(clip.isLiked === true);
-      setLocalLikeCount(clip._count?.likes || 0);
-      lastSyncedClipId.current = clipId || null;
-    } else if (clip && !userFireStatus) {
-      // Fallback for when userFireStatus hasn't loaded yet
+      setLocalIsLiked(activeClip.isLiked === true);
+      setLocalLikeCount(activeClip._count?.likes || 0);
+      lastSyncedClipId.current = activeClipId || null;
+    } else if (activeClip && !userFireStatus) {
       console.log('[ClipDetail] Initial sync (waiting for backend fire status)');
-      setLocalIsLiked(clip.isLiked === true);
-      setLocalIsFired(clip.isFired === true);
-      setLocalLikeCount(clip._count?.likes || 0);
-      setLocalFireCount(clip._count?.fires ?? 0);
+      setLocalIsLiked(activeClip.isLiked === true);
+      setLocalIsFired(activeClip.isFired === true);
+      setLocalLikeCount(activeClip._count?.likes || 0);
+      setLocalFireCount(activeClip._count?.fires ?? 0);
       // Don't set lastSyncedClipId yet - wait for userFireStatus to load
     }
-  }, [clip, clipId, userFireStatus]);
+  }, [activeClip, activeClipId, userFireStatus]);
 
   const { data: comments = [], refetch: refetchComments } = useQuery<any[]>({
-    queryKey: ['clip', clipId, 'comments'],
+    queryKey: ['clip', activeClipId, 'comments'],
     queryFn: async () => {
       const token = await getAccessToken();
-      const commentsData = await api.clips.getComments(clipId || '', token || undefined);
+      const commentsData = await api.clips.getComments(activeClipId || '', token || undefined);
       return commentsData;
     },
-    enabled: !!clipId,
+    enabled: !!activeClipId,
+    staleTime: 60000,
   });
 
   const addCommentMutation = useMutation({
@@ -524,7 +540,7 @@ export default function ClipDetailScreen() {
   const [playerInstance, setPlayerInstance] = useState<any>(null);
   const playerRef = useRef<any>(null);
   
-  const player = useVideoPlayer(clip?.videoUrl || '', (player) => {
+  const player = useVideoPlayer(activeClip?.videoUrl || clip?.videoUrl || '', (player) => {
     if (player) {
       player.loop = false;
       playerRef.current = player;
@@ -540,7 +556,8 @@ export default function ClipDetailScreen() {
   }, [player]);
 
   useEffect(() => {
-    if (clip?.videoUrl && playerRef.current) {
+    const activeVideoUrl = activeClip?.videoUrl || clip?.videoUrl;
+    if (activeVideoUrl && playerRef.current) {
       const timer = setTimeout(() => {
         try {
           const p = playerRef.current;
@@ -568,7 +585,7 @@ export default function ClipDetailScreen() {
         }
       };
     }
-  }, [clip?.videoUrl]);
+  }, [activeClip?.videoUrl, clip?.videoUrl]);
 
   useEffect(() => {
     try {
@@ -808,10 +825,10 @@ export default function ClipDetailScreen() {
   };
 
   const handlePostComment = () => {
-    if (comment.trim().length === 0 || !clipId) return;
+    if (comment.trim().length === 0 || !activeClipId) return;
     console.log('[ClipDetail] handlePostComment called with:', comment.trim());
     addCommentMutation.mutate({
-      clipId: parseInt(clipId, 10),
+      clipId: parseInt(activeClipId, 10),
       content: comment.trim(),
     });
   };
@@ -983,7 +1000,7 @@ export default function ClipDetailScreen() {
 
   const { mutate: mutateLikeAction, isPending: isLikePending } = likeMutation;
   const handleLike = useCallback(() => {
-    if (isLikePending || isLikeInProgress.current || !clipId || likeCooldown > 0) {
+    if (isLikePending || isLikeInProgress.current || !activeClipId || likeCooldown > 0) {
       if (likeCooldown > 0) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       }
@@ -1019,8 +1036,8 @@ export default function ClipDetailScreen() {
       duration: COOLDOWN_DURATION,
       useNativeDriver: false,
     }).start();
-    mutateLikeAction({ clipIdToLike: clipId, previousLiked: wasLiked });
-  }, [localIsLiked, likeScale, mutateLikeAction, isLikePending, clipId, likeCooldown, likeCooldownProgress]);
+    mutateLikeAction({ clipIdToLike: activeClipId, previousLiked: wasLiked });
+  }, [localIsLiked, likeScale, mutateLikeAction, isLikePending, activeClipId, likeCooldown, likeCooldownProgress]);
 
   const { mutate: mutateFireAction, isPending: isFirePending } = fireMutation;
   const handleFire = useCallback(() => {
@@ -1041,7 +1058,7 @@ export default function ClipDetailScreen() {
       return;
     }
     
-    if (isFirePending || isFireInProgress.current || !clipId || fireCooldown > 0) {
+    if (isFirePending || isFireInProgress.current || !activeClipId || fireCooldown > 0) {
       if (fireCooldown > 0) {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       }
@@ -1070,8 +1087,8 @@ export default function ClipDetailScreen() {
     }).start();
     
     // Call the API to add fire reaction (permanent, no toggle)
-    mutateFireAction({ clipIdToFire: clipId, previousFired: false, userReactionId: localUserReactionId });
-  }, [localIsFired, mutateFireAction, isFirePending, clipId, fireCooldown, fireCooldownProgress, currentUser, showToast, localUserReactionId]);
+    mutateFireAction({ clipIdToFire: activeClipId, previousFired: false, userReactionId: localUserReactionId });
+  }, [localIsFired, mutateFireAction, isFirePending, activeClipId, fireCooldown, fireCooldownProgress, currentUser, showToast, localUserReactionId]);
 
   const [isMutedForReel, setIsMutedForReel] = useState(false);
   const [showReelComments, setShowReelComments] = useState(false);
@@ -1251,12 +1268,7 @@ export default function ClipDetailScreen() {
       const newIndex = viewableItems[0].index;
       if (newIndex !== currentClipIndexRef.current) {
         setCurrentClipIndex(newIndex);
-        const newClip = allClipsRef.current[newIndex];
-        if (newClip) {
-          // Update URL without navigating
-          router.setParams({ id: newClip.id.toString() });
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     }
   }).current;
@@ -2181,27 +2193,28 @@ export default function ClipDetailScreen() {
       <ShareClipModal 
         visible={isShareModalVisible} 
         onClose={() => setIsShareModalVisible(false)} 
-        isOwnClip={clip?.userId === currentUser?.id}
-        clip={clip} 
+        isOwnClip={isOwnClip}
+        clip={activeClip || clip} 
       />
 
       <ReportModal
         visible={isReportModalVisible}
         onClose={() => setIsReportModalVisible(false)}
         onSubmit={async (reason, details) => {
+          const reportClip = activeClip || clip;
           await submitReportMutation.mutateAsync({
             contentType: 'clip',
-            contentId: clip?.id || 0,
+            contentId: reportClip?.id || 0,
             reason,
             details,
-            contentTitle: clip?.title,
-            reportedUserId: clip?.userId,
-            reportedUsername: clip?.user?.username,
+            contentTitle: reportClip?.title,
+            reportedUserId: reportClip?.userId,
+            reportedUsername: reportClip?.user?.username,
           });
         }}
         contentType="clip"
-        contentId={clip?.id || 0}
-        contentTitle={clip?.title}
+        contentId={(activeClip || clip)?.id || 0}
+        contentTitle={(activeClip || clip)?.title}
       />
 
       {/* Delete Confirmation Modal */}
