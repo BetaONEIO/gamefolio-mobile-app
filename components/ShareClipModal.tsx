@@ -113,8 +113,11 @@ export default function ShareClipModal({ visible, onClose, isOwnClip = false, co
       try {
         const token = await getAccessToken();
         const result = await api.users.search(trimmed, token ?? undefined);
-        setSuggestions(result.users ?? []);
-        setShowSuggestions((result.users ?? []).length > 0);
+        const users: UserSuggestion[] = Array.isArray(result)
+          ? result
+          : (result as any).users ?? [];
+        setSuggestions(users);
+        setShowSuggestions(users.length > 0);
       } catch {
         setSuggestions([]);
         setShowSuggestions(false);
