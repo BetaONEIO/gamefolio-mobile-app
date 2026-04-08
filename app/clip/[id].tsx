@@ -170,6 +170,8 @@ export default function ClipDetailScreen() {
   const browseContentType = Array.isArray(contentType) ? contentType[0] : contentType;
   const insets = useSafeAreaInsets();
   const [currentClipIndex, setCurrentClipIndex] = useState(0);
+  const currentClipIndexRef = useRef(0);
+  currentClipIndexRef.current = currentClipIndex;
   const clipsFlatListRef = useRef<FlatList>(null);
   const [comment, setComment] = useState('');
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
@@ -421,11 +423,14 @@ export default function ClipDetailScreen() {
     return [clip, ...feedClips];
   }, [feedClips, clip, clipId]);
 
-  // Find the index of current clip in all clips
+  const allClipsRef = useRef(allClips);
+  allClipsRef.current = allClips;
+
+  // Find the index of current clip in all clips (only sync when URL param changes, not on swipe)
   useEffect(() => {
     if (allClips.length > 0 && clipId) {
       const index = allClips.findIndex(c => c.id.toString() === clipId);
-      if (index !== -1 && index !== currentClipIndex) {
+      if (index !== -1 && index !== currentClipIndexRef.current) {
         setCurrentClipIndex(index);
         // Scroll to the clip without animation on initial load
         setTimeout(() => {
@@ -433,7 +438,8 @@ export default function ClipDetailScreen() {
         }, 100);
       }
     }
-  }, [allClips, clipId, currentClipIndex]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allClips, clipId]);
 
   useEffect(() => {
     // Only sync on initial load or clip change - don't continuously override local state
@@ -1243,9 +1249,9 @@ export default function ClipDetailScreen() {
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: any[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index !== null) {
       const newIndex = viewableItems[0].index;
-      if (newIndex !== currentClipIndex) {
+      if (newIndex !== currentClipIndexRef.current) {
         setCurrentClipIndex(newIndex);
-        const newClip = allClips[newIndex];
+        const newClip = allClipsRef.current[newIndex];
         if (newClip) {
           // Update URL without navigating
           router.setParams({ id: newClip.id.toString() });
