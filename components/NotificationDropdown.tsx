@@ -108,6 +108,11 @@ export default function NotificationDropdown({ visible, onClose, topOffset, onOp
 
     onClose();
 
+    if (notification.type === 'follow_request') {
+      router.push('/(drawer)/follow-requests' as any);
+      return;
+    }
+
     if (notification.actionUrl) {
       router.push(notification.actionUrl as any);
       return;
