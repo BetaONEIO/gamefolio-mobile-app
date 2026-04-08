@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Zap, Flame, Trophy, Star, Upload, Heart, MessageSquare, Share2, Eye } from 'lucide-react-native';
+import { Zap, Flame, Trophy, Star, Upload, Heart, MessageSquare, Share2, Eye, Gift } from 'lucide-react-native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -22,6 +22,7 @@ const XP_ACTIONS = [
   { icon: MessageSquare, label: 'Leave a Comment', xp: 5, description: 'Comment on community content' },
   { icon: Share2, label: 'Share Content', xp: 3, description: 'Share content with others' },
   { icon: Eye, label: 'Watch a Clip', xp: 1, description: 'Watch a clip from another user' },
+  { icon: Gift, label: 'Refer a Friend', xp: 250, description: 'Invite a friend who signs up using your referral code' },
 ];
 
 const STREAK_MILESTONES = [
