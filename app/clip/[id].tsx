@@ -347,7 +347,7 @@ export default function ClipDetailScreen() {
   const activeClip = allClips[currentClipIndex] || null;
   const activeClipId = activeClip?.id?.toString() || clipId;
 
-  const isOwnClip = activeClip?.userId === currentUser?.id || clip?.userId === currentUser?.id;
+  const isOwnClip = (activeClip ?? clip)?.userId === currentUser?.id;
 
   // Find the index of current clip in all clips (only sync when URL param changes, not on swipe)
   useEffect(() => {
