@@ -14,6 +14,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useUser } from '@/context/UserContext';
 import ReelViewer from '@/components/ReelViewer';
 import LevelDetailsModal from '@/components/LevelDetailsModal';
+import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import HeroBanner from '@/components/HeroBanner';
 import type { ReelData, Comment } from '@/components/ReelViewer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -111,6 +112,8 @@ export default function HomeScreen() {
   const [isTabFocused, setIsTabFocused] = useState(true);
   const [isLevelModalVisible, setIsLevelModalVisible] = useState(false);
   const [proPromoDismissed, setProPromoDismissed] = useState(false);
+  const [isScreenshotModalVisible, setIsScreenshotModalVisible] = useState(false);
+  const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
 
   const router = useRouter();
   const { getAccessToken, user } = useAuth();
@@ -954,12 +957,13 @@ export default function HomeScreen() {
           ) : latestScreenshots.length === 0 ? (
             renderEmptyState('No screenshots uploaded yet', screenshotCardWidth, screenshotCardHeight)
           ) : (
-            latestScreenshots.map((shot) => (
+            latestScreenshots.map((shot, index) => (
               <TouchableOpacity
                 key={shot.id}
                 style={[styles.screenshotCard, { width: screenshotCardWidth, height: screenshotCardHeight }]}
                 onPress={() => {
-                  router.push({ pathname: '/(drawer)/(tabs)/trending', params: { tab: 'screenshots' } });
+                  setSelectedScreenshotIndex(index);
+                  setIsScreenshotModalVisible(true);
                 }}
               >
                 <ImageBackground
@@ -1058,6 +1062,15 @@ export default function HomeScreen() {
         level={user?.level || 1}
         currentXP={user?.totalXP || 0}
         userId={user?.id?.toString()}
+      />
+
+      <ScreenshotViewerModal
+        visible={isScreenshotModalVisible}
+        onClose={() => setIsScreenshotModalVisible(false)}
+        screenshot={latestScreenshots[selectedScreenshotIndex] || null}
+        screenshots={latestScreenshots}
+        initialIndex={selectedScreenshotIndex}
+        handle={latestScreenshots[selectedScreenshotIndex]?.user?.username || ''}
       />
     </View>
   );

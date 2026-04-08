@@ -9,18 +9,17 @@ import {
   ActivityIndicator,
   RefreshControl,
   Dimensions,
-  Modal,
-  Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, Heart, MessageSquare, Eye, X, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Camera, Heart, MessageSquare, Eye } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { api, Screenshot } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import AppHeader from '@/components/AppHeader';
+import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const COLUMN_GAP = 10;
 const H_PADDING = 16;
 const CARD_WIDTH = (width - H_PADDING * 2 - COLUMN_GAP) / 2;
@@ -63,16 +62,6 @@ export default function LatestScreenshotsPage() {
     setSelectedIndex(index);
     setViewerVisible(true);
   };
-
-  const goNext = () => {
-    if (selectedIndex < screenshots.length - 1) setSelectedIndex(i => i + 1);
-  };
-
-  const goPrev = () => {
-    if (selectedIndex > 0) setSelectedIndex(i => i - 1);
-  };
-
-  const current = screenshots[selectedIndex];
 
   const renderItem = ({ item, index }: { item: Screenshot; index: number }) => (
     <TouchableOpacity
@@ -168,51 +157,14 @@ export default function LatestScreenshotsPage() {
         />
       )}
 
-      <Modal
+      <ScreenshotViewerModal
         visible={viewerVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setViewerVisible(false)}
-      >
-        <View style={styles.viewerBg}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setViewerVisible(false)} />
-          {current ? (
-            <View style={styles.viewerContent}>
-              <Image
-                source={{ uri: current.imageUrl || current.thumbnailUrl }}
-                style={styles.viewerImage}
-                resizeMode="contain"
-              />
-              <View style={styles.viewerMeta}>
-                <Text style={styles.viewerTitle}>{current.title}</Text>
-                {current.user && (
-                  <Text style={styles.viewerUser}>by {current.user.displayName || current.user.username}</Text>
-                )}
-              </View>
-              <View style={styles.viewerNav}>
-                <TouchableOpacity
-                  onPress={goPrev}
-                  disabled={selectedIndex === 0}
-                  style={[styles.navBtn, selectedIndex === 0 && styles.navBtnDisabled]}
-                >
-                  <ChevronLeft size={24} color="#FFFFFF" />
-                </TouchableOpacity>
-                <Text style={styles.navCount}>{selectedIndex + 1} / {screenshots.length}</Text>
-                <TouchableOpacity
-                  onPress={goNext}
-                  disabled={selectedIndex === screenshots.length - 1}
-                  style={[styles.navBtn, selectedIndex === screenshots.length - 1 && styles.navBtnDisabled]}
-                >
-                  <ChevronRight size={24} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : null}
-          <TouchableOpacity style={styles.closeBtn} onPress={() => setViewerVisible(false)}>
-            <X size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      </Modal>
+        onClose={() => setViewerVisible(false)}
+        screenshot={screenshots[selectedIndex] || null}
+        screenshots={screenshots}
+        initialIndex={selectedIndex}
+        handle={screenshots[selectedIndex]?.user?.username || ''}
+      />
     </View>
   );
 }
@@ -296,50 +248,5 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#4ADE80',
     backgroundColor: '#1E293B',
-  },
-  viewerBg: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.92)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  viewerContent: {
-    width: width,
-    alignItems: 'center',
-    gap: 12,
-  },
-  viewerImage: {
-    width: width,
-    height: height * 0.65,
-  },
-  viewerMeta: { alignItems: 'center', paddingHorizontal: 24 },
-  viewerTitle: { fontSize: 16, fontWeight: '700' as const, color: '#FFFFFF', textAlign: 'center' },
-  viewerUser: { fontSize: 13, color: '#4ADE80', marginTop: 4 },
-  viewerNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    marginTop: 8,
-  },
-  navBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#1E293B',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navBtnDisabled: { opacity: 0.3 },
-  navCount: { fontSize: 14, color: '#94A3B8' },
-  closeBtn: {
-    position: 'absolute',
-    top: 56,
-    right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#1E293B',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
