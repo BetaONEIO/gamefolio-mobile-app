@@ -7,23 +7,28 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Copy, Users, Star, Gift, Share2, CheckCircle } from 'lucide-react-native';
+import { Copy, Users, Star, Gift, Share2, CheckCircle } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+import { LinearGradient } from 'expo-linear-gradient';
 import { trpc } from '@/lib/trpc';
 import { useAuth } from '@/context/AuthContext';
-import { LinearGradient } from 'expo-linear-gradient';
+import AppHeader from '@/components/AppHeader';
+
+const HOW_STEPS = [
+  'Share your referral link or code with a friend.',
+  'They enter your code during sign-up (or use your link — it auto-applies).',
+  'Once they complete registration, you both get XP!',
+  'You earn +250 XP and they earn +250 XP as a welcome bonus.',
+];
 
 export default function ReferAFriendScreen() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [copiedLink, setCopiedLink] = React.useState(false);
   const [copiedCode, setCopiedCode] = React.useState(false);
 
-  const { data: stats, isLoading } = trpc.user.getReferralStats.useQuery(undefined, {
+  const { data: stats, isLoading, isError } = trpc.user.getReferralStats.useQuery(undefined, {
     enabled: !!user,
+    retry: 1,
   });
 
   const referralLink = stats?.referralLink ?? (user ? `https://gamefolio.app/ref/${user.id}` : '');
@@ -44,22 +49,22 @@ export default function ReferAFriendScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <View style={[styles.header, { paddingTop: 8 }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <ArrowLeft size={22} color="#4ADE80" strokeWidth={2.5} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Refer a Friend</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={styles.container}>
+      <LinearGradient colors={['#131F2A', '#061021']} style={StyleSheet.absoluteFill} />
+      <AppHeader />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.pageHeader}>
+          <Text style={styles.pageTitle}>Refer a Friend</Text>
+          <Text style={styles.pageSubtitle}>Invite friends and earn XP together</Text>
+        </View>
+
         <LinearGradient
-          colors={['#131F2A', '#0D1B26']}
+          colors={['#1A2D1A', '#131F2A']}
           style={styles.heroBanner}
         >
           <View style={styles.heroIconWrap}>
@@ -153,50 +158,35 @@ export default function ReferAFriendScreen() {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
-
-const HOW_STEPS = [
-  'Share your referral link or code with a friend.',
-  'They enter your code during sign-up (or use your link — it auto-applies).',
-  'Once they complete registration, you both get XP!',
-  'You earn +250 XP and they earn +250 XP as a welcome bonus.',
-];
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0D1821',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(74, 222, 128, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
   scroll: {
     flex: 1,
   },
   content: {
     padding: 16,
-    gap: 16,
+    paddingBottom: 40,
+  },
+  pageHeader: {
+    marginBottom: 20,
+  },
+  pageTitle: {
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    color: '#64748B',
+    fontSize: 14,
   },
   heroBanner: {
     borderRadius: 16,
@@ -204,6 +194,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(74, 222, 128, 0.2)',
+    marginBottom: 16,
   },
   heroIconWrap: {
     width: 72,
@@ -242,6 +233,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#1E293B',
     overflow: 'hidden',
+    marginBottom: 16,
   },
   statCard: {
     flex: 1,
@@ -265,6 +257,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   section: {
+    marginBottom: 16,
     gap: 10,
   },
   sectionLabel: {

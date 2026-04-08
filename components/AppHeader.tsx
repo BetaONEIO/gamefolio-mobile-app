@@ -784,6 +784,18 @@ export default function AppHeader({ showBackButton = false, onOpenLevelTracker, 
               <Text style={styles.profileMenuItemLabel}>Level Tracker</Text>
             </TouchableOpacity>
 
+            {/* Refer a Friend */}
+            <TouchableOpacity
+              style={styles.profileMenuItem}
+              onPress={() => navigateFromProfileMenu('/(drawer)/refer-a-friend')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.profileMenuItemIcon}>
+                <Gift size={18} color="#4ADE80" strokeWidth={1.5} />
+              </View>
+              <Text style={styles.profileMenuItemLabel}>Refer a Friend</Text>
+            </TouchableOpacity>
+
             {/* Go Pro */}
             <TouchableOpacity
               style={styles.profileMenuItem}
