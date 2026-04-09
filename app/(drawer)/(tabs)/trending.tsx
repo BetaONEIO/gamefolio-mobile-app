@@ -3178,11 +3178,7 @@ export default function TrendingScreen() {
                 }
               }}
             >
-              <Image 
-                source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/dfk9zrks4jxg6elvsx6wj' }}
-                style={styles.gameFilterIcon}
-                resizeMode="contain"
-              />
+              <Gamepad2 size={20} color="#FFF" />
             </TouchableOpacity>
 
           <TouchableOpacity
