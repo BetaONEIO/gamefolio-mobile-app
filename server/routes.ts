@@ -1182,6 +1182,16 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       // Hash password
       const hashedPassword = await hashPassword(userData.password);
 
+      // Resolve referral code if provided
+      let referrerId: number | undefined;
+      const incomingReferralCode = req.body.referralCode as string | undefined;
+      if (incomingReferralCode) {
+        const referrer = await storage.getUserByReferralCode(incomingReferralCode);
+        if (referrer) {
+          referrerId = referrer.id;
+        }
+      }
+
       // Create user with hashed password, normalized email and username
       const user = await storage.createUser({
         ...userData,
@@ -1189,7 +1199,14 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         email: userData.email.toLowerCase(),
         password: hashedPassword,
         emailVerified: false, // Set to false initially
+        ...(referrerId ? { referredBy: referrerId } : {}),
       });
+
+      // Award referral XP: 100 XP to new user, 500 XP to referrer
+      if (referrerId) {
+        await storage.incrementUserXP(user.id, 100);
+        await storage.incrementUserXP(referrerId, 500);
+      }
 
       // Generate verification code and store it in the database
       const verificationCode = await createVerificationCode(user.id);
@@ -2484,11 +2501,13 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
+      const referralCode = await storage.getOrGenerateReferralCode(userId);
+      const referralCount = await storage.getReferralCount(userId);
       res.json({
-        referralCode: String(userId),
-        referralLink: `https://gamefolio.app/ref/${userId}`,
-        referralCount: 0,
-        totalXpEarned: 0,
+        referralCode,
+        referralLink: `https://gamefolio.app/ref/${referralCode}`,
+        referralCount,
+        totalXpEarned: referralCount * 500,
       });
     } catch (error) {
       console.error("Error fetching referral stats:", error);

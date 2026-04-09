@@ -39,8 +39,8 @@ export default function ReferAFriendScreen() {
     retry: false,
   });
 
-  const referralLink = stats?.referralLink ?? (user ? `https://gamefolio.app/ref/${user.id}` : '');
-  const referralCode = stats?.referralCode ?? (user ? String(user.id) : '');
+  const referralLink = stats?.referralLink ?? '';
+  const referralCode = stats?.referralCode ?? '';
 
   const copyLink = async () => {
     if (!referralLink) return;

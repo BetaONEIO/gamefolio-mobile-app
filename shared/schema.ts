@@ -106,6 +106,9 @@ export const users = pgTable("users", {
   // Two-Factor Authentication
   twoFactorEnabled: boolean("two_factor_enabled").default(false).notNull(),
   twoFactorSecret: text("two_factor_secret"), // Encrypted TOTP secret
+  // Referral System
+  referralCode: text("referral_code").unique(), // Unique 8-char alphanumeric referral code
+  referredBy: integer("referred_by"), // ID of user who referred this user
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -352,6 +352,42 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  async getUserByReferralCode(code: string): Promise<User | null> {
+    const [user] = await db.select().from(users).where(eq(users.referralCode, code.toUpperCase()));
+    return user || null;
+  }
+
+  async getOrGenerateReferralCode(userId: number): Promise<string> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("User not found");
+
+    if (user.referralCode) return user.referralCode;
+
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const code = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+      try {
+        const [updated] = await db
+          .update(users)
+          .set({ referralCode: code, updatedAt: new Date() })
+          .where(eq(users.id, userId))
+          .returning();
+        if (updated) return code;
+      } catch {
+        // unique conflict — retry
+      }
+    }
+    throw new Error("Failed to generate unique referral code");
+  }
+
+  async getReferralCount(userId: number): Promise<number> {
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(users)
+      .where(eq(users.referredBy, userId));
+    return row?.count ?? 0;
+  }
+
   async updateUserType(id: number, userType: string): Promise<User | null> {
     try {
       const [updatedUser] = await db
