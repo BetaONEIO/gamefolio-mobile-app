@@ -51,7 +51,7 @@ export default function ConversationScreen() {
   
   const [inputText, setInputText] = useState('');
   const [showOptions, setShowOptions] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<'delete' | 'block' | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'delete' | 'block' | 'unblock' | null>(null);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const flatListRef = useRef<FlatList>(null);
 
@@ -264,15 +264,17 @@ export default function ConversationScreen() {
   }, []);
 
   const handleUnblockUser = useCallback(() => {
-    unblockUserMutation.mutate(recipientId);
-    setShowOptions(false);
-  }, [recipientId]);
+    setConfirmAction('unblock');
+    setShowOptions(true);
+  }, []);
 
   const handleConfirm = useCallback(() => {
     if (confirmAction === 'delete') {
       deleteConversationMutation.mutate(recipientId);
     } else if (confirmAction === 'block') {
       blockUserMutation.mutate(recipientId);
+    } else if (confirmAction === 'unblock') {
+      unblockUserMutation.mutate(recipientId);
     }
     setConfirmAction(null);
     setShowOptions(false);
@@ -429,14 +431,9 @@ export default function ConversationScreen() {
                 </Text>
                 <TouchableOpacity
                   style={styles.unblockButton}
-                  onPress={() => unblockUserMutation.mutate(recipientId)}
-                  disabled={unblockUserMutation.isPending}
+                  onPress={handleUnblockUser}
                 >
-                  {unblockUserMutation.isPending ? (
-                    <ActivityIndicator size="small" color="#002E15" />
-                  ) : (
-                    <Text style={styles.unblockButtonText}>Unblock</Text>
-                  )}
+                  <Text style={styles.unblockButtonText}>Unblock</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -513,15 +510,20 @@ export default function ConversationScreen() {
                 <Text style={styles.confirmText}>
                   {confirmAction === 'block'
                     ? `Block ${otherUser.displayName}?`
+                    : confirmAction === 'unblock'
+                    ? `Unblock ${otherUser.displayName}?`
                     : 'Delete this conversation?'}
                 </Text>
                 <View style={styles.confirmButtons}>
                   <TouchableOpacity style={styles.confirmCancelBtn} onPress={handleCancelConfirm}>
                     <Text style={styles.confirmCancelText}>Cancel</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.confirmDangerBtn} onPress={handleConfirm}>
-                    <Text style={styles.confirmDangerText}>
-                      {confirmAction === 'block' ? 'Block' : 'Delete'}
+                  <TouchableOpacity
+                    style={confirmAction === 'unblock' ? styles.confirmUnblockBtn : styles.confirmDangerBtn}
+                    onPress={handleConfirm}
+                  >
+                    <Text style={confirmAction === 'unblock' ? styles.confirmUnblockText : styles.confirmDangerText}>
+                      {confirmAction === 'block' ? 'Block' : confirmAction === 'unblock' ? 'Unblock' : 'Delete'}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -648,6 +650,18 @@ const styles = StyleSheet.create({
   confirmDangerText: {
     fontSize: 13,
     color: '#FFF',
+    fontWeight: '600' as const,
+  },
+  confirmUnblockBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#4ADE80',
+    alignItems: 'center' as const,
+  },
+  confirmUnblockText: {
+    fontSize: 13,
+    color: '#002E15',
     fontWeight: '600' as const,
   },
   optionsOverlay: {
