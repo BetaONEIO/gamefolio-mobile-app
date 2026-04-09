@@ -1734,6 +1734,23 @@ export default function TrendingScreen() {
     }
   };
 
+  const getDateCutoff = (period: TimePeriod): Date | null => {
+    if (period === 'ever') return null;
+    const now = new Date();
+    switch (period) {
+      case 'recent': {
+        const d = new Date(now); d.setDate(d.getDate() - 1); return d;
+      }
+      case '1w': {
+        const d = new Date(now); d.setDate(d.getDate() - 7); return d;
+      }
+      case '1m': {
+        const d = new Date(now); d.setMonth(d.getMonth() - 1); return d;
+      }
+      default: return null;
+    }
+  };
+
   const {
     data: reelsData,
     isLoading: isLoadingReels,
@@ -1828,9 +1845,16 @@ export default function TrendingScreen() {
   const allReels = useMemo(() => (reelsData as ClipWithUser[] | undefined) || [], [reelsData]);
   
   const reels = useMemo(() => {
-    if (!selectedReelGame || !selectedReelGameName) return allReels;
-    return allReels.filter(reel => reel.game?.name?.toLowerCase() === selectedReelGameName.toLowerCase());
-  }, [allReels, selectedReelGame, selectedReelGameName]);
+    const cutoff = getDateCutoff(timePeriod);
+    let result = allReels;
+    if (cutoff) {
+      result = result.filter(reel => reel.createdAt && new Date(reel.createdAt) >= cutoff);
+    }
+    if (selectedReelGame && selectedReelGameName) {
+      result = result.filter(reel => reel.game?.name?.toLowerCase() === selectedReelGameName.toLowerCase());
+    }
+    return result;
+  }, [allReels, selectedReelGame, selectedReelGameName, timePeriod]);
 
 
 
@@ -1997,9 +2021,16 @@ export default function TrendingScreen() {
   }, [clipsData, mockClips]);
 
   const clips = useMemo(() => {
-    if (!selectedClipGame || !selectedClipGameName) return allClips;
-    return allClips.filter(clip => clip.game?.name?.toLowerCase() === selectedClipGameName.toLowerCase());
-  }, [allClips, selectedClipGame, selectedClipGameName]);
+    const cutoff = getDateCutoff(timePeriod);
+    let result = allClips;
+    if (cutoff) {
+      result = result.filter(clip => clip.createdAt && new Date(clip.createdAt) >= cutoff);
+    }
+    if (selectedClipGame && selectedClipGameName) {
+      result = result.filter(clip => clip.game?.name?.toLowerCase() === selectedClipGameName.toLowerCase());
+    }
+    return result;
+  }, [allClips, selectedClipGame, selectedClipGameName, timePeriod]);
 
 
   const allScreenshots = useMemo(() => {
@@ -2033,9 +2064,16 @@ export default function TrendingScreen() {
   }, [allReels, allClips, allScreenshots]);
 
   const screenshots = useMemo(() => {
-    if (!selectedScreenshotGame || !selectedScreenshotGameName) return allScreenshots;
-    return allScreenshots.filter(screenshot => screenshot.game?.name?.toLowerCase() === selectedScreenshotGameName.toLowerCase());
-  }, [allScreenshots, selectedScreenshotGame, selectedScreenshotGameName]);
+    const cutoff = getDateCutoff(timePeriod);
+    let result = allScreenshots;
+    if (cutoff) {
+      result = result.filter(screenshot => screenshot.createdAt && new Date(screenshot.createdAt) >= cutoff);
+    }
+    if (selectedScreenshotGame && selectedScreenshotGameName) {
+      result = result.filter(screenshot => screenshot.game?.name?.toLowerCase() === selectedScreenshotGameName.toLowerCase());
+    }
+    return result;
+  }, [allScreenshots, selectedScreenshotGame, selectedScreenshotGameName, timePeriod]);
 
   const [featuredScreenshotIndex, setFeaturedScreenshotIndex] = useState(0);
   const featuredScreenshotAnim = useRef(new Animated.Value(1)).current;
