@@ -924,13 +924,14 @@ export default function LoginScreen() {
                       placeholder="Enter a friend's referral code"
                       placeholderTextColor={colors.textDim}
                       value={referralCode}
-                      onChangeText={setReferralCode}
-                      autoCapitalize="none"
+                      onChangeText={(text) => setReferralCode(text.toUpperCase())}
+                      autoCapitalize="characters"
+                      autoCorrect={false}
                       editable={!isLoading}
                     />
                   </View>
                   <Text style={styles.referralHint}>
-                    Have a friend's code? Enter it to earn 250 XP each!
+                    Have a friend's code? They earn 500 XP and you earn 100 XP!
                   </Text>
                 </View>
 

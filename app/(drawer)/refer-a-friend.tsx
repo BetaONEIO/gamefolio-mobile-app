@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Share,
 } from 'react-native';
 import { Copy, Users, Star, Gift, Share2, CheckCircle } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -19,7 +20,7 @@ const HOW_STEPS = [
   'Share your referral link or code with a friend.',
   'They enter your code during sign-up (or use your link — it auto-applies).',
   'Once they complete registration, you both get XP!',
-  'You earn +250 XP and they earn +250 XP as a welcome bonus.',
+  'You earn +500 XP and they earn +100 XP as a welcome bonus.',
 ];
 
 export default function ReferAFriendScreen() {
@@ -46,6 +47,16 @@ export default function ReferAFriendScreen() {
     await Clipboard.setStringAsync(referralLink);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const shareLink = async () => {
+    if (!referralLink) return;
+    try {
+      await Share.share({
+        message: `Join me on Gamefolio! Sign up with my referral link and get 100 XP: ${referralLink}`,
+        url: referralLink,
+      });
+    } catch {}
   };
 
   const copyCode = async () => {
@@ -79,8 +90,9 @@ export default function ReferAFriendScreen() {
           </View>
           <Text style={styles.heroTitle}>Invite Friends, Earn XP</Text>
           <Text style={styles.heroSubtitle}>
-            Share your unique referral link. When a friend signs up, you both earn{' '}
-            <Text style={styles.heroHighlight}>250 XP</Text> each!
+            Share your unique referral link. When a friend signs up, you earn{' '}
+            <Text style={styles.heroHighlight}>500 XP</Text> and they earn{' '}
+            <Text style={styles.heroHighlight}>100 XP</Text>!
           </Text>
         </LinearGradient>
 
@@ -132,18 +144,27 @@ export default function ReferAFriendScreen() {
                 </Text>
               </View>
               <TouchableOpacity
+                style={styles.shareLinkBtn}
+                onPress={shareLink}
+                activeOpacity={0.8}
+                disabled={!referralLink}
+              >
+                <Share2 size={18} color="#131F2A" strokeWidth={2.5} />
+                <Text style={styles.shareLinkBtnText}>Share Referral Link</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={[styles.copyLinkBtn, copiedLink && styles.copyLinkBtnDone]}
                 onPress={copyLink}
                 activeOpacity={0.8}
                 disabled={!referralLink}
               >
                 {copiedLink ? (
-                  <CheckCircle size={18} color="#131F2A" strokeWidth={2.5} />
+                  <CheckCircle size={18} color="#22D3EE" strokeWidth={2.5} />
                 ) : (
-                  <Share2 size={18} color="#131F2A" strokeWidth={2.5} />
+                  <Copy size={18} color="#94A3B8" strokeWidth={2.5} />
                 )}
-                <Text style={styles.copyLinkBtnText}>
-                  {copiedLink ? 'Link Copied!' : 'Copy Referral Link'}
+                <Text style={[styles.copyLinkBtnText, copiedLink && { color: '#22D3EE' }]}>
+                  {copiedLink ? 'Link Copied!' : 'Copy Link'}
                 </Text>
               </TouchableOpacity>
               <Text style={styles.linkHint}>
@@ -322,7 +343,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: 'monospace',
   },
-  copyLinkBtn: {
+  shareLinkBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -331,11 +352,28 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 14,
   },
+  copyLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
   copyLinkBtnDone: {
-    backgroundColor: '#22D3EE',
+    backgroundColor: '#1E293B',
+    borderColor: '#22D3EE',
+  },
+  shareLinkBtnText: {
+    color: '#131F2A',
+    fontSize: 15,
+    fontWeight: '700',
   },
   copyLinkBtnText: {
-    color: '#131F2A',
+    color: '#94A3B8',
     fontSize: 15,
     fontWeight: '700',
   },
