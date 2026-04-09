@@ -387,47 +387,6 @@ export default function ConversationScreen() {
           </TouchableOpacity>
         </View>
 
-        {showOptions && (
-          <View style={[styles.optionsMenu, { top: insets.top + 56 }]}>
-            {confirmAction === null ? (
-              <>
-                <TouchableOpacity style={styles.optionItem} onPress={handleDeleteConversation}>
-                  <Trash2 size={18} color="#EF4444" />
-                  <Text style={styles.optionTextDanger}>Delete Conversation</Text>
-                </TouchableOpacity>
-                {iBlockedThem ? (
-                  <TouchableOpacity style={styles.optionItem} onPress={handleUnblockUser}>
-                    <Ban size={18} color="#4ADE80" />
-                    <Text style={[styles.optionTextDanger, { color: '#4ADE80' }]}>Unblock User</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity style={styles.optionItem} onPress={handleBlockUser}>
-                    <Ban size={18} color="#EF4444" />
-                    <Text style={styles.optionTextDanger}>Block User</Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            ) : (
-              <View style={styles.confirmPanel}>
-                <Text style={styles.confirmText}>
-                  {confirmAction === 'block'
-                    ? `Block ${otherUser.displayName}?`
-                    : 'Delete this conversation?'}
-                </Text>
-                <View style={styles.confirmButtons}>
-                  <TouchableOpacity style={styles.confirmCancelBtn} onPress={handleCancelConfirm}>
-                    <Text style={styles.confirmCancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.confirmDangerBtn} onPress={handleConfirm}>
-                    <Text style={styles.confirmDangerText}>
-                      {confirmAction === 'block' ? 'Block' : 'Delete'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
-        )}
       </View>
 
       <KeyboardAvoidingView
@@ -525,11 +484,51 @@ export default function ConversationScreen() {
       </KeyboardAvoidingView>
 
       {showOptions && (
-        <TouchableOpacity 
-          style={styles.optionsOverlay} 
+        <TouchableOpacity
+          style={styles.optionsOverlay}
           onPress={() => { setShowOptions(false); setConfirmAction(null); }}
           activeOpacity={1}
-        />
+        >
+          <TouchableOpacity style={styles.optionsModal} activeOpacity={1} onPress={() => {}}>
+            {confirmAction === null ? (
+              <>
+                <TouchableOpacity style={styles.optionItem} onPress={handleDeleteConversation}>
+                  <Trash2 size={18} color="#EF4444" />
+                  <Text style={styles.optionTextDanger}>Delete Conversation</Text>
+                </TouchableOpacity>
+                {iBlockedThem ? (
+                  <TouchableOpacity style={styles.optionItem} onPress={handleUnblockUser}>
+                    <Ban size={18} color="#4ADE80" />
+                    <Text style={[styles.optionTextDanger, { color: '#4ADE80' }]}>Unblock User</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={styles.optionItem} onPress={handleBlockUser}>
+                    <Ban size={18} color="#EF4444" />
+                    <Text style={styles.optionTextDanger}>Block User</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              <View style={styles.confirmPanel}>
+                <Text style={styles.confirmText}>
+                  {confirmAction === 'block'
+                    ? `Block ${otherUser.displayName}?`
+                    : 'Delete this conversation?'}
+                </Text>
+                <View style={styles.confirmButtons}>
+                  <TouchableOpacity style={styles.confirmCancelBtn} onPress={handleCancelConfirm}>
+                    <Text style={styles.confirmCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.confirmDangerBtn} onPress={handleConfirm}>
+                    <Text style={styles.confirmDangerText}>
+                      {confirmAction === 'block' ? 'Block' : 'Delete'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -600,16 +599,6 @@ const styles = StyleSheet.create({
   headerActionButton: {
     padding: 8,
   },
-  optionsMenu: {
-    position: 'absolute',
-    right: 16,
-    backgroundColor: '#1E293B',
-    borderRadius: 12,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-    zIndex: 100,
-  },
   optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -667,7 +656,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 5,
+    zIndex: 100,
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  optionsModal: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 8,
+    width: 260,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   keyboardView: {
     flex: 1,
