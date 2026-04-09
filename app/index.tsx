@@ -77,6 +77,7 @@ export default function LoginScreen() {
     type: 'error',
   });
   const [referralCode, setReferralCode] = useState('');
+  const [referralCodeError, setReferralCodeError] = useState('');
   const [isDiscordLoading, setIsDiscordLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [usernameAvailability, setUsernameAvailability] = useState<{
@@ -421,6 +422,7 @@ export default function LoginScreen() {
 
   const handleAuth = async () => {
     if (isLoading) return;
+    setReferralCodeError('');
 
     if (isLogin) {
       if (!username) {
@@ -550,6 +552,8 @@ export default function LoginScreen() {
             showAlert('Username Taken', 'This username is already in use. Please choose a different one.');
           } else if (errorMessage.includes('email') && (errorMessage.includes('registered') || errorMessage.includes('already'))) {
             showAlert('Email Already Registered', 'This email address is already registered. Please use a different email or try logging in.');
+          } else if (errorMessage.includes('referral')) {
+            setReferralCodeError(error.message);
           } else {
             showAlert('Registration Failed', error.message);
           }
@@ -917,21 +921,27 @@ export default function LoginScreen() {
 
                 {/* Referral Code (optional) */}
                 <View style={styles.inputWrapper}>
-                  <Text style={styles.label}>Referral Code (optional)</Text>
+                  <Text style={styles.label}>
+                    Referral Code<Text style={styles.labelOptional}> (optional)</Text>
+                  </Text>
                   <View style={styles.inputContainer}>
                     <TextInput
                       style={[styles.input, { paddingLeft: 0 }]}
-                      placeholder="Enter a friend's referral code"
+                      placeholder="g4m3f0li0"
                       placeholderTextColor={colors.textDim}
                       value={referralCode}
                       onChangeText={(text) => setReferralCode(text.toUpperCase())}
                       autoCapitalize="characters"
                       autoCorrect={false}
+                      maxLength={8}
                       editable={!isLoading}
                     />
                   </View>
+                  {referralCodeError ? (
+                    <Text style={styles.referralError}>{referralCodeError}</Text>
+                  ) : null}
                   <Text style={styles.referralHint}>
-                    Have a friend's code? They earn 500 XP and you earn 100 XP!
+                    Have a friend's referral code? Enter it here to earn bonus XP!
                   </Text>
                 </View>
 
@@ -1236,10 +1246,21 @@ const styles = StyleSheet.create({
     borderColor: '#4ADE80',
     backgroundColor: '#4ADE80',
   },
+  labelOptional: {
+    fontSize: 13,
+    fontWeight: '400' as const,
+    color: '#94A3B8',
+  },
   referralHint: {
-    color: '#4ADE80',
+    color: '#94A3B8',
     fontSize: 12,
     marginTop: 6,
+    marginLeft: 4,
+  },
+  referralError: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
     marginLeft: 4,
   },
   termsText: {
