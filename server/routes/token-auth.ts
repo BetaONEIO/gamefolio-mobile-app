@@ -115,21 +115,44 @@ function getCallbackBaseUrl(): string {
   return process.env.SITE_URL || 'https://app.gamefolio.com';
 }
 
-const mobileAuthCodes = new Map<string, { createdAt: number; tokens: { accessToken: string; refreshToken: string }; userId: number; needsOnboarding: boolean; isNewUser: boolean }>();
+// ── Stateless HMAC-signed mobile auth codes ───────────────────────────────────
+// Auth codes are self-contained signed tokens (userId + metadata + expiry).
+// No in-memory Map or database needed — works across all server instances.
 
-// Cleanup expired mobileAuthCodes every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  const tenMinutes = 10 * 60 * 1000;
-  for (const [key, value] of mobileAuthCodes.entries()) {
-    if (now - value.createdAt > tenMinutes) {
-      mobileAuthCodes.delete(key);
-    }
+const MOBILE_CODE_SECRET =
+  process.env.SESSION_SECRET ||
+  process.env.JWT_ACCESS_SECRET ||
+  'mobile-auth-code-fallback-secret';
+
+function generateMobileAuthCode(payload: {
+  userId: number;
+  needsOnboarding: boolean;
+  isNewUser: boolean;
+}): string {
+  const data = JSON.stringify({ ...payload, exp: Date.now() + 10 * 60 * 1000 });
+  const encoded = Buffer.from(data).toString('base64url');
+  const sig = createHmac('sha256', MOBILE_CODE_SECRET).update(encoded).digest('hex');
+  return `mac.${encoded}.${sig}`;
+}
+
+function verifyMobileAuthCode(code: string): {
+  userId: number;
+  needsOnboarding: boolean;
+  isNewUser: boolean;
+} | null {
+  try {
+    if (!code.startsWith('mac.')) return null;
+    const parts = code.split('.');
+    if (parts.length !== 3) return null;
+    const [, encoded, sig] = parts;
+    const expectedSig = createHmac('sha256', MOBILE_CODE_SECRET).update(encoded).digest('hex');
+    if (!timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expectedSig, 'hex'))) return null;
+    const data = JSON.parse(Buffer.from(encoded, 'base64url').toString());
+    if (Date.now() > data.exp) return null;
+    return { userId: data.userId, needsOnboarding: data.needsOnboarding, isNewUser: data.isNewUser };
+  } catch {
+    return null;
   }
-}, 5 * 60 * 1000);
-
-function generateSecureCode(): string {
-  return randomBytes(32).toString('hex');
 }
 
 // ── Stateless HMAC-signed OAuth state ────────────────────────────────────────
@@ -820,6 +843,7 @@ router.get('/auth/mobile/google/init', (req: Request, res: Response) => {
  * Handles the OAuth code exchange and redirects to mobile app with a one-time auth code
  */
 router.get('/auth/mobile/google/callback', async (req: Request, res: Response) => {
+  console.log('[Google Mobile Callback] Received callback from Google');
   try {
     const { code, error: oauthError, state } = req.query;
 
@@ -916,19 +940,10 @@ router.get('/auth/mobile/google/callback', async (req: Request, res: Response) =
       console.error('[Google Mobile Callback] Error updating login time/streak:', error);
     }
 
-    const tokens = JWTService.generateTokenPair(user);
-
-    const authCode = generateSecureCode();
-    mobileAuthCodes.set(authCode, {
-      createdAt: Date.now(),
-      tokens,
-      userId: user.id,
-      needsOnboarding,
-      isNewUser
-    });
+    const authCode = generateMobileAuthCode({ userId: user.id, needsOnboarding, isNewUser });
 
     console.log('[Google Mobile Callback] Success, redirecting to app. User:', user.username, 'isNew:', isNewUser);
-    return res.redirect(`${RORK_APP_SCHEME}auth/callback?code=${authCode}`);
+    return res.redirect(`${RORK_APP_SCHEME}auth/callback?code=${encodeURIComponent(authCode)}`);
 
   } catch (error) {
     console.error('[Google Mobile Callback] Error:', error);
@@ -975,6 +990,7 @@ router.get('/auth/mobile/discord/init', (req: Request, res: Response) => {
  * Mobile app exchanges this code for tokens via /auth/mobile/exchange endpoint
  */
 router.get('/auth/mobile/discord/callback', async (req: Request, res: Response) => {
+  console.log('[Discord Mobile Callback] Received callback from Discord');
   try {
     const { code, error: oauthError, state } = req.query;
     
@@ -1087,21 +1103,9 @@ router.get('/auth/mobile/discord/callback', async (req: Request, res: Response) 
       console.error('Error updating user login time or streak:', error);
     }
 
-    // Generate JWT tokens
-    const tokens = JWTService.generateTokenPair(user);
+    const authCode = generateMobileAuthCode({ userId: user.id, needsOnboarding, isNewUser });
 
-    // Store tokens with a one-time auth code (more secure than putting tokens in URL)
-    const authCode = generateSecureCode();
-    mobileAuthCodes.set(authCode, {
-      createdAt: Date.now(),
-      tokens,
-      userId: user.id,
-      needsOnboarding,
-      isNewUser
-    });
-
-    // Redirect to mobile app with one-time auth code (not the actual tokens)
-    return res.redirect(`${RORK_APP_SCHEME}auth/callback?code=${authCode}`);
+    return res.redirect(`${RORK_APP_SCHEME}auth/callback?code=${encodeURIComponent(authCode)}`);
 
   } catch (error) {
     console.error('Mobile Discord callback error:', error);
@@ -1227,30 +1231,18 @@ router.post('/auth/mobile/exchange', async (req: Request, res: Response) => {
       });
     }
 
-    const authData = mobileAuthCodes.get(code);
-    
+    const authData = verifyMobileAuthCode(code);
+
     if (!authData) {
+      console.error('[Mobile Exchange] Invalid or expired auth code');
       return res.status(400).json({
         success: false,
         message: 'Invalid or expired auth code'
       });
     }
 
-    // Delete the code after use (one-time only)
-    mobileAuthCodes.delete(code);
-
-    // Check if code has expired (10 minute validity)
-    const tenMinutes = 10 * 60 * 1000;
-    if (Date.now() - authData.createdAt > tenMinutes) {
-      return res.status(400).json({
-        success: false,
-        message: 'Auth code has expired'
-      });
-    }
-
-    // Fetch user data
     const user = await storage.getUserById(authData.userId);
-    
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -1258,12 +1250,14 @@ router.post('/auth/mobile/exchange', async (req: Request, res: Response) => {
       });
     }
 
+    const tokens = JWTService.generateTokenPair(user);
     const { password: _, ...userWithoutPassword } = user;
 
     return res.status(200).json({
       success: true,
-      accessToken: authData.tokens.accessToken,
-      refreshToken: authData.tokens.refreshToken,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresIn: 7 * 24 * 60 * 60,
       user: {
         ...userWithoutPassword,
         needsOnboarding: authData.needsOnboarding,
@@ -1412,13 +1406,11 @@ router.get('/auth/web/google/callback', async (req: Request, res: Response) => {
       console.error('[Google Web Callback] Error updating login time/streak:', err);
     }
 
-    const tokens = JWTService.generateTokenPair(user);
-    const authCode = generateSecureCode();
-    mobileAuthCodes.set(authCode, { createdAt: Date.now(), tokens, userId: user.id, needsOnboarding, isNewUser });
+    const authCode = generateMobileAuthCode({ userId: user.id, needsOnboarding, isNewUser });
 
     console.log('[Google Web Callback] Success, redirecting. User:', user.username, 'isNew:', isNewUser);
     const sep = redirectTo.includes('?') ? '&' : '?';
-    return res.redirect(`${redirectTo}${sep}code=${authCode}&provider=google`);
+    return res.redirect(`${redirectTo}${sep}code=${encodeURIComponent(authCode)}&provider=google`);
   } catch (error) {
     console.error('[Google Web Callback] Error:', error);
     return res.redirect(`${fallback}?auth_error=${encodeURIComponent('Google authentication failed')}`);
@@ -1557,13 +1549,11 @@ router.get('/auth/web/discord/callback', async (req: Request, res: Response) => 
       console.error('[Discord Web Callback] Error updating login time/streak:', err);
     }
 
-    const tokens = JWTService.generateTokenPair(user);
-    const authCode = generateSecureCode();
-    mobileAuthCodes.set(authCode, { createdAt: Date.now(), tokens, userId: user.id, needsOnboarding, isNewUser });
+    const authCode = generateMobileAuthCode({ userId: user.id, needsOnboarding, isNewUser });
 
     console.log('[Discord Web Callback] Success, redirecting. User:', user.username, 'isNew:', isNewUser);
     const sep = redirectTo.includes('?') ? '&' : '?';
-    return res.redirect(`${redirectTo}${sep}code=${authCode}&provider=discord`);
+    return res.redirect(`${redirectTo}${sep}code=${encodeURIComponent(authCode)}&provider=discord`);
   } catch (error) {
     console.error('[Discord Web Callback] Error:', error);
     return res.redirect(`${fallback}?auth_error=${encodeURIComponent('Discord authentication failed')}`);
