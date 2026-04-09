@@ -6,7 +6,7 @@ channel = "stable-24_05"
 
 [deployment]
 deploymentTarget = "autoscale"
-build = ["sh", "-c", "npx drizzle-kit push --force && node scripts/build.js"]
+build = ["sh", "-c", "node prebuild.js && node scripts/build.js"]
 run = ["sh", "-c", "NODE_ENV=production tsx server/index.ts"]
 
 [[ports]]
