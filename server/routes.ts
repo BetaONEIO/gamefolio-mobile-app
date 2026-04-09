@@ -11533,11 +11533,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         details: [
           {
             appID: `${process.env.APPLE_TEAM_ID || 'XXXXXXXXXX'}.app.rork.gamefolio`,
-            paths: ['/ref/*', '/*'],
-            components: [
-              { '/': '/ref/*' },
-              { '?': '*ref=*' },
-            ],
+            paths: ['/ref/*', '/*?ref=*'],
           },
         ],
       },

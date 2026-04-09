@@ -194,10 +194,6 @@
       Download Gamefolio
     </a>
 
-    <a id="fallbackBtn" class="btn btn-secondary" href="#" style="display:none;">
-      Open in Gamefolio
-    </a>
-
     <p class="status" id="statusText">
       Opening the app store&hellip;
     </p>
@@ -244,8 +240,6 @@
       appStoreBtn.style.display = 'none';
       statusText.innerHTML = 'Scan the QR code below with your phone, or search for <strong>Gamefolio</strong> in your app store.';
     }
-
-    var appOpened = false;
 
     function openApp() {
       if (!isMobile()) return true; // let href handle it
