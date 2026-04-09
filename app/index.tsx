@@ -175,8 +175,10 @@ export default function LoginScreen() {
   }, [handleOAuthCallback, isGoogleLoading]);
 
   // Handle web OAuth return — detects ?code= and ?provider= in URL after redirect back
+  // Skip when running inside a popup: the parent window polls and handles the code itself
   useEffect(() => {
     if (typeof window === 'undefined' || Platform.OS !== 'web') return;
+    if (window.opener) return;
     try {
       const url = new URL(window.location.href);
       const code = url.searchParams.get('code');
@@ -200,6 +202,52 @@ export default function LoginScreen() {
     }
   }, [handleOAuthCallback]);
 
+  // Shared web OAuth popup helper — opens provider in a popup and polls for the callback
+  const openWebOAuth = useCallback((authUrl: string, provider: 'google' | 'discord') => {
+    const w = 480, h = 640;
+    const left = Math.max(0, Math.round((screen.width - w) / 2));
+    const top = Math.max(0, Math.round((screen.height - h) / 2));
+    const popup = window.open(
+      authUrl,
+      `${provider}_oauth`,
+      `popup=1,width=${w},height=${h},left=${left},top=${top}`
+    );
+    if (!popup) {
+      window.location.href = authUrl;
+      return;
+    }
+    const timer = setInterval(() => {
+      try {
+        if (popup.closed) {
+          clearInterval(timer);
+          setIsDiscordLoading(false);
+          setIsGoogleLoading(false);
+          return;
+        }
+        const popupUrl = popup.location.href;
+        if (popupUrl && popupUrl !== 'about:blank' && (popupUrl.includes('code=') || popupUrl.includes('auth_error='))) {
+          clearInterval(timer);
+          const urlObj = new URL(popupUrl);
+          const code = urlObj.searchParams.get('code');
+          const authError = urlObj.searchParams.get('auth_error');
+          popup.close();
+          if (authError) {
+            showAlert('Login Failed', decodeURIComponent(authError));
+            if (provider === 'discord') setIsDiscordLoading(false);
+            else setIsGoogleLoading(false);
+          } else if (code) {
+            handleOAuthCallback(code, provider);
+          } else {
+            if (provider === 'discord') setIsDiscordLoading(false);
+            else setIsGoogleLoading(false);
+          }
+        }
+      } catch {
+        // Popup is cross-origin (on provider's domain) — keep polling
+      }
+    }, 500);
+  }, [handleOAuthCallback]);
+
   // Google OAuth - Backend initiated flow (same as Discord)
   const handleGoogleLogin = async () => {
     if (!IS_NATIVE) {
@@ -207,7 +255,7 @@ export default function LoginScreen() {
       try {
         const returnTo = typeof window !== 'undefined' ? window.location.href.split('?')[0] : '';
         const { authUrl } = await api.auth.googleWebInit(returnTo);
-        window.location.href = authUrl;
+        openWebOAuth(authUrl, 'google');
       } catch (error: any) {
         console.error('[Google OAuth] Web init error:', error);
         showAlert('Google Login Failed', error.message || 'Failed to start Google login');
@@ -261,7 +309,7 @@ export default function LoginScreen() {
       try {
         const returnTo = typeof window !== 'undefined' ? window.location.href.split('?')[0] : '';
         const { authUrl } = await api.auth.discordWebInit(returnTo);
-        window.location.href = authUrl;
+        openWebOAuth(authUrl, 'discord');
       } catch (error: any) {
         console.error('[Discord OAuth] Web init error:', error);
         showAlert('Discord Login Failed', error.message || 'Failed to start Discord login');
