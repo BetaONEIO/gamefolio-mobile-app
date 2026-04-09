@@ -2266,6 +2266,25 @@ export default function TrendingScreen() {
     setShowTimeDropdown(false);
   }, []);
 
+  const hasActiveFilters =
+    contentType !== 'reels' ||
+    timePeriod !== 'ever' ||
+    selectedReelGameName !== null ||
+    selectedClipGameName !== null ||
+    selectedScreenshotGameName !== null;
+
+  const clearAllFilters = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setContentType('reels');
+    setTimePeriod('ever');
+    setSelectedReelGameName(null);
+    setSelectedClipGameName(null);
+    setSelectedScreenshotGameName(null);
+    setShowFilterDropdown(false);
+    setShowTimeDropdown(false);
+    setActiveIndex(0);
+  }, []);
+
   const timePeriodLabels: Record<TimePeriod, string> = {
     recent: 'Most recent',
     '1w': '1W',
@@ -3190,6 +3209,16 @@ export default function TrendingScreen() {
           >
             <Clock size={18} color={showTimeDropdown ? '#4ADE80' : '#FFF'} />
           </TouchableOpacity>
+
+          {hasActiveFilters && (
+            <TouchableOpacity
+              style={styles.clearFiltersButton}
+              onPress={clearAllFilters}
+            >
+              <X size={12} color="#EF4444" />
+              <Text style={styles.clearFiltersText}>Clear</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </Animated.View>
 
@@ -3567,6 +3596,9 @@ export default function TrendingScreen() {
           <Eye size={20} color="#4ADE80" />
         ) : (
           <EyeOff size={20} color="#4ADE80" />
+        )}
+        {hasActiveFilters && !menuVisible && (
+          <View style={styles.filterActiveDot} />
         )}
       </TouchableOpacity>
 
@@ -4428,6 +4460,33 @@ const styles = StyleSheet.create({
   closeMenuButton: {
     padding: 8,
     marginBottom: 4,
+  },
+  clearFiltersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+  },
+  clearFiltersText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '600' as const,
+  },
+  filterActiveDot: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.3)',
   },
   filterDropdown: {
     backgroundColor: 'rgba(30, 41, 59, 0.95)',
