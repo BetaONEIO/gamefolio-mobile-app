@@ -129,6 +129,11 @@ app.use((req, res, next) => {
   // so the deployment health check passes for the primary HTTP endpoint.
   if (process.env.NODE_ENV === "production") {
     const server2 = createServer(app);
+    server2.on("error", (err: any) => {
+      // Port 8081 may still be held by the Metro build process for a moment.
+      // Log the warning but keep the server alive on port 5000.
+      console.warn(`⚠️  Port 8081 not available (${err.code}). Serving on port 5000 only.`);
+    });
     server2.listen({ port: 8081, host: "0.0.0.0", reusePort: true }, () => {
       log("serving on port 8081 (production web)");
     });
