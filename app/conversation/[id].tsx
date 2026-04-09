@@ -51,6 +51,7 @@ export default function ConversationScreen() {
   
   const [inputText, setInputText] = useState('');
   const [showOptions, setShowOptions] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<'delete' | 'block' | null>(null);
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const flatListRef = useRef<FlatList>(null);
 
@@ -226,36 +227,26 @@ export default function ConversationScreen() {
   }, []);
 
   const handleDeleteConversation = useCallback(() => {
-    Alert.alert(
-      'Delete Conversation',
-      'Are you sure you want to delete this entire conversation?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: () => deleteConversationMutation.mutate(recipientId),
-        },
-      ]
-    );
-    setShowOptions(false);
-  }, [recipientId]);
+    setConfirmAction('delete');
+  }, []);
 
   const handleBlockUser = useCallback(() => {
-    Alert.alert(
-      'Block User',
-      `Are you sure you want to block ${otherUser.displayName}? You won't be able to message each other.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Block', 
-          style: 'destructive',
-          onPress: () => blockUserMutation.mutate(recipientId),
-        },
-      ]
-    );
+    setConfirmAction('block');
+  }, []);
+
+  const handleConfirm = useCallback(() => {
+    if (confirmAction === 'delete') {
+      deleteConversationMutation.mutate(recipientId);
+    } else if (confirmAction === 'block') {
+      blockUserMutation.mutate(recipientId);
+    }
+    setConfirmAction(null);
     setShowOptions(false);
-  }, [recipientId, otherUser.displayName]);
+  }, [confirmAction, recipientId]);
+
+  const handleCancelConfirm = useCallback(() => {
+    setConfirmAction(null);
+  }, []);
 
   const handleAvatarPress = useCallback(() => {
     console.log('[Conversation] Avatar pressed for user:', otherUser.username);
@@ -356,7 +347,7 @@ export default function ConversationScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity 
             style={styles.headerActionButton}
-            onPress={() => setShowOptions(!showOptions)}
+            onPress={() => { setShowOptions(prev => !prev); setConfirmAction(null); }}
           >
             <MoreVertical size={20} color="#94A3B8" />
           </TouchableOpacity>
@@ -364,14 +355,36 @@ export default function ConversationScreen() {
 
         {showOptions && (
           <View style={[styles.optionsMenu, { top: insets.top + 56 }]}>
-            <TouchableOpacity style={styles.optionItem} onPress={handleDeleteConversation}>
-              <Trash2 size={18} color="#EF4444" />
-              <Text style={styles.optionTextDanger}>Delete Conversation</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.optionItem} onPress={handleBlockUser}>
-              <Ban size={18} color="#EF4444" />
-              <Text style={styles.optionTextDanger}>Block User</Text>
-            </TouchableOpacity>
+            {confirmAction === null ? (
+              <>
+                <TouchableOpacity style={styles.optionItem} onPress={handleDeleteConversation}>
+                  <Trash2 size={18} color="#EF4444" />
+                  <Text style={styles.optionTextDanger}>Delete Conversation</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.optionItem} onPress={handleBlockUser}>
+                  <Ban size={18} color="#EF4444" />
+                  <Text style={styles.optionTextDanger}>Block User</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View style={styles.confirmPanel}>
+                <Text style={styles.confirmText}>
+                  {confirmAction === 'block'
+                    ? `Block ${otherUser.displayName}?`
+                    : 'Delete this conversation?'}
+                </Text>
+                <View style={styles.confirmButtons}>
+                  <TouchableOpacity style={styles.confirmCancelBtn} onPress={handleCancelConfirm}>
+                    <Text style={styles.confirmCancelText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.confirmDangerBtn} onPress={handleConfirm}>
+                    <Text style={styles.confirmDangerText}>
+                      {confirmAction === 'block' ? 'Block' : 'Delete'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
         )}
       </View>
@@ -442,7 +455,7 @@ export default function ConversationScreen() {
       {showOptions && (
         <TouchableOpacity 
           style={styles.optionsOverlay} 
-          onPress={() => setShowOptions(false)}
+          onPress={() => { setShowOptions(false); setConfirmAction(null); }}
           activeOpacity={1}
         />
       )}
@@ -536,6 +549,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#EF4444',
     fontWeight: '500' as const,
+  },
+  confirmPanel: {
+    padding: 4,
+    minWidth: 200,
+  },
+  confirmText: {
+    fontSize: 14,
+    color: '#F1F5F9',
+    fontWeight: '600' as const,
+    marginBottom: 12,
+    textAlign: 'center' as const,
+  },
+  confirmButtons: {
+    flexDirection: 'row' as const,
+    gap: 8,
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#334155',
+    alignItems: 'center' as const,
+  },
+  confirmCancelText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    fontWeight: '500' as const,
+  },
+  confirmDangerBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#EF4444',
+    alignItems: 'center' as const,
+  },
+  confirmDangerText: {
+    fontSize: 13,
+    color: '#FFF',
+    fontWeight: '600' as const,
   },
   optionsOverlay: {
     position: 'absolute',
