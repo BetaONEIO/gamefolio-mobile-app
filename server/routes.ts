@@ -11494,6 +11494,76 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     }
   });
 
+  // ── Referral deep-link landing page ────────────────────────────────────────
+  // Serves a branded smart-redirect page for https://gamefolio.app/ref/:code
+  // • Tries to open the app via custom URL scheme (rork-app://?ref=CODE)
+  // • Falls back to App Store (iOS) or Play Store (Android) after 2.5 s
+  // • Shows a QR code on desktop
+  app.get('/ref/:code', (req, res) => {
+    const code = (req.params.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    const referralUrl = `https://gamefolio.app/ref/${code}`;
+    const referralUrlEncoded = encodeURIComponent(referralUrl);
+    const appStoreId = process.env.APP_STORE_ID || 'PLACEHOLDER';
+
+    const fs = require('fs');
+    const path = require('path');
+    const templatePath = path.join(process.cwd(), 'server/templates/referral-landing.html');
+    let html = fs.readFileSync(templatePath, 'utf8');
+
+    html = html
+      .replace(/\{\{CODE\}\}/g, code)
+      .replace(/\{\{REFERRAL_URL\}\}/g, referralUrl)
+      .replace(/\{\{REFERRAL_URL_ENCODED\}\}/g, referralUrlEncoded)
+      .replace(/\{\{APP_STORE_ID\}\}/g, appStoreId);
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-store');
+    res.send(html);
+  });
+
+  // ── Universal Links verification files ─────────────────────────────────────
+  // Apple fetches this from /.well-known/apple-app-site-association at build/install time.
+  // Replace XXXXXXXXXX with your actual Apple Developer Team ID before App Store submission.
+  app.get('/.well-known/apple-app-site-association', (_req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-cache, no-store');
+    res.json({
+      applinks: {
+        apps: [],
+        details: [
+          {
+            appID: `${process.env.APPLE_TEAM_ID || 'XXXXXXXXXX'}.app.rork.gamefolio`,
+            paths: ['/ref/*', '/*'],
+            components: [
+              { '/': '/ref/*' },
+              { '?': '*ref=*' },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
+  // Google fetches this from /.well-known/assetlinks.json at install/update time.
+  // Replace PLACEHOLDER_SHA256 with the SHA-256 fingerprint of your Android signing cert
+  // before Play Store submission. Run: keytool -printcert -file cert.pem
+  app.get('/.well-known/assetlinks.json', (_req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-cache, no-store');
+    res.json([
+      {
+        relation: ['delegate_permission/common.handle_all_urls'],
+        target: {
+          namespace: 'android_app',
+          package_name: 'app.rork.gamefolio',
+          sha256_cert_fingerprints: [
+            process.env.ANDROID_CERT_FINGERPRINT || 'PLACEHOLDER_SHA256',
+          ],
+        },
+      },
+    ]);
+  });
+
   // Auto-sync verification badges from gamefolio-verification bucket on startup
   (async () => {
     try {
