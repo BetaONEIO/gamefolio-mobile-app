@@ -367,9 +367,12 @@ export default function LeaderboardScreen() {
             </Text>
             <View style={styles.ctaButtons}>
               <TouchableOpacity style={styles.ctaPrimaryButton}>
-                <Text style={styles.ctaPrimaryText}>Upload Your Clip</Text>
+                <Text style={styles.ctaPrimaryText}>Upload</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.ctaSecondaryButton}>
+              <TouchableOpacity
+                style={styles.ctaSecondaryButton}
+                onPress={() => router.push('/(drawer)/(tabs)/trending')}
+              >
                 <Text style={styles.ctaSecondaryText}>Explore Content</Text>
               </TouchableOpacity>
             </View>
