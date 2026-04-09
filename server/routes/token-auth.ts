@@ -4,7 +4,7 @@ import { JWTService } from '../services/jwt-service';
 import { storage } from '../storage';
 import { StreakService } from '../streak-service';
 import { getDemoUser } from '../demo-user';
-import { scrypt, timingSafeEqual, randomBytes } from 'crypto';
+import { scrypt, timingSafeEqual, randomBytes, createHmac } from 'crypto';
 import { promisify } from 'util';
 import { supabaseStorage } from '../supabase-storage';
 import { db } from '../db';
@@ -101,14 +101,6 @@ async function proxyLoginToProduction(username: string, password: string): Promi
 const scryptAsync = promisify(scrypt);
 const router = Router();
 
-// In-memory store for OAuth state tokens and auth codes (expires after 10 minutes)
-const oauthStateStore = new Map<string, {
-  createdAt: number;
-  platform: string;
-  flow?: 'mobile' | 'web';
-  redirectTo?: string;
-}>();
-
 /**
  * Determine the base URL to use for OAuth callback redirect URIs.
  * In dev, uses the Replit dev domain (no port - proxied via HTTPS).
@@ -125,17 +117,10 @@ function getCallbackBaseUrl(): string {
 
 const mobileAuthCodes = new Map<string, { createdAt: number; tokens: { accessToken: string; refreshToken: string }; userId: number; needsOnboarding: boolean; isNewUser: boolean }>();
 
-// Cleanup expired entries every 5 minutes
+// Cleanup expired mobileAuthCodes every 5 minutes
 setInterval(() => {
   const now = Date.now();
   const tenMinutes = 10 * 60 * 1000;
-  
-  for (const [key, value] of oauthStateStore.entries()) {
-    if (now - value.createdAt > tenMinutes) {
-      oauthStateStore.delete(key);
-    }
-  }
-  
   for (const [key, value] of mobileAuthCodes.entries()) {
     if (now - value.createdAt > tenMinutes) {
       mobileAuthCodes.delete(key);
@@ -146,6 +131,83 @@ setInterval(() => {
 function generateSecureCode(): string {
   return randomBytes(32).toString('hex');
 }
+
+// ── Stateless HMAC-signed OAuth state ────────────────────────────────────────
+// The state is self-contained (platform + flow + redirectTo + timestamp + nonce)
+// and HMAC-signed, so it works across multiple server instances and restarts.
+// No in-memory or database storage is needed.
+
+const OAUTH_STATE_SECRET =
+  process.env.SESSION_SECRET ||
+  process.env.JWT_ACCESS_SECRET ||
+  'gamefolio-oauth-state-hmac-secret';
+
+interface OAuthStatePayload {
+  p: string;           // platform (discord | google)
+  f: string;           // flow (mobile | web)
+  r: string;           // redirectTo (empty string if not applicable)
+  ts: number;          // timestamp ms
+  n: string;           // nonce hex
+}
+
+/**
+ * Generate a stateless, HMAC-signed OAuth state token.
+ * The payload is base64url-encoded JSON; the signature is appended after a dot.
+ */
+function generateOAuthState(platform: string, flow: 'mobile' | 'web' = 'mobile', redirectTo = ''): string {
+  const payload: OAuthStatePayload = {
+    p: platform,
+    f: flow,
+    r: redirectTo,
+    ts: Date.now(),
+    n: randomBytes(8).toString('hex'),
+  };
+  const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const sig = createHmac('sha256', OAUTH_STATE_SECRET).update(payloadB64).digest('hex');
+  return `${payloadB64}.${sig}`;
+}
+
+/**
+ * Verify a stateless OAuth state token.
+ * Returns the decoded payload if the signature is valid and the token has not
+ * expired (10-minute window). Returns null on any failure.
+ */
+function verifyOAuthState(
+  state: string,
+  expectedPlatform: string,
+  expectedFlow?: 'mobile' | 'web',
+): OAuthStatePayload | null {
+  try {
+    const dotIdx = state.lastIndexOf('.');
+    if (dotIdx === -1) return null;
+
+    const payloadB64 = state.substring(0, dotIdx);
+    const sig = state.substring(dotIdx + 1);
+
+    // Constant-time signature comparison
+    const expectedSig = createHmac('sha256', OAUTH_STATE_SECRET).update(payloadB64).digest('hex');
+    if (sig.length !== expectedSig.length) return null;
+    if (!timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expectedSig, 'hex'))) return null;
+
+    const payload: OAuthStatePayload = JSON.parse(
+      Buffer.from(payloadB64, 'base64url').toString(),
+    );
+
+    // Reject expired tokens (10-minute window)
+    if (Date.now() - payload.ts > 10 * 60 * 1000) return null;
+
+    // Reject wrong platform
+    if (payload.p !== expectedPlatform) return null;
+
+    // Reject wrong flow if specified
+    if (expectedFlow && payload.f !== expectedFlow) return null;
+
+    return payload;
+  } catch {
+    return null;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
   const [hashedPassword, salt] = stored.split('.');
@@ -733,15 +795,14 @@ router.get('/auth/mobile/google/init', (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Google OAuth is not configured on this server. Please contact support.' });
   }
 
-  const state = generateSecureCode();
-  oauthStateStore.set(state, { createdAt: Date.now(), platform: 'google' });
+  const state = generateOAuthState('google', 'mobile');
 
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
     `client_id=${googleClientId}&` +
     `redirect_uri=${encodeURIComponent(redirectUri)}&` +
     `response_type=code&` +
     `scope=${encodeURIComponent('openid email profile')}&` +
-    `state=${state}&` +
+    `state=${encodeURIComponent(state)}&` +
     `access_type=offline&` +
     `prompt=select_account`;
 
@@ -771,15 +832,9 @@ router.get('/auth/mobile/google/callback', async (req: Request, res: Response) =
       return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('No authorization code received')}`);
     }
 
-    if (!state || !oauthStateStore.has(String(state))) {
+    const statePayload = state ? verifyOAuthState(String(state), 'google', 'mobile') : null;
+    if (!statePayload) {
       console.error('[Google Mobile Callback] Invalid or missing state parameter');
-      return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Invalid authentication state')}`);
-    }
-
-    const stateData = oauthStateStore.get(String(state));
-    oauthStateStore.delete(String(state));
-
-    if (stateData?.platform !== 'google') {
       return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Invalid authentication state')}`);
     }
 
@@ -897,16 +952,15 @@ router.get('/auth/mobile/discord/init', (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Discord OAuth is not configured on this server. Please contact support.' });
   }
   
-  // Generate state token for CSRF protection
-  const state = generateSecureCode();
-  oauthStateStore.set(state, { createdAt: Date.now(), platform: 'discord' });
-  
+  // Generate state token for CSRF protection (stateless HMAC-signed)
+  const state = generateOAuthState('discord', 'mobile');
+
   const discordAuthUrl = `https://discord.com/api/oauth2/authorize?` +
     `client_id=${discordClientId}&` +
     `redirect_uri=${encodeURIComponent(redirectUri)}&` +
     `response_type=code&` +
     `scope=${encodeURIComponent('identify email')}&` +
-    `state=${state}`;
+    `state=${encodeURIComponent(state)}`;
   
   res.json({ 
     authUrl: discordAuthUrl,
@@ -932,16 +986,10 @@ router.get('/auth/mobile/discord/callback', async (req: Request, res: Response) 
       return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('No authorization code received')}`);
     }
 
-    // Validate state parameter for CSRF protection
-    if (!state || !oauthStateStore.has(String(state))) {
-      console.error('Invalid or missing OAuth state parameter');
-      return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Invalid authentication state')}`);
-    }
-    
-    const stateData = oauthStateStore.get(String(state));
-    oauthStateStore.delete(String(state)); // One-time use
-    
-    if (stateData?.platform !== 'discord') {
+    // Validate state parameter for CSRF protection (stateless HMAC verification)
+    const statePayload = state ? verifyOAuthState(String(state), 'discord', 'mobile') : null;
+    if (!statePayload) {
+      console.error('[Discord Mobile Callback] Invalid or missing OAuth state parameter');
       return res.redirect(`${RORK_APP_SCHEME}auth/error?message=${encodeURIComponent('Invalid authentication state')}`);
     }
 
@@ -1249,13 +1297,7 @@ router.get('/auth/web/google/init', (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Google OAuth is not configured on this server.' });
   }
 
-  const state = generateSecureCode();
-  oauthStateStore.set(state, {
-    createdAt: Date.now(),
-    platform: 'google',
-    flow: 'web',
-    redirectTo: returnTo,
-  });
+  const state = generateOAuthState('google', 'web', returnTo);
 
   const googleAuthUrl =
     `https://accounts.google.com/o/oauth2/v2/auth?` +
@@ -1263,7 +1305,7 @@ router.get('/auth/web/google/init', (req: Request, res: Response) => {
     `redirect_uri=${encodeURIComponent(redirectUri)}&` +
     `response_type=code&` +
     `scope=${encodeURIComponent('openid email profile')}&` +
-    `state=${state}&` +
+    `state=${encodeURIComponent(state)}&` +
     `access_type=offline&` +
     `prompt=select_account`;
 
@@ -1281,8 +1323,8 @@ router.get('/auth/web/google/callback', async (req: Request, res: Response) => {
   try {
     const { code, error: oauthError, state } = req.query;
 
-    const stateEntry = state ? oauthStateStore.get(String(state)) : null;
-    const redirectTo = stateEntry?.redirectTo || fallback;
+    const statePayload = state ? verifyOAuthState(String(state), 'google', 'web') : null;
+    const redirectTo = statePayload?.r || fallback;
 
     if (oauthError) {
       console.error('[Google Web Callback] OAuth error:', oauthError);
@@ -1293,14 +1335,9 @@ router.get('/auth/web/google/callback', async (req: Request, res: Response) => {
       return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('No authorization code received')}`);
     }
 
-    if (!state || !stateEntry) {
-      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Invalid authentication state')}`);
-    }
-
-    oauthStateStore.delete(String(state));
-
-    if (stateEntry.platform !== 'google' || stateEntry.flow !== 'web') {
-      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Invalid authentication state')}`);
+    if (!state || !statePayload) {
+      console.error('[Google Web Callback] Invalid or missing OAuth state');
+      return res.redirect(`${fallback}?auth_error=${encodeURIComponent('Invalid authentication state')}`);
     }
 
     const baseUrl = getCallbackBaseUrl();
@@ -1403,13 +1440,7 @@ router.get('/auth/web/discord/init', (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Discord OAuth is not configured on this server.' });
   }
 
-  const state = generateSecureCode();
-  oauthStateStore.set(state, {
-    createdAt: Date.now(),
-    platform: 'discord',
-    flow: 'web',
-    redirectTo: returnTo,
-  });
+  const state = generateOAuthState('discord', 'web', returnTo);
 
   const discordAuthUrl =
     `https://discord.com/api/oauth2/authorize?` +
@@ -1417,7 +1448,7 @@ router.get('/auth/web/discord/init', (req: Request, res: Response) => {
     `redirect_uri=${encodeURIComponent(redirectUri)}&` +
     `response_type=code&` +
     `scope=${encodeURIComponent('identify email')}&` +
-    `state=${state}`;
+    `state=${encodeURIComponent(state)}`;
 
   console.log('[Discord Web Init] Auth URL generated, redirectUri:', redirectUri);
   res.json({ authUrl: discordAuthUrl, redirectUri, state });
@@ -1433,8 +1464,8 @@ router.get('/auth/web/discord/callback', async (req: Request, res: Response) => 
   try {
     const { code, error: oauthError, state } = req.query;
 
-    const stateEntry = state ? oauthStateStore.get(String(state)) : null;
-    const redirectTo = stateEntry?.redirectTo || fallback;
+    const statePayload = state ? verifyOAuthState(String(state), 'discord', 'web') : null;
+    const redirectTo = statePayload?.r || fallback;
 
     if (oauthError) {
       return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent(String(oauthError))}`);
@@ -1444,14 +1475,9 @@ router.get('/auth/web/discord/callback', async (req: Request, res: Response) => 
       return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('No authorization code received')}`);
     }
 
-    if (!state || !stateEntry) {
-      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Invalid authentication state')}`);
-    }
-
-    oauthStateStore.delete(String(state));
-
-    if (stateEntry.platform !== 'discord' || stateEntry.flow !== 'web') {
-      return res.redirect(`${redirectTo}?auth_error=${encodeURIComponent('Invalid authentication state')}`);
+    if (!state || !statePayload) {
+      console.error('[Discord Web Callback] Invalid or missing OAuth state');
+      return res.redirect(`${fallback}?auth_error=${encodeURIComponent('Invalid authentication state')}`);
     }
 
     const baseUrl = getCallbackBaseUrl();
