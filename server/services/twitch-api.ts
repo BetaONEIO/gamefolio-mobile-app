@@ -202,13 +202,17 @@ class TwitchApiService {
       );
       
       return filteredGames.map((game: any) => {
-        let boxArtUrl = game.box_art_url;
+        let boxArtUrl = game.box_art_url || '';
         
-        // Handle both possible template formats - use higher resolution for crisp display
+        // Handle template format: {width}x{height}
         if (boxArtUrl.includes('{width}x{height}')) {
           boxArtUrl = boxArtUrl.replace('{width}x{height}', '600x800');
         } else if (boxArtUrl.includes('{width}') && boxArtUrl.includes('{height}')) {
           boxArtUrl = boxArtUrl.replace('{width}', '600').replace('{height}', '800');
+        } else {
+          // search/categories returns hardcoded sizes like _IGDB-52x72.jpg or -52x72.jpg
+          // Replace any hardcoded dimensions with 600x800
+          boxArtUrl = boxArtUrl.replace(/_IGDB-\d+x\d+\./, '_IGDB-600x800.').replace(/-\d+x\d+\./, '-600x800.');
         }
         
         return {

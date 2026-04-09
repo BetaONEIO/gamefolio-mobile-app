@@ -1828,9 +1828,9 @@ export default function TrendingScreen() {
   const allReels = useMemo(() => (reelsData as ClipWithUser[] | undefined) || [], [reelsData]);
   
   const reels = useMemo(() => {
-    if (!selectedReelGame) return allReels;
-    return allReels.filter(reel => reel.game?.id === parseInt(selectedReelGame));
-  }, [allReels, selectedReelGame]);
+    if (!selectedReelGame || !selectedReelGameName) return allReels;
+    return allReels.filter(reel => reel.game?.name?.toLowerCase() === selectedReelGameName.toLowerCase());
+  }, [allReels, selectedReelGame, selectedReelGameName]);
 
 
 
@@ -1997,9 +1997,9 @@ export default function TrendingScreen() {
   }, [clipsData, mockClips]);
 
   const clips = useMemo(() => {
-    if (!selectedClipGame) return allClips;
-    return allClips.filter(clip => clip.game?.id === parseInt(selectedClipGame));
-  }, [allClips, selectedClipGame]);
+    if (!selectedClipGame || !selectedClipGameName) return allClips;
+    return allClips.filter(clip => clip.game?.name?.toLowerCase() === selectedClipGameName.toLowerCase());
+  }, [allClips, selectedClipGame, selectedClipGameName]);
 
 
   const allScreenshots = useMemo(() => {
@@ -2033,9 +2033,9 @@ export default function TrendingScreen() {
   }, [allReels, allClips, allScreenshots]);
 
   const screenshots = useMemo(() => {
-    if (!selectedScreenshotGame) return allScreenshots;
-    return allScreenshots.filter(screenshot => screenshot.game?.id === parseInt(selectedScreenshotGame));
-  }, [allScreenshots, selectedScreenshotGame]);
+    if (!selectedScreenshotGame || !selectedScreenshotGameName) return allScreenshots;
+    return allScreenshots.filter(screenshot => screenshot.game?.name?.toLowerCase() === selectedScreenshotGameName.toLowerCase());
+  }, [allScreenshots, selectedScreenshotGame, selectedScreenshotGameName]);
 
   const [featuredScreenshotIndex, setFeaturedScreenshotIndex] = useState(0);
   const featuredScreenshotAnim = useRef(new Animated.Value(1)).current;
@@ -3689,14 +3689,14 @@ export default function TrendingScreen() {
                   {(reelGameSearch.length > 0 ? searchedGames : (topGames.length > 0 ? topGames : contentGames))
                     .slice()
                     .sort((a, b) => {
-                      const aCount = allReels.filter(r => r.game?.id === a.id).length;
-                      const bCount = allReels.filter(r => r.game?.id === b.id).length;
+                      const aCount = allReels.filter(r => r.game?.name?.toLowerCase() === a.name?.toLowerCase()).length;
+                      const bCount = allReels.filter(r => r.game?.name?.toLowerCase() === b.name?.toLowerCase()).length;
                       if (aCount > 0 && bCount === 0) return -1;
                       if (aCount === 0 && bCount > 0) return 1;
                       return 0;
                     })
                     .map((game) => {
-                    const reelCount = allReels.filter(r => r.game?.id === game.id).length;
+                    const reelCount = allReels.filter(r => r.game?.name?.toLowerCase() === game.name?.toLowerCase()).length;
                     const isSelected = selectedReelGame === game.id.toString();
                     const hasContent = reelCount > 0;
                     
@@ -3842,14 +3842,14 @@ export default function TrendingScreen() {
                   {(clipGameSearch.length > 0 ? searchedGames : (topGames.length > 0 ? topGames : contentGames))
                     .slice()
                     .sort((a, b) => {
-                      const aCount = allClips.filter(c => c.game?.id === a.id).length;
-                      const bCount = allClips.filter(c => c.game?.id === b.id).length;
+                      const aCount = allClips.filter(c => c.game?.name?.toLowerCase() === a.name?.toLowerCase()).length;
+                      const bCount = allClips.filter(c => c.game?.name?.toLowerCase() === b.name?.toLowerCase()).length;
                       if (aCount > 0 && bCount === 0) return -1;
                       if (aCount === 0 && bCount > 0) return 1;
                       return 0;
                     })
                     .map((game) => {
-                    const clipCount = allClips.filter(c => c.game?.id === game.id).length;
+                    const clipCount = allClips.filter(c => c.game?.name?.toLowerCase() === game.name?.toLowerCase()).length;
                     const isSelected = selectedClipGame === game.id.toString();
                     const hasContent = clipCount > 0;
                     
@@ -3995,14 +3995,14 @@ export default function TrendingScreen() {
                   {(screenshotGameSearch.length > 0 ? searchedGames : (topGames.length > 0 ? topGames : contentGames))
                     .slice()
                     .sort((a, b) => {
-                      const aCount = allScreenshots.filter(s => s.game?.id === a.id).length;
-                      const bCount = allScreenshots.filter(s => s.game?.id === b.id).length;
+                      const aCount = allScreenshots.filter(s => s.game?.name?.toLowerCase() === a.name?.toLowerCase()).length;
+                      const bCount = allScreenshots.filter(s => s.game?.name?.toLowerCase() === b.name?.toLowerCase()).length;
                       if (aCount > 0 && bCount === 0) return -1;
                       if (aCount === 0 && bCount > 0) return 1;
                       return 0;
                     })
                     .map((game) => {
-                    const screenshotCount = allScreenshots.filter(s => s.game?.id === game.id).length;
+                    const screenshotCount = allScreenshots.filter(s => s.game?.name?.toLowerCase() === game.name?.toLowerCase()).length;
                     const isSelected = selectedScreenshotGame === game.id.toString();
                     const hasContent = screenshotCount > 0;
                     
