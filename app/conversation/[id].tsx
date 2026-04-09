@@ -149,6 +149,20 @@ export default function ConversationScreen() {
     },
   });
 
+  const blockStatusQuery = useQuery({
+    queryKey: ['blockStatus', recipientId],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('No authentication token');
+      return api.blocking.getBlockStatus(recipientId, token);
+    },
+    enabled: isAuthenticated && !isNaN(recipientId),
+  });
+
+  const iBlockedThem = blockStatusQuery.data?.iBlockedThem ?? false;
+  const theyBlockedMe = blockStatusQuery.data?.theyBlockedMe ?? false;
+  const isBlocked = iBlockedThem || theyBlockedMe;
+
   const blockUserMutation = useMutation({
     mutationFn: async (userId: number) => {
       const token = await getAccessToken();
@@ -157,12 +171,27 @@ export default function ConversationScreen() {
     },
     onSuccess: () => {
       console.log('[Conversation] User blocked');
-      Alert.alert('User Blocked', `You have blocked ${otherUser.displayName}`);
-      router.back();
+      queryClient.invalidateQueries({ queryKey: ['blockStatus', recipientId] });
     },
     onError: (error) => {
       console.error('[Conversation] Failed to block user:', error);
       Alert.alert('Error', 'Failed to block user.');
+    },
+  });
+
+  const unblockUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('No authentication token');
+      return api.blocking.unblock(userId, token);
+    },
+    onSuccess: () => {
+      console.log('[Conversation] User unblocked');
+      queryClient.invalidateQueries({ queryKey: ['blockStatus', recipientId] });
+    },
+    onError: (error) => {
+      console.error('[Conversation] Failed to unblock user:', error);
+      Alert.alert('Error', 'Failed to unblock user.');
     },
   });
 
@@ -233,6 +262,11 @@ export default function ConversationScreen() {
   const handleBlockUser = useCallback(() => {
     setConfirmAction('block');
   }, []);
+
+  const handleUnblockUser = useCallback(() => {
+    unblockUserMutation.mutate(recipientId);
+    setShowOptions(false);
+  }, [recipientId]);
 
   const handleConfirm = useCallback(() => {
     if (confirmAction === 'delete') {
@@ -361,10 +395,17 @@ export default function ConversationScreen() {
                   <Trash2 size={18} color="#EF4444" />
                   <Text style={styles.optionTextDanger}>Delete Conversation</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.optionItem} onPress={handleBlockUser}>
-                  <Ban size={18} color="#EF4444" />
-                  <Text style={styles.optionTextDanger}>Block User</Text>
-                </TouchableOpacity>
+                {iBlockedThem ? (
+                  <TouchableOpacity style={styles.optionItem} onPress={handleUnblockUser}>
+                    <Ban size={18} color="#4ADE80" />
+                    <Text style={[styles.optionTextDanger, { color: '#4ADE80' }]}>Unblock User</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={styles.optionItem} onPress={handleBlockUser}>
+                    <Ban size={18} color="#EF4444" />
+                    <Text style={styles.optionTextDanger}>Block User</Text>
+                  </TouchableOpacity>
+                )}
               </>
             ) : (
               <View style={styles.confirmPanel}>
@@ -419,37 +460,68 @@ export default function ConversationScreen() {
           />
         )}
 
-        <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-          <View style={styles.inputWrapper}>
-            <TouchableOpacity style={styles.inputAction}>
-              <Smile size={24} color="#64748B" />
-            </TouchableOpacity>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Type a message..."
-              placeholderTextColor="#64748B"
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={1000}
-              editable={!isSending}
-            />
-            <TouchableOpacity style={styles.inputAction}>
-              <ImageIcon size={24} color="#64748B" />
+        {isBlocked ? (
+          <View style={[styles.blockedBanner, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+            {iBlockedThem ? (
+              <>
+                <Ban size={20} color="#F59E0B" style={{ marginBottom: 6 }} />
+                <Text style={styles.blockedBannerText}>
+                  You have blocked {otherUser.displayName}. Unblock them to send messages.
+                </Text>
+                <TouchableOpacity
+                  style={styles.unblockButton}
+                  onPress={() => unblockUserMutation.mutate(recipientId)}
+                  disabled={unblockUserMutation.isPending}
+                >
+                  {unblockUserMutation.isPending ? (
+                    <ActivityIndicator size="small" color="#002E15" />
+                  ) : (
+                    <Text style={styles.unblockButtonText}>Unblock</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Ban size={20} color="#EF4444" style={{ marginBottom: 6 }} />
+                <Text style={styles.blockedBannerText}>
+                  You cannot send messages to this user.
+                </Text>
+              </>
+            )}
+          </View>
+        ) : (
+          <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+            <View style={styles.inputWrapper}>
+              <TouchableOpacity style={styles.inputAction}>
+                <Smile size={24} color="#64748B" />
+              </TouchableOpacity>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Type a message..."
+                placeholderTextColor="#64748B"
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={1000}
+                editable={!isSending}
+              />
+              <TouchableOpacity style={styles.inputAction}>
+                <ImageIcon size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={[styles.sendButton, (!inputText.trim() || isSending) && styles.sendButtonDisabled]}
+              onPress={handleSend}
+              disabled={!inputText.trim() || isSending}
+            >
+              {isSending ? (
+                <ActivityIndicator size="small" color="#002E15" />
+              ) : (
+                <Send size={20} color={inputText.trim() ? '#002E15' : '#64748B'} />
+              )}
             </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            style={[styles.sendButton, (!inputText.trim() || isSending) && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            disabled={!inputText.trim() || isSending}
-          >
-            {isSending ? (
-              <ActivityIndicator size="small" color="#002E15" />
-            ) : (
-              <Send size={20} color={inputText.trim() ? '#002E15' : '#64748B'} />
-            )}
-          </TouchableOpacity>
-        </View>
+        )}
       </KeyboardAvoidingView>
 
       {showOptions && (
@@ -717,5 +789,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#64748B',
     textAlign: 'center' as const,
+  },
+  blockedBanner: {
+    alignItems: 'center' as const,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#1E293B',
+    backgroundColor: '#0F172A',
+  },
+  blockedBannerText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center' as const,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  unblockButton: {
+    paddingHorizontal: 28,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#4ADE80',
+    minWidth: 100,
+    alignItems: 'center' as const,
+  },
+  unblockButtonText: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#002E15',
   },
 });

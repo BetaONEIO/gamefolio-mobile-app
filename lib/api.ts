@@ -1855,6 +1855,13 @@ export const api = {
         token,
       });
     },
+
+    getBlockStatus: async (userId: number, token: string) => {
+      return apiFetch<{ iBlockedThem: boolean; theyBlockedMe: boolean }>(
+        `/api/users/block-status/${userId}`,
+        { method: 'GET', token }
+      );
+    },
   },
 
   lootbox: {

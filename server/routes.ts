@@ -19,9 +19,9 @@ import { promisify } from "util";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { nanoid } from "nanoid";
 import jwt from "jsonwebtoken";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 import { db } from "./db";
-import { users, nameTags, profileBorders, verificationBadges, storeItems, heroSlides, previousAvatars, profileThemes } from "@shared/schema";
+import { users, nameTags, profileBorders, verificationBadges, storeItems, heroSlides, previousAvatars, profileThemes, userBlocks } from "@shared/schema";
 
 // Helper function to generate unique share code
 function generateShareCode(): string {
@@ -9028,6 +9028,35 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     } catch (error) {
       console.error('Error updating privacy preferences:', error);
       res.status(500).json({ message: "Error updating privacy preferences" });
+    }
+  });
+
+  // Get block status between current user and another user
+  app.get("/api/users/block-status/:userId", hybridAuth, async (req, res) => {
+    try {
+      const currentUserId = req.user.id;
+      const targetUserId = parseInt(req.params.userId);
+
+      if (isNaN(targetUserId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+
+      const [iBlockedRows, theyBlockedRows] = await Promise.all([
+        db.select().from(userBlocks).where(
+          and(eq(userBlocks.blockerId, currentUserId), eq(userBlocks.blockedId, targetUserId))
+        ),
+        db.select().from(userBlocks).where(
+          and(eq(userBlocks.blockerId, targetUserId), eq(userBlocks.blockedId, currentUserId))
+        ),
+      ]);
+
+      res.json({
+        iBlockedThem: iBlockedRows.length > 0,
+        theyBlockedMe: theyBlockedRows.length > 0,
+      });
+    } catch (error) {
+      console.error("Error getting block status:", error);
+      res.status(500).json({ message: "Error getting block status" });
     }
   });
 
