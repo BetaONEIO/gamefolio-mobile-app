@@ -49,11 +49,26 @@ const FALLBACK_SLIDES: HeroSlide[] = [
 
 interface HeroBannerProps {
   contentPadding?: number;
+  canOpenLootbox?: boolean;
+  onOpenLootbox?: () => void;
 }
 
 const PRO_UPGRADE_LINKS = ['/pro', '/subscribe', '/premium', '/manage-subscription', '/(drawer)/manage-subscription'];
 
-export default function HeroBanner({ contentPadding = 16 }: HeroBannerProps) {
+const LOOTBOX_SLIDE: HeroSlide = {
+  id: -1,
+  title: 'Your Daily Lootbox is Ready!',
+  subtitle: 'A free reward is waiting for you. Tap to claim it now!',
+  buttonText: 'Claim Now',
+  buttonLink: '_lootbox',
+  imageUrl: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1200&auto=format&fit=crop&q=80',
+  displayOrder: -1,
+  isActive: true,
+  visibility: 'everyone',
+  textAlign: 'center',
+};
+
+export default function HeroBanner({ contentPadding = 16, canOpenLootbox = false, onOpenLootbox }: HeroBannerProps) {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -90,9 +105,10 @@ export default function HeroBanner({ contentPadding = 16 }: HeroBannerProps) {
   });
 
   const rawSlides = (slides && slides.length > 0) ? slides : FALLBACK_SLIDES;
-  const activeSlides = isPro
+  const filteredSlides = isPro
     ? rawSlides.filter(s => !PRO_UPGRADE_LINKS.some(l => s.buttonLink?.startsWith(l)))
     : rawSlides;
+  const activeSlides = canOpenLootbox ? [LOOTBOX_SLIDE, ...filteredSlides] : filteredSlides;
   const intervalMs = ((settings?.intervalSeconds) || 6) * 1000;
 
   const goToSlide = useCallback((idx: number) => {
@@ -121,14 +137,16 @@ export default function HeroBanner({ contentPadding = 16 }: HeroBannerProps) {
 
   const handleButtonPress = useCallback((slide: HeroSlide) => {
     const link = slide.buttonLink || '/upload';
-    if (link === '/upload' || link === '/(drawer)/(tabs)/create') {
+    if (link === '_lootbox') {
+      onOpenLootbox?.();
+    } else if (link === '/upload' || link === '/(drawer)/(tabs)/create') {
       router.push('/(drawer)/(tabs)/create');
     } else if (link === '/pro' || link === '/subscribe' || link === '/premium') {
       router.push('/(drawer)/manage-subscription' as any);
     } else if (link.startsWith('/')) {
       router.push(link as any);
     }
-  }, [router]);
+  }, [router, onOpenLootbox]);
 
   const slide = activeSlides[Math.min(currentSlide, activeSlides.length - 1)];
   const isCenter = slide.textAlign === 'center';

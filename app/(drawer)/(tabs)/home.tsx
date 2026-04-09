@@ -16,6 +16,7 @@ import ReelViewer from '@/components/ReelViewer';
 import LevelDetailsModal from '@/components/LevelDetailsModal';
 import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import HeroBanner from '@/components/HeroBanner';
+import DailyLootboxModal from '@/components/DailyLootboxModal';
 import type { ReelData, Comment } from '@/components/ReelViewer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -114,6 +115,7 @@ export default function HomeScreen() {
   const [proPromoDismissed, setProPromoDismissed] = useState(false);
   const [isScreenshotModalVisible, setIsScreenshotModalVisible] = useState(false);
   const [selectedScreenshotIndex, setSelectedScreenshotIndex] = useState(0);
+  const [isLootboxModalVisible, setIsLootboxModalVisible] = useState(false);
 
   const router = useRouter();
   const { getAccessToken, user } = useAuth();
@@ -305,7 +307,18 @@ export default function HomeScreen() {
     staleTime: 30000,
   });
 
-  
+  const lootboxStatusQuery = useQuery({
+    queryKey: ['lootbox-status', user?.id],
+    queryFn: async () => {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      return api.lootbox.getStatus(token);
+    },
+    staleTime: 60 * 1000,
+    enabled: !!user,
+  });
+  const canOpenLootbox = lootboxStatusQuery.data?.canOpen ?? false;
+
   const tickerRef = useRef<Animated.Value>(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -599,7 +612,11 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Banner */}
-        <HeroBanner contentPadding={contentPadding} />
+        <HeroBanner
+          contentPadding={contentPadding}
+          canOpenLootbox={canOpenLootbox}
+          onOpenLootbox={() => setIsLootboxModalVisible(true)}
+        />
 
         {/* Join Pro Today — only for non-pro users who haven't dismissed it */}
         {(!user || !user.isPro) && !proPromoDismissed ? (
@@ -1071,6 +1088,14 @@ export default function HomeScreen() {
         screenshots={latestScreenshots}
         initialIndex={selectedScreenshotIndex}
         handle={latestScreenshots[selectedScreenshotIndex]?.user?.username || ''}
+      />
+
+      <DailyLootboxModal
+        visible={isLootboxModalVisible}
+        onClose={() => setIsLootboxModalVisible(false)}
+        onClaimed={() => {
+          lootboxStatusQuery.refetch();
+        }}
       />
     </View>
   );
