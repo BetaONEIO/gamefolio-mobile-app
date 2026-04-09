@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
   },
   contentContainer: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
     maxWidth: SCREEN_WIDTH - 80,
   },
   contentCenter: {
