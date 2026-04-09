@@ -210,7 +210,9 @@
 
   <script>
     var CODE = '{{CODE}}';
-    var IOS_STORE_URL = 'https://apps.apple.com/app/id{{APP_STORE_ID}}';
+    var IOS_STORE_URL = '{{APP_STORE_ID}}' !== 'PLACEHOLDER'
+      ? 'https://apps.apple.com/app/id{{APP_STORE_ID}}'
+      : 'https://apps.apple.com/search?term=Gamefolio';
     var ANDROID_STORE_URL = 'https://play.google.com/store/apps/details?id=app.rork.gamefolio';
     var CUSTOM_SCHEME_URL = 'rork-app://?ref=' + encodeURIComponent(CODE);
 
@@ -225,7 +227,6 @@
     }
 
     var appStoreBtn = document.getElementById('appStoreBtn');
-    var fallbackBtn = document.getElementById('fallbackBtn');
     var statusText = document.getElementById('statusText');
 
     // Set the right store URL
