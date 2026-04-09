@@ -328,7 +328,7 @@ export default function ConversationScreen() {
       />
 
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.canGoBack() ? router.back() : router.push('/(drawer)/messages')}>
           <ArrowLeft size={24} color="#FFF" />
         </TouchableOpacity>
 
