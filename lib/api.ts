@@ -1755,7 +1755,7 @@ export const api = {
 
     deleteConversation: async (userId: number, token: string) => {
       console.log(`[Messages API] 🔵 Deleting conversation with user ${userId} via REST (JWT auth)...`);
-      const response = await apiFetch<{ success: boolean }>(`/api/messages/conversation/${userId}`, {
+      const response = await apiFetch<{ success: boolean }>(`/api/conversations/${userId}`, {
         method: 'DELETE',
         token,
       });

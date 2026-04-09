@@ -462,7 +462,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
   // BLOCK USER ROUTE - Add block functionality
   console.log("🔧 REGISTERING BLOCK USERS ROUTE");
-  app.post("/api/users/block", async (req: any, res: any) => {
+  app.post("/api/users/block", hybridAuth, async (req: any, res: any) => {
     console.log("🚫 BLOCK ROUTE HIT - DIRECT OVERRIDE");
 
     if (!req.user) {
@@ -8867,6 +8867,21 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     } catch (err) {
       console.error("Error deleting conversation history:", err);
       res.status(500).json({ message: "Error deleting conversation history" });
+    }
+  });
+
+  // Mark messages as read
+  app.post("/api/messages/:userId/read", hybridAuth, async (req, res) => {
+    try {
+      const otherUserId = parseInt(req.params.userId);
+      if (isNaN(otherUserId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      await storage.markMessagesAsRead(req.user.id, otherUserId);
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Error marking messages as read:", err);
+      res.status(500).json({ message: "Error marking messages as read" });
     }
   });
 
