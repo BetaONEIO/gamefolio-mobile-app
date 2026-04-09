@@ -3420,6 +3420,50 @@ app.get("/api/users/blocked", async (c) => {
   }
 });
 
+// ── Mobile OAuth proxy ───────────────────────────────────────────────────────
+// The mobile app registers callback URLs at app.gamefolio.com, but the actual
+// callback logic lives on the Replit mobile backend. These routes proxy the
+// browser redirect from Google/Discord through to the Replit server so it can
+// process the code and redirect to rork-app://auth/callback?code=...
+//
+// Set MOBILE_BACKEND_URL in this server's environment to the Replit deployment URL
+// e.g. https://gamefolio-mobile.replit.app (without trailing slash)
+
+const MOBILE_BACKEND_URL = (process.env.MOBILE_BACKEND_URL || '').replace(/\/$/, '');
+
+async function proxyMobileOAuthCallback(c: any, path: string): Promise<Response> {
+  if (!MOBILE_BACKEND_URL) {
+    console.error('[Mobile Proxy] MOBILE_BACKEND_URL is not set');
+    return c.text('Mobile backend not configured', 503);
+  }
+  const url = new URL(c.req.url);
+  const targetUrl = `${MOBILE_BACKEND_URL}${path}${url.search}`;
+  console.log('[Mobile Proxy] Forwarding', path, '→', targetUrl);
+  try {
+    const response = await fetch(targetUrl, {
+      redirect: 'manual',
+    });
+    const location = response.headers.get('location');
+    if (location && response.status >= 300 && response.status < 400) {
+      console.log('[Mobile Proxy] Passing redirect:', response.status, location);
+      return c.redirect(location, response.status);
+    }
+    const body = await response.text();
+    return new Response(body, { status: response.status });
+  } catch (err) {
+    console.error('[Mobile Proxy] Error forwarding to mobile backend:', err);
+    return c.text('Mobile backend unavailable', 503);
+  }
+}
+
+app.get('/api/auth/mobile/google/callback', (c) =>
+  proxyMobileOAuthCallback(c, '/api/auth/mobile/google/callback')
+);
+
+app.get('/api/auth/mobile/discord/callback', (c) =>
+  proxyMobileOAuthCallback(c, '/api/auth/mobile/discord/callback')
+);
+
 // OAuth: Discord
 app.get("/api/oauth/discord", async (c) => {
   const redirectUri = c.req.query("redirect_uri") || "";
