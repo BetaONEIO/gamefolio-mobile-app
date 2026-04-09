@@ -1,10 +1,11 @@
-import { pgTable, text, serial, integer, boolean, timestamp, json, unique, real, uniqueIndex, uuid, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, json, unique, real, uniqueIndex, uuid, index, varchar } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Users table
 export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
   email: text("email").notNull().unique(),
@@ -127,7 +128,7 @@ export const games = pgTable("games", {
 // Clips table
 export const clips = pgTable("clips", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   gameId: integer("game_id").references(() => games.id),
   title: text("title").notNull(),
   description: text("description"),
@@ -168,7 +169,7 @@ export const screenshotLikes = pgTable("screenshot_likes", {
 // Comments table
 export const comments = pgTable("comments", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   clipId: integer("clip_id").notNull().references(() => clips.id),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -177,7 +178,7 @@ export const comments = pgTable("comments", {
 // Screenshots table
 export const screenshots = pgTable("screenshots", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   gameId: integer("game_id").references(() => games.id),
   title: text("title").notNull(),
   description: text("description"),
@@ -195,7 +196,7 @@ export const screenshots = pgTable("screenshots", {
 // UserGameFavorites table
 export const userGameFavorites = pgTable("user_game_favorites", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   gameId: integer("game_id").notNull().references(() => games.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -203,7 +204,7 @@ export const userGameFavorites = pgTable("user_game_favorites", {
 // Game stats table - for tracking player achievements and stats
 export const gameStats = pgTable("game_stats", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   gameId: integer("game_id").notNull().references(() => games.id),
   statName: text("stat_name").notNull(),
   statValue: text("stat_value").notNull(),
@@ -216,8 +217,8 @@ export const gameStats = pgTable("game_stats", {
 // Follows table
 export const follows = pgTable("follows", {
   id: serial("id").primaryKey(),
-  followerId: integer("follower_id").notNull().references(() => users.id),
-  followingId: integer("following_id").notNull().references(() => users.id),
+  followerId: integer("follower_id").notNull(),
+  followingId: integer("following_id").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   // Prevent duplicate follows between the same two users
@@ -227,8 +228,8 @@ export const follows = pgTable("follows", {
 // Follow Requests table
 export const followRequests = pgTable("follow_requests", {
   id: serial("id").primaryKey(),
-  requesterId: integer("requester_id").notNull().references(() => users.id),
-  addresseeId: integer("addressee_id").notNull().references(() => users.id),
+  requesterId: integer("requester_id").notNull(),
+  addresseeId: integer("addressee_id").notNull(),
   status: text("status").default("pending").notNull(), // "pending", "approved", "rejected"
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -393,13 +394,13 @@ export type InsertUserUnlockedVerificationBadge = z.infer<typeof insertUserUnloc
 // Notifications table
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id), // Who receives the notification
+  userId: integer("user_id").notNull(), // Who receives the notification
   type: text("type").notNull(), // "like", "comment", "follow", "upload", "reply", "clip_mention", "comment_mention"
   title: text("title").notNull(),
   message: text("message").notNull(),
   isRead: boolean("is_read").default(false).notNull(),
   // References to related entities
-  fromUserId: integer("from_user_id").references(() => users.id), // Who triggered the notification
+  fromUserId: integer("from_user_id"), // Who triggered the notification
   clipId: integer("clip_id").references(() => clips.id), // Related clip (if applicable)
   screenshotId: integer("screenshot_id").references(() => screenshots.id), // Related screenshot (if applicable)
   commentId: integer("comment_id").references(() => comments.id), // Related comment (if applicable)
@@ -441,7 +442,7 @@ export const screenshotCommentMentions = pgTable("screenshot_comment_mentions", 
 export const emailVerificationTokens = pgTable("email_verification_tokens", {
   id: serial("id").primaryKey(),
   userId: integer("user_id")
-    .references(() => users.id)
+    
     .notNull(),
   token: text("token").notNull(), // Unique token for email verification
   code: text("code").notNull(), // 6-digit verification code
@@ -453,7 +454,7 @@ export const emailVerificationTokens = pgTable("email_verification_tokens", {
 // Password reset tokens table
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   token: text("token").notNull(),
   code: text("code"),
   email: text("email"),
@@ -475,7 +476,7 @@ export const clipReactions = pgTable("clip_reactions", {
 // Screenshot comments table
 export const screenshotComments = pgTable("screenshot_comments", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   screenshotId: integer("screenshot_id").notNull().references(() => screenshots.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -519,7 +520,7 @@ export const commentReports = pgTable("comment_reports", {
   reason: text("reason").notNull(),
   additionalMessage: text("additional_message"),
   status: text("status").default("pending").notNull(), // "pending", "reviewed", "dismissed", "action_taken"
-  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedBy: integer("reviewed_by"),
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -532,7 +533,7 @@ export const clipReports = pgTable("clip_reports", {
   reason: text("reason").notNull(),
   additionalMessage: text("additional_message"),
   status: text("status").default("pending").notNull(), // "pending", "reviewed", "dismissed", "action_taken"
-  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedBy: integer("reviewed_by"),
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -545,7 +546,7 @@ export const screenshotReports = pgTable("screenshot_reports", {
   reason: text("reason").notNull(),
   additionalMessage: text("additional_message"),
   status: text("status").default("pending").notNull(), // "pending", "reviewed", "dismissed", "action_taken"
-  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedBy: integer("reviewed_by"),
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -572,7 +573,7 @@ export const contentFilterSettings = pgTable("content_filter_settings", {
   maxLength: integer("max_length"),
   allowProfanity: boolean("allow_profanity").default(false).notNull(),
   cleanAutomatically: boolean("clean_automatically").default(false).notNull(),
-  updatedBy: integer("updated_by").references(() => users.id), // Admin who last updated
+  updatedBy: integer("updated_by"), // Admin who last updated
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -582,7 +583,7 @@ export const bannedWords = pgTable("banned_words", {
   id: serial("id").primaryKey(),
   word: text("word").notNull().unique(),
   isActive: boolean("is_active").default(true).notNull(),
-  addedBy: integer("added_by").notNull().references(() => users.id), // Admin who added the word
+  addedBy: integer("added_by").notNull(), // Admin who added the word
   reason: text("reason"), // Optional reason for banning the word
   addedAt: timestamp("added_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -599,7 +600,7 @@ export const bannerSettings = pgTable("banner_settings", {
   variant: text("variant").default("primary").notNull(), // "primary", "warning", "info", "danger"
   showIcon: boolean("show_icon").default(true).notNull(),
   isDismissible: boolean("is_dismissible").default(true).notNull(),
-  updatedBy: integer("updated_by").references(() => users.id), // Admin who last updated
+  updatedBy: integer("updated_by"), // Admin who last updated
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -794,7 +795,7 @@ export const sessions = pgTable("sessions", {
 // Monthly Leaderboard table
 export const monthlyLeaderboard = pgTable("monthly_leaderboard", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   month: text("month").notNull(), // Format: "2024-01", "2024-02", etc.
   year: integer("year").notNull(),
   uploadsCount: integer("uploads_count").default(0).notNull(),
@@ -813,7 +814,7 @@ export const monthlyLeaderboard = pgTable("monthly_leaderboard", {
 // User Points History table
 export const userPointsHistory = pgTable("user_points_history", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   action: text("action").notNull(), // "upload", "like", "comment", "fire"
   points: real("points").notNull(),
   description: text("description"),
@@ -823,7 +824,7 @@ export const userPointsHistory = pgTable("user_points_history", {
 // User XP History table - tracks XP earned from various sources
 export const userXPHistory = pgTable("user_xp_history", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   clipId: integer("clip_id").references(() => clips.id), // Optional - only for clip-related XP
   xpAmount: integer("xp_amount").notNull(), // XP earned
   viewCount: integer("view_count"), // Optional - for view milestones
@@ -835,7 +836,7 @@ export const userXPHistory = pgTable("user_xp_history", {
 // Weekly Leaderboard table
 export const weeklyLeaderboard = pgTable("weekly_leaderboard", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   week: text("week").notNull(), // Format: "2024-W01", "2024-W02", etc.
   year: integer("year").notNull(),
   uploadsCount: integer("uploads_count").default(0).notNull(),
@@ -854,7 +855,7 @@ export const weeklyLeaderboard = pgTable("weekly_leaderboard", {
 // Top Contributors table - stores historical winners when periods end
 export const topContributors = pgTable("top_contributors", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   periodType: text("period_type").notNull(), // "weekly" or "monthly"
   period: text("period").notNull(), // Format: "2024-W01" for weekly, "2024-01" for monthly
   year: integer("year").notNull(),
@@ -972,7 +973,7 @@ export const badges = pgTable("badges", {
   backgroundColor: text("background_color").default("#6B7280").notNull(), // Background color
   isActive: boolean("is_active").default(true).notNull(), // Whether badge can be assigned
   isSystemBadge: boolean("is_system_badge").default(false).notNull(), // System badges vs custom badges
-  createdBy: integer("created_by").references(() => users.id), // Admin who created the badge
+  createdBy: integer("created_by"), // Admin who created the badge
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -983,7 +984,7 @@ export const userBadges = pgTable("user_badges", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   badgeId: integer("badge_id").notNull().references(() => badges.id, { onDelete: "cascade" }),
   assignedBy: text("assigned_by").notNull(), // "system" or "admin"
-  assignedById: integer("assigned_by_id").references(() => users.id), // ID of admin who assigned (if manually assigned)
+  assignedById: integer("assigned_by_id"), // ID of admin who assigned (if manually assigned)
   expiresAt: timestamp("expires_at"), // For automatic expiration (e.g., newcomer badge)
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -1038,7 +1039,7 @@ export const assetRewards = pgTable("asset_rewards", {
   storePrice: integer("store_price"),
   sourceBucket: text("source_bucket"), // Supabase bucket name: gamefolio-name-tags, gamefolio-assets
   sourcePath: text("source_path"), // Path within the bucket
-  createdBy: integer("created_by").references(() => users.id),
+  createdBy: integer("created_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1061,7 +1062,7 @@ export const heroTextSettings = pgTable("hero_text_settings", {
   buttonUrl: text("button_url"), // Optional button URL/path
   targetAudience: text("target_audience").notNull().default("experienced_users"), // "new_users", "existing_users", "users_with_content", "all_users"
   isActive: boolean("is_active").default(true).notNull(),
-  updatedBy: integer("updated_by").references(() => users.id),
+  updatedBy: integer("updated_by"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -1474,7 +1475,7 @@ export type HeroSlide = typeof heroSlides.$inferSelect;
 
 export const previousAvatars = pgTable("previous_avatars", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   avatarUrl: text("avatar_url").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -1515,7 +1516,7 @@ export type InsertProfileTheme = z.infer<typeof insertProfileThemeSchema>;
 
 export const userStaking = pgTable("user_staking", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id).unique(),
+  userId: integer("user_id").notNull().unique(),
   stakedAmount: real("staked_amount").notNull().default(0),
   stakedAt: timestamp("staked_at").defaultNow().notNull(),
   lastClaimAt: timestamp("last_claim_at").defaultNow().notNull(),
@@ -1524,7 +1525,7 @@ export const userStaking = pgTable("user_staking", {
 
 export const userStakingHistory = pgTable("user_staking_history", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
+  userId: integer("user_id").notNull(),
   type: text("type").notNull(),
   amount: real("amount").notNull(),
   balanceAfter: real("balance_after").notNull(),
