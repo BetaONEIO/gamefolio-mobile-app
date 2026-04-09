@@ -2572,24 +2572,42 @@ export default function TrendingScreen() {
     </View>
   ), []);
 
+  const timePeriodReadable: Record<TimePeriod, string> = {
+    recent: 'the last 24 hours',
+    '1w': 'the last week',
+    '1m': 'the last month',
+    ever: 'all time',
+  };
+
   const renderReelsView = () => {
     if (isLoadingReels) return renderLoadingState();
     if (reels.length === 0) {
+      const hasTimePeriod = timePeriod !== 'ever';
+      const periodLabel = timePeriodReadable[timePeriod];
+      const title = hasTimePeriod ? 'Nothing here yet' : 'No Reels Yet';
+      const message = hasTimePeriod
+        ? selectedReelGameName
+          ? `No reels for ${selectedReelGameName} from ${periodLabel}. Try widening the time range.`
+          : `No reels found from ${periodLabel}. Try widening the time range.`
+        : selectedReelGame
+          ? `There seems to be no reels for ${selectedReelGameName} yet`
+          : 'Be the first to share a reel!';
       return (
         <View style={styles.emptyState}>
-          <View style={styles.emptyIconContainer}>
-            <Film size={48} color="#4ADE80" />
+          <View style={[styles.emptyIconContainer, hasTimePeriod && styles.emptyIconContainerTime]}>
+            {hasTimePeriod ? <Clock size={48} color="#94A3B8" /> : <Film size={48} color="#4ADE80" />}
           </View>
-          <Text style={styles.emptyTitle}>No Reels Yet</Text>
-          <Text style={styles.emptyMessage}>
-            {selectedReelGame ? `There seems to be no reels for ${selectedReelGameName} yet` : 'Be the first to share a reel!'}
-          </Text>
-          <TouchableOpacity 
-            style={styles.uploadButton}
-            onPress={() => router.push('/(drawer)/(tabs)/create')}
-          >
-            <Text style={styles.uploadButtonText}>Upload a Reel</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyTitle}>{title}</Text>
+          <Text style={styles.emptyMessage}>{message}</Text>
+          {hasTimePeriod ? (
+            <TouchableOpacity style={styles.widenButton} onPress={() => setTimePeriod('ever')}>
+              <Text style={styles.widenButtonText}>Show all time</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.uploadButton} onPress={() => router.push('/(drawer)/(tabs)/create')}>
+              <Text style={styles.uploadButtonText}>Upload a Reel</Text>
+            </TouchableOpacity>
+          )}
         </View>
       );
     }
@@ -2653,21 +2671,32 @@ export default function TrendingScreen() {
   const renderClipsView = () => {
     if (isLoadingClips) return renderLoadingState();
     if (clips.length === 0) {
+      const hasTimePeriod = timePeriod !== 'ever';
+      const periodLabel = timePeriodReadable[timePeriod];
+      const title = hasTimePeriod ? 'Nothing here yet' : 'No Clips Yet';
+      const message = hasTimePeriod
+        ? selectedClipGameName
+          ? `No clips for ${selectedClipGameName} from ${periodLabel}. Try widening the time range.`
+          : `No clips found from ${periodLabel}. Try widening the time range.`
+        : selectedClipGame
+          ? `There seems to be no clips for ${selectedClipGameName} yet`
+          : 'Share your epic gaming moments!';
       return (
         <View style={styles.emptyState}>
-          <View style={styles.emptyIconContainer}>
-            <Video size={48} color="#4ADE80" />
+          <View style={[styles.emptyIconContainer, hasTimePeriod && styles.emptyIconContainerTime]}>
+            {hasTimePeriod ? <Clock size={48} color="#94A3B8" /> : <Video size={48} color="#4ADE80" />}
           </View>
-          <Text style={styles.emptyTitle}>No Clips Yet</Text>
-          <Text style={styles.emptyMessage}>
-            {selectedClipGame ? `There seems to be no clips for ${selectedClipGameName} yet` : 'Share your epic gaming moments!'}
-          </Text>
-          <TouchableOpacity 
-            style={styles.uploadButton}
-            onPress={() => router.push('/(drawer)/(tabs)/create')}
-          >
-            <Text style={styles.uploadButtonText}>Upload a Clip</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyTitle}>{title}</Text>
+          <Text style={styles.emptyMessage}>{message}</Text>
+          {hasTimePeriod ? (
+            <TouchableOpacity style={styles.widenButton} onPress={() => setTimePeriod('ever')}>
+              <Text style={styles.widenButtonText}>Show all time</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.uploadButton} onPress={() => router.push('/(drawer)/(tabs)/create')}>
+              <Text style={styles.uploadButtonText}>Upload a Clip</Text>
+            </TouchableOpacity>
+          )}
         </View>
       );
     }
@@ -2817,21 +2846,32 @@ export default function TrendingScreen() {
   const renderScreenshotsView = () => {
     if (isLoadingScreenshots) return renderLoadingState();
     if (screenshots.length === 0) {
+      const hasTimePeriod = timePeriod !== 'ever';
+      const periodLabel = timePeriodReadable[timePeriod];
+      const title = hasTimePeriod ? 'Nothing here yet' : 'No Screenshots Yet';
+      const message = hasTimePeriod
+        ? selectedScreenshotGameName
+          ? `No screenshots for ${selectedScreenshotGameName} from ${periodLabel}. Try widening the time range.`
+          : `No screenshots found from ${periodLabel}. Try widening the time range.`
+        : selectedScreenshotGame
+          ? `There seems to be no screenshots for ${selectedScreenshotGameName} yet`
+          : 'Capture your best gaming moments!';
       return (
         <View style={styles.emptyState}>
-          <View style={styles.emptyIconContainer}>
-            <Camera size={48} color="#4ADE80" />
+          <View style={[styles.emptyIconContainer, hasTimePeriod && styles.emptyIconContainerTime]}>
+            {hasTimePeriod ? <Clock size={48} color="#94A3B8" /> : <Camera size={48} color="#4ADE80" />}
           </View>
-          <Text style={styles.emptyTitle}>No Screenshots Yet</Text>
-          <Text style={styles.emptyMessage}>
-            {selectedScreenshotGame ? `There seems to be no screenshots for ${selectedScreenshotGameName} yet` : 'Capture your best gaming moments!'}
-          </Text>
-          <TouchableOpacity 
-            style={styles.uploadButton}
-            onPress={() => router.push('/(drawer)/(tabs)/create')}
-          >
-            <Text style={styles.uploadButtonText}>Upload a Screenshot</Text>
-          </TouchableOpacity>
+          <Text style={styles.emptyTitle}>{title}</Text>
+          <Text style={styles.emptyMessage}>{message}</Text>
+          {hasTimePeriod ? (
+            <TouchableOpacity style={styles.widenButton} onPress={() => setTimePeriod('ever')}>
+              <Text style={styles.widenButtonText}>Show all time</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity style={styles.uploadButton} onPress={() => router.push('/(drawer)/(tabs)/create')}>
+              <Text style={styles.uploadButtonText}>Upload a Screenshot</Text>
+            </TouchableOpacity>
+          )}
         </View>
       );
     }
@@ -4845,6 +4885,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 24,
   },
+  emptyIconContainerTime: {
+    backgroundColor: 'rgba(148, 163, 184, 0.1)',
+  },
   emptyTitle: {
     fontSize: 20,
     fontWeight: 'bold' as const,
@@ -4868,6 +4911,20 @@ const styles = StyleSheet.create({
     color: '#131F2A',
     fontSize: 16,
     fontWeight: '700' as const,
+  },
+  widenButton: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.4)',
+  },
+  widenButtonText: {
+    color: '#94A3B8',
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
   modalContainer: {
     flex: 1,
