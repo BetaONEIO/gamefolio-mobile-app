@@ -3127,12 +3127,17 @@ export default function TrendingScreen() {
           {
             transform: [
               {
-                translateX: menuSlideAnim.interpolate({
+                translateY: menuSlideAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0, SCREEN_WIDTH],
+                  outputRange: [0, -300],
                 }),
               },
             ],
+            opacity: menuSlideAnim.interpolate({
+              inputRange: [0, 0.5],
+              outputRange: [1, 0],
+              extrapolate: 'clamp',
+            }),
           },
         ]}
       >
@@ -3349,7 +3354,7 @@ export default function TrendingScreen() {
             </View>
           )}
 
-          <View style={[styles.topOverlay, { paddingTop: insets.top + 10 }]}>
+          <View style={[styles.topOverlay, { paddingTop: insets.top + 62 }]}>
             {renderHeader(true)}
           </View>
         </>
@@ -3444,7 +3449,7 @@ export default function TrendingScreen() {
             </View>
           )}
 
-          <View style={[styles.topOverlay, { paddingTop: insets.top + 10 }]}>
+          <View style={[styles.topOverlay, { paddingTop: insets.top + 62 }]}>
             {renderHeader(true)}
           </View>
         </>
@@ -3539,7 +3544,7 @@ export default function TrendingScreen() {
             </View>
           )}
 
-          <View style={[styles.topOverlay, { paddingTop: insets.top + 10 }]}>
+          <View style={[styles.topOverlay, { paddingTop: insets.top + 62 }]}>
             {renderHeader(false)}
           </View>
         </>
@@ -4359,9 +4364,9 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   topHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
   },
   trendingTitle: {
     fontSize: 24,
@@ -4372,8 +4377,8 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   filterButtonsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
     gap: 8,
   },
   filterButton: {
@@ -4426,7 +4431,7 @@ const styles = StyleSheet.create({
   },
   closeMenuButton: {
     padding: 8,
-    marginRight: 12,
+    marginBottom: 4,
   },
   filterDropdown: {
     backgroundColor: 'rgba(30, 41, 59, 0.95)',
@@ -4435,6 +4440,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(74, 222, 128, 0.2)',
+    alignSelf: 'flex-end',
+    minWidth: 160,
   },
   filterOption: {
     flexDirection: 'row',
@@ -4461,6 +4468,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(74, 222, 128, 0.2)',
+    alignSelf: 'flex-end',
+    minWidth: 160,
     paddingVertical: 8,
   },
   timeDropdownTitle: {
