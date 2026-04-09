@@ -1481,8 +1481,8 @@ export default function TrendingScreen() {
   );
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showTimeDropdown, setShowTimeDropdown] = useState(false);
-  const [menuVisible, setMenuVisible] = useState(false);
-  const menuSlideAnim = useRef(new Animated.Value(1)).current;
+  const [menuVisible, setMenuVisible] = useState(true);
+  const menuSlideAnim = useRef(new Animated.Value(0)).current;
   const [timePeriod, setTimePeriod] = useState<TimePeriod>('ever');
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeScreenshotIndex, setActiveScreenshotIndex] = useState(0);
