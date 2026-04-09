@@ -1509,7 +1509,6 @@ export default function TrendingScreen() {
   const [screenshotGameSearch, setScreenshotGameSearch] = useState('');
   const [selectedScreenshotGame, setSelectedScreenshotGame] = useState<string | null>(null);
   const [selectedScreenshotGameName, setSelectedScreenshotGameName] = useState<string | null>(null);
-  const [twitchToken, setTwitchToken] = useState<string | null>(null);
   const [searchedGames, setSearchedGames] = useState<Game[]>([]);
   const [topGames, setTopGames] = useState<Game[]>([]);
   const [contentGames, setContentGames] = useState<Game[]>([]);
@@ -1533,38 +1532,15 @@ export default function TrendingScreen() {
     }).start();
   }, [menuVisible]);
 
-  useEffect(() => {
-    const fetchTwitchToken = async () => {
-      try {
-        const response = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${process.env.EXPO_PUBLIC_TWITCH_CLIENT_ID}&client_secret=${process.env.EXPO_PUBLIC_TWITCH_CLIENT_SECRET}&grant_type=client_credentials`, {
-          method: 'POST'
-        });
-        const data = await response.json();
-        if (data.access_token) {
-          setTwitchToken(data.access_token);
-        }
-      } catch (error) {
-        console.error('Error fetching Twitch token:', error);
-      }
-    };
-    fetchTwitchToken();
-  }, []);
-
-  const fetchTopGames = useCallback(async (token: string) => {
+  const fetchTopGames = useCallback(async () => {
     try {
-      const url = `https://api.twitch.tv/helix/games/top?first=50`;
-      const response = await fetch(url, {
-        headers: {
-          'Client-Id': process.env.EXPO_PUBLIC_TWITCH_CLIENT_ID!,
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await fetch(`${Env.BACKEND_URL}/api/twitch/games/top?limit=50`);
       const data = await response.json();
-      if (data.data) {
-        const games: Game[] = data.data.map((g: any) => ({
-          id: parseInt(g.id),
+      if (data.games) {
+        const games: Game[] = data.games.map((g: any) => ({
+          id: parseInt(g.id) || 0,
           name: g.name,
-          imageUrl: g.box_art_url.replace('{width}', '300').replace('{height}', '400'),
+          imageUrl: g.boxArt || g.box_art_url || '',
         }));
         setTopGames(games);
       }
@@ -1574,10 +1550,8 @@ export default function TrendingScreen() {
   }, []);
 
   useEffect(() => {
-    if (twitchToken) {
-      fetchTopGames(twitchToken);
-    }
-  }, [twitchToken, fetchTopGames]);
+    fetchTopGames();
+  }, [fetchTopGames]);
 
 
   const [isTabFocused, setIsTabFocused] = useState(true);
@@ -1861,26 +1835,21 @@ export default function TrendingScreen() {
 
 
   const searchReelGames = useCallback(async (query: string) => {
-    if (!twitchToken || query.trim().length === 0) {
+    if (query.trim().length === 0) {
       setSearchedGames([]);
       return;
     }
     
     setIsSearchingGames(true);
     try {
-      const url = `https://api.twitch.tv/helix/search/categories?query=${encodeURIComponent(query)}&first=30`;
-      const response = await fetch(url, {
-        headers: {
-          'Client-Id': process.env.EXPO_PUBLIC_TWITCH_CLIENT_ID!,
-          'Authorization': `Bearer ${twitchToken}`
-        }
-      });
+      const url = `${Env.BACKEND_URL}/api/twitch/games/search?q=${encodeURIComponent(query)}`;
+      const response = await fetch(url);
       const data = await response.json();
-      if (data.data) {
-        const games: Game[] = data.data.map((g: any) => ({
-          id: parseInt(g.id),
+      if (Array.isArray(data)) {
+        const games: Game[] = data.map((g: any) => ({
+          id: parseInt(g.id) || 0,
           name: g.name,
-          imageUrl: g.box_art_url.replace('{width}', '300').replace('{height}', '400'),
+          imageUrl: (g.box_art_url || g.boxArt || '').replace('{width}', '300').replace('{height}', '400'),
         }));
         setSearchedGames(games);
       }
@@ -1889,7 +1858,7 @@ export default function TrendingScreen() {
     } finally {
       setIsSearchingGames(false);
     }
-  }, [twitchToken]);
+  }, []);
 
   useEffect(() => {
     if (!showReelGameFilter) return;
