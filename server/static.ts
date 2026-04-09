@@ -51,7 +51,7 @@ export function serveStatic(app: Express) {
     });
   }
 
-  app.use("*", (_req, res) => {
+  app.use((_req, res) => {
     const indexPath = path.resolve(distPath, "index.html");
     if (fs.existsSync(indexPath)) {
       res.sendFile(indexPath);
