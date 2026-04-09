@@ -460,54 +460,6 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     });
   });
 
-  // BLOCK USER ROUTE - Add block functionality
-  console.log("🔧 REGISTERING BLOCK USERS ROUTE");
-  app.post("/api/users/block", hybridAuth, async (req: any, res: any) => {
-    console.log("🚫 BLOCK ROUTE HIT - DIRECT OVERRIDE");
-
-    if (!req.user) {
-      console.log("❌ No user authenticated for block - returning 401");
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-
-    const { userId } = req.body;
-    if (!userId) {
-      console.log("❌ No userId provided for block");
-      return res.status(400).json({ message: "User ID is required" });
-    }
-
-    const currentUserId = Number(req.user.id);
-    const userIdToBlock = Number(userId);
-
-    console.log(`🚫 BLOCK REQUEST: User ${currentUserId} wants to block user ${userIdToBlock}`);
-
-    // Remove user from unblocked tracking (bidirectional - if they were unblocked)
-    const userKey = currentUserId.toString();
-    const otherUserKey = userIdToBlock.toString();
-
-    // Remove from current user's unblocked set
-    if (unblockedUsers.has(userKey)) {
-      unblockedUsers.get(userKey)!.delete(userIdToBlock);
-    }
-
-    // Remove from other user's unblocked set
-    if (unblockedUsers.has(otherUserKey)) {
-      unblockedUsers.get(otherUserKey)!.delete(currentUserId);
-    }
-
-    console.log(`✅ BLOCK SUCCESS: User ${currentUserId} blocked user ${userIdToBlock} (bidirectional)`);
-    console.log(`📝 Updated unblocked tracking for user ${currentUserId}:`, Array.from(unblockedUsers.get(userKey) || new Set()));
-    console.log(`📝 Updated unblocked tracking for user ${userIdToBlock}:`, Array.from(unblockedUsers.get(otherUserKey) || new Set()));
-
-    return res.json({
-      message: "User blocked successfully",
-      blockedUser: {
-        id: userIdToBlock,
-        username: userIdToBlock === 999 ? "demo" : userIdToBlock === 15 ? "user15" : "unknown",
-        displayName: userIdToBlock === 999 ? "Demo User" : userIdToBlock === 15 ? "User 15" : "Unknown User"
-      }
-    });
-  });
 
   // Add debugging middleware for production
   if (process.env.NODE_ENV === "production") {
