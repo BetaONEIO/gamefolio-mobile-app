@@ -149,6 +149,24 @@ app.use((req, res, next) => {
     }
 
     try {
+      await pool`ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS show_xbox_achievements boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS xbox_achievements json,
+        ADD COLUMN IF NOT EXISTS xbox_achievements_last_sync timestamp,
+        ADD COLUMN IF NOT EXISTS xbox_total_achievements integer DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS xbox_gamerscore integer DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS show_psn_trophies boolean DEFAULT false,
+        ADD COLUMN IF NOT EXISTS psn_trophy_data json,
+        ADD COLUMN IF NOT EXISTS psn_trophies_last_sync timestamp,
+        ADD COLUMN IF NOT EXISTS psn_trophy_level integer DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS psn_total_trophies integer DEFAULT 0
+      `;
+      console.log('✅ Schema migration: Xbox achievements & PSN trophies columns ready');
+    } catch (migrationErr: any) {
+      console.warn('⚠️ Xbox/PSN migration warning:', migrationErr?.message);
+    }
+
+    try {
       await pool`
         CREATE TABLE IF NOT EXISTS hero_slides (
           id SERIAL PRIMARY KEY,

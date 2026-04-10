@@ -387,6 +387,16 @@ export interface User {
   youtubeUsername?: string | null;
   twitchUsername?: string | null;
   kickUsername?: string | null;
+  showXboxAchievements?: boolean | null;
+  xboxAchievements?: any[] | null;
+  xboxAchievementsLastSync?: string | null;
+  xboxTotalAchievements?: number | null;
+  xboxGamerscore?: number | null;
+  showPsnTrophies?: boolean | null;
+  psnTrophyData?: any[] | null;
+  psnTrophiesLastSync?: string | null;
+  psnTrophyLevel?: number | null;
+  psnTotalTrophies?: number | null;
   proSubscriptionType?: string | null;
   proSubscriptionEndDate?: string | null;
   profileFont?: string;
@@ -672,6 +682,16 @@ export function mapRawUser(raw: any): User {
     nintendoUsername: raw.nintendoUsername || raw.nintendo_username || null,
     twitchUsername: raw.twitchUsername || raw.twitch_username || null,
     kickUsername: raw.kickUsername || raw.kick_username || null,
+    showXboxAchievements: raw.showXboxAchievements ?? raw.show_xbox_achievements ?? false,
+    xboxAchievements: raw.xboxAchievements ?? raw.xbox_achievements ?? null,
+    xboxAchievementsLastSync: raw.xboxAchievementsLastSync || raw.xbox_achievements_last_sync || null,
+    xboxTotalAchievements: raw.xboxTotalAchievements ?? raw.xbox_total_achievements ?? 0,
+    xboxGamerscore: raw.xboxGamerscore ?? raw.xbox_gamerscore ?? 0,
+    showPsnTrophies: raw.showPsnTrophies ?? raw.show_psn_trophies ?? false,
+    psnTrophyData: raw.psnTrophyData ?? raw.psn_trophy_data ?? null,
+    psnTrophiesLastSync: raw.psnTrophiesLastSync || raw.psn_trophies_last_sync || null,
+    psnTrophyLevel: raw.psnTrophyLevel ?? raw.psn_trophy_level ?? 0,
+    psnTotalTrophies: raw.psnTotalTrophies ?? raw.psn_total_trophies ?? 0,
     ageRange: raw.ageRange || raw.age_range,
     profileTheme: raw.profileTheme || raw.profile_theme || null,
   };

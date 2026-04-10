@@ -1849,7 +1849,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         "steamUsername", "xboxUsername", "playstationUsername",
         "discordUsername", "epicUsername", "twitchUsername", "youtubeUsername",
         "twitterUsername", "instagramUsername", "facebookUsername", "nintendoUsername",
-        "kickUsername",
+        "kickUsername", "showXboxAchievements", "showPsnTrophies",
       ]);
 
       // Validate username if provided
@@ -2557,6 +2557,301 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     } catch (err) {
       console.error("Error checking live status:", err);
       return res.status(500).json({ message: "Error checking live status" });
+    }
+  });
+
+  // ==========================================
+  // Xbox Achievements Endpoints
+  // ==========================================
+
+  app.post("/api/xbox/achievements/sync", hybridAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+      const user = await storage.getUserById(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const xboxUsername = (user as any).xboxUsername;
+      if (!xboxUsername) {
+        return res.status(400).json({ message: "No Xbox username set on your profile." });
+      }
+
+      const apiKey = process.env.XBL_API_KEY;
+      if (!apiKey) {
+        return res.status(503).json({ message: "Xbox API is not configured on this server." });
+      }
+
+      const axios = (await import('axios')).default;
+
+      let xuid: string | null = null;
+      try {
+        const profileRes = await axios.get(`https://xbl.io/api/v2/friends/find`, {
+          params: { gt: xboxUsername },
+          headers: { 'x-authorization': apiKey, 'Accept': 'application/json' },
+          timeout: 10000,
+        });
+        const profileData = profileRes.data;
+        const people = profileData?.people ?? profileData?.profileUsers;
+        if (Array.isArray(people) && people.length > 0) {
+          xuid = people[0]?.xuid || people[0]?.id || null;
+        }
+      } catch (err: any) {
+        console.error('[Xbox] Failed to resolve XUID:', err?.response?.data || err?.message);
+        return res.status(502).json({ message: "Failed to resolve Xbox XUID. Check the gamertag is correct." });
+      }
+
+      if (!xuid) {
+        return res.status(404).json({ message: "Xbox gamertag not found." });
+      }
+
+      let achievements: any[] = [];
+      let totalGamerscore = 0;
+
+      try {
+        const achieveRes = await axios.get(`https://xbl.io/api/v2/${xuid}/achievements`, {
+          headers: { 'x-authorization': apiKey, 'Accept': 'application/json' },
+          timeout: 15000,
+        });
+        const rawData = achieveRes.data;
+        const rawAchievements: any[] = rawData?.achievements ?? rawData?.titles ?? [];
+
+        for (const item of rawAchievements.slice(0, 50)) {
+          const titleAchievements: any[] = item.achievements ?? [];
+          const gameName: string = item.name || item.titleName || '';
+          const gameCoverArt: string = item.displayImage || item.titleLogoUrl || '';
+          for (const a of titleAchievements.slice(0, 10)) {
+            const gs = a.rewards?.find((r: any) => r.type === 'Gamerscore')?.value ?? a.gamerscore ?? 0;
+            totalGamerscore += typeof gs === 'number' ? gs : parseInt(gs) || 0;
+            achievements.push({
+              id: a.id || a.achievementId,
+              name: a.name,
+              description: a.lockedDescription || a.description || '',
+              icon: a.mediaAssets?.[0]?.url || a.imageUrl || null,
+              gamerscore: gs,
+              unlocked: a.progressState === 'Achieved' || a.isUnlocked === true,
+              gameTitle: gameName,
+              gameCoverArt,
+            });
+          }
+        }
+      } catch (err: any) {
+        console.error('[Xbox] Failed to fetch achievements:', err?.response?.data || err?.message);
+        return res.status(502).json({ message: "Failed to fetch Xbox achievements." });
+      }
+
+      const now = new Date();
+      await storage.updateUser(userId, {
+        xboxAchievements: achievements,
+        xboxAchievementsLastSync: now,
+        xboxTotalAchievements: achievements.length,
+        xboxGamerscore: totalGamerscore,
+      } as any);
+
+      return res.json({
+        message: "Xbox achievements synced successfully.",
+        total: achievements.length,
+        gamerscore: totalGamerscore,
+        lastSync: now.toISOString(),
+      });
+    } catch (err) {
+      console.error("Error syncing Xbox achievements:", err);
+      return res.status(500).json({ message: "Failed to sync Xbox achievements." });
+    }
+  });
+
+  app.post("/api/xbox/achievements/toggle", hybridAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+      const { show } = req.body;
+      if (typeof show !== 'boolean') {
+        return res.status(400).json({ message: "Missing 'show' boolean field." });
+      }
+
+      const updated = await storage.updateUser(userId, { showXboxAchievements: show } as any);
+      if (!updated) return res.status(404).json({ message: "User not found" });
+
+      return res.json({ showXboxAchievements: (updated as any).showXboxAchievements });
+    } catch (err) {
+      console.error("Error toggling Xbox achievements:", err);
+      return res.status(500).json({ message: "Failed to toggle Xbox achievements." });
+    }
+  });
+
+  // ==========================================
+  // PSN Trophies Endpoints
+  // ==========================================
+
+  app.post("/api/psn/trophies/sync", hybridAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+      const user = await storage.getUserById(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const psnUsername = (user as any).playstationUsername;
+      if (!psnUsername) {
+        return res.status(400).json({ message: "No PlayStation username set on your profile." });
+      }
+
+      const npssoToken = process.env.PSN_NPSSO_TOKEN;
+      if (!npssoToken) {
+        return res.status(503).json({ message: "PSN API is not configured on this server." });
+      }
+
+      const axios = (await import('axios')).default;
+
+      let accessToken: string | null = null;
+      try {
+        const oauthRes = await axios.post(
+          'https://ca.account.sony.com/api/authz/v3/oauth/token',
+          new URLSearchParams({
+            grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+            subject_token: npssoToken,
+            subject_token_type: 'urn:bamtech:params:oauth:token-type:account',
+            client_id: '09515159-7237-4370-9b40-3806e67c0891',
+            access_type: 'offline',
+            scope: 'psn:mobile.v2.core psn:clientapp',
+          }).toString(),
+          {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Cookie': `npsso=${npssoToken}`,
+            },
+            timeout: 10000,
+          }
+        );
+        accessToken = oauthRes.data?.access_token || null;
+      } catch (err: any) {
+        console.error('[PSN] OAuth failed:', err?.response?.data || err?.message);
+        return res.status(502).json({ message: "Failed to authenticate with PSN. The NPSSO token may be expired." });
+      }
+
+      if (!accessToken) {
+        return res.status(502).json({ message: "Failed to obtain PSN access token." });
+      }
+
+      let accountId: string | null = null;
+      try {
+        const profileRes = await axios.get(
+          `https://us-prof.np.community.playstation.net/userProfile/v1/users/${encodeURIComponent(psnUsername)}/profile2`,
+          {
+            params: { fields: 'accountId,onlineId' },
+            headers: { Authorization: `Bearer ${accessToken}` },
+            timeout: 10000,
+          }
+        );
+        accountId = profileRes.data?.profile?.accountId || null;
+      } catch (err: any) {
+        console.error('[PSN] Failed to get account ID:', err?.response?.data || err?.message);
+        return res.status(502).json({ message: "Failed to find PSN account. Check the username is correct." });
+      }
+
+      if (!accountId) {
+        return res.status(404).json({ message: "PlayStation user not found." });
+      }
+
+      let trophies: any[] = [];
+      let trophyLevel = 0;
+      let totalTrophies = 0;
+
+      try {
+        const trophySummaryRes = await axios.get(
+          `https://us-tpy.np.community.playstation.net/trophy/v1/users/${accountId}/trophySummary`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            timeout: 10000,
+          }
+        );
+        trophyLevel = trophySummaryRes.data?.trophyLevel ?? 0;
+        const earned = trophySummaryRes.data?.earnedTrophies ?? {};
+        totalTrophies = (earned.bronze ?? 0) + (earned.silver ?? 0) + (earned.gold ?? 0) + (earned.platinum ?? 0);
+
+        const titlesRes = await axios.get(
+          `https://us-tpy.np.community.playstation.net/trophy/v1/users/${accountId}/trophyTitles`,
+          {
+            params: { limit: 20, offset: 0 },
+            headers: { Authorization: `Bearer ${accessToken}` },
+            timeout: 10000,
+          }
+        );
+        const titles: any[] = titlesRes.data?.trophyTitles ?? [];
+
+        for (const title of titles.slice(0, 10)) {
+          const gameName = title.trophyTitleName || '';
+          const gameCoverArt = title.trophyTitleIconUrl || '';
+          const npCommunicationId = title.npCommunicationId;
+
+          try {
+            const trophyListRes = await axios.get(
+              `https://us-tpy.np.community.playstation.net/trophy/v1/users/${accountId}/npCommunicationIds/${npCommunicationId}/trophyGroups/all/trophies`,
+              {
+                headers: { Authorization: `Bearer ${accessToken}` },
+                timeout: 10000,
+              }
+            );
+            const trophyList: any[] = trophyListRes.data?.trophies ?? [];
+            for (const t of trophyList.slice(0, 5)) {
+              trophies.push({
+                id: t.trophyId,
+                name: t.trophyName,
+                description: t.trophyDetail || '',
+                icon: t.trophyIconUrl || null,
+                type: t.trophyType || 'bronze',
+                earned: t.earned === true,
+                gameTitle: gameName,
+                gameCoverArt,
+              });
+            }
+          } catch {
+            // Skip this title if we can't fetch its trophies
+          }
+        }
+      } catch (err: any) {
+        console.error('[PSN] Failed to fetch trophies:', err?.response?.data || err?.message);
+        return res.status(502).json({ message: "Failed to fetch PSN trophies." });
+      }
+
+      const now = new Date();
+      await storage.updateUser(userId, {
+        psnTrophyData: trophies,
+        psnTrophiesLastSync: now,
+        psnTrophyLevel: trophyLevel,
+        psnTotalTrophies: totalTrophies,
+      } as any);
+
+      return res.json({
+        message: "PSN trophies synced successfully.",
+        total: totalTrophies,
+        level: trophyLevel,
+        lastSync: now.toISOString(),
+      });
+    } catch (err) {
+      console.error("Error syncing PSN trophies:", err);
+      return res.status(500).json({ message: "Failed to sync PSN trophies." });
+    }
+  });
+
+  app.post("/api/psn/trophies/toggle", hybridAuth, async (req, res) => {
+    try {
+      const userId = (req.user as any)?.id;
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+      const { show } = req.body;
+      if (typeof show !== 'boolean') {
+        return res.status(400).json({ message: "Missing 'show' boolean field." });
+      }
+
+      const updated = await storage.updateUser(userId, { showPsnTrophies: show } as any);
+      if (!updated) return res.status(404).json({ message: "User not found" });
+
+      return res.json({ showPsnTrophies: (updated as any).showPsnTrophies });
+    } catch (err) {
+      console.error("Error toggling PSN trophies:", err);
+      return res.status(500).json({ message: "Failed to toggle PSN trophies." });
     }
   });
 
@@ -3510,7 +3805,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         "steamUsername", "xboxUsername", "playstationUsername",
         "discordUsername", "epicUsername", "twitchUsername", "youtubeUsername",
         "twitterUsername", "instagramUsername", "facebookUsername", "nintendoUsername",
-        "kickUsername",
+        "kickUsername", "showXboxAchievements", "showPsnTrophies",
       ]);
       const safeBody = Object.fromEntries(
         Object.entries(req.body).filter(([key]) => ALLOWED_PROFILE_FIELDS.has(key))

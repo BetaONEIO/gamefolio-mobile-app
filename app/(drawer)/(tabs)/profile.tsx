@@ -22,6 +22,8 @@ import { ThemeBackgroundEffect } from '@/components/ThemeBackgroundEffect';
 import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
 import StreamEmbed from '@/components/StreamEmbed';
+import XboxAchievements from '@/components/XboxAchievements';
+import PsnTrophies from '@/components/PsnTrophies';
 
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { api, Clip, Screenshot, Game, getEffectiveAvatarUrl } from '@/lib/api';
@@ -735,6 +737,32 @@ export default function ProfileScreen() {
               activePlatform={liveStatus?.activePlatform}
               activeChannel={liveStatus?.activeChannel}
               isLive={liveStatus?.isLive ?? false}
+              accentColor={h.accent}
+            />
+          </View>
+        ) : null}
+
+        {/* Xbox Achievements */}
+        {(user as any)?.showXboxAchievements && (user as any)?.xboxAchievements?.length > 0 ? (
+          <View style={{ marginTop: 16 }}>
+            <XboxAchievements
+              achievements={(user as any).xboxAchievements}
+              totalAchievements={(user as any).xboxTotalAchievements ?? (user as any).xboxAchievements.length}
+              gamerscore={(user as any).xboxGamerscore ?? 0}
+              lastSync={(user as any).xboxAchievementsLastSync}
+              accentColor={h.accent}
+            />
+          </View>
+        ) : null}
+
+        {/* PSN Trophies */}
+        {(user as any)?.showPsnTrophies && (user as any)?.psnTrophyData?.length > 0 ? (
+          <View style={{ marginTop: 16 }}>
+            <PsnTrophies
+              trophies={(user as any).psnTrophyData}
+              trophyLevel={(user as any).psnTrophyLevel ?? 0}
+              totalTrophies={(user as any).psnTotalTrophies ?? 0}
+              lastSync={(user as any).psnTrophiesLastSync}
               accentColor={h.accent}
             />
           </View>

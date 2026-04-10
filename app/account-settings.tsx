@@ -4,13 +4,14 @@ import ThemedScrollView from '@/components/ThemedScrollView';
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Shield, Check, User, Ticket, Lock, Globe, X, QrCode, KeyRound, CheckCircle2 } from 'lucide-react-native';
+import { Shield, Check, User, Ticket, Lock, Globe, X, QrCode, KeyRound, CheckCircle2, Gamepad2, RefreshCw } from 'lucide-react-native';
 import AppHeader from '@/components/AppHeader';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import UserTypeBadge, { USER_TYPES } from '@/components/UserTypeBadge';
 import RedeemCodeModal from '@/components/RedeemCodeModal';
+import { Env } from '@/constants/Env';
 
 type TabType = 'security' | 'profile';
 
@@ -243,6 +244,92 @@ export default function AccountSettings() {
       console.error('[AccountSettings] Failed to update stream settings:', error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Gaming Achievements State
+  const [showXboxAchievements, setShowXboxAchievements] = useState((user as any)?.showXboxAchievements ?? false);
+  const [showPsnTrophies, setShowPsnTrophies] = useState((user as any)?.showPsnTrophies ?? false);
+  const [xboxSyncing, setXboxSyncing] = useState(false);
+  const [psnSyncing, setPsnSyncing] = useState(false);
+  const [xboxSyncStatus, setXboxSyncStatus] = useState<string | null>(null);
+  const [psnSyncStatus, setPsnSyncStatus] = useState<string | null>(null);
+
+  const handleSyncXbox = async () => {
+    setXboxSyncing(true);
+    setXboxSyncStatus(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch(`${Env.BACKEND_URL}/api/xbox/achievements/sync`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Sync failed');
+      setXboxSyncStatus(`Synced ${data.total} achievements (${data.gamerscore}G)`);
+      if (updateUser) await updateUser({} as any);
+    } catch (err: any) {
+      setXboxSyncStatus(err?.message || 'Failed to sync Xbox achievements');
+    } finally {
+      setXboxSyncing(false);
+    }
+  };
+
+  const handleSyncPsn = async () => {
+    setPsnSyncing(true);
+    setPsnSyncStatus(null);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      const res = await fetch(`${Env.BACKEND_URL}/api/psn/trophies/sync`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Sync failed');
+      setPsnSyncStatus(`Synced ${data.total} trophies (Level ${data.level})`);
+      if (updateUser) await updateUser({} as any);
+    } catch (err: any) {
+      setPsnSyncStatus(err?.message || 'Failed to sync PSN trophies');
+    } finally {
+      setPsnSyncing(false);
+    }
+  };
+
+  const handleToggleXboxAchievements = async () => {
+    const newValue = !showXboxAchievements;
+    setShowXboxAchievements(newValue);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      await fetch(`${Env.BACKEND_URL}/api/xbox/achievements/toggle`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ show: newValue }),
+      });
+      if (updateUser) await updateUser({ showXboxAchievements: newValue } as any);
+    } catch (err) {
+      setShowXboxAchievements(!newValue);
+      console.error('[AccountSettings] Failed to toggle Xbox achievements:', err);
+    }
+  };
+
+  const handleTogglePsnTrophies = async () => {
+    const newValue = !showPsnTrophies;
+    setShowPsnTrophies(newValue);
+    try {
+      const token = await getAccessToken();
+      if (!token) throw new Error('Not authenticated');
+      await fetch(`${Env.BACKEND_URL}/api/psn/trophies/toggle`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ show: newValue }),
+      });
+      if (updateUser) await updateUser({ showPsnTrophies: newValue } as any);
+    } catch (err) {
+      setShowPsnTrophies(!newValue);
+      console.error('[AccountSettings] Failed to toggle PSN trophies:', err);
     }
   };
   
@@ -631,6 +718,121 @@ export default function AccountSettings() {
                   </TouchableOpacity>
                 </View>
 
+                <View style={styles.bioSection}>
+                  <Text style={styles.sectionHeader}>Gaming Achievements</Text>
+                  <Text style={styles.bioLabel}>
+                    Sync and display your Xbox achievements and PlayStation trophies on your profile.
+                  </Text>
+
+                  {user?.xboxUsername ? (
+                    <View style={styles.achievementBlock}>
+                      <View style={styles.achievementBlockHeader}>
+                        <View style={styles.platformInfo}>
+                          <Gamepad2 size={18} color="#52B043" />
+                          <View>
+                            <Text style={styles.achievementPlatformName}>Xbox</Text>
+                            <Text style={styles.achievementPlatformHandle}>{user.xboxUsername}</Text>
+                          </View>
+                        </View>
+                        <TouchableOpacity
+                          style={[styles.syncButton, xboxSyncing && styles.syncButtonDisabled]}
+                          onPress={handleSyncXbox}
+                          disabled={xboxSyncing}
+                        >
+                          {xboxSyncing ? (
+                            <ActivityIndicator size="small" color="#52B043" />
+                          ) : (
+                            <RefreshCw size={14} color="#52B043" />
+                          )}
+                          <Text style={[styles.syncButtonText, { color: '#52B043' }]}>
+                            {xboxSyncing ? 'Syncing...' : 'Sync'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {xboxSyncStatus ? (
+                        <Text style={[styles.syncStatusText, xboxSyncStatus.startsWith('Synced') ? styles.syncSuccess : styles.syncError]}>
+                          {xboxSyncStatus}
+                        </Text>
+                      ) : null}
+
+                      <View style={[styles.toggleContainer, { marginTop: 10 }]}>
+                        <View style={styles.toggleTextContainer}>
+                          <Text style={styles.toggleTitle}>Show on Profile</Text>
+                          <Text style={styles.toggleSubtitle}>Display your Xbox achievements publicly.</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={[styles.toggleSwitch, showXboxAchievements && styles.toggleSwitchActive]}
+                          onPress={handleToggleXboxAchievements}
+                        >
+                          <View style={[styles.toggleThumb, showXboxAchievements && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.noAccountBox}>
+                      <Gamepad2 size={18} color="#64748B" />
+                      <Text style={styles.noAccountText}>
+                        Add your Xbox gamertag in your platform connections to enable achievement sync.
+                      </Text>
+                    </View>
+                  )}
+
+                  {user?.playstationUsername ? (
+                    <View style={[styles.achievementBlock, { marginTop: 12 }]}>
+                      <View style={styles.achievementBlockHeader}>
+                        <View style={styles.platformInfo}>
+                          <Gamepad2 size={18} color="#4B9DFF" />
+                          <View>
+                            <Text style={styles.achievementPlatformName}>PlayStation</Text>
+                            <Text style={styles.achievementPlatformHandle}>{user.playstationUsername}</Text>
+                          </View>
+                        </View>
+                        <TouchableOpacity
+                          style={[styles.syncButton, psnSyncing && styles.syncButtonDisabled]}
+                          onPress={handleSyncPsn}
+                          disabled={psnSyncing}
+                        >
+                          {psnSyncing ? (
+                            <ActivityIndicator size="small" color="#4B9DFF" />
+                          ) : (
+                            <RefreshCw size={14} color="#4B9DFF" />
+                          )}
+                          <Text style={[styles.syncButtonText, { color: '#4B9DFF' }]}>
+                            {psnSyncing ? 'Syncing...' : 'Sync'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {psnSyncStatus ? (
+                        <Text style={[styles.syncStatusText, psnSyncStatus.startsWith('Synced') ? styles.syncSuccess : styles.syncError]}>
+                          {psnSyncStatus}
+                        </Text>
+                      ) : null}
+
+                      <View style={[styles.toggleContainer, { marginTop: 10 }]}>
+                        <View style={styles.toggleTextContainer}>
+                          <Text style={styles.toggleTitle}>Show on Profile</Text>
+                          <Text style={styles.toggleSubtitle}>Display your PSN trophies publicly.</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={[styles.toggleSwitch, showPsnTrophies && styles.toggleSwitchActive]}
+                          onPress={handleTogglePsnTrophies}
+                        >
+                          <View style={[styles.toggleThumb, showPsnTrophies && styles.toggleThumbActive]} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={[styles.noAccountBox, { marginTop: 12 }]}>
+                      <Gamepad2 size={18} color="#64748B" />
+                      <Text style={styles.noAccountText}>
+                        Add your PSN username in your platform connections to enable trophy sync.
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
               </View>
             )}
 
@@ -927,4 +1129,76 @@ const styles = StyleSheet.create({
   },
   bioSaveButtonDisabled: { backgroundColor: '#64748B', opacity: 0.6 },
   bioSaveButtonText: { color: '#000', fontSize: 13, fontWeight: '600' },
+  achievementBlock: {
+    backgroundColor: '#131F2A',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    padding: 14,
+  },
+  achievementBlockHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  platformInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  achievementPlatformName: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  achievementPlatformHandle: {
+    color: '#64748B',
+    fontSize: 12,
+  },
+  syncButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  syncButtonDisabled: {
+    opacity: 0.5,
+  },
+  syncButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  syncStatusText: {
+    fontSize: 12,
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  syncSuccess: {
+    color: '#4ADE80',
+  },
+  syncError: {
+    color: '#EF4444',
+  },
+  noAccountBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#131F2A',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#1E293B',
+    padding: 14,
+  },
+  noAccountText: {
+    color: '#64748B',
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 18,
+  },
 });

@@ -111,6 +111,18 @@ export const users = pgTable("users", {
   // Referral System
   referralCode: text("referral_code").unique(), // Unique 8-char alphanumeric referral code
   referredBy: integer("referred_by"), // ID of user who referred this user
+  // Xbox Achievements
+  showXboxAchievements: boolean("show_xbox_achievements").default(false),
+  xboxAchievements: json("xbox_achievements").$type<any[]>(),
+  xboxAchievementsLastSync: timestamp("xbox_achievements_last_sync"),
+  xboxTotalAchievements: integer("xbox_total_achievements").default(0),
+  xboxGamerscore: integer("xbox_gamerscore").default(0),
+  // PSN Trophies
+  showPsnTrophies: boolean("show_psn_trophies").default(false),
+  psnTrophyData: json("psn_trophy_data").$type<any[]>(),
+  psnTrophiesLastSync: timestamp("psn_trophies_last_sync"),
+  psnTrophyLevel: integer("psn_trophy_level").default(0),
+  psnTotalTrophies: integer("psn_total_trophies").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
