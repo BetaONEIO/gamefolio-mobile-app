@@ -21,6 +21,7 @@ import StyledUsername, { FONT_STYLES } from '@/components/StyledUsername';
 import { ThemeBackgroundEffect } from '@/components/ThemeBackgroundEffect';
 import ScreenshotViewerModal from '@/components/ScreenshotViewerModal';
 import BirthdayBanner, { isBirthdayToday } from '@/components/BirthdayBanner';
+import StreamEmbed from '@/components/StreamEmbed';
 
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { api, Clip, Screenshot, Game, getEffectiveAvatarUrl } from '@/lib/api';
@@ -271,6 +272,26 @@ export default function ProfileScreen() {
     loading: favoritesLoading,
     error: favoritesError?.message || null,
     games: favoriteGames.slice(0, 3)
+  });
+
+  const isStreamer = !!(user?.userType?.split(',').map(t => t.trim()).includes('streamer'));
+  const hasStreamSetup = !!(isStreamer && (user?.twitchUsername || user?.kickUsername));
+
+  const { data: liveStatus } = useQuery({
+    queryKey: ['/api/user', user?.id, 'live-status'],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const token = await getAccessToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const base = process.env.EXPO_PUBLIC_DOMAIN ? `https://${process.env.EXPO_PUBLIC_DOMAIN}` : '';
+      const res = await fetch(`${base}/api/user/${user.id}/live-status`, { headers });
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!user?.id && hasStreamSetup,
+    staleTime: 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
   });
 
   const formatJoinDate = (dateStr?: string) => {
@@ -702,6 +723,20 @@ export default function ProfileScreen() {
                 </View>
               );
             })}
+          </View>
+        ) : null}
+
+        {/* Stream Embed */}
+        {hasStreamSetup ? (
+          <View style={{ marginTop: 16 }}>
+            <StreamEmbed
+              twitchChannel={user?.twitchUsername}
+              kickChannel={user?.kickUsername}
+              activePlatform={liveStatus?.activePlatform}
+              activeChannel={liveStatus?.activeChannel}
+              isLive={liveStatus?.isLive ?? false}
+              accentColor={h.accent}
+            />
           </View>
         ) : null}
 

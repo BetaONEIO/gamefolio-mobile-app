@@ -385,6 +385,8 @@ export interface User {
   nintendoUsername?: string | null;
   twitterUsername?: string | null;
   youtubeUsername?: string | null;
+  twitchUsername?: string | null;
+  kickUsername?: string | null;
   proSubscriptionType?: string | null;
   proSubscriptionEndDate?: string | null;
   profileFont?: string;
@@ -668,6 +670,8 @@ export function mapRawUser(raw: any): User {
     discordUsername: raw.discordUsername || raw.discord_username || null,
     epicUsername: raw.epicUsername || raw.epic_username || null,
     nintendoUsername: raw.nintendoUsername || raw.nintendo_username || null,
+    twitchUsername: raw.twitchUsername || raw.twitch_username || null,
+    kickUsername: raw.kickUsername || raw.kick_username || null,
     ageRange: raw.ageRange || raw.age_range,
     profileTheme: raw.profileTheme || raw.profile_theme || null,
   };

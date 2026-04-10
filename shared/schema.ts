@@ -44,6 +44,8 @@ export const users = pgTable("users", {
   nintendoUsername: text("nintendo_username"), // Nintendo
   instagramUsername: text("instagram_username"), // Instagram
   facebookUsername: text("facebook_username"), // Facebook
+  twitchUsername: text("twitch_username"),     // Twitch
+  kickUsername: text("kick_username"),         // Kick
   // Onboarding data for analytics and personalization
   userType: text("user_type"), // User type selection
   showUserType: boolean("show_user_type").default(true), // Whether to show user type badge on profile

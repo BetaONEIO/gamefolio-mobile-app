@@ -23,6 +23,9 @@ export default function AccountSettings() {
   const [bio, setBio] = useState(user?.bio ?? '');
   const [isSaving, setIsSaving] = useState(false);
   const [bioSaved, setBioSaved] = useState(false);
+  const [twitchUsername, setTwitchUsername] = useState((user as any)?.twitchUsername ?? '');
+  const [kickUsername, setKickUsername] = useState((user as any)?.kickUsername ?? '');
+  const [streamSaved, setStreamSaved] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
 
   const updateProfileMutation = useMutation({
@@ -215,6 +218,29 @@ export default function AccountSettings() {
       console.log('[AccountSettings] Updated bio to:', bio.trim());
     } catch (error) {
       console.error('[AccountSettings] Failed to update bio:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveStreamSettings = async () => {
+    setIsSaving(true);
+    setStreamSaved(false);
+    try {
+      await updateProfileMutation.mutateAsync({
+        twitchUsername: twitchUsername.trim() || null,
+        kickUsername: kickUsername.trim() || null,
+      } as Record<string, unknown>);
+      if (updateUser) {
+        await updateUser({
+          twitchUsername: twitchUsername.trim() || null,
+          kickUsername: kickUsername.trim() || null,
+        } as any);
+      }
+      setStreamSaved(true);
+      setTimeout(() => setStreamSaved(false), 3000);
+    } catch (error) {
+      console.error('[AccountSettings] Failed to update stream settings:', error);
     } finally {
       setIsSaving(false);
     }
@@ -562,6 +588,47 @@ export default function AccountSettings() {
                       </Text>
                     </TouchableOpacity>
                   </View>
+                </View>
+
+                <View style={styles.bioSection}>
+                  <Text style={styles.sectionHeader}>Streaming</Text>
+                  <Text style={styles.bioLabel}>Connect your Twitch or Kick channel to show a live stream embed on your profile (streamers only).</Text>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Twitch Channel Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. ninja"
+                      placeholderTextColor="#64748B"
+                      value={twitchUsername}
+                      onChangeText={setTwitchUsername}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Kick Channel Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="e.g. adin"
+                      placeholderTextColor="#64748B"
+                      value={kickUsername}
+                      onChangeText={setKickUsername}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.bioSaveButton, isSaving && styles.bioSaveButtonDisabled]}
+                    onPress={handleSaveStreamSettings}
+                    disabled={isSaving}
+                  >
+                    <Text style={styles.bioSaveButtonText}>
+                      {streamSaved ? '✓ Saved' : isSaving ? 'Saving...' : 'Save Stream Settings'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
 
               </View>

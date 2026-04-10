@@ -1849,6 +1849,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         "steamUsername", "xboxUsername", "playstationUsername",
         "discordUsername", "epicUsername", "twitchUsername", "youtubeUsername",
         "twitterUsername", "instagramUsername", "facebookUsername", "nintendoUsername",
+        "kickUsername",
       ]);
 
       // Validate username if provided
@@ -2491,6 +2492,71 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
     } catch (error) {
       console.error("Error fetching user level progress:", error);
       res.status(500).json({ message: "Error fetching user level progress" });
+    }
+  });
+
+  // Live Status Route - check if a user is currently streaming
+  app.get("/api/user/:userId/live-status", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const user = await storage.getUserById(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const twitchChannel = (user as any).twitchUsername || null;
+      const kickChannel = (user as any).kickUsername || null;
+
+      const isStreamer = !!(
+        (user as any).userType?.split(',').map((t: string) => t.trim()).includes('streamer')
+      );
+
+      if (!isStreamer || (!twitchChannel && !kickChannel)) {
+        return res.json({ isLive: false, twitchLive: false, kickLive: false, activePlatform: null, activeChannel: null, twitchChannel, kickChannel });
+      }
+
+      let twitchLive = false;
+      let kickLive = false;
+
+      if (twitchChannel) {
+        twitchLive = await twitchApi.checkChannelLive(twitchChannel);
+      }
+
+      if (kickChannel) {
+        try {
+          const kickRes = await (await import('axios')).default.get('https://api.kick.com/public/v1/channels', {
+            params: { broadcaster_user_id: kickChannel },
+            headers: { Accept: 'application/json' },
+            timeout: 5000,
+          });
+          const channels = kickRes.data?.data ?? kickRes.data;
+          const channel = Array.isArray(channels) ? channels[0] : channels;
+          kickLive = !!(channel?.is_live || channel?.livestream?.is_live);
+        } catch (e) {
+          console.error('Kick live check failed:', e);
+        }
+      }
+
+      const isLive = twitchLive || kickLive;
+      let activePlatform: string | null = null;
+      let activeChannel: string | null = null;
+
+      if (twitchLive) {
+        activePlatform = 'twitch';
+        activeChannel = twitchChannel;
+      } else if (kickLive) {
+        activePlatform = 'kick';
+        activeChannel = kickChannel;
+      } else if (twitchChannel) {
+        activePlatform = 'twitch';
+        activeChannel = twitchChannel;
+      } else if (kickChannel) {
+        activePlatform = 'kick';
+        activeChannel = kickChannel;
+      }
+
+      return res.json({ isLive, twitchLive, kickLive, activePlatform, activeChannel, twitchChannel, kickChannel });
+    } catch (err) {
+      console.error("Error checking live status:", err);
+      return res.status(500).json({ message: "Error checking live status" });
     }
   });
 
@@ -3444,6 +3510,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         "steamUsername", "xboxUsername", "playstationUsername",
         "discordUsername", "epicUsername", "twitchUsername", "youtubeUsername",
         "twitterUsername", "instagramUsername", "facebookUsername", "nintendoUsername",
+        "kickUsername",
       ]);
       const safeBody = Object.fromEntries(
         Object.entries(req.body).filter(([key]) => ALLOWED_PROFILE_FIELDS.has(key))
