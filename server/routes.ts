@@ -1709,6 +1709,18 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           profileTheme: userWithoutPassword.profileTheme || 'default',
           canMintNfts: userWithoutPassword.canMintNfts || false,
           canSellNfts: userWithoutPassword.canSellNfts || false,
+          twitchUsername: userWithoutPassword.twitchUsername || null,
+          kickUsername: userWithoutPassword.kickUsername || null,
+          showXboxAchievements: userWithoutPassword.showXboxAchievements ?? false,
+          xboxAchievements: userWithoutPassword.xboxAchievements ?? null,
+          xboxAchievementsLastSync: userWithoutPassword.xboxAchievementsLastSync ?? null,
+          xboxTotalAchievements: userWithoutPassword.xboxTotalAchievements ?? 0,
+          xboxGamerscore: userWithoutPassword.xboxGamerscore ?? 0,
+          showPsnTrophies: userWithoutPassword.showPsnTrophies ?? false,
+          psnTrophyData: userWithoutPassword.psnTrophyData ?? null,
+          psnTrophiesLastSync: userWithoutPassword.psnTrophiesLastSync ?? null,
+          psnTrophyLevel: userWithoutPassword.psnTrophyLevel ?? 0,
+          psnTotalTrophies: userWithoutPassword.psnTotalTrophies ?? 0,
         });
       }
     } catch (error) {
@@ -1771,6 +1783,18 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           profileFontAnimation: fallbackWithoutPassword.profileFontAnimation || 'none',
           canMintNfts: fallbackWithoutPassword.canMintNfts || false,
           canSellNfts: fallbackWithoutPassword.canSellNfts || false,
+          twitchUsername: fallbackWithoutPassword.twitchUsername || null,
+          kickUsername: fallbackWithoutPassword.kickUsername || null,
+          showXboxAchievements: fallbackWithoutPassword.showXboxAchievements ?? false,
+          xboxAchievements: fallbackWithoutPassword.xboxAchievements ?? null,
+          xboxAchievementsLastSync: fallbackWithoutPassword.xboxAchievementsLastSync ?? null,
+          xboxTotalAchievements: fallbackWithoutPassword.xboxTotalAchievements ?? 0,
+          xboxGamerscore: fallbackWithoutPassword.xboxGamerscore ?? 0,
+          showPsnTrophies: fallbackWithoutPassword.showPsnTrophies ?? false,
+          psnTrophyData: fallbackWithoutPassword.psnTrophyData ?? null,
+          psnTrophiesLastSync: fallbackWithoutPassword.psnTrophiesLastSync ?? null,
+          psnTrophyLevel: fallbackWithoutPassword.psnTrophyLevel ?? 0,
+          psnTotalTrophies: fallbackWithoutPassword.psnTotalTrophies ?? 0,
         });
       }
     } catch (fallbackError) {
@@ -1830,6 +1854,18 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       profileFontAnimation: userWithoutPassword.profileFontAnimation || 'none',
       canMintNfts: userWithoutPassword.canMintNfts || false,
       canSellNfts: userWithoutPassword.canSellNfts || false,
+      twitchUsername: userWithoutPassword.twitchUsername || null,
+      kickUsername: userWithoutPassword.kickUsername || null,
+      showXboxAchievements: userWithoutPassword.showXboxAchievements ?? false,
+      xboxAchievements: userWithoutPassword.xboxAchievements ?? null,
+      xboxAchievementsLastSync: userWithoutPassword.xboxAchievementsLastSync ?? null,
+      xboxTotalAchievements: userWithoutPassword.xboxTotalAchievements ?? 0,
+      xboxGamerscore: userWithoutPassword.xboxGamerscore ?? 0,
+      showPsnTrophies: userWithoutPassword.showPsnTrophies ?? false,
+      psnTrophyData: userWithoutPassword.psnTrophyData ?? null,
+      psnTrophiesLastSync: userWithoutPassword.psnTrophiesLastSync ?? null,
+      psnTrophyLevel: userWithoutPassword.psnTrophyLevel ?? 0,
+      psnTotalTrophies: userWithoutPassword.psnTotalTrophies ?? 0,
     });
   });
 
