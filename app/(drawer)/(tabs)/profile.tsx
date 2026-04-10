@@ -746,11 +746,10 @@ export default function ProfileScreen() {
         {(user as any)?.showXboxAchievements && (user as any)?.xboxAchievements?.length > 0 ? (
           <View style={{ marginTop: 16 }}>
             <XboxAchievements
-              achievements={(user as any).xboxAchievements}
-              totalAchievements={(user as any).xboxTotalAchievements ?? (user as any).xboxAchievements.length}
+              games={(user as any).xboxAchievements}
+              totalAchievements={(user as any).xboxTotalAchievements ?? 0}
               gamerscore={(user as any).xboxGamerscore ?? 0}
               lastSync={(user as any).xboxAchievementsLastSync}
-              accentColor={h.accent}
             />
           </View>
         ) : null}
@@ -759,11 +758,10 @@ export default function ProfileScreen() {
         {(user as any)?.showPsnTrophies && (user as any)?.psnTrophyData?.length > 0 ? (
           <View style={{ marginTop: 16 }}>
             <PsnTrophies
-              trophies={(user as any).psnTrophyData}
+              games={(user as any).psnTrophyData}
               trophyLevel={(user as any).psnTrophyLevel ?? 0}
               totalTrophies={(user as any).psnTotalTrophies ?? 0}
               lastSync={(user as any).psnTrophiesLastSync}
-              accentColor={h.accent}
             />
           </View>
         ) : null}

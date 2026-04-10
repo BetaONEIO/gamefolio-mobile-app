@@ -168,6 +168,19 @@ app.use((req, res, next) => {
 
     try {
       await pool`
+        CREATE TABLE IF NOT EXISTS server_settings (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        )
+      `;
+      console.log('✅ Schema migration: server_settings table ready');
+    } catch (migrationErr: any) {
+      console.warn('⚠️ server_settings migration warning:', migrationErr?.message);
+    }
+
+    try {
+      await pool`
         CREATE TABLE IF NOT EXISTS hero_slides (
           id SERIAL PRIMARY KEY,
           title TEXT NOT NULL,

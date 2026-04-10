@@ -20,7 +20,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { nanoid } from "nanoid";
 import jwt from "jsonwebtoken";
 import { eq, sql, and } from "drizzle-orm";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { users, nameTags, profileBorders, verificationBadges, storeItems, heroSlides, previousAvatars, profileThemes, userBlocks } from "@shared/schema";
 
 // Helper function to generate unique share code
@@ -2605,8 +2605,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         return res.status(404).json({ message: "Xbox gamertag not found." });
       }
 
-      let achievements: any[] = [];
-      let totalGamerscore = 0;
+      // Store per-game aggregate tiles (earned-only counts)
+      const gameTiles: any[] = [];
+      let totalEarnedAchievements = 0;
+      let totalEarnedGamerscore = 0;
 
       try {
         const achieveRes = await axios.get(`https://xbl.io/api/v2/${xuid}/achievements`, {
@@ -2614,25 +2616,45 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
           timeout: 15000,
         });
         const rawData = achieveRes.data;
-        const rawAchievements: any[] = rawData?.achievements ?? rawData?.titles ?? [];
+        const rawTitles: any[] = rawData?.achievements ?? rawData?.titles ?? [];
 
-        for (const item of rawAchievements.slice(0, 50)) {
+        for (const item of rawTitles.slice(0, 100)) {
           const titleAchievements: any[] = item.achievements ?? [];
+          if (titleAchievements.length === 0) continue;
+
           const gameName: string = item.name || item.titleName || '';
           const gameCoverArt: string = item.displayImage || item.titleLogoUrl || '';
-          for (const a of titleAchievements.slice(0, 10)) {
+          const titleId: string = String(item.id || item.titleId || gameName);
+
+          let earnedCount = 0;
+          let totalCount = 0;
+          let earnedGamerscore = 0;
+          let totalGamerscore = 0;
+
+          for (const a of titleAchievements) {
             const gs = a.rewards?.find((r: any) => r.type === 'Gamerscore')?.value ?? a.gamerscore ?? 0;
-            totalGamerscore += typeof gs === 'number' ? gs : parseInt(gs) || 0;
-            achievements.push({
-              id: a.id || a.achievementId,
-              name: a.name,
-              description: a.lockedDescription || a.description || '',
-              icon: a.mediaAssets?.[0]?.url || a.imageUrl || null,
-              gamerscore: gs,
-              unlocked: a.progressState === 'Achieved' || a.isUnlocked === true,
-              gameTitle: gameName,
-              gameCoverArt,
+            const gsNum = typeof gs === 'number' ? gs : parseInt(String(gs)) || 0;
+            const isEarned = a.progressState === 'Achieved' || a.isUnlocked === true;
+            totalCount++;
+            totalGamerscore += gsNum;
+            if (isEarned) {
+              earnedCount++;
+              earnedGamerscore += gsNum;
+            }
+          }
+
+          if (totalCount > 0) {
+            gameTiles.push({
+              titleId,
+              name: gameName,
+              coverArt: gameCoverArt || null,
+              earnedCount,
+              totalCount,
+              earnedGamerscore,
+              totalGamerscore,
             });
+            totalEarnedAchievements += earnedCount;
+            totalEarnedGamerscore += earnedGamerscore;
           }
         }
       } catch (err: any) {
@@ -2642,16 +2664,17 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
 
       const now = new Date();
       await storage.updateUser(userId, {
-        xboxAchievements: achievements,
+        xboxAchievements: gameTiles,
         xboxAchievementsLastSync: now,
-        xboxTotalAchievements: achievements.length,
-        xboxGamerscore: totalGamerscore,
+        xboxTotalAchievements: totalEarnedAchievements,
+        xboxGamerscore: totalEarnedGamerscore,
       } as any);
 
       return res.json({
         message: "Xbox achievements synced successfully.",
-        total: achievements.length,
-        gamerscore: totalGamerscore,
+        total: totalEarnedAchievements,
+        gamerscore: totalEarnedGamerscore,
+        games: gameTiles.length,
         lastSync: now.toISOString(),
       });
     } catch (err) {
@@ -2684,6 +2707,28 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
   // PSN Trophies Endpoints
   // ==========================================
 
+  // Helper: read/write server_settings for PSN token persistence
+  async function getServerSetting(key: string): Promise<string | null> {
+    try {
+      const rows = await pool`SELECT value FROM server_settings WHERE key = ${key} LIMIT 1`;
+      return rows[0]?.value ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async function setServerSetting(key: string, value: string): Promise<void> {
+    try {
+      await pool`
+        INSERT INTO server_settings (key, value, updated_at)
+        VALUES (${key}, ${value}, NOW())
+        ON CONFLICT (key) DO UPDATE SET value = ${value}, updated_at = NOW()
+      `;
+    } catch (err) {
+      console.error('[PSN] Failed to persist server setting:', err);
+    }
+  }
+
   app.post("/api/psn/trophies/sync", hybridAuth, async (req, res) => {
     try {
       const userId = (req.user as any)?.id;
@@ -2702,51 +2747,57 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         return res.status(503).json({ message: "PSN API is not configured on this server." });
       }
 
-      const axios = (await import('axios')).default;
+      const {
+        exchangeNpssoForAccessCode,
+        exchangeAccessCodeForAuthTokens,
+        exchangeRefreshTokenForAuthTokens,
+        makeUniversalSearch,
+        getUserTrophyProfileSummary,
+        getUserTitles,
+      } = await import('psn-api');
 
-      let accessToken: string | null = null;
-      try {
-        const oauthRes = await axios.post(
-          'https://ca.account.sony.com/api/authz/v3/oauth/token',
-          new URLSearchParams({
-            grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
-            subject_token: npssoToken,
-            subject_token_type: 'urn:bamtech:params:oauth:token-type:account',
-            client_id: '09515159-7237-4370-9b40-3806e67c0891',
-            access_type: 'offline',
-            scope: 'psn:mobile.v2.core psn:clientapp',
-          }).toString(),
-          {
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-              'Cookie': `npsso=${npssoToken}`,
-            },
-            timeout: 10000,
+      // Retrieve or acquire PSN auth tokens with refresh-token lifecycle
+      let authorization: { accessToken: string } | null = null;
+      const storedRefreshToken = await getServerSetting('psn_refresh_token');
+
+      if (storedRefreshToken) {
+        try {
+          const tokens = await exchangeRefreshTokenForAuthTokens(storedRefreshToken);
+          authorization = { accessToken: tokens.accessToken };
+          if (tokens.refreshToken) {
+            await setServerSetting('psn_refresh_token', tokens.refreshToken);
           }
-        );
-        accessToken = oauthRes.data?.access_token || null;
-      } catch (err: any) {
-        console.error('[PSN] OAuth failed:', err?.response?.data || err?.message);
-        return res.status(502).json({ message: "Failed to authenticate with PSN. The NPSSO token may be expired." });
+        } catch (refreshErr) {
+          console.warn('[PSN] Refresh token expired, re-authenticating with NPSSO:', refreshErr);
+          authorization = null;
+        }
       }
 
-      if (!accessToken) {
-        return res.status(502).json({ message: "Failed to obtain PSN access token." });
+      if (!authorization) {
+        try {
+          const accessCode = await exchangeNpssoForAccessCode(npssoToken);
+          const tokens = await exchangeAccessCodeForAuthTokens(accessCode);
+          authorization = { accessToken: tokens.accessToken };
+          if (tokens.refreshToken) {
+            await setServerSetting('psn_refresh_token', tokens.refreshToken);
+          }
+        } catch (authErr: any) {
+          console.error('[PSN] NPSSO authentication failed:', authErr?.message);
+          return res.status(502).json({ message: "Failed to authenticate with PSN. The NPSSO token may be expired." });
+        }
       }
 
+      // Resolve PSN account ID from username using universal search
       let accountId: string | null = null;
       try {
-        const profileRes = await axios.get(
-          `https://us-prof.np.community.playstation.net/userProfile/v1/users/${encodeURIComponent(psnUsername)}/profile2`,
-          {
-            params: { fields: 'accountId,onlineId' },
-            headers: { Authorization: `Bearer ${accessToken}` },
-            timeout: 10000,
-          }
-        );
-        accountId = profileRes.data?.profile?.accountId || null;
-      } catch (err: any) {
-        console.error('[PSN] Failed to get account ID:', err?.response?.data || err?.message);
+        const searchResult = await makeUniversalSearch(authorization, psnUsername, 'SocialAllAccounts');
+        const domainResponse = searchResult.domainResponses?.find((d: any) => d.domain === 'SocialAllAccounts');
+        const match = domainResponse?.results?.find(
+          (r: any) => r.socialMetadata?.onlineId?.toLowerCase() === psnUsername.toLowerCase()
+        ) ?? domainResponse?.results?.[0];
+        accountId = match?.socialMetadata?.accountId ?? null;
+      } catch (searchErr: any) {
+        console.error('[PSN] Universal search failed:', searchErr?.message);
         return res.status(502).json({ message: "Failed to find PSN account. Check the username is correct." });
       }
 
@@ -2754,70 +2805,60 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         return res.status(404).json({ message: "PlayStation user not found." });
       }
 
-      let trophies: any[] = [];
+      // Fetch trophy profile summary for level and counts
       let trophyLevel = 0;
       let totalTrophies = 0;
-
       try {
-        const trophySummaryRes = await axios.get(
-          `https://us-tpy.np.community.playstation.net/trophy/v1/users/${accountId}/trophySummary`,
-          {
-            headers: { Authorization: `Bearer ${accessToken}` },
-            timeout: 10000,
-          }
-        );
-        trophyLevel = trophySummaryRes.data?.trophyLevel ?? 0;
-        const earned = trophySummaryRes.data?.earnedTrophies ?? {};
+        const summary = await getUserTrophyProfileSummary(authorization, accountId);
+        trophyLevel = summary.trophyLevel ?? 0;
+        const earned = summary.earnedTrophies ?? {};
         totalTrophies = (earned.bronze ?? 0) + (earned.silver ?? 0) + (earned.gold ?? 0) + (earned.platinum ?? 0);
+      } catch (summaryErr: any) {
+        console.warn('[PSN] Failed to get trophy summary:', summaryErr?.message);
+      }
 
-        const titlesRes = await axios.get(
-          `https://us-tpy.np.community.playstation.net/trophy/v1/users/${accountId}/trophyTitles`,
-          {
-            params: { limit: 20, offset: 0 },
-            headers: { Authorization: `Bearer ${accessToken}` },
-            timeout: 10000,
-          }
-        );
-        const titles: any[] = titlesRes.data?.trophyTitles ?? [];
+      // Fetch user's trophy titles (games) — per-game aggregated data
+      const gameTiles: any[] = [];
+      try {
+        const titlesResponse = await getUserTitles(authorization, accountId, { limit: 200 });
+        const titles = titlesResponse.trophyTitles ?? [];
 
-        for (const title of titles.slice(0, 10)) {
-          const gameName = title.trophyTitleName || '';
-          const gameCoverArt = title.trophyTitleIconUrl || '';
-          const npCommunicationId = title.npCommunicationId;
+        for (const title of titles.slice(0, 100)) {
+          const earnedT = title.earnedTrophies ?? {};
+          const definedT = title.definedTrophies ?? {};
+          const earnedTotal = (earnedT.bronze ?? 0) + (earnedT.silver ?? 0) + (earnedT.gold ?? 0) + (earnedT.platinum ?? 0);
+          const totalDefined = (definedT.bronze ?? 0) + (definedT.silver ?? 0) + (definedT.gold ?? 0) + (definedT.platinum ?? 0);
 
-          try {
-            const trophyListRes = await axios.get(
-              `https://us-tpy.np.community.playstation.net/trophy/v1/users/${accountId}/npCommunicationIds/${npCommunicationId}/trophyGroups/all/trophies`,
-              {
-                headers: { Authorization: `Bearer ${accessToken}` },
-                timeout: 10000,
-              }
-            );
-            const trophyList: any[] = trophyListRes.data?.trophies ?? [];
-            for (const t of trophyList.slice(0, 5)) {
-              trophies.push({
-                id: t.trophyId,
-                name: t.trophyName,
-                description: t.trophyDetail || '',
-                icon: t.trophyIconUrl || null,
-                type: t.trophyType || 'bronze',
-                earned: t.earned === true,
-                gameTitle: gameName,
-                gameCoverArt,
-              });
-            }
-          } catch {
-            // Skip this title if we can't fetch its trophies
-          }
+          gameTiles.push({
+            npCommunicationId: title.npCommunicationId,
+            name: title.trophyTitleName || '',
+            coverArt: title.trophyTitleIconUrl || null,
+            platform: title.trophyTitlePlatform || '',
+            earnedTrophies: {
+              platinum: earnedT.platinum ?? 0,
+              gold: earnedT.gold ?? 0,
+              silver: earnedT.silver ?? 0,
+              bronze: earnedT.bronze ?? 0,
+            },
+            definedTrophies: {
+              platinum: definedT.platinum ?? 0,
+              gold: definedT.gold ?? 0,
+              silver: definedT.silver ?? 0,
+              bronze: definedT.bronze ?? 0,
+            },
+            earnedTotal,
+            definedTotal: totalDefined,
+            lastUpdatedDateTime: (title as any).lastUpdatedDateTime || null,
+          });
         }
-      } catch (err: any) {
-        console.error('[PSN] Failed to fetch trophies:', err?.response?.data || err?.message);
-        return res.status(502).json({ message: "Failed to fetch PSN trophies." });
+      } catch (titlesErr: any) {
+        console.error('[PSN] Failed to fetch trophy titles:', titlesErr?.message);
+        return res.status(502).json({ message: "Failed to fetch PSN trophy data." });
       }
 
       const now = new Date();
       await storage.updateUser(userId, {
-        psnTrophyData: trophies,
+        psnTrophyData: gameTiles,
         psnTrophiesLastSync: now,
         psnTrophyLevel: trophyLevel,
         psnTotalTrophies: totalTrophies,
@@ -2827,6 +2868,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         message: "PSN trophies synced successfully.",
         total: totalTrophies,
         level: trophyLevel,
+        games: gameTiles.length,
         lastSync: now.toISOString(),
       });
     } catch (err) {

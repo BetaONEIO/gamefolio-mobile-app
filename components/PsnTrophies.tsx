@@ -1,24 +1,30 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { Star, Lock } from 'lucide-react-native';
 
-interface Trophy {
-  id: string | number;
+interface TrophyCounts {
+  platinum: number;
+  gold: number;
+  silver: number;
+  bronze: number;
+}
+
+interface GameTile {
+  npCommunicationId: string;
   name: string;
-  description: string;
-  icon?: string | null;
-  type: 'platinum' | 'gold' | 'silver' | 'bronze';
-  earned: boolean;
-  gameTitle?: string;
-  gameCoverArt?: string | null;
+  coverArt?: string | null;
+  platform?: string;
+  earnedTrophies: TrophyCounts;
+  definedTrophies: TrophyCounts;
+  earnedTotal: number;
+  definedTotal: number;
+  lastUpdatedDateTime?: string | null;
 }
 
 interface PsnTrophiesProps {
-  trophies: Trophy[];
+  games: GameTile[];
   trophyLevel: number;
   totalTrophies: number;
   lastSync?: string | null;
-  accentColor?: string;
 }
 
 const PSN_BLUE = '#00439C';
@@ -31,95 +37,90 @@ const TROPHY_COLORS: Record<string, string> = {
   bronze: '#CD7F32',
 };
 
-const TROPHY_LABELS: Record<string, string> = {
-  platinum: 'P',
-  gold: 'G',
-  silver: 'S',
-  bronze: 'B',
-};
+function TrophyPip({ type, earned, total }: { type: keyof TrophyCounts; earned: number; total: number }) {
+  if (total === 0) return null;
+  const color = TROPHY_COLORS[type] ?? '#94A3B8';
+  const label = type.charAt(0).toUpperCase();
+  return (
+    <View style={[styles.trophyPip, { borderColor: `${color}44` }]}>
+      <Text style={[styles.trophyPipLabel, { color }]}>{label}</Text>
+      <Text style={styles.trophyPipCount}>
+        <Text style={styles.trophyEarned}>{earned}</Text>
+        <Text style={styles.trophyTotal}>/{total}</Text>
+      </Text>
+    </View>
+  );
+}
 
-function TrophyItem({ item }: { item: Trophy }) {
+function GameTileItem({ item }: { item: GameTile }) {
   const [imgError, setImgError] = useState(false);
-  const trophyColor = TROPHY_COLORS[item.type] ?? '#94A3B8';
+  const progress = item.definedTotal > 0 ? item.earnedTotal / item.definedTotal : 0;
+  const pct = Math.round(progress * 100);
+  const hasPlatinum = item.definedTrophies.platinum > 0;
+  const earnedPlatinum = item.earnedTrophies.platinum > 0;
 
   return (
-    <View style={[styles.trophyCard, !item.earned && styles.lockedCard]}>
-      <View style={styles.iconContainer}>
-        {item.icon && !imgError ? (
+    <View style={styles.gameTile}>
+      <View style={styles.coverWrapper}>
+        {item.coverArt && !imgError ? (
           <Image
-            source={{ uri: item.icon }}
-            style={styles.trophyIcon}
+            source={{ uri: item.coverArt }}
+            style={styles.coverArt}
             onError={() => setImgError(true)}
+            resizeMode="cover"
           />
         ) : (
-          <View style={[styles.trophyIconPlaceholder, !item.earned && styles.lockedIconPlaceholder]}>
-            {item.earned ? (
-              <Star size={18} color={trophyColor} />
-            ) : (
-              <Lock size={18} color='#4B5563' />
-            )}
+          <View style={styles.coverPlaceholder}>
+            <Text style={styles.coverPlaceholderText}>PSN</Text>
           </View>
         )}
-      </View>
-
-      <View style={styles.trophyInfo}>
-        <Text style={[styles.trophyName, !item.earned && styles.lockedText]} numberOfLines={1}>
-          {item.name}
-        </Text>
-        {item.gameTitle ? (
-          <Text style={styles.gameTitle} numberOfLines={1}>{item.gameTitle}</Text>
-        ) : null}
-        {item.description ? (
-          <Text style={styles.trophyDesc} numberOfLines={2}>{item.description}</Text>
+        {hasPlatinum && earnedPlatinum ? (
+          <View style={styles.platBadge}>
+            <Text style={styles.platBadgeText}>P</Text>
+          </View>
         ) : null}
       </View>
 
-      <View style={[styles.typeBadge, { backgroundColor: `${trophyColor}22`, borderColor: `${trophyColor}55` }]}>
-        <Text style={[styles.typeText, { color: trophyColor }]}>{TROPHY_LABELS[item.type] ?? '?'}</Text>
+      <View style={styles.tileInfo}>
+        <Text style={styles.gameName} numberOfLines={2}>{item.name}</Text>
+
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: `${pct}%` as any }]} />
+        </View>
+
+        <View style={styles.trophyRow}>
+          <TrophyPip type="platinum" earned={item.earnedTrophies.platinum} total={item.definedTrophies.platinum} />
+          <TrophyPip type="gold" earned={item.earnedTrophies.gold} total={item.definedTrophies.gold} />
+          <TrophyPip type="silver" earned={item.earnedTrophies.silver} total={item.definedTrophies.silver} />
+          <TrophyPip type="bronze" earned={item.earnedTrophies.bronze} total={item.definedTrophies.bronze} />
+        </View>
       </View>
     </View>
   );
 }
 
-function TrophyCount({ type, count }: { type: string; count: number }) {
-  const color = TROPHY_COLORS[type] ?? '#94A3B8';
-  const label = TROPHY_LABELS[type] ?? '?';
-  return (
-    <View style={[styles.trophyCountItem, { borderColor: `${color}44` }]}>
-      <Text style={[styles.trophyCountLabel, { color }]}>{label}</Text>
-      <Text style={styles.trophyCountNum}>{count}</Text>
-    </View>
-  );
+function formatSync(dateStr?: string | null): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 export default function PsnTrophies({
-  trophies,
+  games,
   trophyLevel,
   totalTrophies,
   lastSync,
 }: PsnTrophiesProps) {
   const [expanded, setExpanded] = useState(false);
-  const displayedTrophies = expanded ? trophies : trophies.slice(0, 5);
-  const earnedCount = trophies.filter(t => t.earned).length;
+  const displayedGames = expanded ? games : games.slice(0, 5);
 
-  const platinumCount = trophies.filter(t => t.type === 'platinum' && t.earned).length;
-  const goldCount = trophies.filter(t => t.type === 'gold' && t.earned).length;
-  const silverCount = trophies.filter(t => t.type === 'silver' && t.earned).length;
-  const bronzeCount = trophies.filter(t => t.type === 'bronze' && t.earned).length;
-
-  const formatSync = (dateStr?: string | null) => {
-    if (!dateStr) return null;
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
-  if (!trophies || trophies.length === 0) {
+  if (!games || games.length === 0) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <View style={[styles.platformBadge, { backgroundColor: `${PSN_BLUE}22`, borderColor: `${PSN_LIGHT}44` }]}>
-            <Star size={14} color={PSN_LIGHT} />
-            <Text style={[styles.platformLabel, { color: PSN_LIGHT }]}>PSN Trophies</Text>
+          <View style={styles.platformBadge}>
+            <Text style={styles.psnLogo}>PS</Text>
+            <Text style={styles.platformLabel}>PSN Trophies</Text>
           </View>
         </View>
         <Text style={styles.emptyText}>No trophies synced yet.</Text>
@@ -130,24 +131,18 @@ export default function PsnTrophies({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={[styles.platformBadge, { backgroundColor: `${PSN_BLUE}22`, borderColor: `${PSN_LIGHT}44` }]}>
-          <Star size={14} color={PSN_LIGHT} />
-          <Text style={[styles.platformLabel, { color: PSN_LIGHT }]}>PSN Trophies</Text>
+        <View style={styles.platformBadge}>
+          <Text style={styles.psnLogo}>PS</Text>
+          <Text style={styles.platformLabel}>PSN Trophies</Text>
         </View>
 
-        <View style={[styles.levelBadge, { backgroundColor: `${PSN_BLUE}33`, borderColor: `${PSN_LIGHT}55` }]}>
-          <Text style={[styles.levelText, { color: PSN_LIGHT }]}>Lvl {trophyLevel}</Text>
-        </View>
-      </View>
-
-      <View style={styles.trophyCountRow}>
-        <TrophyCount type="platinum" count={platinumCount} />
-        <TrophyCount type="gold" count={goldCount} />
-        <TrophyCount type="silver" count={silverCount} />
-        <TrophyCount type="bronze" count={bronzeCount} />
-        <View style={styles.totalTrophies}>
-          <Text style={styles.totalLabel}>Total</Text>
-          <Text style={styles.totalNum}>{totalTrophies}</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.levelBadge}>
+            <Text style={styles.levelText}>Lvl {trophyLevel}</Text>
+          </View>
+          <View style={styles.totalBadge}>
+            <Text style={styles.totalText}>{totalTrophies.toLocaleString()}</Text>
+          </View>
         </View>
       </View>
 
@@ -156,15 +151,15 @@ export default function PsnTrophies({
       ) : null}
 
       <View style={styles.list}>
-        {displayedTrophies.map((item) => (
-          <TrophyItem key={String(item.id)} item={item} />
+        {displayedGames.map((item) => (
+          <GameTileItem key={item.npCommunicationId} item={item} />
         ))}
       </View>
 
-      {trophies.length > 5 ? (
+      {games.length > 5 ? (
         <TouchableOpacity style={styles.expandButton} onPress={() => setExpanded(e => !e)} activeOpacity={0.7}>
-          <Text style={[styles.expandText, { color: PSN_LIGHT }]}>
-            {expanded ? 'Show less' : `Show all ${trophies.length} trophies`}
+          <Text style={styles.expandText}>
+            {expanded ? 'Show less' : `Show all ${games.length} games`}
           </Text>
         </TouchableOpacity>
       ) : null}
@@ -194,68 +189,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    backgroundColor: 'rgba(0, 67, 156, 0.2)',
     borderWidth: 1,
+    borderColor: 'rgba(75, 157, 255, 0.3)',
     borderRadius: 100,
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
+  psnLogo: {
+    color: PSN_LIGHT,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
   platformLabel: {
+    color: PSN_LIGHT,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.3,
   },
-  levelBadge: {
-    borderWidth: 1,
-    borderRadius: 100,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  levelText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  trophyCountRow: {
+  statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(75, 157, 255, 0.1)',
   },
-  trophyCountItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  levelBadge: {
+    backgroundColor: 'rgba(0, 67, 156, 0.25)',
     borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 7,
+    borderColor: 'rgba(75, 157, 255, 0.4)',
+    borderRadius: 100,
+    paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  trophyCountLabel: {
-    fontSize: 11,
-    fontWeight: '900',
+  levelText: {
+    color: PSN_LIGHT,
+    fontSize: 12,
+    fontWeight: '800',
   },
-  trophyCountNum: {
+  totalBadge: {
+    backgroundColor: 'rgba(75, 157, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(75, 157, 255, 0.3)',
+    borderRadius: 100,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  totalText: {
     color: '#E2E8F0',
     fontSize: 12,
     fontWeight: '700',
-  },
-  totalTrophies: {
-    marginLeft: 'auto',
-    alignItems: 'flex-end',
-  },
-  totalLabel: {
-    color: '#64748B',
-    fontSize: 9,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  totalNum: {
-    color: '#E2E8F0',
-    fontSize: 14,
-    fontWeight: '800',
   },
   syncLabel: {
     color: '#64748B',
@@ -268,76 +250,110 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: 10,
     paddingBottom: 8,
-    paddingTop: 4,
-    gap: 6,
+    paddingTop: 6,
+    gap: 8,
   },
-  trophyCard: {
+  gameTile: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(75, 157, 255, 0.08)',
-    borderRadius: 10,
+    backgroundColor: 'rgba(75, 157, 255, 0.06)',
+    borderRadius: 12,
     padding: 10,
-    gap: 10,
+    gap: 12,
     borderWidth: 0.5,
-    borderColor: 'rgba(75, 157, 255, 0.2)',
+    borderColor: 'rgba(75, 157, 255, 0.18)',
   },
-  lockedCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderColor: 'rgba(255,255,255,0.07)',
-  },
-  iconContainer: {
+  coverWrapper: {
+    position: 'relative',
     flexShrink: 0,
   },
-  trophyIcon: {
-    width: 40,
-    height: 40,
+  coverArt: {
+    width: 56,
+    height: 56,
     borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  trophyIconPlaceholder: {
-    width: 40,
-    height: 40,
+  coverPlaceholder: {
+    width: 56,
+    height: 56,
     borderRadius: 8,
-    backgroundColor: 'rgba(75, 157, 255, 0.15)',
+    backgroundColor: 'rgba(0, 67, 156, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lockedIconPlaceholder: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+  coverPlaceholderText: {
+    color: PSN_LIGHT,
+    fontSize: 13,
+    fontWeight: '900',
   },
-  trophyInfo: {
+  platBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#6B7FA3',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#0a0a0a',
+  },
+  platBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  tileInfo: {
     flex: 1,
-    gap: 2,
+    gap: 5,
   },
-  trophyName: {
+  gameName: {
     color: '#E2E8F0',
     fontSize: 13,
     fontWeight: '700',
+    lineHeight: 17,
   },
-  lockedText: {
-    color: '#64748B',
+  progressBar: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  gameTitle: {
-    color: PSN_LIGHT,
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+  progressFill: {
+    height: 4,
+    backgroundColor: PSN_LIGHT,
+    borderRadius: 2,
   },
-  trophyDesc: {
-    color: '#94A3B8',
-    fontSize: 11,
-    lineHeight: 15,
-  },
-  typeBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    borderWidth: 1,
+  trophyRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+    flexWrap: 'wrap',
   },
-  typeText: {
-    fontSize: 12,
+  trophyPip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  trophyPipLabel: {
+    fontSize: 10,
     fontWeight: '900',
+  },
+  trophyPipCount: {
+    fontSize: 10,
+  },
+  trophyEarned: {
+    color: '#E2E8F0',
+    fontWeight: '700',
+  },
+  trophyTotal: {
+    color: '#64748B',
+    fontWeight: '500',
   },
   expandButton: {
     alignItems: 'center',
@@ -346,6 +362,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(75, 157, 255, 0.15)',
   },
   expandText: {
+    color: PSN_LIGHT,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.3,

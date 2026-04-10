@@ -267,7 +267,7 @@ export default function AccountSettings() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Sync failed');
-      setXboxSyncStatus(`Synced ${data.total} achievements (${data.gamerscore}G)`);
+      setXboxSyncStatus(`Synced ${data.games ?? data.total} games · ${data.total} achievements · ${data.gamerscore}G`);
       if (updateUser) await updateUser({} as any);
     } catch (err: any) {
       setXboxSyncStatus(err?.message || 'Failed to sync Xbox achievements');
@@ -288,7 +288,7 @@ export default function AccountSettings() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Sync failed');
-      setPsnSyncStatus(`Synced ${data.total} trophies (Level ${data.level})`);
+      setPsnSyncStatus(`Synced ${data.games ?? 0} games · ${data.total} trophies · Level ${data.level}`);
       if (updateUser) await updateUser({} as any);
     } catch (err: any) {
       setPsnSyncStatus(err?.message || 'Failed to sync PSN trophies');
@@ -754,6 +754,11 @@ export default function AccountSettings() {
                         <Text style={[styles.syncStatusText, xboxSyncStatus.startsWith('Synced') ? styles.syncSuccess : styles.syncError]}>
                           {xboxSyncStatus}
                         </Text>
+                      ) : (user as any)?.xboxAchievementsLastSync ? (
+                        <Text style={styles.lastSyncLabel}>
+                          Last synced {new Date((user as any).xboxAchievementsLastSync).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {(user as any).xboxTotalAchievements > 0 ? ` · ${(user as any).xboxTotalAchievements} achievements · ${(user as any).xboxGamerscore ?? 0}G` : ''}
+                        </Text>
                       ) : null}
 
                       <View style={[styles.toggleContainer, { marginTop: 10 }]}>
@@ -807,6 +812,11 @@ export default function AccountSettings() {
                       {psnSyncStatus ? (
                         <Text style={[styles.syncStatusText, psnSyncStatus.startsWith('Synced') ? styles.syncSuccess : styles.syncError]}>
                           {psnSyncStatus}
+                        </Text>
+                      ) : (user as any)?.psnTrophiesLastSync ? (
+                        <Text style={styles.lastSyncLabel}>
+                          Last synced {new Date((user as any).psnTrophiesLastSync).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {(user as any).psnTotalTrophies > 0 ? ` · ${(user as any).psnTotalTrophies} trophies · Lvl ${(user as any).psnTrophyLevel ?? 0}` : ''}
                         </Text>
                       ) : null}
 
@@ -1184,6 +1194,12 @@ const styles = StyleSheet.create({
   },
   syncError: {
     color: '#EF4444',
+  },
+  lastSyncLabel: {
+    color: '#64748B',
+    fontSize: 11,
+    marginTop: 6,
+    fontWeight: '500',
   },
   noAccountBox: {
     flexDirection: 'row',

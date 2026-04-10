@@ -1,95 +1,97 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Gamepad2, Trophy, Star, Lock } from 'lucide-react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { Gamepad2, Trophy } from 'lucide-react-native';
 
-interface Achievement {
-  id: string | number;
+interface GameTile {
+  titleId: string;
   name: string;
-  description: string;
-  icon?: string | null;
-  gamerscore: number;
-  unlocked: boolean;
-  gameTitle?: string;
-  gameCoverArt?: string | null;
+  coverArt?: string | null;
+  earnedCount: number;
+  totalCount: number;
+  earnedGamerscore: number;
+  totalGamerscore: number;
 }
 
 interface XboxAchievementsProps {
-  achievements: Achievement[];
+  games: GameTile[];
   totalAchievements: number;
   gamerscore: number;
   lastSync?: string | null;
-  accentColor?: string;
 }
 
 const XBOX_GREEN = '#107C10';
 const XBOX_LIGHT = '#52B043';
 
-function AchievementItem({ item }: { item: Achievement }) {
+function GameTileItem({ item }: { item: GameTile }) {
   const [imgError, setImgError] = useState(false);
+  const progress = item.totalCount > 0 ? item.earnedCount / item.totalCount : 0;
+  const pct = Math.round(progress * 100);
 
   return (
-    <View style={[styles.achievementCard, !item.unlocked && styles.lockedCard]}>
-      <View style={styles.iconContainer}>
-        {item.icon && !imgError ? (
+    <View style={styles.gameTile}>
+      <View style={styles.coverWrapper}>
+        {item.coverArt && !imgError ? (
           <Image
-            source={{ uri: item.icon }}
-            style={styles.achievementIcon}
+            source={{ uri: item.coverArt }}
+            style={styles.coverArt}
             onError={() => setImgError(true)}
+            resizeMode="cover"
           />
         ) : (
-          <View style={[styles.achievementIconPlaceholder, !item.unlocked && styles.lockedIconPlaceholder]}>
-            {item.unlocked ? (
-              <Star size={18} color={XBOX_LIGHT} />
-            ) : (
-              <Lock size={18} color='#4B5563' />
-            )}
+          <View style={styles.coverPlaceholder}>
+            <Gamepad2 size={20} color={XBOX_LIGHT} />
           </View>
         )}
-      </View>
-
-      <View style={styles.achievementInfo}>
-        <Text style={[styles.achievementName, !item.unlocked && styles.lockedText]} numberOfLines={1}>
-          {item.name}
-        </Text>
-        {item.gameTitle ? (
-          <Text style={styles.gameTitle} numberOfLines={1}>{item.gameTitle}</Text>
-        ) : null}
-        {item.description ? (
-          <Text style={styles.achievementDesc} numberOfLines={2}>{item.description}</Text>
+        {pct === 100 ? (
+          <View style={styles.completedBadge}>
+            <Trophy size={10} color="#FFF" />
+          </View>
         ) : null}
       </View>
 
-      <View style={[styles.scoreChip, !item.unlocked && styles.lockedScoreChip]}>
-        <Text style={[styles.scoreText, !item.unlocked && styles.lockedScoreText]}>{item.gamerscore}G</Text>
+      <View style={styles.tileInfo}>
+        <Text style={styles.gameName} numberOfLines={2}>{item.name}</Text>
+
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: `${pct}%` as any }]} />
+        </View>
+
+        <View style={styles.tileStats}>
+          <Text style={styles.achCount}>
+            <Text style={styles.achEarned}>{item.earnedCount}</Text>
+            <Text style={styles.achTotal}>/{item.totalCount} achievements</Text>
+          </Text>
+          <View style={[styles.gsBadge]}>
+            <Text style={styles.gsText}>{item.earnedGamerscore.toLocaleString()}G</Text>
+          </View>
+        </View>
       </View>
     </View>
   );
 }
 
+function formatSync(dateStr?: string | null): string | null {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 export default function XboxAchievements({
-  achievements,
+  games,
   totalAchievements,
   gamerscore,
   lastSync,
-  accentColor = XBOX_GREEN,
 }: XboxAchievementsProps) {
   const [expanded, setExpanded] = useState(false);
-  const unlockedCount = achievements.filter(a => a.unlocked).length;
-  const displayedAchievements = expanded ? achievements : achievements.slice(0, 5);
+  const displayedGames = expanded ? games : games.slice(0, 5);
 
-  const formatSync = (dateStr?: string | null) => {
-    if (!dateStr) return null;
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
-  if (!achievements || achievements.length === 0) {
+  if (!games || games.length === 0) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <View style={[styles.platformBadge, { backgroundColor: `${XBOX_GREEN}22`, borderColor: `${XBOX_GREEN}44` }]}>
+          <View style={[styles.platformBadge]}>
             <Gamepad2 size={14} color={XBOX_LIGHT} />
-            <Text style={[styles.platformLabel, { color: XBOX_LIGHT }]}>Xbox Achievements</Text>
+            <Text style={styles.platformLabel}>Xbox Achievements</Text>
           </View>
         </View>
         <Text style={styles.emptyText}>No achievements synced yet.</Text>
@@ -100,18 +102,18 @@ export default function XboxAchievements({
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={[styles.platformBadge, { backgroundColor: `${XBOX_GREEN}22`, borderColor: `${XBOX_GREEN}44` }]}>
+        <View style={styles.platformBadge}>
           <Gamepad2 size={14} color={XBOX_LIGHT} />
-          <Text style={[styles.platformLabel, { color: XBOX_LIGHT }]}>Xbox Achievements</Text>
+          <Text style={styles.platformLabel}>Xbox Achievements</Text>
         </View>
 
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Trophy size={12} color={XBOX_LIGHT} />
-            <Text style={styles.statValue}>{unlockedCount}<Text style={styles.statTotal}>/{totalAchievements}</Text></Text>
+            <Text style={styles.statValue}>{totalAchievements.toLocaleString()}</Text>
           </View>
-          <View style={[styles.scoreBadge, { backgroundColor: `${XBOX_GREEN}33`, borderColor: `${XBOX_GREEN}55` }]}>
-            <Text style={[styles.scoreBadgeText, { color: XBOX_LIGHT }]}>{gamerscore.toLocaleString()}G</Text>
+          <View style={styles.scoreBadge}>
+            <Text style={styles.scoreBadgeText}>{gamerscore.toLocaleString()}G</Text>
           </View>
         </View>
       </View>
@@ -121,15 +123,15 @@ export default function XboxAchievements({
       ) : null}
 
       <View style={styles.list}>
-        {displayedAchievements.map((item) => (
-          <AchievementItem key={String(item.id)} item={item} />
+        {displayedGames.map((item) => (
+          <GameTileItem key={item.titleId} item={item} />
         ))}
       </View>
 
-      {achievements.length > 5 ? (
+      {games.length > 5 ? (
         <TouchableOpacity style={styles.expandButton} onPress={() => setExpanded(e => !e)} activeOpacity={0.7}>
-          <Text style={[styles.expandText, { color: XBOX_LIGHT }]}>
-            {expanded ? 'Show less' : `Show all ${achievements.length} achievements`}
+          <Text style={styles.expandText}>
+            {expanded ? 'Show less' : `Show all ${games.length} games`}
           </Text>
         </TouchableOpacity>
       ) : null}
@@ -159,12 +161,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    backgroundColor: 'rgba(16, 124, 16, 0.15)',
     borderWidth: 1,
+    borderColor: 'rgba(82, 176, 67, 0.3)',
     borderRadius: 100,
     paddingVertical: 4,
     paddingHorizontal: 10,
   },
   platformLabel: {
+    color: XBOX_LIGHT,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.3,
@@ -184,17 +189,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
-  statTotal: {
-    color: '#64748B',
-    fontWeight: '500',
-  },
   scoreBadge: {
+    backgroundColor: 'rgba(82, 176, 67, 0.2)',
     borderWidth: 1,
+    borderColor: 'rgba(82, 176, 67, 0.4)',
     borderRadius: 100,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
   scoreBadgeText: {
+    color: XBOX_LIGHT,
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.5,
@@ -210,84 +214,97 @@ const styles = StyleSheet.create({
   list: {
     paddingHorizontal: 10,
     paddingBottom: 8,
-    paddingTop: 4,
-    gap: 6,
+    paddingTop: 6,
+    gap: 8,
   },
-  achievementCard: {
+  gameTile: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(82, 176, 67, 0.08)',
-    borderRadius: 10,
+    backgroundColor: 'rgba(82, 176, 67, 0.06)',
+    borderRadius: 12,
     padding: 10,
-    gap: 10,
+    gap: 12,
     borderWidth: 0.5,
-    borderColor: 'rgba(82, 176, 67, 0.2)',
+    borderColor: 'rgba(82, 176, 67, 0.18)',
   },
-  lockedCard: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderColor: 'rgba(255,255,255,0.07)',
-  },
-  iconContainer: {
+  coverWrapper: {
+    position: 'relative',
     flexShrink: 0,
   },
-  achievementIcon: {
-    width: 40,
-    height: 40,
+  coverArt: {
+    width: 56,
+    height: 56,
     borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  achievementIconPlaceholder: {
-    width: 40,
-    height: 40,
+  coverPlaceholder: {
+    width: 56,
+    height: 56,
     borderRadius: 8,
     backgroundColor: 'rgba(82, 176, 67, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lockedIconPlaceholder: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
+  completedBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: XBOX_GREEN,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#0a0a0a',
   },
-  achievementInfo: {
+  tileInfo: {
     flex: 1,
-    gap: 2,
+    gap: 4,
   },
-  achievementName: {
+  gameName: {
     color: '#E2E8F0',
     fontSize: 13,
     fontWeight: '700',
+    lineHeight: 17,
   },
-  lockedText: {
-    color: '#64748B',
+  progressBar: {
+    height: 4,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  gameTitle: {
-    color: '#52B043',
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.3,
+  progressFill: {
+    height: 4,
+    backgroundColor: XBOX_LIGHT,
+    borderRadius: 2,
   },
-  achievementDesc: {
-    color: '#94A3B8',
+  tileStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  achCount: {
     fontSize: 11,
-    lineHeight: 15,
   },
-  scoreChip: {
-    backgroundColor: 'rgba(82, 176, 67, 0.2)',
-    borderRadius: 8,
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-    borderWidth: 0.5,
-    borderColor: 'rgba(82, 176, 67, 0.4)',
+  achEarned: {
+    color: '#E2E8F0',
+    fontWeight: '700',
   },
-  lockedScoreChip: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderColor: 'rgba(255,255,255,0.1)',
+  achTotal: {
+    color: '#64748B',
+    fontWeight: '500',
   },
-  scoreText: {
-    color: '#52B043',
+  gsBadge: {
+    backgroundColor: 'rgba(82, 176, 67, 0.15)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  gsText: {
+    color: XBOX_LIGHT,
     fontSize: 11,
     fontWeight: '800',
-  },
-  lockedScoreText: {
-    color: '#4B5563',
   },
   expandButton: {
     alignItems: 'center',
@@ -296,6 +313,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(16, 124, 16, 0.15)',
   },
   expandText: {
+    color: XBOX_LIGHT,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.3,
