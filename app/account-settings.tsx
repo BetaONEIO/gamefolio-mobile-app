@@ -268,7 +268,11 @@ export default function AccountSettings() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Sync failed');
       setXboxSyncStatus(`Synced ${data.games ?? data.total} games · ${data.total} achievements · ${data.gamerscore}G`);
-      if (updateUser) await updateUser({} as any);
+      if (updateUser) await updateUser({
+        xboxTotalAchievements: data.total,
+        xboxGamerscore: data.gamerscore,
+        xboxAchievementsLastSync: data.lastSync,
+      } as any);
     } catch (err: any) {
       setXboxSyncStatus(err?.message || 'Failed to sync Xbox achievements');
     } finally {
@@ -289,7 +293,11 @@ export default function AccountSettings() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Sync failed');
       setPsnSyncStatus(`Synced ${data.games ?? 0} games · ${data.total} trophies · Level ${data.level}`);
-      if (updateUser) await updateUser({} as any);
+      if (updateUser) await updateUser({
+        psnTotalTrophies: data.total,
+        psnTrophyLevel: data.level,
+        psnTrophiesLastSync: data.lastSync,
+      } as any);
     } catch (err: any) {
       setPsnSyncStatus(err?.message || 'Failed to sync PSN trophies');
     } finally {
@@ -718,6 +726,7 @@ export default function AccountSettings() {
                   </TouchableOpacity>
                 </View>
 
+                {(user?.xboxUsername || user?.playstationUsername) ? (
                 <View style={styles.bioSection}>
                   <Text style={styles.sectionHeader}>Gaming Achievements</Text>
                   <Text style={styles.bioLabel}>
@@ -842,6 +851,7 @@ export default function AccountSettings() {
                     </View>
                   )}
                 </View>
+                ) : null}
 
               </View>
             )}

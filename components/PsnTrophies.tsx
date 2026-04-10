@@ -99,6 +99,17 @@ function GameTileItem({ item }: { item: GameTile }) {
   );
 }
 
+function OverallTrophyCount({ type, count }: { type: keyof TrophyCounts; count: number }) {
+  const color = TROPHY_COLORS[type] ?? '#94A3B8';
+  const label = type.charAt(0).toUpperCase();
+  return (
+    <View style={[styles.overallTrophyItem, { borderColor: `${color}33` }]}>
+      <Text style={[styles.overallTrophyLabel, { color }]}>{label}</Text>
+      <Text style={styles.overallTrophyCount}>{count}</Text>
+    </View>
+  );
+}
+
 function formatSync(dateStr?: string | null): string | null {
   if (!dateStr) return null;
   const d = new Date(dateStr);
@@ -113,6 +124,17 @@ export default function PsnTrophies({
 }: PsnTrophiesProps) {
   const [expanded, setExpanded] = useState(false);
   const displayedGames = expanded ? games : games.slice(0, 5);
+
+  // Aggregate overall trophy counts from all games
+  const overallEarned = games.reduce(
+    (acc, g) => ({
+      platinum: acc.platinum + (g.earnedTrophies.platinum ?? 0),
+      gold: acc.gold + (g.earnedTrophies.gold ?? 0),
+      silver: acc.silver + (g.earnedTrophies.silver ?? 0),
+      bronze: acc.bronze + (g.earnedTrophies.bronze ?? 0),
+    }),
+    { platinum: 0, gold: 0, silver: 0, bronze: 0 }
+  );
 
   if (!games || games.length === 0) {
     return (
@@ -144,6 +166,13 @@ export default function PsnTrophies({
             <Text style={styles.totalText}>{totalTrophies.toLocaleString()}</Text>
           </View>
         </View>
+      </View>
+
+      <View style={styles.overallSummary}>
+        <OverallTrophyCount type="platinum" count={overallEarned.platinum} />
+        <OverallTrophyCount type="gold" count={overallEarned.gold} />
+        <OverallTrophyCount type="silver" count={overallEarned.silver} />
+        <OverallTrophyCount type="bronze" count={overallEarned.bronze} />
       </View>
 
       {lastSync ? (
@@ -237,6 +266,35 @@ const styles = StyleSheet.create({
   totalText: {
     color: '#E2E8F0',
     fontSize: 12,
+    fontWeight: '700',
+  },
+  overallSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(75, 157, 255, 0.1)',
+  },
+  overallTrophyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  overallTrophyLabel: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  overallTrophyCount: {
+    color: '#E2E8F0',
+    fontSize: 13,
     fontWeight: '700',
   },
   syncLabel: {
