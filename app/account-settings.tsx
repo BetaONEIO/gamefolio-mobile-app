@@ -24,8 +24,8 @@ export default function AccountSettings() {
   const [bio, setBio] = useState(user?.bio ?? '');
   const [isSaving, setIsSaving] = useState(false);
   const [bioSaved, setBioSaved] = useState(false);
-  const [twitchUsername, setTwitchUsername] = useState((user as any)?.twitchUsername ?? '');
-  const [kickUsername, setKickUsername] = useState((user as any)?.kickUsername ?? '');
+  const [twitchUsername, setTwitchUsername] = useState(user?.twitchUsername ?? '');
+  const [kickUsername, setKickUsername] = useState(user?.kickUsername ?? '');
   const [streamSaved, setStreamSaved] = useState(false);
   const [showRedeemModal, setShowRedeemModal] = useState(false);
 
@@ -236,7 +236,7 @@ export default function AccountSettings() {
         await updateUser({
           twitchUsername: twitchUsername.trim() || null,
           kickUsername: kickUsername.trim() || null,
-        } as any);
+        });
       }
       setStreamSaved(true);
       setTimeout(() => setStreamSaved(false), 3000);
@@ -248,8 +248,8 @@ export default function AccountSettings() {
   };
 
   // Gaming Achievements State
-  const [showXboxAchievements, setShowXboxAchievements] = useState((user as any)?.showXboxAchievements ?? false);
-  const [showPsnTrophies, setShowPsnTrophies] = useState((user as any)?.showPsnTrophies ?? false);
+  const [showXboxAchievements, setShowXboxAchievements] = useState(user?.showXboxAchievements ?? false);
+  const [showPsnTrophies, setShowPsnTrophies] = useState(user?.showPsnTrophies ?? false);
   const [xboxSyncing, setXboxSyncing] = useState(false);
   const [psnSyncing, setPsnSyncing] = useState(false);
   const [xboxSyncStatus, setXboxSyncStatus] = useState<string | null>(null);
@@ -267,12 +267,13 @@ export default function AccountSettings() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Sync failed');
-      setXboxSyncStatus(`Synced ${data.games ?? data.total} games · ${data.total} achievements · ${data.gamerscore}G`);
+      setXboxSyncStatus(`Synced ${data.gameCount ?? 0} games · ${data.total} achievements · ${data.gamerscore}G`);
       if (updateUser) await updateUser({
         xboxTotalAchievements: data.total,
         xboxGamerscore: data.gamerscore,
         xboxAchievementsLastSync: data.lastSync,
-      } as any);
+        xboxAchievements: data.achievements ?? null,
+      });
     } catch (err: any) {
       setXboxSyncStatus(err?.message || 'Failed to sync Xbox achievements');
     } finally {
@@ -292,12 +293,13 @@ export default function AccountSettings() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Sync failed');
-      setPsnSyncStatus(`Synced ${data.games ?? 0} games · ${data.total} trophies · Level ${data.level}`);
+      setPsnSyncStatus(`Synced ${data.gameCount ?? 0} games · ${data.total} trophies · Level ${data.level}`);
       if (updateUser) await updateUser({
         psnTotalTrophies: data.total,
         psnTrophyLevel: data.level,
         psnTrophiesLastSync: data.lastSync,
-      } as any);
+        psnTrophyData: data.trophies ?? null,
+      });
     } catch (err: any) {
       setPsnSyncStatus(err?.message || 'Failed to sync PSN trophies');
     } finally {
@@ -316,7 +318,8 @@ export default function AccountSettings() {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ show: newValue }),
       });
-      if (updateUser) await updateUser({ showXboxAchievements: newValue } as any);
+      if (!res.ok) throw new Error('Failed to update setting');
+      if (updateUser) await updateUser({ showXboxAchievements: newValue });
     } catch (err) {
       setShowXboxAchievements(!newValue);
       console.error('[AccountSettings] Failed to toggle Xbox achievements:', err);
@@ -334,7 +337,8 @@ export default function AccountSettings() {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ show: newValue }),
       });
-      if (updateUser) await updateUser({ showPsnTrophies: newValue } as any);
+      if (!res.ok) throw new Error('Failed to update setting');
+      if (updateUser) await updateUser({ showPsnTrophies: newValue });
     } catch (err) {
       setShowPsnTrophies(!newValue);
       console.error('[AccountSettings] Failed to toggle PSN trophies:', err);
@@ -763,10 +767,10 @@ export default function AccountSettings() {
                         <Text style={[styles.syncStatusText, xboxSyncStatus.startsWith('Synced') ? styles.syncSuccess : styles.syncError]}>
                           {xboxSyncStatus}
                         </Text>
-                      ) : (user as any)?.xboxAchievementsLastSync ? (
+                      ) : user?.xboxAchievementsLastSync ? (
                         <Text style={styles.lastSyncLabel}>
-                          Last synced {new Date((user as any).xboxAchievementsLastSync).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          {(user as any).xboxTotalAchievements > 0 ? ` · ${(user as any).xboxTotalAchievements} achievements · ${(user as any).xboxGamerscore ?? 0}G` : ''}
+                          Last synced {new Date(user.xboxAchievementsLastSync).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {(user.xboxTotalAchievements ?? 0) > 0 ? ` · ${user.xboxTotalAchievements} achievements · ${user.xboxGamerscore ?? 0}G` : ''}
                         </Text>
                       ) : null}
 
@@ -822,10 +826,10 @@ export default function AccountSettings() {
                         <Text style={[styles.syncStatusText, psnSyncStatus.startsWith('Synced') ? styles.syncSuccess : styles.syncError]}>
                           {psnSyncStatus}
                         </Text>
-                      ) : (user as any)?.psnTrophiesLastSync ? (
+                      ) : user?.psnTrophiesLastSync ? (
                         <Text style={styles.lastSyncLabel}>
-                          Last synced {new Date((user as any).psnTrophiesLastSync).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          {(user as any).psnTotalTrophies > 0 ? ` · ${(user as any).psnTotalTrophies} trophies · Lvl ${(user as any).psnTrophyLevel ?? 0}` : ''}
+                          Last synced {new Date(user.psnTrophiesLastSync).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          {(user.psnTotalTrophies ?? 0) > 0 ? ` · ${user.psnTotalTrophies} trophies · Lvl ${user.psnTrophyLevel ?? 0}` : ''}
                         </Text>
                       ) : null}
 

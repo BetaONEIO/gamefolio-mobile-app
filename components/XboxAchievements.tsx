@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, type DimensionValue } from 'react-native';
 import { Gamepad2, Trophy } from 'lucide-react-native';
 
 interface GameTile {
@@ -53,7 +53,7 @@ function GameTileItem({ item }: { item: GameTile }) {
         <Text style={styles.gameName} numberOfLines={2}>{item.name}</Text>
 
         <View style={styles.progressBar}>
-          <View style={[styles.progressFill, { width: `${pct}%` as any }]} />
+          <View style={[styles.progressFill, { width: `${pct}%` as DimensionValue }]} />
         </View>
 
         <View style={styles.tileStats}>

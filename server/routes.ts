@@ -2572,7 +2572,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const user = await storage.getUserById(userId);
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      const xboxUsername = (user as any).xboxUsername;
+      const xboxUsername = user.xboxUsername;
       if (!xboxUsername) {
         return res.status(400).json({ message: "No Xbox username set on your profile." });
       }
@@ -2668,13 +2668,14 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         xboxAchievementsLastSync: now,
         xboxTotalAchievements: totalEarnedAchievements,
         xboxGamerscore: totalEarnedGamerscore,
-      } as any);
+      });
 
       return res.json({
         message: "Xbox achievements synced successfully.",
         total: totalEarnedAchievements,
         gamerscore: totalEarnedGamerscore,
-        games: gameTiles.length,
+        gameCount: gameTiles.length,
+        achievements: gameTiles,
         lastSync: now.toISOString(),
       });
     } catch (err) {
@@ -2693,10 +2694,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         return res.status(400).json({ message: "Missing 'show' boolean field." });
       }
 
-      const updated = await storage.updateUser(userId, { showXboxAchievements: show } as any);
+      const updated = await storage.updateUser(userId, { showXboxAchievements: show });
       if (!updated) return res.status(404).json({ message: "User not found" });
 
-      return res.json({ showXboxAchievements: (updated as any).showXboxAchievements });
+      return res.json({ showXboxAchievements: updated.showXboxAchievements });
     } catch (err) {
       console.error("Error toggling Xbox achievements:", err);
       return res.status(500).json({ message: "Failed to toggle Xbox achievements." });
@@ -2737,7 +2738,7 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
       const user = await storage.getUserById(userId);
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      const psnUsername = (user as any).playstationUsername;
+      const psnUsername = user.playstationUsername;
       if (!psnUsername) {
         return res.status(400).json({ message: "No PlayStation username set on your profile." });
       }
@@ -2862,13 +2863,14 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         psnTrophiesLastSync: now,
         psnTrophyLevel: trophyLevel,
         psnTotalTrophies: totalTrophies,
-      } as any);
+      });
 
       return res.json({
         message: "PSN trophies synced successfully.",
         total: totalTrophies,
         level: trophyLevel,
-        games: gameTiles.length,
+        gameCount: gameTiles.length,
+        trophies: gameTiles,
         lastSync: now.toISOString(),
       });
     } catch (err) {
@@ -2887,10 +2889,10 @@ export async function registerRoutes(app: Express, existingServer?: Server): Pro
         return res.status(400).json({ message: "Missing 'show' boolean field." });
       }
 
-      const updated = await storage.updateUser(userId, { showPsnTrophies: show } as any);
+      const updated = await storage.updateUser(userId, { showPsnTrophies: show });
       if (!updated) return res.status(404).json({ message: "User not found" });
 
-      return res.json({ showPsnTrophies: (updated as any).showPsnTrophies });
+      return res.json({ showPsnTrophies: updated.showPsnTrophies });
     } catch (err) {
       console.error("Error toggling PSN trophies:", err);
       return res.status(500).json({ message: "Failed to toggle PSN trophies." });
