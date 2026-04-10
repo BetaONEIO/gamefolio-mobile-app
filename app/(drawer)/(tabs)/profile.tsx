@@ -743,25 +743,25 @@ export default function ProfileScreen() {
         ) : null}
 
         {/* Xbox Achievements */}
-        {(user as any)?.showXboxAchievements && (user as any)?.xboxAchievements?.length > 0 ? (
+        {user?.showXboxAchievements && (user.xboxAchievements?.length ?? 0) > 0 ? (
           <View style={{ marginTop: 16 }}>
             <XboxAchievements
-              games={(user as any).xboxAchievements}
-              totalAchievements={(user as any).xboxTotalAchievements ?? 0}
-              gamerscore={(user as any).xboxGamerscore ?? 0}
-              lastSync={(user as any).xboxAchievementsLastSync}
+              games={user.xboxAchievements ?? []}
+              totalAchievements={user.xboxTotalAchievements ?? 0}
+              gamerscore={user.xboxGamerscore ?? 0}
+              lastSync={user.xboxAchievementsLastSync instanceof Date ? user.xboxAchievementsLastSync.toISOString() : (user.xboxAchievementsLastSync ?? undefined)}
             />
           </View>
         ) : null}
 
         {/* PSN Trophies */}
-        {(user as any)?.showPsnTrophies && (user as any)?.psnTrophyData?.length > 0 ? (
+        {user?.showPsnTrophies && (user.psnTrophyData?.length ?? 0) > 0 ? (
           <View style={{ marginTop: 16 }}>
             <PsnTrophies
-              games={(user as any).psnTrophyData}
-              trophyLevel={(user as any).psnTrophyLevel ?? 0}
-              totalTrophies={(user as any).psnTotalTrophies ?? 0}
-              lastSync={(user as any).psnTrophiesLastSync}
+              games={user.psnTrophyData ?? []}
+              trophyLevel={user.psnTrophyLevel ?? 0}
+              totalTrophies={user.psnTotalTrophies ?? 0}
+              lastSync={user.psnTrophiesLastSync instanceof Date ? user.psnTrophiesLastSync.toISOString() : (user.psnTrophiesLastSync ?? undefined)}
             />
           </View>
         ) : null}

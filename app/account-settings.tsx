@@ -313,7 +313,7 @@ export default function AccountSettings() {
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
-      await fetch(`${Env.BACKEND_URL}/api/xbox/achievements/toggle`, {
+      const res = await fetch(`${Env.BACKEND_URL}/api/xbox/achievements/toggle`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ show: newValue }),
@@ -332,7 +332,7 @@ export default function AccountSettings() {
     try {
       const token = await getAccessToken();
       if (!token) throw new Error('Not authenticated');
-      await fetch(`${Env.BACKEND_URL}/api/psn/trophies/toggle`, {
+      const res = await fetch(`${Env.BACKEND_URL}/api/psn/trophies/toggle`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ show: newValue }),
