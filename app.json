@@ -16,7 +16,9 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "app.rork.gamefolio",
-      "associatedDomains": ["applinks:gamefolio.app"],
+      "associatedDomains": [
+        "applinks:gamefolio.app"
+      ],
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
@@ -39,10 +41,11 @@
       },
       "package": "app.rork.gamefolio",
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "android.permission.VIBRATE"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
       ],
       "manifest": {
         "android:supportsPictureInPicture": true
@@ -58,7 +61,10 @@
               "pathPrefix": "/ref"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -110,6 +116,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": "https://rork.com/"
+      },
+      "eas": {
+        "projectId": "92cffca8-1288-4541-9bdc-4a39bfdeaf6b"
+      }
+    },
+    "owner": "adminbetaone"
   }
 }
