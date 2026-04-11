@@ -54,4 +54,6 @@ build/
 node_modules/
 bun.lock
 bun.lockb
-application-4cd83773-d186-46a2-9370-b53c5348a7e7.aab
+# EAS build artifacts
+*.aab
+*.apk
